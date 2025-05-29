@@ -34,7 +34,7 @@ jobs:
         
     - name: Add Angular Material and PWA
       run: |
-        ng add @angular/material --theme=custom --typography=true --animations=true --skip-confirmation
+        ng add @angular/material --theme=indigo-pink --typography --animations --skip-confirmation
         ng add @angular/pwa --skip-confirmation
         ng add @angular/localize --skip-confirmation
         
