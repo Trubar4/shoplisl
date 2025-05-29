@@ -40,7 +40,7 @@ jobs:
         
     - name: Install Firebase
       run: |
-        npm install firebase @angular/fire
+        npm install firebase @angular/fire --legacy-peer-deps
         
     - name: Generate Project Structure
       run: |
