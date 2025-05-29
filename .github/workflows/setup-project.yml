@@ -18,28 +18,29 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
+        # Remove cache since we don't have package.json yet
         
     - name: Install Angular CLI
       run: npm install -g @angular/cli@latest
       
     - name: Create Angular Project
       run: |
-        ng new shoplisl-app --routing=true --style=scss --skip-git=true --directory=. --skip-install=true
+        # Create Angular project in current directory
+        ng new shoplisl-app --routing=true --style=scss --skip-git=true --directory=temp --skip-install=false
+        # Move files from temp to root
+        mv temp/* .
+        mv temp/.* . 2>/dev/null || true
+        rmdir temp
         
-    - name: Install Dependencies
+    - name: Add Angular Material and PWA
       run: |
-        npm install
         ng add @angular/material --theme=custom --typography=true --animations=true --skip-confirmation
         ng add @angular/pwa --skip-confirmation
-        ng add @angular/fire --skip-confirmation
         ng add @angular/localize --skip-confirmation
         
-    - name: Install Additional Dependencies
+    - name: Install Firebase
       run: |
-        npm install @angular/cdk @angular/common @angular/forms
         npm install firebase @angular/fire
-        npm install rxjs
         
     - name: Generate Project Structure
       run: |
@@ -76,6 +77,168 @@ jobs:
         # Guards and Interceptors
         ng generate guard core/guards/data
         ng generate interceptor core/interceptors/error
+        
+    - name: Create Firebase Configuration Files
+      run: |
+        # Create firebase.json
+        cat > firebase.json << 'EOF'
+        {
+          "firestore": {
+            "rules": "firestore.rules",
+            "indexes": "firestore.indexes.json"
+          },
+          "hosting": {
+            "public": "dist/shoplisl-app",
+            "ignore": [
+              "firebase.json",
+              "**/.*",
+              "**/node_modules/**"
+            ],
+            "rewrites": [
+              {
+                "source": "**",
+                "destination": "/index.html"
+              }
+            ]
+          },
+          "emulators": {
+            "firestore": {
+              "port": 8080
+            },
+            "hosting": {
+              "port": 5000
+            },
+            "ui": {
+              "enabled": true,
+              "port": 4000
+            }
+          }
+        }
+        EOF
+        
+        # Create firestore.rules
+        cat > firestore.rules << 'EOF'
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            // For now, allow all reads and writes
+            // TODO: Add proper user-based security rules
+            match /{document=**} {
+              allow read, write: if true;
+            }
+          }
+        }
+        EOF
+        
+        # Create firestore.indexes.json
+        cat > firestore.indexes.json << 'EOF'
+        {
+          "indexes": [
+            {
+              "collectionGroup": "lists",
+              "queryScope": "COLLECTION",
+              "fields": [
+                { "fieldPath": "createdAt", "order": "DESCENDING" },
+                { "fieldPath": "name", "order": "ASCENDING" }
+              ]
+            }
+          ],
+          "fieldOverrides": []
+        }
+        EOF
+        
+    - name: Create Models
+      run: |
+        mkdir -p src/app/core/models
+        cat > src/app/core/models/index.ts << 'EOF'
+        export interface ShoppingList {
+          id: string;
+          name: string;
+          shopId?: string;
+          items: ListItem[];
+          createdAt: Date;
+          updatedAt: Date;
+          itemCount: number;
+          checkedCount: number;
+          sortOrder: 'alphabetical' | 'shop-layout' | 'custom';
+          color?: string;
+        }
+
+        export interface ListItem {
+          id: string;
+          articleId: string;
+          articleName: string;
+          quantity?: number;
+          unit?: string;
+          notes?: string;
+          url?: string;
+          isChecked: boolean;
+          isAvailableInShop: boolean;
+          isStrikethrough: boolean;
+          checkedBy?: string;
+          checkedAt?: Date;
+          addedBy?: string;
+          addedAt: Date;
+          categoryId?: string;
+        }
+
+        export interface Article {
+          id: string;
+          name: string;
+          nameTranslations: { [locale: string]: string };
+          categoryId: string;
+          icon?: string;
+          notes?: string;
+          defaultUnit?: string;
+          availableInShops: string[];
+          unavailableInShops: string[];
+          lastUsed?: Date;
+          lastUsedBy?: string;
+          createdAt: Date;
+          usageCount: number;
+        }
+
+        export interface Shop {
+          id: string;
+          name: string;
+          displayName: string;
+          address?: string;
+          categories: ShopCategory[];
+          createdAt: Date;
+          isActive: boolean;
+          isSelected?: boolean;
+        }
+
+        export interface ShopCategory {
+          id: string;
+          name: string;
+          nameTranslations: { [locale: string]: string };
+          order: number;
+          icon: string;
+          color?: string;
+        }
+
+        export interface User {
+          id: string;
+          name: string;
+          email?: string;
+          preferences: UserPreferences;
+        }
+
+        export interface UserPreferences {
+          language: 'en' | 'de';
+          defaultShop?: string;
+          theme: 'light' | 'dark' | 'auto';
+          fontSize: 'small' | 'medium' | 'large';
+        }
+        EOF
+        
+    - name: Update Package.json Scripts
+      run: |
+        # Add custom scripts to package.json
+        npm pkg set scripts.serve:pwa="ng build && npx http-server dist/shoplisl-app -p 8080"
+        npm pkg set scripts.firebase:emulator="firebase emulators:start"
+        npm pkg set scripts.i18n:extract="ng extract-i18n"
         
     - name: Commit generated files
       run: |
