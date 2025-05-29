@@ -1,0 +1,86 @@
+name: Setup ShopLisl Project
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/setup-project.yml' ]
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install Angular CLI
+      run: npm install -g @angular/cli@latest
+      
+    - name: Create Angular Project
+      run: |
+        ng new shoplisl-app --routing=true --style=scss --skip-git=true --directory=. --skip-install=true
+        
+    - name: Install Dependencies
+      run: |
+        npm install
+        ng add @angular/material --theme=custom --typography=true --animations=true --skip-confirmation
+        ng add @angular/pwa --skip-confirmation
+        ng add @angular/fire --skip-confirmation
+        ng add @angular/localize --skip-confirmation
+        
+    - name: Install Additional Dependencies
+      run: |
+        npm install @angular/cdk @angular/common @angular/forms
+        npm install firebase @angular/fire
+        npm install rxjs
+        
+    - name: Generate Project Structure
+      run: |
+        # Core modules
+        ng generate module core --routing=false
+        ng generate module shared --routing=false
+        
+        # Feature modules
+        ng generate module features/lists --routing=true
+        ng generate module features/articles --routing=true  
+        ng generate module features/shops --routing=true
+        
+        # Services
+        ng generate service core/services/data
+        ng generate service core/services/firebase
+        ng generate service core/services/offline
+        
+        # Components
+        ng generate component features/lists/list-overview
+        ng generate component features/lists/list-detail
+        ng generate component features/lists/list-item
+        
+        ng generate component features/articles/article-overview
+        ng generate component features/articles/article-detail
+        ng generate component features/articles/article-form
+        
+        ng generate component features/shops/shop-overview
+        ng generate component features/shops/shop-detail
+        ng generate component features/shops/shop-categories
+        
+        ng generate component shared/components/navigation
+        ng generate component shared/components/confirm-dialog
+        
+        # Guards and Interceptors
+        ng generate guard core/guards/data
+        ng generate interceptor core/interceptors/error
+        
+    - name: Commit generated files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "🚀 Initial project setup with Angular, Material, PWA, and Firebase" || exit 0
+        git push
