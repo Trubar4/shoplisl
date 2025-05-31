@@ -1,47 +1,9 @@
-<div class="list-overview">
-  <!-- Header -->
-  <mat-toolbar color="primary" class="app-header">
-    <span>Einkaufslisten</span>
-    <span class="spacer"></span>
-    <button mat-icon-button (click)="onCreateList()" aria-label="Add list">
-      <mat-icon>add</mat-icon>
-    </button>
+<div class="placeholder">
+  <mat-toolbar color="primary">
+    <span>Listen</span>
   </mat-toolbar>
-
-  <!-- Lists -->
-  <div class="lists-container">
-    <mat-list>
-      <mat-list-item 
-        *ngFor="let list of lists$ | async" 
-        (click)="onListClick(list)"
-        class="list-item">
-        
-        <div class="list-content">
-          <div class="list-main">
-            <h3 class="list-name">{{ list.name }}</h3>
-            
-            <!-- Item count badge -->
-            <div class="item-count" 
-                 *ngIf="getItemCountText(list)"
-                 [ngClass]="'count-' + getListColor(list)">
-              {{ getItemCountText(list) }}
-            </div>
-          </div>
-        </div>
-        
-        <!-- Navigation arrow -->
-        <mat-icon class="nav-arrow">chevron_right</mat-icon>
-      </mat-list-item>
-    </mat-list>
-  </div>
-
-  <!-- Bottom Navigation -->
-  <div class="bottom-nav">
-    <button mat-button color="accent" class="nav-button active">
-      <span>Bearbeiten</span>
-    </button>
-    <button mat-icon-button class="settings-button">
-      <mat-icon>settings</mat-icon>
-    </button>
+  <div class="content">
+    <p>Listen Tab - Coming Soon!</p>
+    <p>Focus: Articles Tab first for MVP</p>
   </div>
 </div>

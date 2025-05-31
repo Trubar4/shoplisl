@@ -1,0 +1,10 @@
+<mat-tab-group class="bottom-tabs" backgroundColor="primary">
+  <mat-tab *ngFor="let tab of tabs">
+    <ng-template mat-tab-label>
+      <a [routerLink]="tab.route" class="tab-link">
+        <mat-icon>{{ tab.icon }}</mat-icon>
+        <span>{{ tab.label }}</span>
+      </a>
+    </ng-template>
+  </mat-tab>
+</mat-tab-group>

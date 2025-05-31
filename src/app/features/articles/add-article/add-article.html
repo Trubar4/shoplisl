@@ -1,0 +1,92 @@
+<div class="add-article">
+  <!-- Header -->
+  <mat-toolbar color="primary" class="app-header">
+    <button mat-icon-button (click)="onBack()" aria-label="Back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>Artikel hinzufügen</span>
+    <span class="spacer"></span>
+  </mat-toolbar>
+
+  <!-- Form -->
+  <div class="form-container">
+    <form class="article-form" (ngSubmit)="onSave()">
+      
+      <!-- Name Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Name *</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="article.name" 
+          name="name"
+          placeholder="z.B. Erdbeeren"
+          required>
+      </mat-form-field>
+
+      <!-- Notes Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Notizen</mat-label>
+        <textarea 
+          matInput 
+          [(ngModel)]="article.notes" 
+          name="notes"
+          placeholder="Zusätzliche Informationen..."
+          rows="3">
+        </textarea>
+      </mat-form-field>
+
+      <!-- Icon Selection -->
+      <div class="icon-section">
+        <h3>Icon auswählen</h3>
+        
+        <!-- Current Icon Display -->
+        <div class="current-icon">
+          <div class="icon-preview">
+            {{ article.icon || '📦' }}
+          </div>
+          <mat-form-field appearance="outline" class="icon-input">
+            <mat-label>Eigenes Icon</mat-label>
+            <input 
+              matInput 
+              [(ngModel)]="article.icon" 
+              name="icon"
+              placeholder="Emoji eingeben..."
+              maxlength="2">
+          </mat-form-field>
+        </div>
+
+        <!-- Common Emojis -->
+        <div class="emoji-grid">
+          <button 
+            *ngFor="let emoji of commonEmojis" 
+            type="button"
+            class="emoji-button"
+            [class.selected]="article.icon === emoji"
+            (click)="onEmojiSelect(emoji)">
+            {{ emoji }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button 
+          type="button" 
+          mat-button 
+          color="basic" 
+          (click)="onCancel()"
+          class="cancel-button">
+          Abbrechen
+        </button>
+        <button 
+          type="submit" 
+          mat-raised-button 
+          color="primary"
+          [disabled]="!article.name.trim()"
+          class="save-button">
+          Speichern
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

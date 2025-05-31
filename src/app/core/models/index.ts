@@ -1,80 +1,63 @@
+export interface Article {
+  id: string;
+  name: string;
+  notes?: string;
+  icon?: string; // emoji or icon name
+  categoryId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Future: shop availability, usage stats
+  availableInShops?: string[];
+  usageCount?: number;
+}
+
+export interface ArticleCategory {
+  id: string;
+  name: string;
+  icon?: string;
+  order: number;
+  createdAt: Date;
+}
+
 export interface ShoppingList {
   id: string;
   name: string;
-  shopId?: string;
-  items: ListItem[];
+  color?: string; // header color
+  icon?: string;
+  shopId?: string; // for shop-based sorting
+  articleIds: string[]; // references to articles
   createdAt: Date;
   updatedAt: Date;
-  itemCount: number;
-  checkedCount: number;
-  sortOrder: 'alphabetical' | 'shop-layout' | 'custom';
-  color?: string;
+  // Future: completion tracking
 }
 
 export interface ListItem {
   id: string;
+  listId: string;
   articleId: string;
-  articleName: string;
-  quantity?: number;
-  unit?: string;
-  notes?: string;
-  url?: string;
-  isChecked: boolean;
-  isAvailableInShop: boolean;
-  isStrikethrough: boolean;
-  checkedBy?: string;
-  checkedAt?: Date;
-  addedBy?: string;
-  addedAt: Date;
-  categoryId?: string;
-}
-
-export interface Article {
-  id: string;
-  name: string;
-  nameTranslations: { [locale: string]: string };
-  categoryId: string;
-  icon?: string;
-  notes?: string;
-  defaultUnit?: string;
-  availableInShops: string[];
-  unavailableInShops: string[];
-  lastUsed?: Date;
-  lastUsedBy?: string;
-  createdAt: Date;
-  usageCount: number;
+  isCompleted: boolean;
+  completedAt?: Date;
+  // Future: quantity, notes per list item
 }
 
 export interface Shop {
   id: string;
   name: string;
-  displayName: string;
-  address?: string;
   categories: ShopCategory[];
   createdAt: Date;
-  isActive: boolean;
-  isSelected?: boolean;
 }
 
 export interface ShopCategory {
   id: string;
   name: string;
-  nameTranslations: { [locale: string]: string };
   order: number;
-  icon: string;
-  color?: string;
+  icon?: string;
 }
 
+// Future: User accounts
 export interface User {
   id: string;
   name: string;
   email?: string;
-  preferences: UserPreferences;
-}
-
-export interface UserPreferences {
-  language: 'en' | 'de';
-  defaultShop?: string;
-  theme: 'light' | 'dark' | 'auto';
-  fontSize: 'small' | 'medium' | 'large';
+  createdAt: Date;
 }

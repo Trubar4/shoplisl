@@ -1,12 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { BottomTabsComponent } from './shared/components/bottom-tabs/bottom-tabs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [RouterOutlet, BottomTabsComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
-  protected title = 'shoplisl-app';
+export class AppComponent {
+  title = 'shoplisl-app';
 }

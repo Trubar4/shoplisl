@@ -1,1 +1,44 @@
-<p>article-overview works!</p>
+<div class="article-overview">
+  <!-- Header -->
+  <mat-toolbar color="primary" class="app-header">
+    <span>Artikel</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="onAddArticle()" aria-label="Add article">
+      <mat-icon>add</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <!-- Articles List -->
+  <div class="articles-container">
+    <div class="articles-list">
+      <div 
+        *ngFor="let article of articles$ | async" 
+        (click)="onArticleClick(article)"
+        class="article-item">
+        
+        <!-- Article Icon -->
+        <div class="article-icon">
+          {{ article.icon || '📦' }}
+        </div>
+        
+        <!-- Article Content -->
+        <div class="article-content">
+          <div class="article-name">{{ article.name }}</div>
+          <div class="article-notes" *ngIf="article.notes">
+            {{ article.notes }}
+          </div>
+        </div>
+        
+        <!-- Navigation arrow -->
+        <mat-icon class="nav-arrow">chevron_right</mat-icon>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="(articles$ | async)?.length === 0">
+      <mat-icon class="empty-icon">inventory_2</mat-icon>
+      <h3>Keine Artikel vorhanden</h3>
+      <p>Tippe auf das + um deinen ersten Artikel hinzuzufügen</p>
+    </div>
+  </div>
+</div>
