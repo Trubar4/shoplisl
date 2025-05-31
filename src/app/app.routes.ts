@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { ListOverviewComponent } from './features/lists/list-overview/list-overview';
 import { ArticleOverviewComponent } from './features/articles/article-overview/article-overview';
 import { AddArticleComponent } from './features/articles/add-article/add-article';
+import { ArticleDetailComponent } from './features/articles/article-detail/article-detail';
 
 export const routes: Routes = [
   {
@@ -20,6 +21,10 @@ export const routes: Routes = [
   {
     path: 'articles/add',
     component: AddArticleComponent
+  },
+  {
+    path: 'articles/:id',
+    component: ArticleDetailComponent
   },
   {
     path: 'shops',

@@ -36,8 +36,7 @@ export class ArticleOverviewComponent implements OnInit {
   ngOnInit(): void {}
 
   onArticleClick(article: Article): void {
-    // Navigate to article detail (we'll implement this next)
-    console.log('Article clicked:', article);
+    this.router.navigate(['/articles', article.id]);
   }
 
   onAddArticle(): void {
