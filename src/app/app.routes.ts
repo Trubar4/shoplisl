@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
-import { ListOverviewComponent } from './features/lists/list-overview/list-overview';
+import { ListsOverviewComponent } from './features/lists/lists-overview/lists-overview';
+import { AddListComponent } from './features/lists/add-list/add-list';
+import { ListDetailComponent } from './features/lists/list-detail/list-detail';
+import { AddArticlesComponent } from './features/lists/add-articles/add-articles';
 import { ArticleOverviewComponent } from './features/articles/article-overview/article-overview';
 import { AddArticleComponent } from './features/articles/add-article/add-article';
 import { ArticleDetailComponent } from './features/articles/article-detail/article-detail';
@@ -12,7 +15,19 @@ export const routes: Routes = [
   },
   {
     path: 'lists',
-    component: ListOverviewComponent
+    component: ListsOverviewComponent
+  },
+  {
+    path: 'lists/add',
+    component: AddListComponent
+  },
+  {
+    path: 'lists/:id',
+    component: ListDetailComponent
+  },
+  {
+    path: 'lists/:id/add-articles',
+    component: AddArticlesComponent
   },
   {
     path: 'articles',
@@ -28,10 +43,10 @@ export const routes: Routes = [
   },
   {
     path: 'shops',
-    component: ListOverviewComponent
+    component: ListsOverviewComponent
   },
   {
     path: 'recipes',
-    component: ListOverviewComponent
+    component: ListsOverviewComponent
   }
 ];

@@ -61,3 +61,22 @@ export interface User {
   email?: string;
   createdAt: Date;
 }
+
+export interface ListItemState {
+  articleId: string;
+  isChecked: boolean; // For strike-through in shopping mode
+  checkedAt?: Date;
+}
+
+// Update the ShoppingList interface to include item states
+export interface ShoppingList {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  shopId?: string;
+  articleIds: string[];
+  itemStates: { [articleId: string]: ListItemState }; // Add this line
+  createdAt: Date;
+  updatedAt: Date;
+}

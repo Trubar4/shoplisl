@@ -1,0 +1,87 @@
+<div class="add-articles" *ngIf="list$ | async as list">
+    <!-- Header -->
+    <mat-toolbar [style.background-color]="list.color" class="app-header">
+      <button mat-icon-button (click)="onBack()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="header-content">
+        <span class="list-icon">{{ list.icon }}</span>
+        <span class="list-name">{{ list.name }}</span>
+      </div>
+      <span class="spacer"></span>
+    </mat-toolbar>
+  
+    <!-- Subheader -->
+    <div class="subheader">
+      <h3>Artikel auswählen</h3>
+      <p>{{ getSelectedCount() }} Artikel ausgewählt</p>
+    </div>
+  
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="loading">
+      <p>Artikel werden geladen...</p>
+    </div>
+  
+    <!-- Articles List -->
+    <div *ngIf="!isLoading" class="articles-container">
+      <div class="articles-list">
+        <div 
+          *ngFor="let article of articlesWithToggle$ | async" 
+          class="article-item">
+          
+          <!-- Article Icon -->
+          <div class="article-icon">
+            {{ article.icon || '📦' }}
+          </div>
+          
+          <!-- Article Content -->
+          <div class="article-content">
+            <div class="article-name">{{ article.name }}</div>
+            <div class="article-notes" *ngIf="article.notes">
+              {{ article.notes }}
+            </div>
+          </div>
+          
+          <!-- Toggle Switch -->
+          <mat-slide-toggle
+            [checked]="article.isInList"
+            (change)="onArticleToggle(article, $event.checked)"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
+      </div>
+  
+      <!-- No articles state -->
+      <div class="empty-state" *ngIf="(articlesWithToggle$ | async)?.length === 0">
+        <mat-icon class="empty-icon">inventory_2</mat-icon>
+        <h3>Keine Artikel verfügbar</h3>
+        <p>Erstelle zuerst Artikel im Artikel-Tab</p>
+        <button 
+          mat-raised-button 
+          color="primary"
+          (click)="onGoToArticles()"
+          class="go-to-articles-button">
+          Zu den Artikeln
+        </button>
+      </div>
+    </div>
+  
+    <!-- Action Buttons -->
+    <div class="action-buttons" *ngIf="!isLoading && (articlesWithToggle$ | async)?.length">
+      <button 
+        mat-button 
+        color="basic" 
+        (click)="onCancel()"
+        class="cancel-button">
+        Abbrechen
+      </button>
+      <button 
+        mat-raised-button 
+        color="primary"
+        [disabled]="!hasChanges"
+        (click)="onSave()"
+        class="save-button">
+        Fertig
+      </button>
+    </div>
+  </div>

@@ -1,3 +1,167 @@
-<div class="placeholder">
-  <h2>List Detail - Coming Soon!</h2>
+<div class="list-detail" *ngIf="list$ | async as list">
+  <!-- Header -->
+  <mat-toolbar [style.background-color]="list.color" class="app-header">
+    <button mat-icon-button (click)="onBack()" aria-label="Back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="header-content">
+      <span class="list-icon">{{ list.icon }}</span>
+      <span class="list-name">{{ list.name }}</span>
+    </div>
+    <span class="spacer"></span>
+    
+    <!-- Mode Toggle Buttons -->
+    <div class="mode-toggle">
+      <button 
+        mat-button 
+        [class.active]="currentMode === 'shopping'"
+        (click)="switchToShoppingMode()"
+        class="mode-button">
+        Shoppen
+      </button>
+      <button 
+        mat-button 
+        [class.active]="currentMode === 'edit'"
+        (click)="switchToEditMode()"
+        class="mode-button">
+        Bearbeiten
+      </button>
+    </div>
+  </mat-toolbar>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading">
+    <p>Liste wird geladen...</p>
+  </div>
+
+  <!-- SHOPPING MODE -->
+  <div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
+    
+    <!-- Shopping List -->
+    <div class="articles-list" *ngIf="(listArticles$ | async)?.length; else emptyShoppingState">
+      <div 
+        *ngFor="let article of listArticles$ | async" 
+        class="article-item"
+        [class.checked]="article.isChecked">
+        
+        <!-- Article Icon -->
+        <div class="article-icon">
+          {{ article.icon || '📦' }}
+        </div>
+        
+        <!-- Article Content (Clickable for toggle) -->
+        <div class="article-content" (click)="onArticleToggle(article)">
+          <div class="article-name" [class.strikethrough]="article.isChecked">
+            {{ article.name }}
+          </div>
+          <div class="article-notes" *ngIf="article.notes" [class.strikethrough]="article.isChecked">
+            {{ article.notes }}
+          </div>
+        </div>
+        
+        <!-- Remove Button -->
+        <button 
+          mat-icon-button 
+          (click)="onRemoveFromList(article)"
+          class="remove-button"
+          aria-label="Remove from list">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty Shopping State -->
+    <ng-template #emptyShoppingState>
+      <div class="empty-state">
+        <mat-icon class="empty-icon">shopping_cart</mat-icon>
+        <h3>Liste ist leer</h3>
+        <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- EDIT MODE -->
+  <div *ngIf="!isLoading && currentMode === 'edit'" class="edit-mode">
+    
+    <!-- Search Field -->
+    <div class="search-container">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Artikel eingeben</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="searchQuery"
+          (input)="onSearchQueryChange()"
+          placeholder="Artikel suchen..."
+          #searchInput>
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+    </div>
+
+    <!-- Available Articles -->
+    <div class="available-articles">
+      <div 
+        *ngFor="let article of availableArticles$ | async" 
+        class="article-item">
+        
+        <!-- Article Icon -->
+        <div class="article-icon">
+          {{ article.icon || '📦' }}
+        </div>
+        
+        <!-- Article Content -->
+        <div class="article-content">
+          <div class="article-name">{{ article.name }}</div>
+          <div class="article-notes" *ngIf="article.notes">
+            {{ article.notes }}
+          </div>
+        </div>
+        
+        <!-- Add Button -->
+        <button 
+          mat-icon-button 
+          (click)="onAddToList(article)"
+          class="add-button"
+          aria-label="Add to list">
+          <mat-icon>add_circle_outline</mat-icon>
+        </button>
+      </div>
+
+      <!-- No Results / Create New Article -->
+      <div class="no-results" *ngIf="searchQuery && (availableArticles$ | async)?.length === 0">
+        <button 
+          mat-button 
+          color="primary"
+          (click)="onCreateNewArticle()"
+          class="create-article-button">
+          <mat-icon>add</mat-icon>
+          Neuer Artikel hinzufügen
+        </button>
+      </div>
+    </div>
+
+    <!-- Edit Mode Actions -->
+    <div class="edit-actions">
+      <button 
+        mat-button 
+        color="accent"
+        (click)="onClearAllItems()"
+        class="action-button">
+        Leeren
+      </button>
+      <button 
+        mat-button 
+        color="primary"
+        (click)="onEditList()"
+        class="action-button">
+        Bearbeiten
+      </button>
+      <button 
+        mat-button 
+        color="warn"
+        (click)="onDeleteList()"
+        class="action-button">
+        Löschen
+      </button>
+    </div>
+  </div>
 </div>
