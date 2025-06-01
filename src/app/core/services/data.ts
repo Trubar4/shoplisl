@@ -109,11 +109,18 @@ private defaultLists: ShoppingList[] = [
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const articles = JSON.parse(stored);
-        return articles.map((article: any) => ({
-          ...article,
-          createdAt: new Date(article.createdAt),
-          updatedAt: new Date(article.updatedAt)
-        }));
+        return articles.map((article: any) => {
+          // Migrate old articles that don't have amount field
+          if (!article.amount) {
+            article.amount = '';
+          }
+          
+          return {
+            ...article,
+            createdAt: new Date(article.createdAt),
+            updatedAt: new Date(article.updatedAt)
+          };
+        });
       }
     } catch (error) {
       console.error('Error loading articles:', error);

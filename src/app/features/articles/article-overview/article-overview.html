@@ -23,7 +23,10 @@
         
         <!-- Article Content -->
         <div class="article-content">
-          <div class="article-name">{{ article.name }}</div>
+          <div class="article-header">
+            <span class="article-name">{{ article.name }}</span>
+            <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
+          </div>
           <div class="article-notes" *ngIf="article.notes">
             {{ article.notes }}
           </div>

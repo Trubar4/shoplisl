@@ -51,21 +51,30 @@
         
         <!-- Article Content (Clickable for toggle) -->
         <div class="article-content" (click)="onArticleToggle(article)">
-          <div class="article-name" [class.strikethrough]="article.isChecked">
-            {{ article.name }}
+          <div class="article-header">
+            <span class="article-name" [class.strikethrough]="article.isChecked">
+              {{ article.name }}
+            </span>
+            <span class="article-amount" 
+                  *ngIf="article.amount" 
+                  [class.strikethrough]="article.isChecked">
+              {{ article.amount }}
+            </span>
           </div>
-          <div class="article-notes" *ngIf="article.notes" [class.strikethrough]="article.isChecked">
+          <div class="article-notes" 
+               *ngIf="article.notes" 
+               [class.strikethrough]="article.isChecked">
             {{ article.notes }}
           </div>
         </div>
         
-        <!-- Remove Button -->
+        <!-- Info Button -->
         <button 
           mat-icon-button 
-          (click)="onRemoveFromList(article)"
-          class="remove-button"
-          aria-label="Remove from list">
-          <mat-icon>delete_outline</mat-icon>
+          (click)="onArticleInfo(article)"
+          class="info-button"
+          aria-label="Article info">
+          <mat-icon>info_outline</mat-icon>
         </button>
       </div>
     </div>
@@ -110,7 +119,10 @@
         
         <!-- Article Content -->
         <div class="article-content">
-          <div class="article-name">{{ article.name }}</div>
+          <div class="article-header">
+            <span class="article-name">{{ article.name }}</span>
+            <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
+          </div>
           <div class="article-notes" *ngIf="article.notes">
             {{ article.notes }}
           </div>

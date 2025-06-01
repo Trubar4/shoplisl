@@ -31,6 +31,7 @@ import { DataService } from '../../../core/services/data';
 export class AddArticleComponent {
   article = {
     name: '',
+    amount: '',
     notes: '',
     icon: ''
   };
@@ -57,9 +58,10 @@ export class AddArticleComponent {
       this.snackBar.open('Name ist erforderlich', 'OK', { duration: 3000 });
       return;
     }
-
+  
     this.dataService.createArticle({
       name: this.article.name.trim(),
+      amount: this.article.amount.trim() || undefined, // Add this line
       notes: this.article.notes.trim() || undefined,
       icon: this.article.icon || '📦'
     }).subscribe(() => {

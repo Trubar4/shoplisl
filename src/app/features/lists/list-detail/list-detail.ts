@@ -112,7 +112,6 @@ export class ListDetailComponent implements OnInit {
         return filtered.sort((a, b) => a.name.localeCompare(b.name));
       })
     );
-    );
   }
 
   ngOnInit(): void {
@@ -142,11 +141,10 @@ export class ListDetailComponent implements OnInit {
     });
   }
 
-  onRemoveFromList(article: ArticleWithState): void {
-    this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
-      if (success) {
-        this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 2000 });
-      }
+  onArticleInfo(article: ArticleWithState): void {
+    // Store the current list ID so we can return here
+    this.router.navigate(['/articles', article.id], {
+      queryParams: { returnTo: `/lists/${this.listId}` }
     });
   }
 

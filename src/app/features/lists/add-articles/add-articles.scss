@@ -82,12 +82,28 @@
         flex: 1;
         margin-right: 16px;
         
-        .article-name {
-          font-size: 16px;
-          font-weight: 400;
-          line-height: 1.4;
-          color: #212121;
-          margin: 0 0 4px 0;
+        .article-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 4px;
+          
+          .article-name {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.4;
+            color: #212121;
+          }
+          
+          .article-amount {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2196f3;
+            background-color: #e3f2fd;
+            padding: 2px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+          }
         }
         
         .article-notes {

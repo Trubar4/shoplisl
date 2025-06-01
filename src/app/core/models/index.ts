@@ -1,8 +1,9 @@
 export interface Article {
   id: string;
   name: string;
+  amount?: string; // Add this new field
   notes?: string;
-  icon?: string; // emoji or icon name
+  icon?: string;
   categoryId?: string;
   createdAt: Date;
   updatedAt: Date;

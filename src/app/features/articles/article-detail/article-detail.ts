@@ -34,6 +34,7 @@ export class ArticleDetailComponent implements OnInit {
   articleId: string;
   article = {
     name: '',
+    amount: '',
     notes: '',
     icon: ''
   };
@@ -68,6 +69,7 @@ export class ArticleDetailComponent implements OnInit {
         this.originalArticle = article;
         this.article = {
           name: article.name,
+          amount: article.amount || '', // Add this line
           notes: article.notes || '',
           icon: article.icon || '📦'
         };
@@ -88,9 +90,10 @@ export class ArticleDetailComponent implements OnInit {
       this.snackBar.open('Name ist erforderlich', 'OK', { duration: 3000 });
       return;
     }
-
+  
     this.dataService.updateArticle(this.articleId, {
       name: this.article.name.trim(),
+      amount: this.article.amount.trim() || undefined, // Add this line
       notes: this.article.notes.trim() || undefined,
       icon: this.article.icon || '📦'
     }).subscribe(updatedArticle => {
@@ -124,13 +127,20 @@ export class ArticleDetailComponent implements OnInit {
   }
 
   onBack(): void {
-    this.router.navigate(['/articles']);
+    // Check if there's a returnTo parameter
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo) {
+      this.router.navigateByUrl(returnTo);
+    } else {
+      this.router.navigate(['/articles']);
+    }
   }
 
   hasChanges(): boolean {
     if (!this.originalArticle) return false;
     
     return this.article.name !== this.originalArticle.name ||
+           this.article.amount !== (this.originalArticle.amount || '') || // Add this line
            this.article.notes !== (this.originalArticle.notes || '') ||
            this.article.icon !== this.originalArticle.icon;
   }

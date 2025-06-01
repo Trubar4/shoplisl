@@ -30,7 +30,17 @@
             placeholder="z.B. Erdbeeren"
             required>
         </mat-form-field>
-  
+
+        <!-- Amount Field - ADD THIS NEW FIELD -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Menge</mat-label>
+          <input 
+            matInput 
+            [(ngModel)]="article.amount" 
+            name="amount"
+            placeholder="z.B. 500g, 2 Stück, 1 Pack">
+        </mat-form-field>
+          
         <!-- Notes Field -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Notizen</mat-label>
