@@ -89,91 +89,109 @@
     </ng-template>
   </div>
 
-  <!-- EDIT MODE -->
-  <div *ngIf="!isLoading && currentMode === 'edit'" class="edit-mode">
-    
-    <!-- Search Field -->
-    <div class="search-container">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Artikel eingeben</mat-label>
-        <input 
-          matInput 
-          [(ngModel)]="searchQuery"
-          (input)="onSearchQueryChange()"
-          placeholder="Artikel suchen..."
-          #searchInput>
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-    </div>
+ <!-- EDIT MODE -->
+<div *ngIf="!isLoading && currentMode === 'edit'" class="edit-mode">
+  
+  <!-- Search Field -->
+  <div class="search-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Artikel eingeben</mat-label>
+      <input 
+        matInput 
+        [(ngModel)]="searchQuery"
+        (input)="onSearchQueryChange()"
+        placeholder="Artikel suchen..."
+        #searchInput>
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
 
-    <!-- Available Articles -->
-    <div class="available-articles">
-      <div 
-        *ngFor="let article of availableArticles$ | async" 
-        class="article-item">
-        
-        <!-- Article Icon -->
-        <div class="article-icon">
-          {{ article.icon || '📦' }}
+  <!-- All Articles with Toggle -->
+  <div class="all-articles">
+    <div 
+      *ngFor="let article of allArticlesWithState$ | async" 
+      class="article-item"
+      [class.in-list]="article.isInList">
+      
+      <!-- Article Icon -->
+      <div class="article-icon">
+        {{ article.icon || '📦' }}
+      </div>
+      
+      <!-- Article Content -->
+      <div class="article-content">
+        <div class="article-header">
+          <span class="article-name">{{ article.name }}</span>
+          
+          <!-- Amount Field (only editable when in list) -->
+          <mat-form-field 
+            appearance="outline" 
+            class="amount-field"
+            *ngIf="article.isInList">
+            <input 
+              matInput 
+              [value]="article.listAmount"
+              (blur)="onUpdateListAmount(article, $event.target.value)"
+              placeholder="Menge"
+              class="amount-input">
+          </mat-form-field>
+          
+          <!-- Display amount when not in list -->
+          <span class="article-amount disabled" *ngIf="!article.isInList && article.amount">
+            {{ article.amount }}
+          </span>
         </div>
         
-        <!-- Article Content -->
-        <div class="article-content">
-          <div class="article-header">
-            <span class="article-name">{{ article.name }}</span>
-            <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
-          </div>
-          <div class="article-notes" *ngIf="article.notes">
-            {{ article.notes }}
-          </div>
+        <div class="article-notes" *ngIf="article.notes">
+          {{ article.notes }}
         </div>
-        
-        <!-- Add Button -->
-        <button 
-          mat-icon-button 
-          (click)="onAddToList(article)"
-          class="add-button"
-          aria-label="Add to list">
-          <mat-icon>add_circle_outline</mat-icon>
-        </button>
       </div>
-
-      <!-- No Results / Create New Article -->
-      <div class="no-results" *ngIf="searchQuery && (availableArticles$ | async)?.length === 0">
-        <button 
-          mat-button 
-          color="primary"
-          (click)="onCreateNewArticle()"
-          class="create-article-button">
-          <mat-icon>add</mat-icon>
-          Neuer Artikel hinzufügen
-        </button>
-      </div>
+      
+      <!-- Toggle Switch -->
+      <mat-slide-toggle
+        [checked]="article.isInList"
+        (change)="onToggleArticleInList(article)"
+        color="primary"
+        class="article-toggle">
+      </mat-slide-toggle>
     </div>
 
-    <!-- Edit Mode Actions -->
-    <div class="edit-actions">
-      <button 
-        mat-button 
-        color="accent"
-        (click)="onClearAllItems()"
-        class="action-button">
-        Leeren
-      </button>
+    <!-- No Results / Create New Article -->
+    <div class="no-results" *ngIf="searchQuery && (allArticlesWithState$ | async)?.length === 0">
       <button 
         mat-button 
         color="primary"
-        (click)="onEditList()"
-        class="action-button">
-        Bearbeiten
-      </button>
-      <button 
-        mat-button 
-        color="warn"
-        (click)="onDeleteList()"
-        class="action-button">
-        Löschen
+        (click)="onCreateNewArticle()"
+        class="create-article-button">
+        <mat-icon>add</mat-icon>
+        Neuer Artikel hinzufügen
       </button>
     </div>
   </div>
+
+  <!-- Edit Mode Actions -->
+  <div class="edit-actions">
+    <button 
+      mat-button 
+      color="accent"
+      (click)="onClearAllItems()"
+      class="action-button">
+      Leeren
+    </button>
+    <button 
+      mat-button 
+      color="primary"
+      (click)="onEditList()"
+      class="action-button">
+      Bearbeiten
+    </button>
+    <button 
+      mat-button 
+      color="warn"
+      (click)="onDeleteList()"
+      class="action-button">
+      Löschen
+    </button>
+  </div>
+</div> 
 </div>

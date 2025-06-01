@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -8,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
@@ -46,8 +46,15 @@ export class AddArticleComponent {
   constructor(
     private dataService: DataService,
     private router: Router,
-    private snackBar: MatSnackBar
-  ) {}
+    private snackBar: MatSnackBar,
+    private route: ActivatedRoute // Add this import
+  ) {
+    // Pre-fill name if passed via query parameter
+    const preFillName = this.route.snapshot.queryParamMap.get('name');
+    if (preFillName) {
+      this.article.name = preFillName;
+    }
+  }
 
   onEmojiSelect(emoji: string): void {
     this.article.icon = emoji;

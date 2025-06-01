@@ -12,6 +12,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 import { ShoppingList, Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
@@ -21,6 +22,11 @@ type ViewMode = 'shopping' | 'edit';
 interface ArticleWithState extends Article {
   isChecked: boolean;
   isInList: boolean;
+}
+
+interface ArticleWithToggleAndAmount extends Article {
+  isInList: boolean;
+  listAmount?: string;
 }
 
 @Component({
@@ -36,7 +42,8 @@ interface ArticleWithState extends Article {
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatSlideToggleModule
   ],
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
@@ -53,7 +60,7 @@ export class ListDetailComponent implements OnInit {
   
   // Edit mode data
   searchQuery$ = new BehaviorSubject<string>('');
-  availableArticles$: Observable<Article[]>;
+  allArticlesWithState$: Observable<ArticleWithToggleAndAmount[]>;
   searchQuery = '';
   
   isLoading = true;
@@ -85,8 +92,8 @@ export class ListDetailComponent implements OnInit {
       })
     );
     
-    // Available articles for search (edit mode)
-    this.availableArticles$ = combineLatest([
+    // ALL articles with toggle states (edit mode)
+    this.allArticlesWithState$ = combineLatest([
       this.list$,
       this.dataService.getArticles(),
       this.searchQuery$.pipe(
@@ -95,21 +102,25 @@ export class ListDetailComponent implements OnInit {
       )
     ]).pipe(
       map(([list, allArticles, query]) => {
-        if (!list || !allArticles) return [];
+        if (!list) return [];
         
-        // Filter out articles that are already in the list
-        let filtered = allArticles.filter(article => 
-          !list.articleIds.includes(article.id)
-        );
+        let filtered = allArticles;
         
-        // If there's a search query, filter by name
-        if (query && query.trim()) {
+        // Filter by search query if exists
+        if (query.trim()) {
           filtered = filtered.filter(article =>
             article.name.toLowerCase().includes(query.toLowerCase().trim())
           );
         }
         
-        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+        // Map articles with their toggle state and list-specific amount
+        return filtered
+          .map(article => ({
+            ...article,
+            isInList: list.articleIds.includes(article.id),
+            listAmount: list.itemStates[article.id]?.amount || article.amount || ''
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
       })
     );
   }
@@ -153,12 +164,27 @@ export class ListDetailComponent implements OnInit {
     this.searchQuery$.next(this.searchQuery.trim());
   }
 
-  onAddToList(article: Article): void {
-    this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
-      if (success) {
-        this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 2000 });
-      }
-    });
+  onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
+    if (article.isInList) {
+      // Remove from list
+      this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
+        if (success) {
+          this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
+        }
+      });
+    } else {
+      // Add to list
+      this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
+        if (success) {
+          this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
+        }
+      });
+    }
+  }
+
+  onUpdateListAmount(article: ArticleWithToggleAndAmount, newAmount: string): void {
+    // Update the amount for this specific article in this list
+    this.dataService.updateListItemAmount(this.listId, article.id, newAmount).subscribe();
   }
 
   onClearAllItems(): void {

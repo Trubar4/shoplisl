@@ -354,4 +354,21 @@ private defaultLists: ShoppingList[] = [
     }
     return of(false);
   }
+  updateListItemAmount(listId: string, articleId: string, amount: string): Observable<boolean> {
+    const lists = [...this.listsSubject.value];
+    const listIndex = lists.findIndex(l => l.id === listId);
+    
+    if (listIndex !== -1) {
+      const list = lists[listIndex];
+      if (list.itemStates[articleId]) {
+        list.itemStates[articleId].amount = amount;
+        list.updatedAt = new Date();
+        
+        this.saveLists(lists);
+        this.listsSubject.next(lists);
+        return of(true);
+      }
+    }
+    return of(false);
+  }
 }

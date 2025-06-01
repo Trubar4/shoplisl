@@ -1,7 +1,7 @@
 export interface Article {
   id: string;
   name: string;
-  amount?: string; // Add this new field
+  amount?: string;
   notes?: string;
   icon?: string;
   categoryId?: string;
@@ -20,39 +20,43 @@ export interface ArticleCategory {
   createdAt: Date;
 }
 
+export interface ListItemState {
+  articleId: string;
+  isChecked: boolean;
+  amount?: string; // List-specific amount
+  checkedAt?: Date;
+}
+
 export interface ShoppingList {
   id: string;
   name: string;
-  color?: string; // header color
+  color?: string;
   icon?: string;
-  shopId?: string; // for shop-based sorting
-  articleIds: string[]; // references to articles
+  shopId?: string;
+  articleIds: string[];
+  itemStates: { [articleId: string]: ListItemState };
   createdAt: Date;
   updatedAt: Date;
-  // Future: completion tracking
-}
-
-export interface ListItem {
-  id: string;
-  listId: string;
-  articleId: string;
-  isCompleted: boolean;
-  completedAt?: Date;
-  // Future: quantity, notes per list item
 }
 
 export interface Shop {
   id: string;
   name: string;
+  displayName: string;
+  address?: string;
   categories: ShopCategory[];
   createdAt: Date;
+  isActive: boolean;
+  isSelected?: boolean;
 }
 
 export interface ShopCategory {
   id: string;
   name: string;
+  nameTranslations: { [locale: string]: string };
   order: number;
-  icon?: string;
+  icon: string;
+  color?: string;
 }
 
 // Future: User accounts
@@ -63,21 +67,9 @@ export interface User {
   createdAt: Date;
 }
 
-export interface ListItemState {
-  articleId: string;
-  isChecked: boolean; // For strike-through in shopping mode
-  checkedAt?: Date;
-}
-
-// Update the ShoppingList interface to include item states
-export interface ShoppingList {
-  id: string;
-  name: string;
-  color?: string;
-  icon?: string;
-  shopId?: string;
-  articleIds: string[];
-  itemStates: { [articleId: string]: ListItemState }; // Add this line
-  createdAt: Date;
-  updatedAt: Date;
+export interface UserPreferences {
+  language: 'en' | 'de';
+  defaultShop?: string;
+  theme: 'light' | 'dark' | 'auto';
+  fontSize: 'small' | 'medium' | 'large';
 }

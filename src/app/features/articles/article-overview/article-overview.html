@@ -8,11 +8,35 @@
     </button>
   </mat-toolbar>
 
+  <!-- Search Field -->
+  <div class="search-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Artikel suchen</mat-label>
+      <input 
+        matInput 
+        [(ngModel)]="searchQuery"
+        (input)="onSearchQueryChange()"
+        placeholder="Artikel suchen..."
+        #searchInput>
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+    
+    <!-- Add New Article Button -->
+    <button 
+      mat-raised-button 
+      color="primary"
+      (click)="onAddNewArticleFromSearch()"
+      class="add-article-button">
+      <mat-icon>add</mat-icon>
+      Neuer Artikel
+    </button>
+  </div>
+
   <!-- Articles List -->
   <div class="articles-container">
     <div class="articles-list">
       <div 
-        *ngFor="let article of articles$ | async" 
+        *ngFor="let article of filteredArticles$ | async" 
         (click)="onArticleClick(article)"
         class="article-item">
         
@@ -37,8 +61,23 @@
       </div>
     </div>
 
-    <!-- Empty state -->
-    <div class="empty-state" *ngIf="(articles$ | async)?.length === 0">
+    <!-- No Results State -->
+    <div class="no-results" *ngIf="searchQuery && (filteredArticles$ | async)?.length === 0">
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <h3>Keine Artikel gefunden</h3>
+      <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
+      <button 
+        mat-raised-button 
+        color="primary"
+        (click)="onAddNewArticleFromSearch()"
+        class="create-article-button">
+        <mat-icon>add</mat-icon>
+        "{{ searchQuery }}" als neuen Artikel hinzufügen
+      </button>
+    </div>
+
+    <!-- Empty State (no search) -->
+    <div class="empty-state" *ngIf="!searchQuery && (filteredArticles$ | async)?.length === 0">
       <mat-icon class="empty-icon">inventory_2</mat-icon>
       <h3>Keine Artikel vorhanden</h3>
       <p>Tippe auf das + um deinen ersten Artikel hinzuzufügen</p>
