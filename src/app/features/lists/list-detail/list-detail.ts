@@ -145,46 +145,172 @@ export class ListDetailComponent implements OnInit {
     this.currentMode = 'edit';
   }
 
-  // Shopping mode actions
-  onArticleToggle(article: ArticleWithState): void {
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe(() => {
-      // The observable will automatically update the UI
+// Shopping mode actions
+onArticleToggle(article: ArticleWithState): void {
+  this.dataService.toggleItemChecked(this.listId, article.id).subscribe(() => {
+    // Force refresh of the observables to ensure UI updates immediately
+    this.refreshData();
+  });
+}
+
+onArticleInfo(article: ArticleWithState): void {
+  // Store the current list ID so we can return here
+  this.router.navigate(['/articles', article.id], {
+    queryParams: { returnTo: `/lists/${this.listId}` }
+  });
+}
+
+// Edit mode actions
+onSearchQueryChange(): void {
+  this.searchQuery$.next(this.searchQuery.trim());
+}
+
+onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
+  if (article.isInList) {
+    // Remove from list
+    this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
+      if (success) {
+        this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
+        this.refreshData();
+      }
+    });
+  } else {
+    // Add to list
+    this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
+      if (success) {
+        this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
+        this.refreshData();
+      }
     });
   }
+}
 
-  onArticleInfo(article: ArticleWithState): void {
-    // Store the current list ID so we can return here
-    this.router.navigate(['/articles', article.id], {
-      queryParams: { returnTo: `/lists/${this.listId}` }
+onEditAmount(article: ArticleWithToggleAndAmount): void {
+  // Show prompt to edit amount
+  const currentAmount = article.listAmount || article.amount || '';
+  const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
+  
+  if (newAmount !== null) { // null means cancelled
+    this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
+      this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
+      this.refreshData();
     });
   }
+}
 
-  // Edit mode actions
-  onSearchQueryChange(): void {
-    this.searchQuery$.next(this.searchQuery.trim());
+onUpdateListAmount(article: ArticleWithToggleAndAmount, newAmount: string): void {
+  // Update the amount for this specific article in this list
+  this.dataService.updateListItemAmount(this.listId, article.id, newAmount).subscribe(() => {
+    this.refreshData();
+  });
+}
+
+onAmountInput(article: ArticleWithToggleAndAmount, newAmount: string): void {
+  // Optional: Handle real-time input changes if needed
+  // For now, we'll rely on the blur event to save changes
+}
+
+// Helper method to force refresh data observables
+private refreshData(): void {
+  // Trigger a fresh fetch of the list data
+  this.list$ = this.dataService.getList(this.listId);
+  
+  // Recreate the observables to ensure they get fresh data
+  this.listArticles$ = combineLatest([
+    this.list$,
+    this.dataService.getArticles()
+  ]).pipe(
+    map(([list, allArticles]) => {
+      if (!list) return [];
+      return allArticles
+        .filter(article => list.articleIds.includes(article.id))
+        .map(article => ({
+          ...article,
+          isChecked: list.itemStates[article.id]?.isChecked || false,
+          isInList: true
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    })
+  );
+  
+  this.allArticlesWithState$ = combineLatest([
+    this.list$,
+    this.dataService.getArticles(),
+    this.searchQuery$.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    )
+  ]).pipe(
+    map(([list, allArticles, query]) => {
+      if (!list) return [];
+      
+      let filtered = allArticles;
+      
+      // Filter by search query if exists
+      if (query.trim()) {
+        filtered = filtered.filter(article =>
+          article.name.toLowerCase().includes(query.toLowerCase().trim())
+        );
+      }
+      
+      // Map articles with their toggle state and list-specific amount
+      return filtered
+        .map(article => ({
+          ...article,
+          isInList: list.articleIds.includes(article.id),
+          listAmount: list.itemStates[article.id]?.amount || article.amount || ''
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    })
+  );
+}
+
+  onBack(): void {
+    this.router.navigate(['/lists']);
   }
 
-  onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
-    if (article.isInList) {
-      // Remove from list
-      this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
-        if (success) {
-          this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
-        }
-      });
-    } else {
-      // Add to list
-      this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
-        if (success) {
-          this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
-        }
+  getCheckedCount(): number {
+    let count = 0;
+    this.listArticles$.subscribe(articles => {
+      count = articles.filter(article => article.isChecked).length;
+    }).unsubscribe();
+    return count;
+  }
+
+  getTotalCount(): number {
+    let count = 0;
+    this.listArticles$.subscribe(articles => {
+      count = articles.length;
+    }).unsubscribe();
+    return count;
+  }
+  // Helper methods
+  getArticleAmount(article: ArticleWithState): string {
+    // Get the list-specific amount or fall back to the article's default amount
+    const listAmount = this.getCurrentList()?.itemStates[article.id]?.amount;
+    const amount = listAmount || article.amount || '';
+    return amount.trim(); // Return empty string if no amount, so we can show "Menge" chip
+  }
+
+  onEditAmountInShopping(article: ArticleWithState, event: Event): void {
+    // Prevent the parent click event from firing (toggle)
+    event.stopPropagation();
+    
+    const currentAmount = this.getArticleAmount(article);
+    const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
+    
+    if (newAmount !== null) { // null means cancelled
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
+        this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
+        this.refreshData();
       });
     }
   }
 
-  onUpdateListAmount(article: ArticleWithToggleAndAmount, newAmount: string): void {
-    // Update the amount for this specific article in this list
-    this.dataService.updateListItemAmount(this.listId, article.id, newAmount).subscribe();
+  private getCurrentList(): ShoppingList | undefined {
+    let currentList: ShoppingList | undefined;
+    this.list$.subscribe(list => currentList = list).unsubscribe();
+    return currentList;
   }
 
   onClearAllItems(): void {
@@ -193,6 +319,7 @@ export class ListDetailComponent implements OnInit {
       this.dataService.clearAllItemsFromList(this.listId).subscribe(success => {
         if (success) {
           this.snackBar.open('Liste geleert', 'OK', { duration: 2000 });
+          this.refreshData();
         }
       });
     }
@@ -219,23 +346,4 @@ export class ListDetailComponent implements OnInit {
     this.router.navigate(['/articles/add']);
   }
 
-  onBack(): void {
-    this.router.navigate(['/lists']);
-  }
-
-  getCheckedCount(): number {
-    let count = 0;
-    this.listArticles$.subscribe(articles => {
-      count = articles.filter(article => article.isChecked).length;
-    }).unsubscribe();
-    return count;
-  }
-
-  getTotalCount(): number {
-    let count = 0;
-    this.listArticles$.subscribe(articles => {
-      count = articles.length;
-    }).unsubscribe();
-    return count;
-  }
 }
