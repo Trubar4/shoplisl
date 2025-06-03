@@ -1,374 +1,512 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, from, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { 
+  Firestore, 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  getDocs, 
+  getDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  Timestamp,
+  enableNetwork,
+  disableNetwork
+} from '@angular/fire/firestore';
 import { Article, ArticleCategory, ShoppingList } from '../models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
-  // Storage keys
-  private readonly STORAGE_KEY = 'shoplisl-articles';
-  private readonly LISTS_STORAGE_KEY = 'shoplisl-lists';
-
+  private userId: string;
+  
   // Reactive subjects for real-time updates
   private articlesSubject = new BehaviorSubject<Article[]>([]);
   private listsSubject = new BehaviorSubject<ShoppingList[]>([]);
   
-  // Default articles (fallback)
-  private defaultArticles: Article[] = [
-    {
-      id: '1',
-      name: 'Erdbeeren',
-      icon: '🍓',
-      categoryId: '1',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '2',
-      name: 'Kiwi Beeren',
-      icon: '🥝',
-      categoryId: '1',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '3',
-      name: 'Chorizo',
-      icon: '🌭',
-      categoryId: '2',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
+  // Unsubscribe functions for real-time listeners
+  private articlesUnsubscribe?: () => void;
+  private listsUnsubscribe?: () => void;
 
-  // Default lists (fallback)
-private defaultLists: ShoppingList[] = [
-  {
-    id: '1',
-    name: 'Apotheke',
-    color: '#9c27b0',
-    icon: '💊',
-    articleIds: [],
-    itemStates: {},
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '2', 
-    name: 'Lebensmittel',
-    color: '#f44336',
-    icon: '🛒',
-    articleIds: ['1', '2', '3'],
-    itemStates: {
-      '1': { articleId: '1', isChecked: false },
-      '2': { articleId: '2', isChecked: false },
-      '3': { articleId: '3', isChecked: false }
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
-
-  private mockCategories: ArticleCategory[] = [
-    {
-      id: '1',
-      name: 'Obst & Gemüse',
-      icon: '🍎',
-      order: 1,
-      createdAt: new Date()
-    },
-    {
-      id: '2',
-      name: 'Fleisch & Wurst',
-      icon: '🥩',
-      order: 2,
-      createdAt: new Date()
-    }
-  ];
-
-  constructor() {
-    // Initialize with stored articles or defaults
-    const storedArticles = this.getStoredArticles() || this.defaultArticles;
-    if (!this.getStoredArticles()) {
-      this.saveArticles(this.defaultArticles);
-    }
-    this.articlesSubject.next(storedArticles);
+  constructor(private firestore: Firestore) {
+    // Generate or retrieve anonymous user ID
+    this.userId = this.getOrCreateUserId();
+    console.log('Anonymous User ID:', this.userId);
     
-    // Initialize with stored lists or defaults
-    const storedLists = this.getStoredLists() || this.defaultLists;
-    if (!this.getStoredLists()) {
-      this.saveLists(this.defaultLists);
-    }
-    this.listsSubject.next(storedLists);
+    // Set up real-time listeners
+    this.setupRealtimeListeners();
+    
+    // Initialize with default data if user is new
+    this.initializeDefaultData();
   }
 
-  // === ARTICLES STORAGE METHODS ===
-  private getStoredArticles(): Article[] | null {
-    try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      if (stored) {
-        const articles = JSON.parse(stored);
-        return articles.map((article: any) => {
-          // Migrate old articles that don't have amount field
-          if (!article.amount) {
-            article.amount = '';
-          }
-          
-          return {
-            ...article,
-            createdAt: new Date(article.createdAt),
-            updatedAt: new Date(article.updatedAt)
-          };
+  private getOrCreateUserId(): string {
+    const stored = localStorage.getItem('shoplisl-user-id');
+    if (stored) {
+      return stored;
+    }
+    
+    // Generate new anonymous user ID
+    const newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('shoplisl-user-id', newId);
+    return newId;
+  }
+
+  private setupRealtimeListeners(): void {
+    // Articles real-time listener
+    const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
+    const articlesQuery = query(articlesRef, orderBy('name'));
+    
+    this.articlesUnsubscribe = onSnapshot(articlesQuery, 
+      (snapshot) => {
+        const articles: Article[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          articles.push({
+            id: doc.id,
+            name: data['name'],
+            amount: data['amount'],
+            notes: data['notes'],
+            icon: data['icon'],
+            categoryId: data['categoryId'],
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date(),
+            availableInShops: data['availableInShops'] || [],
+            usageCount: data['usageCount'] || 0
+          });
         });
+        this.articlesSubject.next(articles);
+      },
+      (error) => {
+        console.error('Articles listener error:', error);
+        // Keep current data on error
+      }
+    );
+
+    // Lists real-time listener  
+    const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
+    const listsQuery = query(listsRef, orderBy('name'));
+    
+    this.listsUnsubscribe = onSnapshot(listsQuery,
+      (snapshot) => {
+        const lists: ShoppingList[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          lists.push({
+            id: doc.id,
+            name: data['name'],
+            color: data['color'],
+            icon: data['icon'],
+            shopId: data['shopId'],
+            articleIds: data['articleIds'] || [],
+            itemStates: data['itemStates'] || {},
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date()
+          });
+        });
+        this.listsSubject.next(lists);
+      },
+      (error) => {
+        console.error('Lists listener error:', error);
+        // Keep current data on error
+      }
+    );
+  }
+
+  private async initializeDefaultData(): Promise<void> {
+    try {
+      // Check if user already has data
+      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/articles`));
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/lists`));
+      
+      // If no data exists, create defaults
+      if (articlesSnapshot.empty && listsSnapshot.empty) {
+        console.log('New user - creating default data');
+        await this.createDefaultArticles();
+        await this.createDefaultLists();
       }
     } catch (error) {
-      console.error('Error loading articles:', error);
-    }
-    return null;
-  }
-
-  private saveArticles(articles: Article[]): void {
-    try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(articles));
-    } catch (error) {
-      console.error('Error saving articles:', error);
+      console.error('Error initializing default data:', error);
     }
   }
 
-  // === LISTS STORAGE METHODS ===
-  private getStoredLists(): ShoppingList[] | null {
-    try {
-      const stored = localStorage.getItem(this.LISTS_STORAGE_KEY);
-      if (stored) {
-        const lists = JSON.parse(stored);
-        return lists.map((list: any) => {
-          // Migrate old lists that don't have itemStates
-          if (!list.itemStates) {
-            list.itemStates = {};
-            // Create itemStates for existing articles
-            if (list.articleIds && list.articleIds.length > 0) {
-              list.articleIds.forEach((articleId: string) => {
-                list.itemStates[articleId] = { articleId, isChecked: false };
-              });
-            }
-          }
-          
-          return {
-            ...list,
-            createdAt: new Date(list.createdAt),
-            updatedAt: new Date(list.updatedAt)
-          };
-        });
+  private async createDefaultArticles(): Promise<void> {
+    const defaultArticles = [
+      {
+        name: 'Erdbeeren',
+        icon: '🍓',
+        categoryId: '1',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      },
+      {
+        name: 'Kiwi Beeren', 
+        icon: '🥝',
+        categoryId: '1',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      },
+      {
+        name: 'Chorizo',
+        icon: '🌭', 
+        categoryId: '2',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       }
-    } catch (error) {
-      console.error('Error loading lists:', error);
-    }
-    return null;
-  }
+    ];
 
-  private saveLists(lists: ShoppingList[]): void {
-    try {
-      localStorage.setItem(this.LISTS_STORAGE_KEY, JSON.stringify(lists));
-    } catch (error) {
-      console.error('Error saving lists:', error);
+    const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
+    for (const article of defaultArticles) {
+      await addDoc(articlesRef, article);
     }
   }
 
-  // === ARTICLES PUBLIC METHODS ===
+  private async createDefaultLists(): Promise<void> {
+    // First create articles and get their IDs
+    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/articles`));
+    const articleIds: string[] = [];
+    articlesSnapshot.forEach(doc => articleIds.push(doc.id));
+
+    const defaultLists = [
+      {
+        name: 'Apotheke',
+        color: '#9c27b0',
+        icon: '💊',
+        articleIds: [],
+        itemStates: {},
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      },
+      {
+        name: 'Lebensmittel',
+        color: '#f44336', 
+        icon: '🛒',
+        articleIds: articleIds,
+        itemStates: articleIds.reduce((acc, id) => {
+          acc[id] = { articleId: id, isChecked: false };
+          return acc;
+        }, {} as any),
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      }
+    ];
+
+    const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
+    for (const list of defaultLists) {
+      await addDoc(listsRef, list);
+    }
+  }
+
+  // === PUBLIC METHODS (Same interface as before) ===
+  
   getArticles(): Observable<Article[]> {
     return this.articlesSubject.asObservable();
   }
 
   getArticle(id: string): Observable<Article | undefined> {
-    const articles = this.articlesSubject.value;
-    return of(articles.find(a => a.id === id));
+    return from(getDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`))).pipe(
+      map(docSnap => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            name: data['name'],
+            amount: data['amount'],
+            notes: data['notes'],
+            icon: data['icon'],
+            categoryId: data['categoryId'],
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date(),
+            availableInShops: data['availableInShops'] || [],
+            usageCount: data['usageCount'] || 0
+          } as Article;
+        }
+        return undefined;
+      }),
+      catchError(error => {
+        console.error('Error getting article:', error);
+        return of(undefined);
+      })
+    );
   }
 
   createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
-    const articles = [...this.articlesSubject.value];
-    const newArticle: Article = {
+    const articleData = {
       ...article,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
     };
-    articles.push(newArticle);
-    this.saveArticles(articles);
-    this.articlesSubject.next(articles); // Emit updated data
-    return of(newArticle);
+
+    return from(addDoc(collection(this.firestore, `users/${this.userId}/articles`), articleData)).pipe(
+      map(docRef => ({
+        id: docRef.id,
+        ...article,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as Article)),
+      catchError(error => {
+        console.error('Error creating article:', error);
+        throw error;
+      })
+    );
   }
 
   updateArticle(id: string, updates: Partial<Article>): Observable<Article | undefined> {
-    const articles = [...this.articlesSubject.value];
-    const index = articles.findIndex(a => a.id === id);
-    if (index !== -1) {
-      articles[index] = {
-        ...articles[index],
-        ...updates,
-        updatedAt: new Date()
-      };
-      this.saveArticles(articles);
-      this.articlesSubject.next(articles); // Emit updated data
-      return of(articles[index]);
-    }
-    return of(undefined);
+    const updateData = {
+      ...updates,
+      updatedAt: Timestamp.now()
+    };
+
+    return from(updateDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`), updateData)).pipe(
+      map(() => {
+        // Return updated article - real-time listener will update the subject
+        const currentArticles = this.articlesSubject.value;
+        const article = currentArticles.find(a => a.id === id);
+        return article ? { ...article, ...updates, updatedAt: new Date() } : undefined;
+      }),
+      catchError(error => {
+        console.error('Error updating article:', error);
+        return of(undefined);
+      })
+    );
   }
 
   deleteArticle(id: string): Observable<boolean> {
-    const articles = [...this.articlesSubject.value];
-    const index = articles.findIndex(a => a.id === id);
-    if (index !== -1) {
-      articles.splice(index, 1);
-      this.saveArticles(articles);
-      this.articlesSubject.next(articles); // Emit updated data
-      return of(true);
-    }
-    return of(false);
+    return from(deleteDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`))).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error deleting article:', error);
+        return of(false);
+      })
+    );
   }
 
-  // === LISTS PUBLIC METHODS ===
+  // === LISTS METHODS ===
+
   getLists(): Observable<ShoppingList[]> {
     return this.listsSubject.asObservable();
   }
 
   getList(id: string): Observable<ShoppingList | undefined> {
-    const lists = this.listsSubject.value;
-    return of(lists.find(l => l.id === id));
+    return from(getDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`))).pipe(
+      map(docSnap => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            name: data['name'],
+            color: data['color'],
+            icon: data['icon'],
+            shopId: data['shopId'],
+            articleIds: data['articleIds'] || [],
+            itemStates: data['itemStates'] || {},
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date()
+          } as ShoppingList;
+        }
+        return undefined;
+      }),
+      catchError(error => {
+        console.error('Error getting list:', error);
+        return of(undefined);
+      })
+    );
   }
 
   createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt'>): Observable<ShoppingList> {
-    const lists = [...this.listsSubject.value];
-    const newList: ShoppingList = {
+    const listData = {
       ...list,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
     };
-    lists.push(newList);
-    this.saveLists(lists);
-    this.listsSubject.next(lists.sort((a, b) => a.name.localeCompare(b.name))); // Emit updated data
-    return of(newList);
+
+    return from(addDoc(collection(this.firestore, `users/${this.userId}/lists`), listData)).pipe(
+      map(docRef => ({
+        id: docRef.id,
+        ...list,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as ShoppingList)),
+      catchError(error => {
+        console.error('Error creating list:', error);
+        throw error;
+      })
+    );
   }
 
   updateList(id: string, updates: Partial<ShoppingList>): Observable<ShoppingList | undefined> {
-    const lists = [...this.listsSubject.value];
-    const index = lists.findIndex(l => l.id === id);
-    if (index !== -1) {
-      lists[index] = {
-        ...lists[index],
-        ...updates,
-        updatedAt: new Date()
-      };
-      this.saveLists(lists);
-      this.listsSubject.next(lists.sort((a, b) => a.name.localeCompare(b.name))); // Emit updated data
-      return of(lists[index]);
-    }
-    return of(undefined);
+    const updateData = {
+      ...updates,
+      updatedAt: Timestamp.now()
+    };
+
+    return from(updateDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`), updateData)).pipe(
+      map(() => {
+        // Return updated list - real-time listener will update the subject
+        const currentLists = this.listsSubject.value;
+        const list = currentLists.find(l => l.id === id);
+        return list ? { ...list, ...updates, updatedAt: new Date() } : undefined;
+      }),
+      catchError(error => {
+        console.error('Error updating list:', error);
+        return of(undefined);
+      })
+    );
   }
 
   deleteList(id: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const index = lists.findIndex(l => l.id === id);
-    if (index !== -1) {
-      lists.splice(index, 1);
-      this.saveLists(lists);
-      this.listsSubject.next(lists); // Emit updated data
-      return of(true);
-    }
-    return of(false);
+    return from(deleteDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`))).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error deleting list:', error);
+        return of(false);
+      })
+    );
   }
+
+  // === LIST ITEM METHODS ===
 
   toggleItemChecked(listId: string, articleId: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const listIndex = lists.findIndex(l => l.id === listId);
-    
-    if (listIndex !== -1) {
-      const list = lists[listIndex];
-      if (!list.itemStates[articleId]) {
-        list.itemStates[articleId] = { articleId, isChecked: false };
-      }
-      
-      list.itemStates[articleId].isChecked = !list.itemStates[articleId].isChecked;
-      list.itemStates[articleId].checkedAt = new Date();
-      list.updatedAt = new Date();
-      
-      this.saveLists(lists);
-      this.listsSubject.next(lists); // Emit updated data
-      return of(true);
-    }
-    return of(false);
-  }
+    return this.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
+        
+        const currentState = list.itemStates[articleId]?.isChecked || false;
+        const newItemStates = {
+          ...list.itemStates,
+          [articleId]: {
+            ...list.itemStates[articleId],
+            articleId,
+            isChecked: !currentState,
+            checkedAt: new Date()
+          }
+        };
 
-  removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const listIndex = lists.findIndex(l => l.id === listId);
-    
-    if (listIndex !== -1) {
-      const list = lists[listIndex];
-      list.articleIds = list.articleIds.filter(id => id !== articleId);
-      delete list.itemStates[articleId];
-      list.updatedAt = new Date();
-      
-      this.saveLists(lists);
-      this.listsSubject.next(lists); // Emit updated data
-      return of(true);
-    }
-    return of(false);
-  }
+        // Update in Firebase
+        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
 
-  clearAllItemsFromList(listId: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const listIndex = lists.findIndex(l => l.id === listId);
-    
-    if (listIndex !== -1) {
-      lists[listIndex].articleIds = [];
-      lists[listIndex].itemStates = {};
-      lists[listIndex].updatedAt = new Date();
-      
-      this.saveLists(lists);
-      this.listsSubject.next(lists); // Emit updated data
-      return of(true);
-    }
-    return of(false);
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error toggling item:', error);
+        return of(false);
+      })
+    );
   }
 
   addArticleToList(listId: string, articleId: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const listIndex = lists.findIndex(l => l.id === listId);
-    
-    if (listIndex !== -1) {
-      const list = lists[listIndex];
-      if (!list.articleIds.includes(articleId)) {
-        list.articleIds.push(articleId);
-        if (!list.itemStates) {
-          list.itemStates = {};
-        }
-        list.itemStates[articleId] = { articleId, isChecked: false };
-        list.updatedAt = new Date();
+    return this.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
         
-        this.saveLists(lists);
-        this.listsSubject.next(lists); // Emit updated data
-        return of(true);
-      }
-    }
-    return of(false);
+        const newArticleIds = list.articleIds.includes(articleId) 
+          ? list.articleIds 
+          : [...list.articleIds, articleId];
+          
+        const newItemStates = {
+          ...list.itemStates,
+          [articleId]: { articleId, isChecked: false }
+        };
+
+        // Update in Firebase
+        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
+
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error adding article to list:', error);
+        return of(false);
+      })
+    );
   }
-  updateListItemAmount(listId: string, articleId: string, amount: string): Observable<boolean> {
-    const lists = [...this.listsSubject.value];
-    const listIndex = lists.findIndex(l => l.id === listId);
-    
-    if (listIndex !== -1) {
-      const list = lists[listIndex];
-      if (list.itemStates[articleId]) {
-        list.itemStates[articleId].amount = amount;
-        list.updatedAt = new Date();
+
+  removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
+    return this.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
         
-        this.saveLists(lists);
-        this.listsSubject.next(lists);
-        return of(true);
-      }
+        const newArticleIds = list.articleIds.filter(id => id !== articleId);
+        const newItemStates = { ...list.itemStates };
+        delete newItemStates[articleId];
+
+        // Update in Firebase
+        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
+
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error removing article from list:', error);
+        return of(false);
+      })
+    );
+  }
+
+  updateListItemAmount(listId: string, articleId: string, amount: string): Observable<boolean> {
+    return this.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
+        
+        const newItemStates = {
+          ...list.itemStates,
+          [articleId]: {
+            ...list.itemStates[articleId],
+            articleId,
+            amount: amount.trim()
+          }
+        };
+
+        // Update in Firebase
+        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
+
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error updating item amount:', error);
+        return of(false);
+      })
+    );
+  }
+
+  clearAllItemsFromList(listId: string): Observable<boolean> {
+    return from(updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+      articleIds: [],
+      itemStates: {},
+      updatedAt: Timestamp.now()
+    })).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error clearing list:', error);
+        return of(false);
+      })
+    );
+  }
+
+  // === CLEANUP ===
+  ngOnDestroy(): void {
+    if (this.articlesUnsubscribe) {
+      this.articlesUnsubscribe();
     }
-    return of(false);
+    if (this.listsUnsubscribe) {
+      this.listsUnsubscribe();
+    }
   }
 }
