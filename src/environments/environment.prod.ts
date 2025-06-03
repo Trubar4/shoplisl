@@ -1,14 +1,13 @@
-// src/environments/environment.prod.ts  
+// src/environments/environment.prod.ts
 export const environment = {
-    production: true,
-    firebase: {
-      // Same values as above - Firebase config is safe to expose in frontend
-      projectId: 'shoplisl',
-      appId: 'YOUR_APP_ID',
-      databaseURL: 'https://shoplisl-default-rtdb.firebasebaseapp.com',
-      storageBucket: 'shoplisl.appspot.com', 
-      apiKey: 'YOUR_API_KEY',
-      authDomain: 'shoplisl.firebaseapp.com',
-      messagingSenderId: 'YOUR_SENDER_ID',
-    }
-}
+  production: true,
+  firebase: {
+    // Same values as development
+    projectId: 'shoplisl',
+    apiKey: 'AIzaSyADgZN2cKD43ABoVmaCX3UfCbmkcrbYslg',
+    authDomain: 'shoplisl.firebaseapp.com',
+    storageBucket: 'shoplisl.appspot.com', 
+    messagingSenderId: '238499687274',
+    appId: '1:238499687274:web:c54bad5031d5531be8d313'
+  }
+};

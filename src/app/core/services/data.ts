@@ -1,8 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
+
+// Direct Firebase imports (more reliable in StackBlitz)
+import { initializeApp } from 'firebase/app';
 import { 
-  Firestore, 
+  getFirestore, 
   collection, 
   doc, 
   addDoc, 
@@ -13,17 +16,18 @@ import {
   onSnapshot,
   query,
   orderBy,
-  Timestamp,
-  enableNetwork,
-  disableNetwork
-} from '@angular/fire/firestore';
+  Timestamp
+} from 'firebase/firestore';
+
 import { Article, ArticleCategory, ShoppingList } from '../models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
-  private userId: string;
+  private firestore: any;
+  private userId!: string; // Add definite assignment assertion
   
   // Reactive subjects for real-time updates
   private articlesSubject = new BehaviorSubject<Article[]>([]);
@@ -33,10 +37,22 @@ export class DataService {
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
 
-  constructor(private firestore: Firestore) {
+  constructor() {
+    console.log('🔥 Initializing Firebase directly...');
+    
+    // Initialize Firebase directly (bypasses AngularFire issues in StackBlitz)
+    try {
+      const app = initializeApp(environment.firebase);
+      this.firestore = getFirestore(app);
+      console.log('✅ Firebase initialized successfully');
+    } catch (error) {
+      console.error('❌ Firebase initialization failed:', error);
+      return;
+    }
+    
     // Generate or retrieve anonymous user ID
     this.userId = this.getOrCreateUserId();
-    console.log('Anonymous User ID:', this.userId);
+    console.log('👤 Anonymous User ID:', this.userId);
     
     // Set up real-time listeners
     this.setupRealtimeListeners();
@@ -58,67 +74,78 @@ export class DataService {
   }
 
   private setupRealtimeListeners(): void {
-    // Articles real-time listener
-    const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
-    const articlesQuery = query(articlesRef, orderBy('name'));
-    
-    this.articlesUnsubscribe = onSnapshot(articlesQuery, 
-      (snapshot) => {
-        const articles: Article[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          articles.push({
-            id: doc.id,
-            name: data['name'],
-            amount: data['amount'],
-            notes: data['notes'],
-            icon: data['icon'],
-            categoryId: data['categoryId'],
-            createdAt: data['createdAt']?.toDate() || new Date(),
-            updatedAt: data['updatedAt']?.toDate() || new Date(),
-            availableInShops: data['availableInShops'] || [],
-            usageCount: data['usageCount'] || 0
-          });
-        });
-        this.articlesSubject.next(articles);
-      },
-      (error) => {
-        console.error('Articles listener error:', error);
-        // Keep current data on error
-      }
-    );
+    if (!this.firestore) {
+      console.error('Firestore not initialized');
+      return;
+    }
 
-    // Lists real-time listener  
-    const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
-    const listsQuery = query(listsRef, orderBy('name'));
-    
-    this.listsUnsubscribe = onSnapshot(listsQuery,
-      (snapshot) => {
-        const lists: ShoppingList[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          lists.push({
-            id: doc.id,
-            name: data['name'],
-            color: data['color'],
-            icon: data['icon'],
-            shopId: data['shopId'],
-            articleIds: data['articleIds'] || [],
-            itemStates: data['itemStates'] || {},
-            createdAt: data['createdAt']?.toDate() || new Date(),
-            updatedAt: data['updatedAt']?.toDate() || new Date()
+    try {
+      // Articles real-time listener
+      const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
+      const articlesQuery = query(articlesRef, orderBy('name'));
+      
+      this.articlesUnsubscribe = onSnapshot(articlesQuery, 
+        (snapshot) => {
+          console.log('📱 Articles updated:', snapshot.size);
+          const articles: Article[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            articles.push({
+              id: doc.id,
+              name: data['name'],
+              amount: data['amount'],
+              notes: data['notes'],
+              icon: data['icon'],
+              categoryId: data['categoryId'],
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              availableInShops: data['availableInShops'] || [],
+              usageCount: data['usageCount'] || 0
+            });
           });
-        });
-        this.listsSubject.next(lists);
-      },
-      (error) => {
-        console.error('Lists listener error:', error);
-        // Keep current data on error
-      }
-    );
+          this.articlesSubject.next(articles);
+        },
+        (error) => {
+          console.error('Articles listener error:', error);
+        }
+      );
+
+      // Lists real-time listener  
+      const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
+      const listsQuery = query(listsRef, orderBy('name'));
+      
+      this.listsUnsubscribe = onSnapshot(listsQuery,
+        (snapshot) => {
+          console.log('📋 Lists updated:', snapshot.size);
+          const lists: ShoppingList[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            lists.push({
+              id: doc.id,
+              name: data['name'],
+              color: data['color'],
+              icon: data['icon'],
+              shopId: data['shopId'],
+              articleIds: data['articleIds'] || [],
+              itemStates: data['itemStates'] || {},
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date()
+            });
+          });
+          this.listsSubject.next(lists);
+        },
+        (error) => {
+          console.error('Lists listener error:', error);
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up listeners:', error);
+    }
   }
 
   private async initializeDefaultData(): Promise<void> {
+    if (!this.firestore) return;
+
     try {
       // Check if user already has data
       const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/articles`));
@@ -126,7 +153,7 @@ export class DataService {
       
       // If no data exists, create defaults
       if (articlesSnapshot.empty && listsSnapshot.empty) {
-        console.log('New user - creating default data');
+        console.log('🆕 New user - creating default data');
         await this.createDefaultArticles();
         await this.createDefaultLists();
       }
@@ -501,6 +528,7 @@ export class DataService {
   }
 
   // === CLEANUP ===
+  
   ngOnDestroy(): void {
     if (this.articlesUnsubscribe) {
       this.articlesUnsubscribe();

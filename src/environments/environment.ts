@@ -1,14 +1,11 @@
-// src/environments/environment.ts
-export const environment = {
+  export const environment = {
     production: false,
     firebase: {
-      projectId: 'shoplisl', // Your Firebase project ID
-      appId: '1:YOUR_APP_ID:web:YOUR_APP_ID',
-      databaseURL: 'https://shoplisl-default-rtdb.europe-west1.firebasedatabase.app',
-      storageBucket: 'shoplisl.appspot.com',
-      apiKey: 'YOUR_API_KEY',
-      authDomain: 'shoplisl.firebaseapp.com',
-      messagingSenderId: 'YOUR_SENDER_ID',
+      apiKey: "AIzaSyADgZN2cKD43ABoVmaCX3UfCbmkcrbYslg", // Your actual API key
+      authDomain: "shoplisl.firebaseapp.com",
+      projectId: "shoplisl",
+      storageBucket: "shoplisl.appspot.com",
+      messagingSenderId: "238499687274", // Your actual sender ID
+      appId: "1:238499687274:web:c54bad5031d5531be8d313" // Your actual app ID
     }
   };
-  
