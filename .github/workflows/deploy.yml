@@ -27,6 +27,21 @@ jobs:
     - name: Build Angular application
       run: ng build --configuration production
       
+    - name: Debug build output
+      run: |
+        echo "=== Checking if index.html exists ==="
+        ls -la dist/shoplisl-app/
+        echo "=== Looking for HTML files ==="
+        find dist -name "*.html" -type f
+        echo "=== Size of dist directory ==="
+        du -sh dist/
+        echo "=== Contents of index.html (first 10 lines) ==="
+        if [ -f "dist/shoplisl-app/index.html" ]; then
+          head -10 dist/shoplisl-app/index.html
+        else
+          echo "index.html NOT FOUND!"
+        fi
+      
     - name: Deploy to Firebase Hosting
       uses: FirebaseExtended/action-hosting-deploy@v0
       with:
