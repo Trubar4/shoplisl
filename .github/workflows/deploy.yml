@@ -52,3 +52,13 @@ jobs:
         firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
         projectId: shoplisl
         channelId: live
+    - name: Check browser folder
+      run: |
+        echo "=== Files in dist/shoplisl-app/browser/ ==="
+        ls -la dist/shoplisl-app/browser/
+        echo ""
+        if [ -f "dist/shoplisl-app/browser/index.html" ]; then
+          echo "✅ index.html found in browser folder!"
+        else
+          echo "❌ index.html still not found!"
+        fi
