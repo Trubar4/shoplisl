@@ -10,7 +10,7 @@ import { ArticleDetailComponent } from './features/articles/article-detail/artic
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/articles',
+    redirectTo: '/lists',
     pathMatch: 'full'
   },
   {

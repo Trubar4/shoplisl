@@ -20,8 +20,10 @@
         #searchInput>
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
-    
-    <!-- Add New Article Button -->
+  </div>
+
+  <!-- Add New Article Button -->
+  <div class="add-button-container">
     <button 
       mat-raised-button 
       color="primary"
@@ -66,14 +68,6 @@
       <mat-icon class="empty-icon">search_off</mat-icon>
       <h3>Keine Artikel gefunden</h3>
       <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
-      <button 
-        mat-raised-button 
-        color="primary"
-        (click)="onAddNewArticleFromSearch()"
-        class="create-article-button">
-        <mat-icon>add</mat-icon>
-        "{{ searchQuery }}" als neuen Artikel hinzufügen
-      </button>
     </div>
 
     <!-- Empty State (no search) -->

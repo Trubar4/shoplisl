@@ -346,4 +346,48 @@ private refreshData(): void {
     this.router.navigate(['/articles/add']);
   }
 
+  getCurrentListColor(): string {
+    const currentList = this.getCurrentList();
+    return currentList?.color || '#f44336'; // Default to red if no color
+  }
+
+  getContrastColor(hexColor: string): string {
+    // Remove # if present
+    const color = hexColor.replace('#', '');
+    
+    // Convert to RGB
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for light colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  }
+
+  getLightColor(hexColor: string): string {
+    // Remove # if present
+    const color = hexColor.replace('#', '');
+    
+    // Convert to RGB
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    
+    // Make it lighter by blending with white (85% white, 15% original color)
+    const newR = Math.round(r * 0.15 + 255 * 0.85);
+    const newG = Math.round(g * 0.15 + 255 * 0.85);
+    const newB = Math.round(b * 0.15 + 255 * 0.85);
+    
+    // Convert back to hex
+    const toHex = (n: number) => {
+      const hex = n.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+    
+    return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
+  }
+
 }

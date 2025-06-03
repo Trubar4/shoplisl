@@ -118,6 +118,19 @@
     </mat-form-field>
   </div>
 
+  <!-- Add New Article Button (Always Visible) -->
+  <div class="add-button-container">
+    <button 
+      mat-raised-button 
+      (click)="onCreateNewArticle()"
+      class="add-article-button"
+      [style.background-color]="getCurrentListColor()"
+      [style.color]="getContrastColor(getCurrentListColor())">
+      <mat-icon>add</mat-icon>
+      Neuer Artikel
+    </button>
+  </div>
+
   <!-- All Articles with Toggle -->
   <div class="all-articles">
     <div 
@@ -170,16 +183,11 @@
       </mat-slide-toggle>
     </div>
 
-    <!-- No Results / Create New Article -->
+    <!-- No Results Message (No Button Here Anymore) -->
     <div class="no-results" *ngIf="searchQuery && (allArticlesWithState$ | async)?.length === 0">
-      <button 
-        mat-button 
-        color="primary"
-        (click)="onCreateNewArticle()"
-        class="create-article-button">
-        <mat-icon>add</mat-icon>
-        Neuer Artikel hinzufügen
-      </button>
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <h3>Keine Artikel gefunden</h3>
+      <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
     </div>
   </div>
 
@@ -187,23 +195,24 @@
   <div class="edit-actions">
     <button 
       mat-button 
-      color="accent"
-      (click)="onClearAllItems()"
-      class="action-button">
-      Leeren
-    </button>
-    <button 
-      mat-button 
-      color="primary"
       (click)="onEditList()"
-      class="action-button">
+      class="action-button primary-button"
+      [style.background-color]="getCurrentListColor()"
+      [style.color]="getContrastColor(getCurrentListColor())">
       Bearbeiten
     </button>
     <button 
       mat-button 
-      color="warn"
+      (click)="onClearAllItems()"
+      class="action-button secondary-button"
+      [style.color]="getCurrentListColor()">
+      Leeren
+    </button>
+    <button 
+      mat-button 
       (click)="onDeleteList()"
-      class="action-button">
+      class="action-button tertiary-button"
+      [style.color]="getLightColor(getCurrentListColor())">
       Löschen
     </button>
   </div>
