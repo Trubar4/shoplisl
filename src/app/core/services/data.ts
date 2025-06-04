@@ -166,13 +166,15 @@ export class DataService {
     const defaultArticles = [
       {
         name: 'Erdbeeren',
+        amount: '', // Add empty string instead of undefined
         icon: '🍓',
         categoryId: '1',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       },
       {
-        name: 'Kiwi Beeren', 
+        name: 'Kiwi Beeren',
+        amount: '', // Add empty string instead of undefined
         icon: '🥝',
         categoryId: '1',
         createdAt: Timestamp.now(),
@@ -180,6 +182,7 @@ export class DataService {
       },
       {
         name: 'Chorizo',
+        amount: '3 Stück', // Add some example amount
         icon: '🌭', 
         categoryId: '2',
         createdAt: Timestamp.now(),
@@ -264,7 +267,13 @@ export class DataService {
 
   createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
     const articleData = {
-      ...article,
+      name: article.name,
+      amount: article.amount || '', // Ensure never undefined
+      notes: article.notes || '', // Ensure never undefined
+      icon: article.icon || '📦', // Ensure never undefined
+      categoryId: article.categoryId || '',
+      availableInShops: article.availableInShops || [],
+      usageCount: article.usageCount || 0,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -273,6 +282,9 @@ export class DataService {
       map(docRef => ({
         id: docRef.id,
         ...article,
+        amount: article.amount || '',
+        notes: article.notes || '',
+        icon: article.icon || '📦',
         createdAt: new Date(),
         updatedAt: new Date()
       } as Article)),
@@ -284,10 +296,18 @@ export class DataService {
   }
 
   updateArticle(id: string, updates: Partial<Article>): Observable<Article | undefined> {
-    const updateData = {
-      ...updates,
+    // Clean up undefined values before saving to Firestore
+    const updateData: any = {
       updatedAt: Timestamp.now()
     };
+    
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.amount !== undefined) updateData.amount = updates.amount || '';
+    if (updates.notes !== undefined) updateData.notes = updates.notes || '';
+    if (updates.icon !== undefined) updateData.icon = updates.icon || '📦';
+    if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId || '';
+    if (updates.availableInShops !== undefined) updateData.availableInShops = updates.availableInShops || [];
+    if (updates.usageCount !== undefined) updateData.usageCount = updates.usageCount || 0;
 
     return from(updateDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`), updateData)).pipe(
       map(() => {
