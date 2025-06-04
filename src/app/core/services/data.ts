@@ -144,22 +144,9 @@ export class DataService {
   }
 
   private async initializeDefaultData(): Promise<void> {
-    if (!this.firestore) return;
-
-    try {
-      // Check if user already has data
-      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/articles`));
-      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/lists`));
-      
-      // If no data exists, create defaults
-      if (articlesSnapshot.empty && listsSnapshot.empty) {
-        console.log('🆕 New user - creating default data');
-        await this.createDefaultArticles();
-        await this.createDefaultLists();
-      }
-    } catch (error) {
-      console.error('Error initializing default data:', error);
-    }
+    // For a true fresh start, don't create any default data
+    // Users will create their own articles and lists
+    console.log('🆕 Fresh start - no default data created');
   }
 
   private async createDefaultArticles(): Promise<void> {
