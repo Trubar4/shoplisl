@@ -126,31 +126,12 @@ export class ListDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    console.log('🏗️ ListDetail ngOnInit - listId:', this.listId);
-    
     this.list$.subscribe(list => {
-      console.log('📋 List loaded:', list);
       if (!list) {
-        console.error('❌ List not found, redirecting to lists');
         this.router.navigate(['/lists']);
-      } else {
-        console.log('✅ List found:', list.name);
       }
       this.isLoading = false;
     });
-  }
-
-  // Mode switching
-  switchToShoppingMode(): void {
-    console.log('🛒 Switching to shopping mode');
-    this.currentMode = 'shopping';
-    this.searchQuery = '';
-    this.searchQuery$.next('');
-  }
-
-  switchToEditMode(): void {
-    console.log('✏️ Switching to edit mode');
-    this.currentMode = 'edit';
   }
 
   // Mode switching
