@@ -52,7 +52,7 @@ export class ListDetailComponent implements OnInit {
   listId: string;
   list$: Observable<ShoppingList | undefined>;
   
-  // Mode management
+  // Simple mode management - back to basics
   currentMode: ViewMode = 'shopping';
   
   // Shopping mode data
@@ -129,18 +129,14 @@ export class ListDetailComponent implements OnInit {
     console.log('🏗️ ListDetail ngOnInit - listId:', this.listId);
     
     this.list$.subscribe(list => {
-      console.log('📋 List subscription update:', list);
       if (!list && !this.isLoading) {
-        console.warn('❌ List not found, redirecting to lists');
         this.router.navigate(['/lists']);
-      } else if (list) {
-        console.log('✅ List loaded successfully:', list.name, 'Articles:', list.articleIds?.length || 0);
       }
       this.isLoading = false;
     });
   }
 
-  // Mode switching
+  // SIMPLE Mode switching - no observables, no complex logic
   switchToShoppingMode(): void {
     console.log('🛒 Switching to shopping mode');
     this.currentMode = 'shopping';
@@ -153,178 +149,39 @@ export class ListDetailComponent implements OnInit {
     this.currentMode = 'edit';
   }
 
-// Shopping mode actions
-onArticleToggle(article: ArticleWithState): void {
-  console.log('🔄 Toggling article check state:', article.name, 'Currently checked:', article.isChecked);
-  
-  this.dataService.toggleItemChecked(this.listId, article.id).subscribe(success => {
-    if (success) {
-      console.log('✅ Article toggle successful');
-    } else {
-      console.error('❌ Article toggle failed');
-    }
-  });
-}
-
-onArticleInfo(article: ArticleWithState): void {
-  // Store the current list ID so we can return here
-  this.router.navigate(['/articles', article.id], {
-    queryParams: { returnTo: `/lists/${this.listId}` }
-  });
-}
-
-// Edit mode actions
-onSearchQueryChange(): void {
-  this.searchQuery$.next(this.searchQuery.trim());
-}
-
-onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
-  console.log('🔄 Toggling article:', article.name, 'Currently in list:', article.isInList);
-  
-  if (article.isInList) {
-    // Remove from list
-    this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
-      if (success) {
-        this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
-        console.log('✅ Article removed from list');
-      } else {
-        console.error('❌ Failed to remove article from list');
-      }
-    });
-  } else {
-    // Add to list
-    this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
-      if (success) {
-        this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
-        console.log('✅ Article added to list');
-      } else {
-        console.error('❌ Failed to add article to list');
-      }
-    });
-  }
-}
-
-onEditAmount(article: ArticleWithToggleAndAmount): void {
-  // Show prompt to edit amount
-  const currentAmount = article.listAmount || article.amount || '';
-  const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
-  
-  if (newAmount !== null) { // null means cancelled
-    this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
-      this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
-      this.refreshData();
-    });
-  }
-}
-
-onUpdateListAmount(article: ArticleWithToggleAndAmount, newAmount: string): void {
-  // Update the amount for this specific article in this list
-  this.dataService.updateListItemAmount(this.listId, article.id, newAmount).subscribe(() => {
-    this.refreshData();
-  });
-}
-
-onAmountInput(article: ArticleWithToggleAndAmount, newAmount: string): void {
-  // Optional: Handle real-time input changes if needed
-  // For now, we'll rely on the blur event to save changes
-}
-
-// Helper method to force refresh data observables
-private refreshData(): void {
-  console.log('🔄 Refreshing data observables');
-  // Trigger a fresh fetch of the list data
-  this.list$ = this.dataService.getList(this.listId);
-  
-  // Recreate the observables to ensure they get fresh data
-  this.listArticles$ = combineLatest([
-    this.list$,
-    this.dataService.getArticles()
-  ]).pipe(
-    map(([list, allArticles]) => {
-      if (!list) return [];
-      return allArticles
-        .filter(article => list.articleIds.includes(article.id))
-        .map(article => ({
-          ...article,
-          isChecked: list.itemStates[article.id]?.isChecked || false,
-          isInList: true
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    })
-  );
-  
-  this.allArticlesWithState$ = combineLatest([
-    this.list$,
-    this.dataService.getArticles(),
-    this.searchQuery$.pipe(
-      debounceTime(300),
-      distinctUntilChanged()
-    )
-  ]).pipe(
-    map(([list, allArticles, query]) => {
-      if (!list) return [];
-      
-      let filtered = allArticles;
-      
-      // Filter by search query if exists
-      if (query.trim()) {
-        filtered = filtered.filter(article =>
-          article.name.toLowerCase().includes(query.toLowerCase().trim())
-        );
-      }
-      
-      // Map articles with their toggle state and list-specific amount
-      return filtered
-        .map(article => ({
-          ...article,
-          isInList: list.articleIds.includes(article.id),
-          listAmount: list.itemStates[article.id]?.amount || article.amount || ''
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    })
-  );
-}
-
+  // Navigation
   onBack(): void {
     this.router.navigate(['/lists']);
   }
 
-  getCheckedCount(): number {
-    let count = 0;
-    this.listArticles$.subscribe(articles => {
-      count = articles.filter(article => article.isChecked).length;
-    }).unsubscribe();
-    return count;
+  // Advanced color methods
+  getCurrentListColor(): string {
+    const currentList = this.getCurrentList();
+    return currentList?.color || '#f44336';
   }
 
-  getTotalCount(): number {
-    let count = 0;
-    this.listArticles$.subscribe(articles => {
-      count = articles.length;
-    }).unsubscribe();
-    return count;
-  }
-  // Helper methods
-  getArticleAmount(article: ArticleWithState): string {
-    // Get the list-specific amount or fall back to the article's default amount
-    const listAmount = this.getCurrentList()?.itemStates[article.id]?.amount;
-    const amount = listAmount || article.amount || '';
-    return amount.trim(); // Return empty string if no amount, so we can show "Menge" chip
+  getContrastColor(hexColor: string): string {
+    const color = hexColor.replace('#', '');
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000000' : '#ffffff';
   }
 
-  onEditAmountInShopping(article: ArticleWithState, event: Event): void {
-    // Prevent the parent click event from firing (toggle)
-    event.stopPropagation();
-    
-    const currentAmount = this.getArticleAmount(article);
-    const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
-    
-    if (newAmount !== null) { // null means cancelled
-      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
-        this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
-        this.refreshData();
-      });
-    }
+  getLightColor(hexColor: string): string {
+    const color = hexColor.replace('#', '');
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    const newR = Math.round(r * 0.15 + 255 * 0.85);
+    const newG = Math.round(g * 0.15 + 255 * 0.85);
+    const newB = Math.round(b * 0.15 + 255 * 0.85);
+    const toHex = (n: number) => {
+      const hex = n.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    };
+    return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
   }
 
   private getCurrentList(): ShoppingList | undefined {
@@ -333,20 +190,67 @@ private refreshData(): void {
     return currentList;
   }
 
+  // Enhanced shopping mode methods
+  getArticleAmount(article: ArticleWithState): string {
+    const listAmount = this.getCurrentList()?.itemStates[article.id]?.amount;
+    const amount = listAmount || article.amount || '';
+    return amount.trim();
+  }
+
+  onEditAmountInShopping(article: ArticleWithState, event: Event): void {
+    event.stopPropagation();
+    
+    const currentAmount = this.getArticleAmount(article);
+    const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
+    
+    if (newAmount !== null) {
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
+        this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
+      });
+    }
+  }
+
+  // Enhanced edit mode methods
+  onEditAmount(article: ArticleWithToggleAndAmount): void {
+    const currentAmount = article.listAmount || article.amount || '';
+    const newAmount = prompt(`Menge für ${article.name} bearbeiten:`, currentAmount);
+    
+    if (newAmount !== null) {
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe(() => {
+        this.snackBar.open('Menge aktualisiert', 'OK', { duration: 1500 });
+      });
+    }
+  }
+
+  onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
+    if (article.isInList) {
+      this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
+        if (success) {
+          this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
+        }
+      });
+    } else {
+      this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
+        if (success) {
+          this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
+        }
+      });
+    }
+  }
+
+  // Enhanced action methods
   onClearAllItems(): void {
     const confirmed = confirm('Alle Artikel aus der Liste entfernen?');
     if (confirmed) {
       this.dataService.clearAllItemsFromList(this.listId).subscribe(success => {
         if (success) {
           this.snackBar.open('Liste geleert', 'OK', { duration: 2000 });
-          this.refreshData();
         }
       });
     }
   }
 
   onEditList(): void {
-    // Navigate to edit list (we'll implement this later)
     this.snackBar.open('Liste bearbeiten - Coming soon!', 'OK', { duration: 2000 });
   }
 
@@ -361,53 +265,4 @@ private refreshData(): void {
       });
     }
   }
-
-  onCreateNewArticle(): void {
-    this.router.navigate(['/articles/add']);
-  }
-
-  getCurrentListColor(): string {
-    const currentList = this.getCurrentList();
-    return currentList?.color || '#f44336'; // Default to red if no color
-  }
-
-  getContrastColor(hexColor: string): string {
-    // Remove # if present
-    const color = hexColor.replace('#', '');
-    
-    // Convert to RGB
-    const r = parseInt(color.substr(0, 2), 16);
-    const g = parseInt(color.substr(2, 2), 16);
-    const b = parseInt(color.substr(4, 2), 16);
-    
-    // Calculate luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    
-    // Return black for light colors, white for dark colors
-    return luminance > 0.5 ? '#000000' : '#ffffff';
-  }
-
-  getLightColor(hexColor: string): string {
-    // Remove # if present
-    const color = hexColor.replace('#', '');
-    
-    // Convert to RGB
-    const r = parseInt(color.substr(0, 2), 16);
-    const g = parseInt(color.substr(2, 2), 16);
-    const b = parseInt(color.substr(4, 2), 16);
-    
-    // Make it lighter by blending with white (85% white, 15% original color)
-    const newR = Math.round(r * 0.15 + 255 * 0.85);
-    const newG = Math.round(g * 0.15 + 255 * 0.85);
-    const newB = Math.round(b * 0.15 + 255 * 0.85);
-    
-    // Convert back to hex
-    const toHex = (n: number) => {
-      const hex = n.toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
-    };
-    
-    return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
-  }
-
 }
