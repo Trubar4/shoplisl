@@ -154,6 +154,30 @@ export class ListDetailComponent implements OnInit {
     this.router.navigate(['/lists']);
   }
 
+  // Shopping mode actions
+  onArticleToggle(article: ArticleWithState): void {
+    console.log('🔄 Toggling article check state:', article.name, 'Currently checked:', article.isChecked);
+    
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe(success => {
+      if (success) {
+        console.log('✅ Article toggle successful');
+      } else {
+        console.error('❌ Article toggle failed');
+      }
+    });
+  }
+
+  onArticleInfo(article: ArticleWithState): void {
+    this.router.navigate(['/articles', article.id], {
+      queryParams: { returnTo: `/lists/${this.listId}` }
+    });
+  }
+
+  // Edit mode actions
+  onSearchQueryChange(): void {
+    this.searchQuery$.next(this.searchQuery.trim());
+  }
+
   // Advanced color methods
   getCurrentListColor(): string {
     const currentList = this.getCurrentList();
@@ -248,6 +272,10 @@ export class ListDetailComponent implements OnInit {
         }
       });
     }
+  }
+
+  onCreateNewArticle(): void {
+    this.router.navigate(['/articles/add']);
   }
 
   onEditList(): void {
