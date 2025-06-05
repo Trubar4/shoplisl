@@ -126,9 +126,15 @@ export class ListDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    console.log('🏗️ ListDetail ngOnInit - listId:', this.listId);
+    
     this.list$.subscribe(list => {
-      if (!list) {
+      console.log('📋 List subscription update:', list);
+      if (!list && !this.isLoading) {
+        console.warn('❌ List not found, redirecting to lists');
         this.router.navigate(['/lists']);
+      } else if (list) {
+        console.log('✅ List loaded successfully:', list.name, 'Articles:', list.articleIds?.length || 0);
       }
       this.isLoading = false;
     });
@@ -136,20 +142,27 @@ export class ListDetailComponent implements OnInit {
 
   // Mode switching
   switchToShoppingMode(): void {
+    console.log('🛒 Switching to shopping mode');
     this.currentMode = 'shopping';
     this.searchQuery = '';
     this.searchQuery$.next('');
   }
 
   switchToEditMode(): void {
+    console.log('✏️ Switching to edit mode');
     this.currentMode = 'edit';
   }
 
 // Shopping mode actions
 onArticleToggle(article: ArticleWithState): void {
-  this.dataService.toggleItemChecked(this.listId, article.id).subscribe(() => {
-    // Force refresh of the observables to ensure UI updates immediately
-    this.refreshData();
+  console.log('🔄 Toggling article check state:', article.name, 'Currently checked:', article.isChecked);
+  
+  this.dataService.toggleItemChecked(this.listId, article.id).subscribe(success => {
+    if (success) {
+      console.log('✅ Article toggle successful');
+    } else {
+      console.error('❌ Article toggle failed');
+    }
   });
 }
 
@@ -166,12 +179,16 @@ onSearchQueryChange(): void {
 }
 
 onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
+  console.log('🔄 Toggling article:', article.name, 'Currently in list:', article.isInList);
+  
   if (article.isInList) {
     // Remove from list
     this.dataService.removeArticleFromList(this.listId, article.id).subscribe(success => {
       if (success) {
         this.snackBar.open(`${article.name} entfernt`, 'OK', { duration: 1500 });
-        this.refreshData();
+        console.log('✅ Article removed from list');
+      } else {
+        console.error('❌ Failed to remove article from list');
       }
     });
   } else {
@@ -179,7 +196,9 @@ onToggleArticleInList(article: ArticleWithToggleAndAmount): void {
     this.dataService.addArticleToList(this.listId, article.id).subscribe(success => {
       if (success) {
         this.snackBar.open(`${article.name} hinzugefügt`, 'OK', { duration: 1500 });
-        this.refreshData();
+        console.log('✅ Article added to list');
+      } else {
+        console.error('❌ Failed to add article to list');
       }
     });
   }
@@ -212,6 +231,7 @@ onAmountInput(article: ArticleWithToggleAndAmount, newAmount: string): void {
 
 // Helper method to force refresh data observables
 private refreshData(): void {
+  console.log('🔄 Refreshing data observables');
   // Trigger a fresh fetch of the list data
   this.list$ = this.dataService.getList(this.listId);
   
