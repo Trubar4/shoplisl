@@ -1,12 +1,12 @@
-<div class="list-detail" *ngIf="list$ | async as list">
+<div class="list-detail">
   <!-- Header -->
-  <mat-toolbar [style.background-color]="list.color" class="app-header">
+  <mat-toolbar color="primary" class="app-header">
     <button mat-icon-button (click)="onBack()" aria-label="Back">
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div class="header-content">
-      <span class="list-icon">{{ list.icon }}</span>
-      <span class="list-name">{{ list.name }}</span>
+      <span class="list-icon">{{ currentList?.icon || '📋' }}</span>
+      <span class="list-name">{{ currentList?.name || 'Loading...' }}</span>
     </div>
     <span class="spacer"></span>
     
@@ -32,6 +32,8 @@
   <!-- Debug Info -->
   <div style="background: yellow; padding: 5px; font-size: 12px;">
     Current Mode: {{ currentMode }}
+    <br>List ID: {{ listId }}
+    <br>Loading: {{ isLoading }}
   </div>
 
   <!-- Loading -->
@@ -41,6 +43,7 @@
 
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
+    
     <!-- Shopping List -->
     <div class="articles-list" *ngIf="(listArticles$ | async)?.length; else emptyShoppingState">
       <div 
@@ -59,24 +62,15 @@
             <span class="article-name" [class.strikethrough]="article.isChecked">
               {{ article.name }}
             </span>
-            <!-- Clickable Amount Chip -->
-            <span class="article-amount clickable" 
+            <span class="article-amount" 
                   *ngIf="getArticleAmount(article)" 
-                  [class.strikethrough]="article.isChecked"
-                  (click)="onEditAmountInShopping(article, $event)">
+                  [class.strikethrough]="article.isChecked">
               {{ getArticleAmount(article) }}
-            </span>
-            <!-- Empty Amount Chip -->
-            <span class="article-amount clickable empty" 
-                  *ngIf="!getArticleAmount(article)" 
-                  [class.strikethrough]="article.isChecked"
-                  (click)="onEditAmountInShopping(article, $event)">
-              Menge
             </span>
           </div>
           <div class="article-notes" 
-               *ngIf="article.notes" 
-               [class.strikethrough]="article.isChecked">
+              *ngIf="article.notes" 
+              [class.strikethrough]="article.isChecked">
             {{ article.notes }}
           </div>
         </div>
@@ -146,24 +140,11 @@
           <div class="article-header">
             <span class="article-name">{{ article.name }}</span>
             
-            <!-- Clickable Amount Chip -->
             <span 
               *ngIf="article.listAmount || article.amount" 
               class="article-amount"
-              [class.editable]="article.isInList"
-              [class.disabled]="!article.isInList"
-              (click)="article.isInList ? onEditAmount(article) : null">
+              [class.editable]="article.isInList">
               {{ article.listAmount || article.amount }}
-            </span>
-            
-            <!-- Empty Amount Chip -->
-            <span 
-              *ngIf="!(article.listAmount || article.amount)" 
-              class="article-amount empty"
-              [class.editable]="article.isInList"
-              [class.disabled]="!article.isInList"
-              (click)="article.isInList ? onEditAmount(article) : null">
-              Menge
             </span>
           </div>
           
