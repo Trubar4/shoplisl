@@ -131,51 +131,46 @@ export class ListDetailComponent implements OnInit {
     console.log('🔴 Constructor finished successfully');
   }
 
-  ngOnInit(): void {
-    console.log('🔴 ngOnInit starting...');
-    
-    // Simple subscription to check if list exists
-    this.list$.subscribe({
-      next: (list) => {
-        console.log('🔴 List received:', list?.name || 'No list');
-        this.currentList = list || null;
-        if (!list && !this.isLoading) {
-          console.log('🔴 No list found, navigating back');
+    ngOnInit(): void {
+      console.log('🔴 ngOnInit starting...');
+      
+      // Simple subscription to check if list exists
+      this.list$.subscribe({
+        next: (list) => {
+          console.log('🔴 List received:', list?.name || 'No list');
+          this.currentList = list || null;
+          if (!list && !this.isLoading) {
+            console.log('🔴 No list found, navigating back');
+            this.router.navigate(['/lists']);
+          }
+          this.isLoading = false;
+          console.log('🔴 Set isLoading to false');
+        },
+        error: (error) => {
+          console.error('🔴 Error loading list:', error);
+          this.isLoading = false;
           this.router.navigate(['/lists']);
         }
-        this.isLoading = false;
-        console.log('🔴 Set isLoading to false');
-      },
-      error: (error) => {
-        console.error('🔴 Error loading list:', error);
-        this.isLoading = false;
-        this.router.navigate(['/lists']);
-      }
-    });
-    
-    console.log('🔴 ngOnInit finished');
+      });
+      
+      console.log('🔴 ngOnInit finished');
+    }
+
+    // All required methods
+  onBack(): void {
+    this.router.navigate(['/lists']);
   }
 
-  // Simple mode switching
   switchToShoppingMode(): void {
-    console.log('🔴 Switching to shopping mode');
     this.currentMode = 'shopping';
     this.searchQuery = '';
     this.searchQuery$.next('');
   }
 
   switchToEditMode(): void {
-    console.log('🔴 Switching to edit mode');
     this.currentMode = 'edit';
   }
 
-  // Navigation
-  onBack(): void {
-    console.log('🔴 Going back to lists');
-    this.router.navigate(['/lists']);
-  }
-
-  // Simple color methods
   getCurrentListColor(): string {
     return '#f44336';
   }
@@ -188,146 +183,56 @@ export class ListDetailComponent implements OnInit {
     return '#ffcdd2';
   }
 
-  // Working action methods
   onArticleToggle(article: any): void {
-    console.log('🔴 Toggle article:', article?.name || 'unknown');
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => {
-        if (success) {
-          console.log('🔴 Toggle successful');
-        }
-      },
-      error: (error) => console.error('🔴 Toggle error:', error)
-    });
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe();
   }
 
   onToggleArticleInList(article: any): void {
-    console.log('🔴 Toggle article in list:', article?.name || 'unknown');
-    
     if (article.isInList) {
-      this.dataService.removeArticleFromList(this.listId, article.id).subscribe({
-        next: (success) => {
-          if (success) {
-            this.snackBar.open(`${article.name} entfernt`, '', { duration: 1000 });
-          }
-        },
-        error: (error) => console.error('🔴 Remove error:', error)
-      });
+      this.dataService.removeArticleFromList(this.listId, article.id).subscribe();
     } else {
-      this.dataService.addArticleToList(this.listId, article.id).subscribe({
-        next: (success) => {
-          if (success) {
-            this.snackBar.open(`${article.name} hinzugefügt`, '', { duration: 1000 });
-          }
-        },
-        error: (error) => console.error('🔴 Add error:', error)
-      });
+      this.dataService.addArticleToList(this.listId, article.id).subscribe();
     }
   }
 
   onSearchQueryChange(): void {
-    console.log('🔴 Search query changed to:', this.searchQuery);
     this.searchQuery$.next(this.searchQuery.trim());
   }
 
   onCreateNewArticle(): void {
-    console.log('🔴 Create new article');
-    if (this.searchQuery.trim()) {
-      this.router.navigate(['/articles/add'], {
-        queryParams: { 
-          name: this.searchQuery.trim(),
-          returnTo: `/lists/${this.listId}` 
-        }
-      });
-    } else {
-      this.router.navigate(['/articles/add'], {
-        queryParams: { returnTo: `/lists/${this.listId}` }
-      });
-    }
-  }
-
-  onEditAmount(article: any): void {
-    console.log('🔴 Edit amount for:', article?.name || 'unknown');
-    const currentAmount = article.listAmount || article.amount || '';
-    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
-    
-    if (newAmount !== null) {
-      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
-        next: () => {
-          this.snackBar.open('Menge aktualisiert', '', { duration: 1000 });
-        },
-        error: (error) => console.error('Error updating amount:', error)
-      });
-    }
+    this.router.navigate(['/articles/add']);
   }
 
   onArticleInfo(article: any): void {
-    console.log('🔴 Show article info:', article?.name || 'unknown');
     if (article?.id) {
-      this.router.navigate(['/articles', article.id], {
-        queryParams: { returnTo: `/lists/${this.listId}` }
-      });
-    }
-  }
-
-  onEditAmountInShopping(article: any, event: Event): void {
-    event.stopPropagation();
-    console.log('🔴 Edit amount in shopping:', article?.name || 'unknown');
-    
-    const currentAmount = this.getArticleAmount(article);
-    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
-    
-    if (newAmount !== null) {
-      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
-        next: () => {
-          this.snackBar.open('Menge aktualisiert', '', { duration: 1000 });
-        },
-        error: (error) => console.error('Error updating amount:', error)
-      });
+      this.router.navigate(['/articles', article.id]);
     }
   }
 
   getArticleAmount(article: any): string {
-    console.log('🔴 Get article amount for:', article?.name || 'unknown');
-    try {
-      const listAmount = this.currentList?.itemStates[article.id]?.amount;
-      return listAmount || article.amount || '';
-    } catch {
-      return article?.amount || '';
-    }
+    return article?.amount || '';
+  }
+
+  onEditAmount(article: any): void {
+    console.log('Edit amount:', article?.name);
+  }
+
+  onEditAmountInShopping(article: any, event: Event): void {
+    event.stopPropagation();
+    console.log('Edit amount in shopping:', article?.name);
   }
 
   onClearAllItems(): void {
-    console.log('🔴 Clear all items');
-    if (confirm('Alle Artikel aus der Liste entfernen?')) {
-      this.dataService.clearAllItemsFromList(this.listId).subscribe({
-        next: (success) => {
-          if (success) {
-            this.snackBar.open('Liste geleert', '', { duration: 1500 });
-          }
-        },
-        error: (error) => console.error('Error clearing list:', error)
-      });
-    }
+    console.log('Clear all items');
   }
 
   onEditList(): void {
-    console.log('🔴 Edit list');
     this.snackBar.open('Liste bearbeiten - Coming soon!', '', { duration: 1500 });
   }
 
   onDeleteList(): void {
-    console.log('🔴 Delete list');
     if (confirm('Liste wirklich löschen?')) {
-      this.dataService.deleteList(this.listId).subscribe({
-        next: (success) => {
-          if (success) {
-            this.snackBar.open('Liste gelöscht', '', { duration: 1500 });
-            this.router.navigate(['/lists']);
-          }
-        },
-        error: (error) => console.error('Error deleting list:', error)
-      });
+      this.router.navigate(['/lists']);
     }
   }
 }
