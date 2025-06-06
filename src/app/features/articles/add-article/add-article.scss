@@ -5,11 +5,16 @@
   font-family: 'Roboto', sans-serif;
   
   .app-header {
-    background-color: #f44336 !important;
+    background-color: #1a9edb !important;
     color: white !important;
     
     span {
       font-weight: 500;
+    }
+    
+    // Ensure back arrow is white
+    .mat-icon-button .mat-icon {
+      color: white !important;
     }
   }
   
@@ -78,13 +83,13 @@
           transition: all 0.2s;
 
           &:hover {
-            border-color: #f44336;
-            background-color: #fff3f3;
+            border-color: #1a9edb;
+            background-color: #e3f2fd;
           }
 
           &.selected {
-            border-color: #f44336;
-            background-color: #f44336;
+            border-color: #1a9edb;
+            background-color: #1a9edb;
             color: white;
           }
         }
@@ -103,7 +108,7 @@
 
       .save-button {
         min-width: 100px;
-        background-color: #f44336;
+        background-color: #1a9edb;
       }
     }
   }

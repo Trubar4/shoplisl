@@ -31,20 +31,20 @@ import { DataService } from '../../../core/services/data';
 export class AddListComponent {
   list = {
     name: '',
-    color: '#f44336', // Default red
+    color: '#9c27b0', // Default to purple instead of blue (which is now main color)
     icon: '📋'
   };
 
-  // Predefined colors for lists
+  // Predefined colors for lists (removed blue #2196f3 since it's close to main color #1a9edb)
   colors = [
     { name: 'Rot', value: '#f44336' },
     { name: 'Lila', value: '#9c27b0' },
-    { name: 'Blau', value: '#2196f3' },
     { name: 'Grün', value: '#4caf50' },
     { name: 'Orange', value: '#ff9800' },
     { name: 'Türkis', value: '#009688' },
     { name: 'Pink', value: '#e91e63' },
-    { name: 'Indigo', value: '#3f51b5' }
+    { name: 'Indigo', value: '#3f51b5' },
+    { name: 'Amber', value: '#ffc107' }
   ];
 
   // Common emojis for lists

@@ -1,10 +1,10 @@
 @use '@angular/material' as mat;
 
-// Use built-in Material palettes
+// Use built-in blue palette as primary for M3 theme
 $theme: mat.define-theme((
   color: (
     theme-type: light,
-    primary: mat.$red-palette,
+    primary: mat.$blue-palette,
     tertiary: mat.$green-palette,
   ),
 ));
@@ -25,10 +25,29 @@ html, body {
   flex: 1 1 auto;
 }
 
-// Force Material toolbar to use our red
+// Force Material toolbar and primary buttons to use our specific blue color
 .mat-toolbar.mat-primary {
-  background-color: #f44336 !important;
+  background-color: #1a9edb !important;
   color: white !important;
+  
+  // Ensure all icons in toolbar are white
+  .mat-icon {
+    color: white !important;
+  }
+  
+  // Ensure buttons in toolbar have white icons
+  .mat-icon-button .mat-icon {
+    color: white !important;
+  }
+}
+
+// Override Material primary buttons to use our blue
+.mat-mdc-raised-button.mat-primary {
+  background-color: #1a9edb !important;
+  
+  &:hover:not(:disabled) {
+    background-color: #1976d2 !important;
+  }
 }
 
 // Make bottom tabs have better spacing
