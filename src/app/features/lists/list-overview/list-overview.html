@@ -1,9 +1,51 @@
-<div class="placeholder">
-  <mat-toolbar color="primary">
+<div class="list-overview">
+  <!-- Header -->
+  <mat-toolbar color="primary" class="app-header">
     <span>Listen</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="onAddList()" aria-label="Add list">
+      <mat-icon>add</mat-icon>
+    </button>
   </mat-toolbar>
-  <div class="content">
-    <p>Listen Tab - Coming Soon!</p>
-    <p>Focus: Articles Tab first for MVP</p>
+
+  <!-- Lists Container -->
+  <div class="lists-container">
+    <div class="lists-list">
+      <div 
+        *ngFor="let list of listsWithCount$ | async" 
+        (click)="onListClick(list)"
+        class="list-item"
+        [style.border-left]="'8px solid ' + (list.color || '#ff0000')"
+        [style.background-color]="(list.color || '#ff0000') + '20'">
+        
+        <!-- DEBUG INFO - Remove this later -->
+        <div style="font-size: 10px; color: red; margin-bottom: 4px;">
+          DEBUG: Color = "{{ list.color || 'UNDEFINED' }}"
+        </div>
+        
+        <!-- Original content -->
+        <div class="list-content">
+          <div class="list-header">
+            <span class="list-icon">{{ list.icon || '📋' }}</span>
+            <span class="list-name">{{ list.name }}</span>
+          </div>
+        </div>
+        
+        <div class="item-count" 
+            *ngIf="list.itemCount > 0"
+            [style.background-color]="list.color || '#666'">
+          {{ list.itemCount }}
+        </div>
+        
+        <mat-icon class="nav-arrow">chevron_right</mat-icon>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="(listsWithCount$ | async)?.length === 0">
+      <mat-icon class="empty-icon">format_list_bulleted</mat-icon>
+      <h3>Keine Listen vorhanden</h3>
+      <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
+    </div>
   </div>
 </div>

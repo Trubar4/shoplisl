@@ -123,14 +123,26 @@ export class ArticleDetailComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate(['/articles']);
+    // Check if there's a returnTo parameter  
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo) {
+      this.router.navigateByUrl(returnTo);
+    } else {
+      this.router.navigate(['/articles']);
+    }
   }
 
   onBack(): void {
     // Check if there's a returnTo parameter
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    
     if (returnTo) {
-      this.router.navigateByUrl(returnTo);
+      if (mode) {
+        this.router.navigate([returnTo], { queryParams: { mode: mode } });
+      } else {
+        this.router.navigateByUrl(returnTo);
+      }
     } else {
       this.router.navigate(['/articles']);
     }

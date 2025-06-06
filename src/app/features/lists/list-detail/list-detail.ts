@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -68,7 +68,8 @@ export class ListDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private dataService: DataService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {
     console.log('🔴 Constructor starting...');
     
@@ -78,35 +79,42 @@ export class ListDetailComponent implements OnInit {
     
     // Initialize the observables
     console.log('🔴 About to call dataService.getList...');
-    this.list$ = this.dataService.getList(this.listId);
+    // Use real-time lists data instead of one-time getList call
+    this.list$ = this.dataService.getLists().pipe(
+      map(lists => lists.find(list => list.id === this.listId))
+    );
     console.log('🔴 Called dataService.getList successfully');
     
-    // Real article data for shopping mode
-    this.listArticles$ = this.dataService.getArticles().pipe(
-      map(articles => {
-        if (!this.currentList) return [];
+    // Real article data for shopping mode - with reactive updates
+    this.listArticles$ = combineLatest([
+      this.list$,
+      this.dataService.getArticles()
+    ]).pipe(
+      map(([list, articles]) => {
+        if (!list) return [];
         
         return articles
-          .filter(article => this.currentList?.articleIds.includes(article.id))
+          .filter(article => list.articleIds.includes(article.id))
           .map(article => ({
             ...article,
-            isChecked: this.currentList?.itemStates[article.id]?.isChecked || false,
+            isChecked: list.itemStates[article.id]?.isChecked || false,
             isInList: true
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
       })
     );
 
-    // Real edit mode with search and toggle states
+    // Real edit mode with search and toggle states - with reactive updates
     this.allArticlesWithState$ = combineLatest([
+      this.list$,
       this.dataService.getArticles(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
       )
     ]).pipe(
-      map(([allArticles, query]) => {
-        if (!this.currentList) return [];
+      map(([list, allArticles, query]) => {
+        if (!list) return [];
         
         let filtered = allArticles;
         
@@ -121,8 +129,8 @@ export class ListDetailComponent implements OnInit {
         return filtered
           .map(article => ({
             ...article,
-            isInList: this.currentList?.articleIds.includes(article.id) || false,
-            listAmount: this.currentList?.itemStates[article.id]?.amount || article.amount || ''
+            isInList: list.articleIds.includes(article.id),
+            listAmount: list.itemStates[article.id]?.amount || article.amount || ''
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
       })
@@ -131,30 +139,43 @@ export class ListDetailComponent implements OnInit {
     console.log('🔴 Constructor finished successfully');
   }
 
-    ngOnInit(): void {
-      console.log('🔴 ngOnInit starting...');
-      
-      // Simple subscription to check if list exists
-      this.list$.subscribe({
-        next: (list) => {
-          console.log('🔴 List received:', list?.name || 'No list');
-          this.currentList = list || null;
-          if (!list && !this.isLoading) {
-            console.log('🔴 No list found, navigating back');
-            this.router.navigate(['/lists']);
-          }
-          this.isLoading = false;
-          console.log('🔴 Set isLoading to false');
-        },
-        error: (error) => {
-          console.error('🔴 Error loading list:', error);
-          this.isLoading = false;
+  ngOnInit(): void {
+    console.log('🔴 ngOnInit starting...');
+    
+    // Check for mode parameter
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    if (mode === 'edit') {
+      this.currentMode = 'edit';
+    }
+    
+    // Simple subscription to check if list exists
+    this.list$.subscribe({
+      next: (list) => {
+        console.log('🔴 List received:', list?.name || 'No list');
+        this.currentList = list || null;
+        if (!list && !this.isLoading) {
+          console.log('🔴 No list found, navigating back');
           this.router.navigate(['/lists']);
         }
-      });
-      
-      console.log('🔴 ngOnInit finished');
-    }
+        this.isLoading = false;
+        console.log('🔴 Set isLoading to false');
+      },
+      error: (error) => {
+        console.error('🔴 Error loading list:', error);
+        this.isLoading = false;
+        this.router.navigate(['/lists']);
+      }
+    });
+    
+    console.log('🔴 ngOnInit finished');
+  }
+
+  // Force Angular change detection after Firebase updates
+  private triggerChangeDetection(): void {
+    setTimeout(() => {
+      this.cdr.detectChanges();
+    }, 100);
+  }
 
     // All required methods
   onBack(): void {
@@ -184,14 +205,37 @@ export class ListDetailComponent implements OnInit {
   }
 
   onArticleToggle(article: any): void {
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe();
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+      next: (success) => {
+        if (success) {
+          this.triggerChangeDetection();
+        }
+      },
+      error: (error) => console.error('🔴 Toggle error:', error)
+    });
   }
 
-  onToggleArticleInList(article: any): void {
+  onToggleArticleInList(article: any): void {    
     if (article.isInList) {
-      this.dataService.removeArticleFromList(this.listId, article.id).subscribe();
+      this.dataService.removeArticleFromList(this.listId, article.id).subscribe({
+        next: (success) => {
+          if (success) {
+            this.snackBar.open(`${article.name} entfernt`, '', { duration: 1000 });
+            this.triggerChangeDetection();
+          }
+        },
+        error: (error) => console.error('🔴 Remove error:', error)
+      });
     } else {
-      this.dataService.addArticleToList(this.listId, article.id).subscribe();
+      this.dataService.addArticleToList(this.listId, article.id).subscribe({
+        next: (success) => {
+          if (success) {
+            this.snackBar.open(`${article.name} hinzugefügt`, '', { duration: 1000 });
+            this.triggerChangeDetection();
+          }
+        },
+        error: (error) => console.error('🔴 Add error:', error)
+      });
     }
   }
 
@@ -200,26 +244,62 @@ export class ListDetailComponent implements OnInit {
   }
 
   onCreateNewArticle(): void {
-    this.router.navigate(['/articles/add']);
+    this.router.navigate(['/articles/add'], {
+      queryParams: { 
+        returnToList: this.listId,
+        autoAdd: 'true'
+      }
+    });
   }
 
   onArticleInfo(article: any): void {
     if (article?.id) {
-      this.router.navigate(['/articles', article.id]);
+      // Pass returnTo parameter to preserve edit mode
+      this.router.navigate(['/articles', article.id], {
+        queryParams: { 
+          returnTo: `/lists/${this.listId}?mode=edit`
+        }
+      });
     }
   }
 
   getArticleAmount(article: any): string {
-    return article?.amount || '';
+    try {
+      const listAmount = this.currentList?.itemStates[article.id]?.amount;
+      return listAmount || article.amount || '';
+    } catch {
+      return article?.amount || '';
+    }
   }
 
   onEditAmount(article: any): void {
-    console.log('Edit amount:', article?.name);
+    const currentAmount = article.listAmount || article.amount || '';
+    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
+    
+    if (newAmount !== null) {
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
+        next: () => {
+          this.snackBar.open('Menge aktualisiert', '', { duration: 1000 });
+        },
+        error: (error) => console.error('Error updating amount:', error)
+      });
+    }
   }
 
   onEditAmountInShopping(article: any, event: Event): void {
     event.stopPropagation();
-    console.log('Edit amount in shopping:', article?.name);
+    
+    const currentAmount = this.getArticleAmount(article);
+    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
+    
+    if (newAmount !== null) {
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
+        next: () => {
+          this.snackBar.open('Menge aktualisiert', '', { duration: 1000 });
+        },
+        error: (error) => console.error('Error updating amount:', error)
+      });
+    }
   }
 
   onClearAllItems(): void {

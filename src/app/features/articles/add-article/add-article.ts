@@ -68,20 +68,58 @@ export class AddArticleComponent {
   
     this.dataService.createArticle({
       name: this.article.name.trim(),
-      amount: this.article.amount.trim() || undefined, // Add this line
+      amount: this.article.amount.trim() || undefined,
       notes: this.article.notes.trim() || undefined,
       icon: this.article.icon || '📦'
-    }).subscribe(() => {
+    }).subscribe((newArticle) => {
       this.snackBar.open('Artikel erfolgreich hinzugefügt', 'OK', { duration: 2000 });
-      this.router.navigate(['/articles']);
+      
+      // Check if we should return to a list and auto-add the article
+      const returnToList = this.route.snapshot.queryParamMap.get('returnToList');
+      const autoAdd = this.route.snapshot.queryParamMap.get('autoAdd');
+      
+      if (returnToList && autoAdd === 'true' && newArticle) {
+        // Auto-add the new article to the list
+        this.dataService.addArticleToList(returnToList, newArticle.id).subscribe(() => {
+          this.router.navigate(['/lists', returnToList], {
+            queryParams: { mode: 'edit' }
+          });
+        });
+      } else {
+        this.router.navigate(['/articles']);
+      }
     });
   }
 
   onCancel(): void {
-    this.router.navigate(['/articles']);
+    // Check if there's a returnTo parameter
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    
+    if (returnTo) {
+      if (mode) {
+        this.router.navigate([returnTo], { queryParams: { mode: mode } });
+      } else {
+        this.router.navigateByUrl(returnTo);
+      }
+    } else {
+      this.router.navigate(['/articles']);
+    }
   }
 
   onBack(): void {
-    this.router.navigate(['/articles']);
+    // Check if there's a returnTo parameter
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    
+    if (returnTo) {
+      if (mode) {
+        this.router.navigate([returnTo], { queryParams: { mode: mode } });
+      } else {
+        this.router.navigateByUrl(returnTo);
+      }
+    } else {
+      this.router.navigate(['/articles']);
+    }
   }
 }
