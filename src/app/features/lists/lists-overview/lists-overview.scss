@@ -28,8 +28,26 @@
       align-items: center;
       padding: 16px;
       border-bottom: 1px solid #e0e0e0;
+      border-left: 6px solid #757575; /* Add this line - default gray */
       cursor: pointer;
       min-height: 72px;
+      
+      /* Add these color variant classes */
+      &.color-purple {
+        border-left-color: #9c27b0;
+      }
+      
+      &.color-red {
+        border-left-color: #f44336;
+      }
+      
+      &.color-green {
+        border-left-color: #4caf50;
+      }
+      
+      &.color-blue {
+        border-left-color: #2196f3;
+      }
       
       &:hover {
         background-color: rgba(0, 0, 0, 0.04);

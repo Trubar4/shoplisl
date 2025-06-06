@@ -14,7 +14,8 @@
         <div 
           *ngFor="let list of lists$ | async" 
           (click)="onListClick(list)"
-          class="list-item">
+          class="list-item"
+          [ngClass]="'color-' + getListColorClass(list)">
           
           <!-- List Icon -->
           <div class="list-icon">
