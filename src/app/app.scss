@@ -68,19 +68,19 @@ app-root {
 }
 
 .app-content {
-  height: calc(100vh - 56px - 60px);
+  height: calc(100vh - 56px - 61px); /* Updated for new bottom tab height */
   
   @supports (height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))) {
-    height: calc(100vh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: calc(100vh - 56px - 61px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 }
 
 @media (max-width: 768px) {
   .app-content {
-    height: calc(100vh - 56px - 60px);
+    height: calc(100vh - 56px - 58px); /* Updated for mobile */
     
     @supports (height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))) {
-      height: calc(100vh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      height: calc(100vh - 56px - 58px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     }
   }
 }

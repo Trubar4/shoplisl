@@ -33,7 +33,29 @@ export class ListsOverviewComponent implements OnInit {
     this.lists$ = this.dataService.getLists();
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // Reset theme color to default blue when in lists overview
+    this.resetThemeColor();
+  }
+
+  // Reset theme color to default blue
+  private resetThemeColor(): void {
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.content = '#1a9edb';
+    
+    // Also update HTML background
+    document.documentElement.style.backgroundColor = '#1a9edb';
+    
+    // Reset CSS custom properties
+    const root = document.documentElement;
+    root.style.setProperty('--list-primary-color', '#1a9edb');
+    root.style.setProperty('--list-contrast-color', 'white');
+  }
 
   onListClick(list: ShoppingList): void {
     this.router.navigate(['/lists', list.id]);

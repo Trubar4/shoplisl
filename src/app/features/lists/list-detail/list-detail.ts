@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -52,7 +52,7 @@ interface ArticleWithToggleAndAmount extends Article {
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
 })
-export class ListDetailComponent implements OnInit {
+export class ListDetailComponent implements OnInit, OnDestroy {
   listId: string = '';
   list$!: Observable<ShoppingList | undefined>;
   
@@ -233,6 +233,28 @@ export class ListDetailComponent implements OnInit {
     root.style.setProperty('--list-contrast-color', this.getContrastColor(color));
     root.style.setProperty('--list-light-color', this.getLightColor(color));
     root.style.setProperty('--list-dark-color', this.getDarkColor(color));
+    
+    ngOnDestroy(): void {
+    // Reset theme color to default blue when leaving list
+    this.updateThemeColorMeta('#1a9edb');
+  }
+
+  // Update theme-color meta tag for PWA status bar
+    this.updateThemeColorMeta(color);
+  }
+
+  // Update theme-color meta tag for PWA status bar
+  private updateThemeColorMeta(color: string): void {
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.content = color;
+    
+    // Also update HTML background for PWA
+    document.documentElement.style.backgroundColor = color;
   }
 
   // Filter methods for shopping mode
