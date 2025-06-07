@@ -103,23 +103,55 @@ export class DataService {
     console.log('🚚 Migrating data to shared user...');
     
     try {
-      // Migrate articles
+      // Step 1: Migrate articles and build ID mapping
       const oldArticlesSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/articles`));
       const sharedArticlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
       
+      const articleIdMapping: { [oldId: string]: string } = {};
+      
       for (const docSnap of oldArticlesSnapshot.docs) {
-        await addDoc(sharedArticlesRef, docSnap.data());
+        const newDocRef = await addDoc(sharedArticlesRef, docSnap.data());
+        articleIdMapping[docSnap.id] = newDocRef.id;
+        console.log(`📦 Article migrated: ${docSnap.id} -> ${newDocRef.id}`);
       }
       
-      // Migrate lists
+      // Step 2: Migrate lists and update article references
       const oldListsSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/lists`));
       const sharedListsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
       
       for (const docSnap of oldListsSnapshot.docs) {
-        await addDoc(sharedListsRef, docSnap.data());
+        const listData = docSnap.data();
+        
+        // Update articleIds to reference new shared article IDs
+        const updatedArticleIds = (listData['articleIds'] || []).map((oldId: string) => 
+          articleIdMapping[oldId] || oldId
+        );
+        
+        // Update itemStates to use new article IDs
+        const oldItemStates = listData['itemStates'] || {};
+        const updatedItemStates: any = {};
+        
+        for (const [oldArticleId, state] of Object.entries(oldItemStates)) {
+          const newArticleId = articleIdMapping[oldArticleId] || oldArticleId;
+          updatedItemStates[newArticleId] = {
+            ...state as any,
+            articleId: newArticleId
+          };
+        }
+        
+        // Create updated list data
+        const updatedListData = {
+          ...listData,
+          articleIds: updatedArticleIds,
+          itemStates: updatedItemStates
+        };
+        
+        await addDoc(sharedListsRef, updatedListData);
+        console.log(`📋 List migrated: ${docSnap.id} with ${updatedArticleIds.length} articles`);
       }
       
       console.log('✅ Data migration completed successfully');
+      console.log(`📊 Migrated ${Object.keys(articleIdMapping).length} articles and ${oldListsSnapshot.size} lists`);
       
       // Note: We're not deleting old data in case user wants to rollback
       // You could add cleanup logic here if needed
@@ -528,6 +560,92 @@ export class DataService {
       console.log(`📊 Current shared data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
     } catch (error) {
       console.error('Error refreshing data:', error);
+    }
+  }
+
+  /**
+   * Fix broken article references in lists (run once after migration)
+   */
+  async repairListReferences(): Promise<void> {
+    console.log('🔧 Repairing list-article references...');
+    
+    try {
+      // Get all current articles and lists
+      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      
+      // Build article name-to-ID mapping
+      const articlesByName: { [name: string]: string } = {};
+      articlesSnapshot.forEach(doc => {
+        const data = doc.data();
+        articlesByName[data['name']] = doc.id;
+      });
+      
+      console.log(`📦 Found ${articlesSnapshot.size} articles:`, Object.keys(articlesByName));
+      
+      // Fix each list
+      for (const listDoc of listsSnapshot.docs) {
+        const listData = listDoc.data();
+        const currentArticleIds = listData['articleIds'] || [];
+        const currentItemStates = listData['itemStates'] || {};
+        
+        console.log(`📋 Checking list "${listData['name']}" with ${currentArticleIds.length} article refs`);
+        
+        // Find valid and invalid article references
+        const validIds: string[] = [];
+        const invalidIds: string[] = [];
+        
+        currentArticleIds.forEach((id: string) => {
+          const articleExists = articlesSnapshot.docs.some(doc => doc.id === id);
+          if (articleExists) {
+            validIds.push(id);
+          } else {
+            invalidIds.push(id);
+          }
+        });
+        
+        if (invalidIds.length === 0) {
+          console.log(`✅ List "${listData['name']}" has valid references`);
+          continue;
+        }
+        
+        console.log(`🔧 Fixing ${invalidIds.length} broken references in "${listData['name']}"`);
+        
+        // Try to match broken references by finding articles with same names in itemStates
+        const fixedArticleIds = [...validIds];
+        const fixedItemStates: any = {};
+        
+        // Copy valid itemStates
+        validIds.forEach(id => {
+          if (currentItemStates[id]) {
+            fixedItemStates[id] = currentItemStates[id];
+          }
+        });
+        
+        // Try to recover broken references by name matching
+        for (const [stateKey, stateValue] of Object.entries(currentItemStates)) {
+          if (invalidIds.includes(stateKey)) {
+            // This is a broken reference, try to find article by name
+            // Look for article data in old collections to get the name
+            // For now, we'll skip broken references
+            console.log(`⚠️ Skipping broken reference: ${stateKey}`);
+          }
+        }
+        
+        // Update the list with fixed references
+        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+          articleIds: fixedArticleIds,
+          itemStates: fixedItemStates,
+          updatedAt: Timestamp.now()
+        });
+        
+        console.log(`✅ Fixed list "${listData['name']}": ${currentArticleIds.length} -> ${fixedArticleIds.length} articles`);
+      }
+      
+      console.log('🎉 List repair completed!');
+      
+    } catch (error) {
+      console.error('❌ Error repairing list references:', error);
     }
   }
 

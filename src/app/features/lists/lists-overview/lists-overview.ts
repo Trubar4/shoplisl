@@ -56,4 +56,5 @@ export class ListsOverviewComponent implements OnInit {
     if (list.color === '#2196f3') return 'blue';
     return 'default';
   }
+  
 }
