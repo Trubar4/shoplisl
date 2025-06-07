@@ -195,11 +195,20 @@ export class ListDetailComponent implements OnInit {
       this.currentMode = 'edit';
     }
     
-    // Simple subscription to check if list exists
+    // Simple subscription to check if list exists and set CSS custom properties
     this.list$.subscribe({
       next: (list) => {
         console.log('🔴 List received:', list?.name || 'No list');
         this.currentList = list || null;
+        
+        // Set CSS custom properties for dynamic theming
+        if (list && list.color) {
+          this.updateThemeColors(list.color);
+        } else {
+          // Use default blue if no color is set
+          this.updateThemeColors('#1a9edb');
+        }
+        
         if (!list && !this.isLoading) {
           console.log('🔴 No list found, navigating back');
           this.router.navigate(['/lists']);
@@ -215,6 +224,15 @@ export class ListDetailComponent implements OnInit {
     });
     
     console.log('🔴 ngOnInit finished');
+  }
+
+  // Update CSS custom properties for dynamic theming
+  private updateThemeColors(color: string): void {
+    const root = document.documentElement;
+    root.style.setProperty('--list-primary-color', color);
+    root.style.setProperty('--list-contrast-color', this.getContrastColor(color));
+    root.style.setProperty('--list-light-color', this.getLightColor(color));
+    root.style.setProperty('--list-dark-color', this.getDarkColor(color));
   }
 
   // Filter methods for shopping mode
@@ -247,7 +265,7 @@ export class ListDetailComponent implements OnInit {
     }, 100);
   }
 
-    // All required methods
+  // All required methods
   onBack(): void {
     this.router.navigate(['/lists']);
   }
@@ -263,15 +281,48 @@ export class ListDetailComponent implements OnInit {
   }
 
   getCurrentListColor(): string {
-    return '#1976d2'; // Changed from red to blue to match app theme
+    return this.currentList?.color || '#1a9edb'; // Use list color or default blue
   }
 
   getContrastColor(hexColor: string): string {
-    return '#ffffff';
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return white for dark colors, dark for light colors
+    return luminance > 0.5 ? '#333333' : '#ffffff';
   }
 
   getLightColor(hexColor: string): string {
-    return '#ffcdd2';
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Create a lighter version by blending with white
+    const lightR = Math.round(r + (255 - r) * 0.7);
+    const lightG = Math.round(g + (255 - g) * 0.7);
+    const lightB = Math.round(b + (255 - b) * 0.7);
+    
+    return `rgb(${lightR}, ${lightG}, ${lightB})`;
+  }
+
+  getDarkColor(hexColor: string): string {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Create a darker version
+    const darkR = Math.round(r * 0.8);
+    const darkG = Math.round(g * 0.8);
+    const darkB = Math.round(b * 0.8);
+    
+    return `rgb(${darkR}, ${darkG}, ${darkB})`;
   }
 
   onArticleToggle(article: any): void {

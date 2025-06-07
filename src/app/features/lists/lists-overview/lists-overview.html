@@ -1,52 +1,53 @@
 <div class="lists-overview">
-    <!-- Header -->
-    <mat-toolbar color="primary" class="app-header">
-      <span>Listen</span>
-      <span class="spacer"></span>
-      <button mat-icon-button (click)="onAddList()" aria-label="Add list">
-        <mat-icon>add</mat-icon>
-      </button>
-    </mat-toolbar>
-  
-    <!-- Lists -->
-    <div class="lists-container">
-      <div class="lists-list">
-        <div 
-          *ngFor="let list of lists$ | async" 
-          (click)="onListClick(list)"
-          class="list-item"
-          [ngClass]="'color-' + getListColorClass(list)">
-          
-          <!-- List Icon -->
-          <div class="list-icon">
-            {{ list.icon || '📋' }}
-          </div>
-          
-          <!-- List Content -->
-          <div class="list-content">
-            <div class="list-name">{{ list.name }}</div>
-            <div class="list-info" *ngIf="list.articleIds.length > 0">
-              {{ list.articleIds.length }} Artikel{{ list.articleIds.length !== 1 ? '' : '' }}
-            </div>
-          </div>
-          
-          <!-- Item count badge -->
-          <div class="item-count" 
-               *ngIf="getItemCountText(list)"
-               [ngClass]="'count-' + getListColorClass(list)">
-            {{ getItemCountText(list) }}
-          </div>
-          
-          <!-- Navigation arrow -->
-          <mat-icon class="nav-arrow">chevron_right</mat-icon>
+  <!-- Header -->
+  <mat-toolbar color="primary" class="app-header">
+    <span>Listen</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="onAddList()" aria-label="Add list">
+      <mat-icon>add</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <!-- Lists -->
+  <div class="lists-container">
+    <div class="lists-list">
+      <div 
+        *ngFor="let list of lists$ | async" 
+        (click)="onListClick(list)"
+        class="list-item"
+        [ngClass]="'color-' + getListColorClass(list)"
+        [style.border-left]="'4px solid ' + (list.color || '#757575')">
+        
+        <!-- List Icon -->
+        <div class="list-icon">
+          {{ list.icon || '📋' }}
         </div>
-      </div>
-  
-      <!-- Empty state -->
-      <div class="empty-state" *ngIf="(lists$ | async)?.length === 0">
-        <mat-icon class="empty-icon">list</mat-icon>
-        <h3>Keine Listen vorhanden</h3>
-        <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
+        
+        <!-- List Content -->
+        <div class="list-content">
+          <div class="list-name">{{ list.name }}</div>
+          <div class="list-info" *ngIf="list.articleIds.length > 0">
+            {{ list.articleIds.length }} Artikel{{ list.articleIds.length !== 1 ? '' : '' }}
+          </div>
+        </div>
+        
+        <!-- Item count badge -->
+        <div class="item-count" 
+             *ngIf="getItemCountText(list)"
+             [style.background-color]="list.color || '#757575'">
+          {{ getItemCountText(list) }}
+        </div>
+        
+        <!-- Navigation arrow -->
+        <mat-icon class="nav-arrow">chevron_right</mat-icon>
       </div>
     </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="(lists$ | async)?.length === 0">
+      <mat-icon class="empty-icon">list</mat-icon>
+      <h3>Keine Listen vorhanden</h3>
+      <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
+    </div>
   </div>
+</div>

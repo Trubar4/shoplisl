@@ -56,5 +56,18 @@ export class ListsOverviewComponent implements OnInit {
     if (list.color === '#2196f3') return 'blue';
     return 'default';
   }
-  
+
+  getLightColor(hexColor: string): string {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    
+    // Create a lighter version by blending with white (similar to list-detail)
+    const lightR = Math.round(r + (255 - r) * 0.85);
+    const lightG = Math.round(g + (255 - g) * 0.85);
+    const lightB = Math.round(b + (255 - b) * 0.85);
+    
+    return `rgb(${lightR}, ${lightG}, ${lightB})`;
+  }
 }
