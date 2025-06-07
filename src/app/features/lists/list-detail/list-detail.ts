@@ -226,6 +226,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     console.log('🔴 ngOnInit finished');
   }
 
+  ngOnDestroy(): void {
+    // Reset theme color to default blue when leaving list
+    this.updateThemeColorMeta('#1a9edb');
+  }
+
   // Update CSS custom properties for dynamic theming
   private updateThemeColors(color: string): void {
     const root = document.documentElement;
@@ -233,12 +238,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     root.style.setProperty('--list-contrast-color', this.getContrastColor(color));
     root.style.setProperty('--list-light-color', this.getLightColor(color));
     root.style.setProperty('--list-dark-color', this.getDarkColor(color));
-    
-    ngOnDestroy(): void {
-    // Reset theme color to default blue when leaving list
-    this.updateThemeColorMeta('#1a9edb');
-  }
-
+      
   // Update theme-color meta tag for PWA status bar
     this.updateThemeColorMeta(color);
   }
