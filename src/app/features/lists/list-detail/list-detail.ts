@@ -238,7 +238,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     root.style.setProperty('--list-contrast-color', this.getContrastColor(color));
     root.style.setProperty('--list-light-color', this.getLightColor(color));
     root.style.setProperty('--list-dark-color', this.getDarkColor(color));
-      
+    
   // Update theme-color meta tag for PWA status bar
     this.updateThemeColorMeta(color);
   }

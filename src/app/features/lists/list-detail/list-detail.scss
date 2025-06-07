@@ -274,12 +274,12 @@
 
   .fab-container {
     position: fixed;
-    bottom: 85px; /* Adjusted for shorter bottom tabs (61px + 24px) */
+    bottom: 93px; /* Increased clearance: 61px tab height + 32px space */
     right: 24px;
     z-index: 1000;
     
-    @supports (bottom: calc(85px + env(safe-area-inset-bottom))) {
-      bottom: calc(85px + env(safe-area-inset-bottom));
+    @supports (bottom: calc(93px + env(safe-area-inset-bottom))) {
+      bottom: calc(93px + env(safe-area-inset-bottom));
     }
     
     .fab-backdrop {
@@ -408,10 +408,10 @@
     .shopping-mode .article-content .article-header, .edit-mode .article-content .article-header { flex-wrap: wrap; gap: 8px; }
 
     .fab-container {
-      bottom: 82px; /* Adjusted for mobile tab height (58px + 24px) */
+      bottom: 90px; /* Increased clearance: 58px mobile tab height + 32px space */
       right: 16px;
       
-      @supports (bottom: calc(82px + env(safe-area-inset-bottom))) { bottom: calc(82px + env(safe-area-inset-bottom)); }
+      @supports (bottom: calc(90px + env(safe-area-inset-bottom))) { bottom: calc(90px + env(safe-area-inset-bottom)); }
       
       .fab-menu {
         bottom: 70px;
