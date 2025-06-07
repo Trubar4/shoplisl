@@ -13,6 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ShoppingList, Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
@@ -45,7 +46,8 @@ interface ArticleWithToggleAndAmount extends Article {
     MatFormFieldModule,
     MatInputModule,
     MatSnackBarModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatTooltipModule
   ],
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
@@ -62,6 +64,9 @@ export class ListDetailComponent implements OnInit {
   currentEditFilter: EditFilter = 'alle';
   private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('alle');
   private editFilter$ = new BehaviorSubject<EditFilter>('alle');
+  
+  // FAB state
+  isFabExpanded = false;
   
   // Simple data properties
   listArticles$!: Observable<ArticleWithState[]>;
@@ -216,12 +221,23 @@ export class ListDetailComponent implements OnInit {
   setShoppingFilter(filter: ShoppingFilter): void {
     this.currentShoppingFilter = filter;
     this.shoppingFilter$.next(filter);
+    this.isFabExpanded = false; // Close FAB after selection
   }
 
   // Filter methods for edit mode
   setEditFilter(filter: EditFilter): void {
     this.currentEditFilter = filter;
     this.editFilter$.next(filter);
+    this.isFabExpanded = false; // Close FAB after selection
+  }
+
+  // FAB methods
+  toggleFab(): void {
+    this.isFabExpanded = !this.isFabExpanded;
+  }
+
+  closeFab(): void {
+    this.isFabExpanded = false;
   }
 
   // Force Angular change detection after Firebase updates
@@ -247,7 +263,7 @@ export class ListDetailComponent implements OnInit {
   }
 
   getCurrentListColor(): string {
-    return '#f44336';
+    return '#1976d2'; // Changed from red to blue to match app theme
   }
 
   getContrastColor(hexColor: string): string {

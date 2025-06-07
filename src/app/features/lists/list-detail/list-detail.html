@@ -36,7 +36,6 @@
 
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
-    
     <!-- Shopping List -->
     <div class="content-container">
       <div class="articles-list" *ngIf="(listArticles$ | async)?.length; else emptyShoppingState">
@@ -95,33 +94,6 @@
           <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
         </div>
       </ng-template>
-    </div>
-
-    <!-- Shopping Filter Buttons -->
-    <div class="filter-container">
-      <div class="filter-buttons">
-        <button 
-          mat-button 
-          [class.active]="currentShoppingFilter === 'alle'"
-          (click)="setShoppingFilter('alle')"
-          class="filter-button">
-          Alle
-        </button>
-        <button 
-          mat-button 
-          [class.active]="currentShoppingFilter === 'offen'"
-          (click)="setShoppingFilter('offen')"
-          class="filter-button">
-          Offen
-        </button>
-        <button 
-          mat-button 
-          [class.active]="currentShoppingFilter === 'erledigt'"
-          (click)="setShoppingFilter('erledigt')"
-          class="filter-button">
-          Erledigt
-        </button>
-      </div>
     </div>
   </div>
 
@@ -222,33 +194,6 @@
       </div>
     </div>
 
-    <!-- Edit Filter Buttons -->
-    <div class="filter-container">
-      <div class="filter-buttons">
-        <button 
-          mat-button 
-          [class.active]="currentEditFilter === 'alle'"
-          (click)="setEditFilter('alle')"
-          class="filter-button">
-          Alle
-        </button>
-        <button 
-          mat-button 
-          [class.active]="currentEditFilter === 'gelistet'"
-          (click)="setEditFilter('gelistet')"
-          class="filter-button">
-          Gelistet
-        </button>
-        <button 
-          mat-button 
-          [class.active]="currentEditFilter === 'fehlend'"
-          (click)="setEditFilter('fehlend')"
-          class="filter-button">
-          Fehlend
-        </button>
-      </div>
-    </div>
-
     <!-- Edit Mode Actions -->
     <div class="edit-actions">
       <button 
@@ -274,5 +219,94 @@
         Löschen
       </button>
     </div>
+  </div>
+
+  <!-- FAB Filter Menu -->
+  <div class="fab-container" *ngIf="!isLoading">
+    <!-- Backdrop to close FAB when clicking outside -->
+    <div 
+      class="fab-backdrop" 
+      *ngIf="isFabExpanded"
+      (click)="closeFab()">
+    </div>
+
+    <!-- Expandable Filter Options -->
+    <div class="fab-menu" [class.expanded]="isFabExpanded">
+      <!-- Shopping Mode Filters -->
+      <div *ngIf="currentMode === 'shopping'" class="fab-options">
+        <button 
+          mat-mini-fab 
+          [class.active]="currentShoppingFilter === 'erledigt'"
+          (click)="setShoppingFilter('erledigt')"
+          class="fab-option"
+          matTooltip="Erledigt">
+          <mat-icon>check_circle</mat-icon>
+          <span class="fab-label">Erledigt</span>
+        </button>
+        
+        <button 
+          mat-mini-fab 
+          [class.active]="currentShoppingFilter === 'offen'"
+          (click)="setShoppingFilter('offen')"
+          class="fab-option"
+          matTooltip="Offen">
+          <mat-icon>radio_button_unchecked</mat-icon>
+          <span class="fab-label">Offen</span>
+        </button>
+        
+        <button 
+          mat-mini-fab 
+          [class.active]="currentShoppingFilter === 'alle'"
+          (click)="setShoppingFilter('alle')"
+          class="fab-option"
+          matTooltip="Alle">
+          <mat-icon>list</mat-icon>
+          <span class="fab-label">Alle</span>
+        </button>
+      </div>
+
+      <!-- Edit Mode Filters -->
+      <div *ngIf="currentMode === 'edit'" class="fab-options">
+        <button 
+          mat-mini-fab 
+          [class.active]="currentEditFilter === 'fehlend'"
+          (click)="setEditFilter('fehlend')"
+          class="fab-option"
+          matTooltip="Fehlend">
+          <mat-icon>remove_circle_outline</mat-icon>
+          <span class="fab-label">Fehlend</span>
+        </button>
+        
+        <button 
+          mat-mini-fab 
+          [class.active]="currentEditFilter === 'gelistet'"
+          (click)="setEditFilter('gelistet')"
+          class="fab-option"
+          matTooltip="Gelistet">
+          <mat-icon>add_circle</mat-icon>
+          <span class="fab-label">Gelistet</span>
+        </button>
+        
+        <button 
+          mat-mini-fab 
+          [class.active]="currentEditFilter === 'alle'"
+          (click)="setEditFilter('alle')"
+          class="fab-option"
+          matTooltip="Alle">
+          <mat-icon>apps</mat-icon>
+          <span class="fab-label">Alle</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main FAB Button -->
+    <button 
+      mat-fab 
+      (click)="toggleFab()"
+      class="main-fab"
+      [class.expanded]="isFabExpanded"
+      matTooltip="Filter">
+      <mat-icon [class.rotated]="isFabExpanded">tune</mat-icon>
+    </button>
   </div>
 </div>

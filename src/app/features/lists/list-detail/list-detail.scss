@@ -473,53 +473,153 @@ background-color: #f5f5f5;
 }
 }
 
-  // === FILTER BUTTONS STYLING ===
-  .filter-container {
-    background: white;
-    padding: 12px 16px;
-    border-top: 1px solid #e0e0e0;
+  // === FAB FILTER MENU STYLING ===
+  .fab-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
     
-    .filter-buttons {
+    .fab-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: -1;
+      opacity: 0;
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+    
+    .fab-menu {
+      position: absolute;
+      bottom: 80px;
+      right: 0;
       display: flex;
-      gap: 2px;
-      background: linear-gradient(135deg, #64b5f6 0%, #1976d2 100%);
-      border-radius: 25px;
-      padding: 3px;
+      flex-direction: column;
+      gap: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       
-      .filter-button {
-        flex: 1;
-        height: 44px;
-        border-radius: 22px;
-        font-weight: 500;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        color: rgba(255, 255, 255, 0.9);
-        background: transparent;
-        border: none;
+      &.expanded {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
         
-        &:hover:not(.active) {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
+        .fab-option {
+          animation: slideUpFab 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+          
+          &:nth-child(1) { animation-delay: 0.1s; }
+          &:nth-child(2) { animation-delay: 0.15s; }
+          &:nth-child(3) { animation-delay: 0.2s; }
+        }
+      }
+      
+      .fab-options {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-end;
+      }
+      
+      .fab-option {
+        position: relative;
+        background: linear-gradient(135deg, #64b5f6 0%, #1976d2 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        opacity: 0;
+        transform: translateY(10px) scale(0.8);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+        min-width: 120px;
+        height: 48px;
+        border-radius: 24px;
+        
+        &:hover {
+          background: linear-gradient(135deg, #42a5f5 0%, #1565c0 100%);
+          box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+          transform: translateY(-2px);
         }
         
         &.active {
-          background: white;
-          color: #1976d2 !important;
-          font-weight: 600;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+          box-shadow: 0 6px 20px rgba(13, 71, 161, 0.5);
+          
+          .mat-icon {
+            color: #fff;
+          }
         }
         
-        // Remove default Material button styling
-        .mat-button-wrapper {
-          padding: 0;
-          line-height: 1;
+        .mat-icon {
+          margin-left: 12px;
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
         }
         
-        &.mat-button {
-          min-width: 0;
-          padding: 0 16px;
+        .fab-label {
+          font-size: 14px;
+          font-weight: 500;
+          margin-right: 16px;
+          white-space: nowrap;
         }
       }
+    }
+    
+    .main-fab {
+      background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      
+      &:hover {
+        background: linear-gradient(135deg, #1565c0 0%, #0a3a8a 100%);
+        box-shadow: 0 8px 24px rgba(25, 118, 210, 0.5);
+        transform: translateY(-2px);
+      }
+      
+      &.expanded {
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4);
+        transform: rotate(180deg);
+        
+        &:hover {
+          background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+        }
+      }
+      
+      .mat-icon {
+        transition: transform 0.3s ease;
+        font-size: 24px;
+        
+        &.rotated {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUpFab {
+    from { 
+      opacity: 0;
+      transform: translateY(10px) scale(0.8);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 
@@ -589,14 +689,36 @@ background-color: #f5f5f5;
       }
     }
 
-    .filter-container {
-      padding: 8px 12px;
+    .fab-container {
+      bottom: 16px;
+      right: 16px;
       
-      .filter-buttons {
-        .filter-button {
-          font-size: 12px;
-          height: 40px;
-          border-radius: 20px;
+      .fab-menu {
+        bottom: 70px;
+        
+        .fab-option {
+          min-width: 100px;
+          height: 44px;
+          border-radius: 22px;
+          
+          .mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+          
+          .fab-label {
+            font-size: 12px;
+          }
+        }
+      }
+      
+      .main-fab {
+        width: 48px;
+        height: 48px;
+        
+        .mat-icon {
+          font-size: 20px;
         }
       }
     }
@@ -632,9 +754,13 @@ background-color: #f5f5f5;
     border: 1px solid #1a9edb;
   }
 
-  .filter-buttons {
-    .filter-button.active {
-      border: 2px solid #1976d2;
+  .fab-container {
+    .fab-option.active {
+      border: 2px solid #fff;
+    }
+    
+    .main-fab {
+      border: 2px solid #fff;
     }
   }
 }
