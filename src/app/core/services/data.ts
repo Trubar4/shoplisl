@@ -27,7 +27,8 @@ import { environment } from '../../../environments/environment';
 })
 export class DataService {
   private firestore: any;
-  private userId!: string; // Add definite assignment assertion
+  // Fixed shared user ID - all devices use the same one
+  private readonly SHARED_USER_ID = 'shared-shoplisl-user';
   
   // Reactive subjects for real-time updates
   private articlesSubject = new BehaviorSubject<Article[]>([]);
@@ -38,7 +39,7 @@ export class DataService {
   private listsUnsubscribe?: () => void;
 
   constructor() {
-    console.log('🔥 Initializing Firebase directly...');
+    console.log('🔥 Initializing Firebase with shared sync...');
     
     // Initialize Firebase directly (bypasses AngularFire issues in StackBlitz)
     try {
@@ -50,27 +51,82 @@ export class DataService {
       return;
     }
     
-    // Generate or retrieve anonymous user ID
-    this.userId = this.getOrCreateUserId();
-    console.log('👤 Anonymous User ID:', this.userId);
+    console.log('👥 Using shared user ID:', this.SHARED_USER_ID);
     
-    // Set up real-time listeners
+    // Set up real-time listeners for shared data
     this.setupRealtimeListeners();
     
-    // Initialize with default data if user is new
-    this.initializeDefaultData();
+    // Check if we need to migrate from device-specific data
+    this.handleDataMigration();
   }
 
-  private getOrCreateUserId(): string {
-    const stored = localStorage.getItem('shoplisl-user-id');
-    if (stored) {
-      return stored;
-    }
+  private async handleDataMigration(): Promise<void> {
+    const oldUserId = localStorage.getItem('shoplisl-user-id');
     
-    // Generate new anonymous user ID
-    const newId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('shoplisl-user-id', newId);
-    return newId;
+    // If there's an old device-specific user ID, offer to migrate data
+    if (oldUserId && oldUserId !== this.SHARED_USER_ID) {
+      console.log('🔄 Found device-specific data, checking for migration...');
+      
+      try {
+        // Check if old user has any data
+        const oldArticlesSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/articles`));
+        const oldListsSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/lists`));
+        
+        if (oldArticlesSnapshot.size > 0 || oldListsSnapshot.size > 0) {
+          console.log(`📦 Found ${oldArticlesSnapshot.size} articles and ${oldListsSnapshot.size} lists to migrate`);
+          
+          // Check if shared user already has data
+          const sharedArticlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+          const sharedListsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+          
+          if (sharedArticlesSnapshot.size === 0 && sharedListsSnapshot.size === 0) {
+            // Migrate data from old user to shared user
+            await this.migrateUserData(oldUserId);
+          } else {
+            console.log('⚠️ Shared user already has data, skipping migration');
+          }
+        }
+        
+        // Update localStorage to use shared user ID
+        localStorage.setItem('shoplisl-user-id', this.SHARED_USER_ID);
+        
+      } catch (error) {
+        console.error('Error during migration check:', error);
+      }
+    } else {
+      // Set shared user ID in localStorage
+      localStorage.setItem('shoplisl-user-id', this.SHARED_USER_ID);
+    }
+  }
+
+  private async migrateUserData(oldUserId: string): Promise<void> {
+    console.log('🚚 Migrating data to shared user...');
+    
+    try {
+      // Migrate articles
+      const oldArticlesSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/articles`));
+      const sharedArticlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
+      
+      for (const docSnap of oldArticlesSnapshot.docs) {
+        await addDoc(sharedArticlesRef, docSnap.data());
+      }
+      
+      // Migrate lists
+      const oldListsSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/lists`));
+      const sharedListsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
+      
+      for (const docSnap of oldListsSnapshot.docs) {
+        await addDoc(sharedListsRef, docSnap.data());
+      }
+      
+      console.log('✅ Data migration completed successfully');
+      
+      // Note: We're not deleting old data in case user wants to rollback
+      // You could add cleanup logic here if needed
+      
+    } catch (error) {
+      console.error('❌ Error during data migration:', error);
+    }
   }
 
   private setupRealtimeListeners(): void {
@@ -80,13 +136,13 @@ export class DataService {
     }
 
     try {
-      // Articles real-time listener
-      const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
+      // Articles real-time listener - now using shared user
+      const articlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
       const articlesQuery = query(articlesRef, orderBy('name'));
       
       this.articlesUnsubscribe = onSnapshot(articlesQuery, 
         (snapshot) => {
-          console.log('📱 Articles updated:', snapshot.size);
+          console.log('📱 Shared articles updated:', snapshot.size);
           const articles: Article[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -110,13 +166,13 @@ export class DataService {
         }
       );
 
-      // Lists real-time listener  
-      const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
+      // Lists real-time listener - now using shared user
+      const listsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
       const listsQuery = query(listsRef, orderBy('name'));
       
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
-          console.log('📋 Lists updated:', snapshot.size);
+          console.log('📋 Shared lists updated:', snapshot.size);
           const lists: ShoppingList[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -143,90 +199,14 @@ export class DataService {
     }
   }
 
-  private async initializeDefaultData(): Promise<void> {
-    // For a true fresh start, don't create any default data
-    // Users will create their own articles and lists
-    console.log('🆕 Fresh start - no default data created');
-  }
-
-  private async createDefaultArticles(): Promise<void> {
-    const defaultArticles = [
-      {
-        name: 'Erdbeeren',
-        amount: '', // Add empty string instead of undefined
-        icon: '🍓',
-        categoryId: '1',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      },
-      {
-        name: 'Kiwi Beeren',
-        amount: '', // Add empty string instead of undefined
-        icon: '🥝',
-        categoryId: '1',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      },
-      {
-        name: 'Chorizo',
-        amount: '3 Stück', // Add some example amount
-        icon: '🌭', 
-        categoryId: '2',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      }
-    ];
-
-    const articlesRef = collection(this.firestore, `users/${this.userId}/articles`);
-    for (const article of defaultArticles) {
-      await addDoc(articlesRef, article);
-    }
-  }
-
-  private async createDefaultLists(): Promise<void> {
-    // First create articles and get their IDs
-    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.userId}/articles`));
-    const articleIds: string[] = [];
-    articlesSnapshot.forEach(doc => articleIds.push(doc.id));
-
-    const defaultLists = [
-      {
-        name: 'Apotheke',
-        color: '#9c27b0',
-        icon: '💊',
-        articleIds: [],
-        itemStates: {},
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      },
-      {
-        name: 'Lebensmittel',
-        color: '#f44336', 
-        icon: '🛒',
-        articleIds: articleIds,
-        itemStates: articleIds.reduce((acc, id) => {
-          acc[id] = { articleId: id, isChecked: false };
-          return acc;
-        }, {} as any),
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      }
-    ];
-
-    const listsRef = collection(this.firestore, `users/${this.userId}/lists`);
-    for (const list of defaultLists) {
-      await addDoc(listsRef, list);
-    }
-  }
-
-  // === PUBLIC METHODS (Same interface as before) ===
+  // === PUBLIC METHODS (Same interface as before but using shared user) ===
   
   getArticles(): Observable<Article[]> {
     return this.articlesSubject.asObservable();
   }
 
   getArticle(id: string): Observable<Article | undefined> {
-    return from(getDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`))).pipe(
+    return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
       map(docSnap => {
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -255,9 +235,9 @@ export class DataService {
   createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
     const articleData = {
       name: article.name,
-      amount: article.amount || '', // Ensure never undefined
-      notes: article.notes || '', // Ensure never undefined
-      icon: article.icon || '📦', // Ensure never undefined
+      amount: article.amount || '',
+      notes: article.notes || '',
+      icon: article.icon || '📦',
       categoryId: article.categoryId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
@@ -265,7 +245,7 @@ export class DataService {
       updatedAt: Timestamp.now()
     };
 
-    return from(addDoc(collection(this.firestore, `users/${this.userId}/articles`), articleData)).pipe(
+    return from(addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`), articleData)).pipe(
       map(docRef => ({
         id: docRef.id,
         ...article,
@@ -283,7 +263,6 @@ export class DataService {
   }
 
   updateArticle(id: string, updates: Partial<Article>): Observable<Article | undefined> {
-    // Clean up undefined values before saving to Firestore
     const updateData: any = {
       updatedAt: Timestamp.now()
     };
@@ -296,9 +275,8 @@ export class DataService {
     if (updates.availableInShops !== undefined) updateData.availableInShops = updates.availableInShops || [];
     if (updates.usageCount !== undefined) updateData.usageCount = updates.usageCount || 0;
 
-    return from(updateDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`), updateData)).pipe(
+    return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`), updateData)).pipe(
       map(() => {
-        // Return updated article - real-time listener will update the subject
         const currentArticles = this.articlesSubject.value;
         const article = currentArticles.find(a => a.id === id);
         return article ? { ...article, ...updates, updatedAt: new Date() } : undefined;
@@ -311,7 +289,7 @@ export class DataService {
   }
 
   deleteArticle(id: string): Observable<boolean> {
-    return from(deleteDoc(doc(this.firestore, `users/${this.userId}/articles/${id}`))).pipe(
+    return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
       map(() => true),
       catchError(error => {
         console.error('Error deleting article:', error);
@@ -327,7 +305,7 @@ export class DataService {
   }
 
   getList(id: string): Observable<ShoppingList | undefined> {
-    return from(getDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`))).pipe(
+    return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
       map(docSnap => {
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -359,7 +337,7 @@ export class DataService {
       updatedAt: Timestamp.now()
     };
 
-    return from(addDoc(collection(this.firestore, `users/${this.userId}/lists`), listData)).pipe(
+    return from(addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData)).pipe(
       map(docRef => ({
         id: docRef.id,
         ...list,
@@ -379,9 +357,8 @@ export class DataService {
       updatedAt: Timestamp.now()
     };
 
-    return from(updateDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`), updateData)).pipe(
+    return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData)).pipe(
       map(() => {
-        // Return updated list - real-time listener will update the subject
         const currentLists = this.listsSubject.value;
         const list = currentLists.find(l => l.id === id);
         return list ? { ...list, ...updates, updatedAt: new Date() } : undefined;
@@ -394,7 +371,7 @@ export class DataService {
   }
 
   deleteList(id: string): Observable<boolean> {
-    return from(deleteDoc(doc(this.firestore, `users/${this.userId}/lists/${id}`))).pipe(
+    return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
       map(() => true),
       catchError(error => {
         console.error('Error deleting list:', error);
@@ -421,8 +398,7 @@ export class DataService {
           }
         };
 
-        // Update in Firebase
-        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
           itemStates: newItemStates,
           updatedAt: Timestamp.now()
         });
@@ -450,8 +426,7 @@ export class DataService {
           [articleId]: { articleId, isChecked: false }
         };
 
-        // Update in Firebase
-        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
           articleIds: newArticleIds,
           itemStates: newItemStates,
           updatedAt: Timestamp.now()
@@ -475,8 +450,7 @@ export class DataService {
         const newItemStates = { ...list.itemStates };
         delete newItemStates[articleId];
 
-        // Update in Firebase
-        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
           articleIds: newArticleIds,
           itemStates: newItemStates,
           updatedAt: Timestamp.now()
@@ -505,8 +479,7 @@ export class DataService {
           }
         };
 
-        // Update in Firebase
-        updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
           itemStates: newItemStates,
           updatedAt: Timestamp.now()
         });
@@ -521,7 +494,7 @@ export class DataService {
   }
 
   clearAllItemsFromList(listId: string): Observable<boolean> {
-    return from(updateDoc(doc(this.firestore, `users/${this.userId}/lists/${listId}`), {
+    return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
       articleIds: [],
       itemStates: {},
       updatedAt: Timestamp.now()
@@ -532,6 +505,30 @@ export class DataService {
         return of(false);
       })
     );
+  }
+
+  // === UTILITY METHODS ===
+  
+  /**
+   * Get the current shared user ID (useful for debugging)
+   */
+  getSharedUserId(): string {
+    return this.SHARED_USER_ID;
+  }
+
+  /**
+   * Force refresh data from server (useful for manual sync)
+   */
+  async refreshData(): Promise<void> {
+    console.log('🔄 Manually refreshing shared data...');
+    // Real-time listeners will automatically update, but we can force a check
+    try {
+      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      console.log(`📊 Current shared data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
   }
 
   // === CLEANUP ===

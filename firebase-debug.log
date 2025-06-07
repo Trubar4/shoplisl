@@ -1,0 +1,20 @@
+[debug] [2025-06-07T08:18:04.336Z] ----------------------------------------------------------------------
+[debug] [2025-06-07T08:18:04.340Z] Command:       /usr/local/bin/node /home/Trubar4/shoplisl/node_modules/.bin/firebase login
+[debug] [2025-06-07T08:18:04.341Z] CLI Version:   14.5.1
+[debug] [2025-06-07T08:18:04.342Z] Platform:      linux
+[debug] [2025-06-07T08:18:04.342Z] Node Version:  v20.19.1
+[debug] [2025-06-07T08:18:04.343Z] Time:          Sat Jun 07 2025 10:18:04 GMT+0200 (Mitteleuropäische Sommerzeit)
+[debug] [2025-06-07T08:18:04.343Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-06-07T08:18:04.347Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] i  Firebase CLI integrates with Gemini in Firebase API to provide assistant features. Learn more about using Gemini in Firebase and how we train our models: https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions 
+[debug] [2025-06-07T08:18:05.426Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-06-07T08:18:05.427Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2025-06-07T08:18:14.193Z] HookError: [Inquirer] Hook functions can only be called from within a prompt
+    at new HookError (/home/Trubar4/shoplisl/node_modules/@inquirer/core/dist/commonjs/lib/errors.js:22:1)
+    at getStore (/home/Trubar4/shoplisl/node_modules/@inquirer/core/dist/commonjs/lib/hook-engine.js:42:15)
+    at Object.clearAll (/home/Trubar4/shoplisl/node_modules/@inquirer/core/dist/commonjs/lib/hook-engine.js:111:23)
+    at eval (/home/Trubar4/shoplisl/node_modules/@inquirer/core/dist/commonjs/lib/create-prompt.js:139:50)
+    at <anonymous> (https://shoplisl-5k3n.w-credentialless-staticblitz.com/blitz.6ba59070.js:31:29289)
+[error] 
+[error] Error: An unexpected error has occurred.
