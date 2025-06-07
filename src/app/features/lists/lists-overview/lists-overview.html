@@ -16,6 +16,7 @@
         (click)="onListClick(list)"
         class="list-item"
         [ngClass]="'color-' + getListColorClass(list)"
+        [style.background-color]="getLightColor(list.color || '#757575')"
         [style.border-left]="'4px solid ' + (list.color || '#757575')">
         
         <!-- List Icon -->
