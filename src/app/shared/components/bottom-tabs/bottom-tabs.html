@@ -1,10 +1,21 @@
-<mat-tab-group class="bottom-tabs" backgroundColor="primary">
-  <mat-tab *ngFor="let tab of tabs">
-    <ng-template mat-tab-label>
-      <a [routerLink]="tab.route" class="tab-link">
-        <mat-icon>{{ tab.icon }}</mat-icon>
-        <span>{{ tab.label }}</span>
-      </a>
-    </ng-template>
-  </mat-tab>
-</mat-tab-group>
+<nav class="bottom-tabs">
+  <a routerLink="/lists" class="tab-item" [class.active]="isActive('/lists')">
+    <mat-icon class="tab-icon">list</mat-icon>
+    <span class="tab-label">Listen</span>
+  </a>
+  
+  <a routerLink="/articles" class="tab-item" [class.active]="isActive('/articles')">
+    <mat-icon class="tab-icon">shopping_cart</mat-icon>
+    <span class="tab-label">Artikel</span>
+  </a>
+  
+  <a routerLink="/shops" class="tab-item" [class.active]="isActive('/shops')">
+    <mat-icon class="tab-icon">store</mat-icon>
+    <span class="tab-label">Geschäfte</span>
+  </a>
+  
+  <a routerLink="/recipes" class="tab-item" [class.active]="isActive('/recipes')">
+    <mat-icon class="tab-icon">restaurant</mat-icon>
+    <span class="tab-label">Rezepte</span>
+  </a>
+</nav>

@@ -1,11 +1,122 @@
-.app-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
-  .main-content {
-    flex: 1;
-    overflow-y: auto;
-    padding-bottom: 80px; // Space for bottom tabs
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: #f5f5f5;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* PWA Safe Area Support - Status Bar Color Matching */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --list-primary-color: #1a9edb; /* Default blue */
+  --list-contrast-color: white;
+}
+
+/* PWA Status Bar Background - matches list color */
+html {
+  background-color: var(--list-primary-color, #1a9edb);
+  
+  /* Handle different device orientations */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+body {
+  background-color: #f5f5f5;
+  
+  /* Ensure app content starts below status bar */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: 0; /* Reset since html handles it */
+  }
+}
+
+/* App Container */
+app-root {
+  display: block;
+  height: 100vh;
+  position: relative;
+  
+  /* Handle safe areas for PWA */
+  @supports (height: 100vh) and (padding-bottom: env(safe-area-inset-bottom)) {
+    height: calc(100vh - env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Material Design Overrides */
+.mat-toolbar {
+  &.mat-primary {
+    background-color: var(--list-primary-color, #1a9edb) !important;
+    color: var(--list-contrast-color, white) !important;
+  }
+}
+
+/* Ensure status bar area matches in PWA mode */
+@media (display-mode: standalone) {
+  html {
+    background-color: var(--list-primary-color, #1a9edb) !important;
+  }
+  
+  /* iOS PWA specific styling */
+  @supports (-webkit-appearance: none) {
+    html {
+      background-color: var(--list-primary-color, #1a9edb) !important;
+    }
+    
+    body {
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+  }
+}
+
+/* Navigation and Bottom Tabs Spacing */
+.app-content {
+  height: calc(100vh - 56px - 60px); /* Adjusted for taller bottom tabs */
+  
+  @supports (height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))) {
+    height: calc(100vh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .app-content {
+    height: calc(100vh - 56px - 60px);
+    
+    @supports (height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))) {
+      height: calc(100vh - 56px - 68px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .mat-toolbar {
+    border-bottom: 2px solid black;
   }
 }

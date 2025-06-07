@@ -323,9 +323,14 @@
 
   .fab-container {
     position: fixed;
-    bottom: 24px;
+    bottom: 92px; /* Increased from 24px to clear taller bottom tabs (68px + 24px) */
     right: 24px;
     z-index: 1000;
+    
+    /* PWA Safe Area Support */
+    @supports (bottom: calc(92px + env(safe-area-inset-bottom))) {
+      bottom: calc(92px + env(safe-area-inset-bottom));
+    }
     
     .fab-backdrop {
       position: fixed;
@@ -512,8 +517,13 @@
     }
 
     .fab-container {
-      bottom: 16px;
+      bottom: 88px; /* Adjusted for mobile tab height (64px + 24px) */
       right: 16px;
+      
+      /* PWA Safe Area Support */
+      @supports (bottom: calc(88px + env(safe-area-inset-bottom))) {
+        bottom: calc(88px + env(safe-area-inset-bottom));
+      }
       
       .fab-menu {
         bottom: 70px;
