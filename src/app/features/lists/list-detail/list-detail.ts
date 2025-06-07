@@ -18,6 +18,8 @@ import { ShoppingList, Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
 
 type ViewMode = 'shopping' | 'edit';
+type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
+type EditFilter = 'alle' | 'gelistet' | 'fehlend';
 
 interface ArticleWithState extends Article {
   isChecked: boolean;
@@ -55,6 +57,12 @@ export class ListDetailComponent implements OnInit {
   // Simple mode management
   currentMode: ViewMode = 'shopping';
   
+  // Filter states
+  currentShoppingFilter: ShoppingFilter = 'alle';
+  currentEditFilter: EditFilter = 'alle';
+  private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('alle');
+  private editFilter$ = new BehaviorSubject<EditFilter>('alle');
+  
   // Simple data properties
   listArticles$!: Observable<ArticleWithState[]>;
   allArticlesWithState$!: Observable<ArticleWithToggleAndAmount[]>;
@@ -85,15 +93,16 @@ export class ListDetailComponent implements OnInit {
     );
     console.log('🔴 Called dataService.getList successfully');
     
-    // Real article data for shopping mode - with reactive updates
+    // Real article data for shopping mode - with reactive updates and filtering
     this.listArticles$ = combineLatest([
       this.list$,
-      this.dataService.getArticles()
+      this.dataService.getArticles(),
+      this.shoppingFilter$
     ]).pipe(
-      map(([list, articles]) => {
+      map(([list, articles, filter]) => {
         if (!list) return [];
         
-        return articles
+        let filteredArticles = articles
           .filter(article => list.articleIds.includes(article.id))
           .map(article => ({
             ...article,
@@ -101,19 +110,36 @@ export class ListDetailComponent implements OnInit {
             isInList: true
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
+
+        // Apply shopping filter
+        switch (filter) {
+          case 'offen':
+            filteredArticles = filteredArticles.filter(article => !article.isChecked);
+            break;
+          case 'erledigt':
+            filteredArticles = filteredArticles.filter(article => article.isChecked);
+            break;
+          case 'alle':
+          default:
+            // Show all articles
+            break;
+        }
+
+        return filteredArticles;
       })
     );
 
-    // Real edit mode with search and toggle states - with reactive updates
+    // Real edit mode with search, toggle states, and filtering - with reactive updates
     this.allArticlesWithState$ = combineLatest([
       this.list$,
       this.dataService.getArticles(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
-      )
+      ),
+      this.editFilter$
     ]).pipe(
-      map(([list, allArticles, query]) => {
+      map(([list, allArticles, query, filter]) => {
         if (!list) return [];
         
         let filtered = allArticles;
@@ -126,13 +152,29 @@ export class ListDetailComponent implements OnInit {
         }
         
         // Map articles with their toggle state and list-specific amount
-        return filtered
+        let articlesWithState = filtered
           .map(article => ({
             ...article,
             isInList: list.articleIds.includes(article.id),
             listAmount: list.itemStates[article.id]?.amount || article.amount || ''
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
+
+        // Apply edit filter
+        switch (filter) {
+          case 'gelistet':
+            articlesWithState = articlesWithState.filter(article => article.isInList);
+            break;
+          case 'fehlend':
+            articlesWithState = articlesWithState.filter(article => !article.isInList);
+            break;
+          case 'alle':
+          default:
+            // Show all articles
+            break;
+        }
+
+        return articlesWithState;
       })
     );
     
@@ -168,6 +210,18 @@ export class ListDetailComponent implements OnInit {
     });
     
     console.log('🔴 ngOnInit finished');
+  }
+
+  // Filter methods for shopping mode
+  setShoppingFilter(filter: ShoppingFilter): void {
+    this.currentShoppingFilter = filter;
+    this.shoppingFilter$.next(filter);
+  }
+
+  // Filter methods for edit mode
+  setEditFilter(filter: EditFilter): void {
+    this.currentEditFilter = filter;
+    this.editFilter$.next(filter);
   }
 
   // Force Angular change detection after Firebase updates

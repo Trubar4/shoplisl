@@ -38,62 +38,91 @@
   <div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
     
     <!-- Shopping List -->
-    <div class="articles-list" *ngIf="(listArticles$ | async)?.length; else emptyShoppingState">
-      <div 
-        *ngFor="let article of listArticles$ | async" 
-        class="article-item"
-        [class.checked]="article.isChecked">
-        
-        <!-- Article Icon -->
-        <div class="article-icon">
-          {{ article.icon || '📦' }}
-        </div>
-        
-        <!-- Article Content (Clickable for toggle) -->
-        <div class="article-content" (click)="onArticleToggle(article)">
-          <div class="article-header">
-            <span class="article-name" [class.strikethrough]="article.isChecked">
-              {{ article.name }}
-            </span>
-            <span class="article-amount clickable" 
-                  *ngIf="getArticleAmount(article)" 
-                  [class.strikethrough]="article.isChecked"
-                  (click)="onEditAmountInShopping(article, $event)">
-              {{ getArticleAmount(article) }}
-            </span>
-            <!-- Empty Amount Chip -->
-            <span class="article-amount clickable empty" 
-                  *ngIf="!getArticleAmount(article)" 
-                  [class.strikethrough]="article.isChecked"
-                  (click)="onEditAmountInShopping(article, $event)">
-              Menge
-            </span>
+    <div class="content-container">
+      <div class="articles-list" *ngIf="(listArticles$ | async)?.length; else emptyShoppingState">
+        <div 
+          *ngFor="let article of listArticles$ | async" 
+          class="article-item"
+          [class.checked]="article.isChecked">
+          
+          <!-- Article Icon -->
+          <div class="article-icon">
+            {{ article.icon || '📦' }}
           </div>
-          <div class="article-notes" 
-              *ngIf="article.notes" 
-              [class.strikethrough]="article.isChecked">
-            {{ article.notes }}
+          
+          <!-- Article Content (Clickable for toggle) -->
+          <div class="article-content" (click)="onArticleToggle(article)">
+            <div class="article-header">
+              <span class="article-name" [class.strikethrough]="article.isChecked">
+                {{ article.name }}
+              </span>
+              <span class="article-amount clickable" 
+                    *ngIf="getArticleAmount(article)" 
+                    [class.strikethrough]="article.isChecked"
+                    (click)="onEditAmountInShopping(article, $event)">
+                {{ getArticleAmount(article) }}
+              </span>
+              <!-- Empty Amount Chip -->
+              <span class="article-amount clickable empty" 
+                    *ngIf="!getArticleAmount(article)" 
+                    [class.strikethrough]="article.isChecked"
+                    (click)="onEditAmountInShopping(article, $event)">
+                Menge
+              </span>
+            </div>
+            <div class="article-notes" 
+                *ngIf="article.notes" 
+                [class.strikethrough]="article.isChecked">
+              {{ article.notes }}
+            </div>
           </div>
+          
+          <!-- Info Button -->
+          <button 
+            mat-icon-button 
+            (click)="onArticleInfo(article)"
+            class="info-button">
+            <mat-icon>info_outline</mat-icon>
+          </button>
         </div>
-        
-        <!-- Info Button -->
+      </div>
+
+      <!-- Empty Shopping State -->
+      <ng-template #emptyShoppingState>
+        <div class="empty-state">
+          <mat-icon class="empty-icon">shopping_cart</mat-icon>
+          <h3>Liste ist leer</h3>
+          <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Shopping Filter Buttons -->
+    <div class="filter-container">
+      <div class="filter-buttons">
         <button 
-          mat-icon-button 
-          (click)="onArticleInfo(article)"
-          class="info-button">
-          <mat-icon>info_outline</mat-icon>
+          mat-button 
+          [class.active]="currentShoppingFilter === 'alle'"
+          (click)="setShoppingFilter('alle')"
+          class="filter-button">
+          Alle
+        </button>
+        <button 
+          mat-button 
+          [class.active]="currentShoppingFilter === 'offen'"
+          (click)="setShoppingFilter('offen')"
+          class="filter-button">
+          Offen
+        </button>
+        <button 
+          mat-button 
+          [class.active]="currentShoppingFilter === 'erledigt'"
+          (click)="setShoppingFilter('erledigt')"
+          class="filter-button">
+          Erledigt
         </button>
       </div>
     </div>
-
-    <!-- Empty Shopping State -->
-    <ng-template #emptyShoppingState>
-      <div class="empty-state">
-        <mat-icon class="empty-icon">shopping_cart</mat-icon>
-        <h3>Liste ist leer</h3>
-        <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
-      </div>
-    </ng-template>
   </div>
 
   <!-- EDIT MODE -->
@@ -124,69 +153,99 @@
       </button>
     </div>
 
-    <!-- All Articles with Toggle -->
-    <div class="all-articles">
-      <div 
-        *ngFor="let article of allArticlesWithState$ | async" 
-        class="article-item"
-        [class.in-list]="article.isInList">
-        
-        <!-- Article Icon -->
-        <div class="article-icon">
-          {{ article.icon || '📦' }}
-        </div>
-        
-        <!-- Article Content -->
-        <div class="article-content">
-          <div class="article-header">
-            <span class="article-name">{{ article.name }}</span>
-            
-            <span 
-                *ngIf="article.listAmount || article.amount" 
-                class="article-amount"
-                [class.editable]="article.isInList"
-                [class.disabled]="!article.isInList"
-                (click)="article.isInList ? onEditAmount(article) : null">
-                {{ article.listAmount || article.amount }}
-              </span>
-              <!-- Empty Amount Chip -->
-              <span 
-                *ngIf="!(article.listAmount || article.amount)" 
-                class="article-amount empty"
-                [class.editable]="article.isInList"
-                [class.disabled]="!article.isInList"
-                (click)="article.isInList ? onEditAmount(article) : null">
-                Menge
-              </span>
+    <!-- Content Container for Articles -->
+    <div class="content-container">
+      <!-- All Articles with Toggle -->
+      <div class="all-articles">
+        <div 
+          *ngFor="let article of allArticlesWithState$ | async" 
+          class="article-item"
+          [class.in-list]="article.isInList">
+          
+          <!-- Article Icon -->
+          <div class="article-icon">
+            {{ article.icon || '📦' }}
           </div>
           
-          <div class="article-notes" *ngIf="article.notes">
-            {{ article.notes }}
+          <!-- Article Content -->
+          <div class="article-content">
+            <div class="article-header">
+              <span class="article-name">{{ article.name }}</span>
+              
+              <span 
+                  *ngIf="article.listAmount || article.amount" 
+                  class="article-amount"
+                  [class.editable]="article.isInList"
+                  [class.disabled]="!article.isInList"
+                  (click)="article.isInList ? onEditAmount(article) : null">
+                  {{ article.listAmount || article.amount }}
+                </span>
+                <!-- Empty Amount Chip -->
+                <span 
+                  *ngIf="!(article.listAmount || article.amount)" 
+                  class="article-amount empty"
+                  [class.editable]="article.isInList"
+                  [class.disabled]="!article.isInList"
+                  (click)="article.isInList ? onEditAmount(article) : null">
+                  Menge
+                </span>
+            </div>
+            
+            <div class="article-notes" *ngIf="article.notes">
+              {{ article.notes }}
+            </div>
           </div>
+          
+            <!-- Info Button -->
+            <button 
+            mat-icon-button 
+            (click)="onArticleInfo(article)"
+            class="info-button">
+            <mat-icon>info_outline</mat-icon>
+          </button>
+          
+          <!-- Toggle Switch -->
+          <mat-slide-toggle
+            [checked]="article.isInList"
+            (change)="onToggleArticleInList(article)"
+            color="primary"
+            class="article-toggle">
+          </mat-slide-toggle>
         </div>
-        
-          <!-- Info Button -->
-          <button 
-          mat-icon-button 
-          (click)="onArticleInfo(article)"
-          class="info-button">
-          <mat-icon>info_outline</mat-icon>
-        </button>
-        
-        <!-- Toggle Switch -->
-        <mat-slide-toggle
-          [checked]="article.isInList"
-          (change)="onToggleArticleInList(article)"
-          color="primary"
-          class="article-toggle">
-        </mat-slide-toggle>
-      </div>
 
-      <!-- No Results Message -->
-      <div class="no-results" *ngIf="searchQuery && (allArticlesWithState$ | async)?.length === 0">
-        <mat-icon class="empty-icon">search_off</mat-icon>
-        <h3>Keine Artikel gefunden</h3>
-        <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
+        <!-- No Results Message -->
+        <div class="no-results" *ngIf="searchQuery && (allArticlesWithState$ | async)?.length === 0">
+          <mat-icon class="empty-icon">search_off</mat-icon>
+          <h3>Keine Artikel gefunden</h3>
+          <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Filter Buttons -->
+    <div class="filter-container">
+      <div class="filter-buttons">
+        <button 
+          mat-button 
+          [class.active]="currentEditFilter === 'alle'"
+          (click)="setEditFilter('alle')"
+          class="filter-button">
+          Alle
+        </button>
+        <button 
+          mat-button 
+          [class.active]="currentEditFilter === 'gelistet'"
+          (click)="setEditFilter('gelistet')"
+          class="filter-button">
+          Gelistet
+        </button>
+        <button 
+          mat-button 
+          [class.active]="currentEditFilter === 'fehlend'"
+          (click)="setEditFilter('fehlend')"
+          class="filter-button">
+          Fehlend
+        </button>
       </div>
     </div>
 

@@ -70,8 +70,15 @@
   // === SHOPPING MODE STYLES ===
   .shopping-mode {
     flex: 1;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     background-color: #f5f5f5;
+
+    .content-container {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+    }
 
     .articles-list {
       background: white;
@@ -253,9 +260,13 @@ background-color: #f5f5f5;
     }
   }
 
-.all-articles {
+.content-container {
   flex: 1;
   overflow-y: auto;
+  background: white;
+}
+
+.all-articles {
   background: white;
   
   .article-item {
@@ -460,27 +471,57 @@ background-color: #f5f5f5;
     }
   }
 }
+}
 
-// === MOBILE RESPONSIVENESS ===
-@media (max-width: 768px) {
-.list-detail {
-  .edit-mode {
-    .edit-actions {
-      flex-direction: column;
+  // === FILTER BUTTONS STYLING ===
+  .filter-container {
+    background: white;
+    padding: 12px 16px;
+    border-top: 1px solid #e0e0e0;
+    
+    .filter-buttons {
+      display: flex;
+      gap: 2px;
+      background: linear-gradient(135deg, #64b5f6 0%, #1976d2 100%);
+      border-radius: 25px;
+      padding: 3px;
       
-      .action-button {
-        width: 100%;
-        margin-bottom: 8px;
+      .filter-button {
+        flex: 1;
+        height: 44px;
+        border-radius: 22px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        color: rgba(255, 255, 255, 0.9);
+        background: transparent;
+        border: none;
         
-        &:last-child {
-          margin-bottom: 0;
+        &:hover:not(.active) {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+        }
+        
+        &.active {
+          background: white;
+          color: #1976d2 !important;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        // Remove default Material button styling
+        .mat-button-wrapper {
+          padding: 0;
+          line-height: 1;
+        }
+        
+        &.mat-button {
+          min-width: 0;
+          padding: 0 16px;
         }
       }
     }
   }
-}
-}
-}
 
   // === SHARED EMPTY STATE ===
   .empty-state {
@@ -547,6 +588,18 @@ background-color: #f5f5f5;
         }
       }
     }
+
+    .filter-container {
+      padding: 8px 12px;
+      
+      .filter-buttons {
+        .filter-button {
+          font-size: 12px;
+          height: 40px;
+          border-radius: 20px;
+        }
+      }
+    }
   }
 }
 
@@ -555,7 +608,8 @@ background-color: #f5f5f5;
   .article-item,
   .article-icon,
   .article-content,
-  .mode-button {
+  .mode-button,
+  .filter-button {
     transition: none;
   }
 }
@@ -576,5 +630,11 @@ background-color: #f5f5f5;
 
   .article-amount {
     border: 1px solid #1a9edb;
+  }
+
+  .filter-buttons {
+    .filter-button.active {
+      border: 2px solid #1976d2;
+    }
   }
 }
