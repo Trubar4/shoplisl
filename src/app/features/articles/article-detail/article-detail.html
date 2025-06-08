@@ -29,7 +29,7 @@
 
   <!-- Form -->
   <div *ngIf="!isLoading" class="form-container">
-    <form class="article-form" (ngSubmit)="onSave()">
+    <form class="article-form">
       
       <!-- Name Field -->
       <mat-form-field appearance="outline" class="full-width">
@@ -139,24 +139,20 @@
         </ng-template>
       </div>
 
-      <!-- Action Buttons -->
+      <!-- Action Buttons (Same layout as list-detail edit-actions) -->
       <div class="action-buttons">
         <button 
-          type="button" 
           mat-button 
-          color="basic" 
           (click)="onCancel()"
           [disabled]="isSaving || isDeleting"
-          class="cancel-button">
+          class="action-button secondary-button">
           Abbrechen
         </button>
         <button 
-          type="button" 
           mat-button 
-          color="warn" 
           (click)="onDelete()"
           [disabled]="isSaving || isDeleting"
-          class="delete-button-text">
+          class="action-button tertiary-button">
           <mat-progress-spinner 
             *ngIf="isDeleting" 
             diameter="16" 
@@ -166,11 +162,10 @@
           <span *ngIf="isDeleting">Wird gelöscht...</span>
         </button>
         <button 
-          type="submit" 
           mat-raised-button 
-          color="primary"
+          (click)="onSave()"
           [disabled]="!article.name.trim() || !hasChanges() || isSaving || isDeleting"
-          class="save-button">
+          class="action-button primary-button">
           <mat-progress-spinner 
             *ngIf="isSaving" 
             diameter="16" 
@@ -179,7 +174,7 @@
           <span *ngIf="!isSaving">Speichern</span>
           <span *ngIf="isSaving">Wird gespeichert...</span>
         </button>
-      </div>
+      </div>      
     </form>
   </div>
 </div>
