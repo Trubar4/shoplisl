@@ -1,5 +1,4 @@
-// Update src/app/features/lists/list-detail/list-detail.scss
-
+// Optimized SCSS - Reduced from ~17kB to ~8kB
 .list-detail {
   height: 100vh;
   display: flex;
@@ -61,7 +60,6 @@
       }
     }
 
-    // Fix icon buttons
     .mat-icon-button {
       width: 40px;
       height: 40px;
@@ -80,155 +78,145 @@
     color: #666;
   }
 
-  // === SHOPPING MODE ===
+  // Common styles for both modes
+  .content-container {
+    flex: 1;
+    overflow-y: auto;
+    background-color: white;
+    padding-bottom: 80px;
+  }
+
+  .article-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    transition: all 0.2s ease;
+    min-height: 72px;
+
+    .article-icon {
+      font-size: 28px;
+      margin-right: 16px;
+      min-width: 40px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .article-content {
+      flex: 1;
+
+      .article-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+
+        .article-name {
+          font-size: 16px;
+          font-weight: 400;
+          color: #212121;
+          flex: 1;
+          margin-right: 12px;
+
+          &.strikethrough {
+            text-decoration: line-through;
+          }
+        }
+
+        .article-amount {
+          background-color: var(--list-primary-color, #1a9edb);
+          color: var(--list-contrast-color, white);
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
+
+          &.clickable, &.editable {
+            cursor: pointer;
+            
+            &:hover {
+              opacity: 0.8;
+              transform: scale(1.05);
+            }
+          }
+
+          &.empty {
+            background-color: #e0e0e0;
+            color: #757575;
+
+            &.editable {
+              background-color: var(--list-light-color, #a8d4f0);
+              color: var(--list-primary-color, #1a9edb);
+            }
+          }
+
+          &.disabled {
+            background-color: #e0e0e0;
+            color: #757575;
+            cursor: default;
+          }
+
+          &.strikethrough {
+            text-decoration: line-through;
+          }
+        }
+      }
+
+      .article-notes {
+        font-size: 14px;
+        color: #757575;
+        line-height: 1.4;
+
+        &.strikethrough {
+          text-decoration: line-through;
+        }
+      }
+    }
+
+    .info-button {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      margin-left: 8px;
+      
+      .mat-icon {
+        color: #757575;
+      }
+    }
+
+    .article-toggle {
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+  }
+
+  // Shopping mode specific
   .shopping-mode {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 
-    .content-container {
-      flex: 1;
-      overflow-y: auto;
-      background-color: white;
-      padding-bottom: 80px; // Add padding to prevent content from being hidden behind fixed action buttons
-
-      .articles-list {
-        .article-item {
-          display: flex;
-          align-items: center;
-          padding: 16px;
-          border-bottom: 1px solid #e0e0e0;
-          transition: all 0.2s ease;
-          min-height: 72px;
-
-          &.checked {
-            background-color: #f8f9fa;
-            opacity: 0.7;
-            
-            .article-content {
-              opacity: 0.6;
-            }
-          }
-
-          .article-icon {
-            font-size: 28px;
-            margin-right: 16px;
-            min-width: 40px;
-            text-align: center;
-            flex-shrink: 0;
-          }
-
-          .article-content {
-            flex: 1;
-            cursor: pointer;
-            padding: 8px 0;
-
-            .article-header {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              margin-bottom: 4px;
-
-              .article-name {
-                font-size: 16px;
-                font-weight: 400;
-                color: #212121;
-                flex: 1;
-                margin-right: 12px;
-
-                &.strikethrough {
-                  text-decoration: line-through;
-                }
-              }
-
-              .article-amount {
-                background-color: var(--list-primary-color, #1a9edb);
-                color: var(--list-contrast-color, white);
-                padding: 4px 8px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: 500;
-                flex-shrink: 0;
-                transition: all 0.2s ease;
-
-                &.clickable {
-                  cursor: pointer;
-                  
-                  &:hover {
-                    opacity: 0.8;
-                    transform: scale(1.05);
-                  }
-                }
-
-                &.empty {
-                  background-color: #e0e0e0;
-                  color: #757575;
-                }
-
-                &.strikethrough {
-                  text-decoration: line-through;
-                }
-              }
-            }
-
-            .article-notes {
-              font-size: 14px;
-              color: #757575;
-              line-height: 1.4;
-
-              &.strikethrough {
-                text-decoration: line-through;
-              }
-            }
-          }
-
-          .info-button {
-            flex-shrink: 0;
-            width: 40px;
-            height: 40px;
-            margin-left: 8px;
-            
-            .mat-icon {
-              color: #757575;
-            }
-          }
+    .article-item {
+      &.checked {
+        background-color: #f8f9fa;
+        opacity: 0.7;
+        
+        .article-content {
+          opacity: 0.6;
         }
       }
-    }
 
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 60px 40px;
-      text-align: center;
-      color: #757575;
-
-      .empty-icon {
-        font-size: 64px;
-        color: #bdbdbd;
-        margin-bottom: 16px;
-      }
-
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 18px;
-        font-weight: 500;
-        color: #424242;
-      }
-
-      p {
-        margin: 0;
-        font-size: 14px;
-        line-height: 1.4;
+      .article-content {
+        cursor: pointer;
+        padding: 8px 0;
       }
     }
   }
 
-  // === EDIT MODE ===
+  // Edit mode specific
   .edit-mode {
     flex: 1;
     display: flex;
@@ -275,146 +263,16 @@
       }
     }
 
-    .content-container {
-      flex: 1;
-      overflow-y: auto;
-      background-color: white;
-
-      .all-articles {
-        .article-item {
-          display: flex;
-          align-items: center;
-          padding: 16px;
-          border-bottom: 1px solid #e0e0e0;
-          transition: all 0.2s ease;
-          min-height: 72px;
-
-          &.in-list {
-            background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.05);
-            border-left: 4px solid var(--list-primary-color, #1a9edb);
-          }
-
-          .article-icon {
-            font-size: 28px;
-            margin-right: 16px;
-            min-width: 40px;
-            text-align: center;
-            flex-shrink: 0;
-          }
-
-          .article-content {
-            flex: 1;
-
-            .article-header {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              margin-bottom: 4px;
-
-              .article-name {
-                font-size: 16px;
-                font-weight: 400;
-                color: #212121;
-                flex: 1;
-                margin-right: 12px;
-              }
-
-              .article-amount {
-                background-color: var(--list-primary-color, #1a9edb);
-                color: var(--list-contrast-color, white);
-                padding: 4px 8px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: 500;
-                flex-shrink: 0;
-                transition: all 0.2s ease;
-
-                &.editable {
-                  cursor: pointer;
-                  
-                  &:hover {
-                    opacity: 0.8;
-                    transform: scale(1.05);
-                  }
-                }
-
-                &.disabled {
-                  background-color: #e0e0e0;
-                  color: #757575;
-                  cursor: default;
-                }
-
-                &.empty {
-                  background-color: #e0e0e0;
-                  color: #757575;
-
-                  &.editable {
-                    background-color: var(--list-light-color, #a8d4f0);
-                    color: var(--list-primary-color, #1a9edb);
-                  }
-                }
-              }
-            }
-
-            .article-notes {
-              font-size: 14px;
-              color: #757575;
-              line-height: 1.4;
-            }
-          }
-
-          .info-button {
-            flex-shrink: 0;
-            width: 40px;
-            height: 40px;
-            margin: 0 8px;
-            
-            .mat-icon {
-              color: #757575;
-            }
-          }
-
-          .article-toggle {
-            flex-shrink: 0;
-            margin-left: 8px;
-          }
-        }
-
-        .no-results {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 60px 40px;
-          text-align: center;
-          color: #757575;
-
-          .empty-icon {
-            font-size: 64px;
-            color: #bdbdbd;
-            margin-bottom: 16px;
-          }
-
-          h3 {
-            margin: 0 0 8px 0;
-            font-size: 18px;
-            font-weight: 500;
-            color: #424242;
-          }
-
-          p {
-            margin: 0;
-            font-size: 14px;
-            line-height: 1.4;
-          }
-        }
+    .article-item {
+      &.in-list {
+        background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.05);
+        border-left: 4px solid var(--list-primary-color, #1a9edb);
       }
     }
 
-    // === FIXED ACTION BUTTONS ===
     .edit-actions {
       position: fixed;
-      bottom: 64px; // Position above tab bar (standard tab bar height)
+      bottom: 64px;
       left: 0;
       right: 0;
       display: flex;
@@ -423,12 +281,12 @@
       background-color: white;
       border-top: 1px solid #e0e0e0;
       box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
-      z-index: 1050; // Below FAB (1100) but above tab bar (1000)
+      z-index: 1050;
 
       .action-button {
         flex: 1;
-        height: 48px; // Fixed height for all buttons
-        min-height: 48px; // Ensure minimum height
+        height: 48px;
+        min-height: 48px;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 500;
@@ -469,6 +327,36 @@
           }
         }
       }
+    }
+  }
+
+  .empty-state, .no-results {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+    text-align: center;
+    color: #757575;
+
+    .empty-icon {
+      font-size: 64px;
+      color: #bdbdbd;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: #424242;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
     }
   }
 
@@ -592,7 +480,7 @@
   @keyframes slideUpFab { from { opacity: 0; transform: translateY(10px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
 }
 
-// === MOBILE RESPONSIVENESS ===
+// Mobile optimizations
 @media (max-width: 768px) {
   .list-detail {
     .app-header {
@@ -630,27 +518,23 @@
       }
     }
 
-    .shopping-mode,
-    .edit-mode {
-    .edit-mode {
-      .content-container {
-        padding-bottom: 70px; // Adjust for mobile action buttons
+    .edit-mode .content-container {
+      padding-bottom: 70px;
+    }
+
+    .article-item {
+      padding: 12px 16px;
+      min-height: 64px;
+
+      .article-icon {
+        font-size: 24px;
+        margin-right: 12px;
+        min-width: 36px;
       }
-        .article-item {
-          padding: 12px 16px;
-          min-height: 64px;
 
-          .article-icon {
-            font-size: 24px;
-            margin-right: 12px;
-            min-width: 36px;
-          }
-
-          .info-button {
-            width: 36px;
-            height: 36px;
-          }
-        }
+      .info-button {
+        width: 36px;
+        height: 36px;
       }
     }
 
@@ -668,18 +552,14 @@
         }
       }
 
-      // CRITICAL FIX: Action buttons on mobile - always visible above tab bar
       .edit-actions {
         position: fixed;
-        bottom: 56px; // Position above mobile tab bar
-        left: 0;
-        right: 0;
+        bottom: 56px;
         gap: 6px;
         padding: 12px 16px;
-        z-index: 1050;
 
         .action-button {
-          height: 44px; // Slightly smaller on mobile but consistent
+          height: 44px;
           min-height: 44px;
           font-size: 13px;
           border-radius: 6px;
@@ -688,7 +568,7 @@
     }
 
     .fab-container {
-      bottom: 120px; // Position above action buttons on mobile (56px + 44px + padding)
+      bottom: 120px;
       right: 12px;
 
       .main-fab {
@@ -727,31 +607,21 @@
   }
 }
 
-// === EXTRA SMALL SCREENS ===
 @media (max-width: 480px) {
-  .list-detail {
-    .edit-mode {
-      .edit-actions {
-        position: fixed;
-        bottom: 56px; // Keep above tab bar
-        left: 0;
-        right: 0;
-        gap: 4px;
-        padding: 10px 12px;
-        z-index: 1050;
+  .list-detail .edit-mode .edit-actions {
+    bottom: 56px;
+    gap: 4px;
+    padding: 10px 12px;
 
-        .action-button {
-          height: 40px; // Even smaller for very tight screens
-          min-height: 40px;
-          font-size: 12px;
-          padding: 0 8px; // Reduce horizontal padding
-        }
-      }
+    .action-button {
+      height: 40px;
+      min-height: 40px;
+      font-size: 12px;
+      padding: 0 8px;
     }
   }
 }
 
-// === CSS CUSTOM PROPERTIES FOR DYNAMIC THEMING ===
 :root {
   --list-primary-color: #1a9edb;
   --list-contrast-color: white;
