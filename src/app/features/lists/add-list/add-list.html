@@ -1,104 +1,125 @@
 <div class="add-list">
-    <!-- Header -->
-    <mat-toolbar color="primary" class="app-header">
-      <button mat-icon-button (click)="onBack()" aria-label="Back">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <span>Liste hinzufügen</span>
-      <span class="spacer"></span>
-    </mat-toolbar>
-  
-    <!-- Form -->
-    <div class="form-container">
-      <form class="list-form" (ngSubmit)="onSave()">
-        
+  <!-- Header -->
+  <mat-toolbar color="primary" class="app-header">
+    <button mat-icon-button (click)="onBack()" aria-label="Back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>{{ getTitle() }}</span>
+    <span class="spacer"></span>
+    <!-- Show edit indicator -->
+    <span *ngIf="isEditMode" class="edit-indicator">
+      <mat-icon>edit</mat-icon>
+    </span>
+  </mat-toolbar>
 
-        <!-- Name Field -->
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Name</mat-label>
-          <input 
-            matInput 
-            [(ngModel)]="list.name" 
-            name="name"
-            placeholder="z.B. Wocheneinkauf"
-            required>
-        </mat-form-field>
-  
-        <!-- Color Selection -->
-        <div class="color-section">
-          <h3>Farbe auswählen</h3>
-          
-          <!-- Color Preview -->
-          <div class="color-preview" [style.background-color]="list.color">
-            <div class="preview-text">{{ list.name || 'Beispiel Liste' }}</div>
-          </div>
-  
-          <!-- Color Grid -->
-          <div class="color-grid">
-            <button 
-              *ngFor="let color of colors" 
-              type="button"
-              class="color-button"
-              [class.selected]="list.color === color.value"
-              [style.background-color]="color.value"
-              [title]="color.name"
-              (click)="onColorSelect(color.value)">
-            </button>
-          </div>
+  <!-- Form -->
+  <div class="form-container">
+    <form class="list-form" (ngSubmit)="onSave()">
+      <!-- Edit Mode Info -->
+      <div *ngIf="isEditMode" class="edit-info">
+        <mat-icon>info</mat-icon>
+        <span>Du bearbeitest eine bestehende Liste</span>
+      </div>
+
+      <!-- Name Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Name</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="list.name" 
+          name="name"
+          placeholder="z.B. Wocheneinkauf"
+          required>
+      </mat-form-field>
+
+      <!-- Color Selection -->
+      <div class="color-section">
+        <h3>Farbe auswählen</h3>
+        
+        <!-- Color Preview -->
+        <div class="color-preview" [style.background-color]="list.color">
+          <div class="preview-text">{{ list.name || 'Beispiel Liste' }}</div>
         </div>
-  
-        <!-- Icon Selection -->
-        <div class="icon-section">
-          <h3>Icon auswählen</h3>
-          
-          <!-- Current Icon Display -->
-          <div class="current-icon">
-            <div class="icon-preview">
-              {{ list.icon }}
-            </div>
-            <mat-form-field appearance="outline" class="icon-input">
-              <mat-label>Eigenes Icon</mat-label>
-              <input 
-                matInput 
-                [(ngModel)]="list.icon" 
-                name="icon"
-                placeholder="Emoji eingeben..."
-                maxlength="2">
-            </mat-form-field>
-          </div>
-  
-          <!-- Common Emojis -->
-          <div class="emoji-grid">
-            <button 
-              *ngFor="let emoji of commonEmojis" 
-              type="button"
-              class="emoji-button"
-              [class.selected]="list.icon === emoji"
-              (click)="onEmojiSelect(emoji)">
-              {{ emoji }}
-            </button>
-          </div>
-        </div>
-  
-        <!-- Action Buttons -->
-        <div class="action-buttons">
+
+        <!-- Color Grid -->
+        <div class="color-grid">
           <button 
-            type="button" 
-            mat-button 
-            color="basic" 
-            (click)="onCancel()"
-            class="cancel-button">
-            Abbrechen
-          </button>
-          <button 
-            type="submit" 
-            mat-raised-button 
-            color="primary"
-            [disabled]="!list.name.trim()"
-            class="save-button">
-            Speichern
+            *ngFor="let color of colors" 
+            type="button"
+            class="color-button"
+            [class.selected]="list.color === color.value"
+            [style.background-color]="color.value"
+            [title]="color.name"
+            (click)="onColorSelect(color.value)">
+            <mat-icon *ngIf="list.color === color.value" class="check-icon">check</mat-icon>
           </button>
         </div>
-      </form>
-    </div>
+      </div>
+
+      <!-- Icon Selection -->
+      <div class="icon-section">
+        <h3>Icon auswählen</h3>
+        
+        <!-- Current Icon Display -->
+        <div class="current-icon">
+          <div class="icon-preview">
+            {{ list.icon }}
+          </div>
+          <mat-form-field appearance="outline" class="icon-input">
+            <mat-label>Eigenes Icon</mat-label>
+            <input 
+              matInput 
+              [(ngModel)]="list.icon" 
+              name="icon"
+              placeholder="Emoji eingeben..."
+              maxlength="2">
+          </mat-form-field>
+        </div>
+
+        <!-- Common Emojis -->
+        <div class="emoji-grid">
+          <button 
+            *ngFor="let emoji of commonEmojis" 
+            type="button"
+            class="emoji-button"
+            [class.selected]="list.icon === emoji"
+            (click)="onEmojiSelect(emoji)">
+            {{ emoji }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button 
+          type="button" 
+          mat-button 
+          color="basic" 
+          (click)="onCancel()"
+          class="cancel-button">
+          Abbrechen
+        </button>
+        <button 
+          type="submit" 
+          mat-raised-button 
+          color="primary"
+          [disabled]="!list.name.trim() || (isEditMode && !hasChanges())"
+          class="save-button">
+          {{ getSaveButtonText() }}
+        </button>
+      </div>
+
+      <!-- Changes Info (Edit Mode) -->
+      <div *ngIf="isEditMode" class="changes-info">
+        <div *ngIf="hasChanges()" class="has-changes">
+          <mat-icon>edit</mat-icon>
+          <span>Änderungen erkannt</span>
+        </div>
+        <div *ngIf="!hasChanges()" class="no-changes">
+          <mat-icon>check_circle</mat-icon>
+          <span>Keine Änderungen</span>
+        </div>
+      </div>
+    </form>
   </div>
+</div>

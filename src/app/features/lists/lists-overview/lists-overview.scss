@@ -28,25 +28,60 @@
     width: 100%;
   }
   
+  // === SWIPE CONTAINER ===
+  .list-item-container {
+    position: relative;
+    background-color: white;
+    overflow: hidden;
+    border-bottom: 1px solid #e0e0e0;
+    
+    // Delete indicator (shown during swipe)
+    .delete-indicator {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 120px;
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 1;
+      
+      .mat-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+      
+      span {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+  
   .list-item {
     display: flex;
     align-items: center;
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
     border-left: 4px solid #e0e0e0; /* Default border, will be overridden by inline style */
     cursor: pointer;
     min-height: 72px;
     position: relative;
     transition: all 0.2s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    z-index: 2;
     
     &:hover {
       opacity: 0.8;
       transform: translateX(2px);
-    }
-    
-    &:last-child {
-      border-bottom: none;
     }
     
     .list-icon {
@@ -111,6 +146,8 @@
       }
     }
     
+
+    
     .nav-arrow {
       color: #9e9e9e;
       font-size: 20px;
@@ -141,10 +178,58 @@
     }
     
     p {
-      margin: 0;
+      margin: 0 0 8px 0;
       font-size: 14px;
       line-height: 1.4;
+      
+      &.swipe-hint {
+        font-size: 13px;
+        color: #9e9e9e;
+        margin-top: 16px;
+      }
     }
+  }
+
+  // Swipe hint footer (shown when user has exactly one list)
+  .swipe-hint-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #1a9edb, #1976d2);
+    color: white;
+    padding: 12px 16px;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    animation: slideUp 0.3s ease;
+    
+    .hint-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      .mat-icon {
+        margin-right: 8px;
+        font-size: 20px;
+      }
+      
+      span {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// === ANIMATIONS ===
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -168,6 +253,115 @@
         font-size: 11px;
         margin-right: 8px;
       }
+      
+
+    }
+    
+    .delete-indicator {
+      width: 100px;
+      
+      .mat-icon {
+        font-size: 20px;
+      }
+      
+      span {
+        font-size: 11px;
+      }
+    }
+    
+    .swipe-hint-footer {
+      padding: 10px 16px;
+      
+      .hint-content {
+        .mat-icon {
+          font-size: 18px;
+        }
+        
+        span {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+}
+
+// === EXTRA SMALL SCREENS ===
+@media (max-width: 480px) {
+  .lists-overview {
+    .list-item {
+      padding: 10px 12px;
+      min-height: 60px;
+      
+      .list-icon {
+        font-size: 22px;
+        margin-right: 10px;
+        min-width: 32px;
+      }
+      
+      .list-content {
+        .list-name {
+          font-size: 15px;
+        }
+        
+        .list-info {
+          font-size: 13px;
+        }
+      }
+      
+      .item-count {
+        min-width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        font-size: 10px;
+        margin-right: 6px;
+      }
+      
+
+      
+      .nav-arrow {
+        font-size: 18px;
+      }
+    }
+    
+    .delete-indicator {
+      width: 80px;
+      
+      .mat-icon {
+        font-size: 18px;
+        margin-bottom: 2px;
+      }
+      
+      span {
+        font-size: 10px;
+      }
+    }
+  }
+}
+
+// === PREVENT TEXT SELECTION DURING SWIPE ===
+.list-item-container {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  
+  * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+}
+
+// === HIGH DPI DISPLAYS ===
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .lists-overview {
+    .list-item {
+      box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .delete-indicator {
+      box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.1);
     }
   }
 }

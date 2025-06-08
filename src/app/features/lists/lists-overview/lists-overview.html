@@ -13,33 +13,51 @@
     <div class="lists-list">
       <div 
         *ngFor="let list of lists$ | async" 
-        (click)="onListClick(list)"
-        class="list-item"
-        [ngClass]="'color-' + getListColorClass(list)"
-        [style.border-left]="'4px solid ' + (list.color || '#757575')">
+        class="list-item-container"
+        [attr.data-list-id]="list.id">
         
-        <!-- List Icon -->
-        <div class="list-icon">
-          {{ list.icon || '📋' }}
+        <!-- Delete Indicator (shown during swipe) -->
+        <div class="delete-indicator">
+          <mat-icon>delete</mat-icon>
+          <span>Löschen</span>
         </div>
         
-        <!-- List Content -->
-        <div class="list-content">
-          <div class="list-name">{{ list.name }}</div>
-          <div class="list-info" *ngIf="list.articleIds.length > 0">
-            {{ list.articleIds.length }} Artikel{{ list.articleIds.length !== 1 ? '' : '' }}
+        <!-- Main List Item -->
+        <div 
+          class="list-item"
+          [ngClass]="'color-' + getListColorClass(list)"
+          [style.border-left]="'4px solid ' + (list.color || '#757575')"
+          (click)="onListClick(list)"
+          (touchstart)="onTouchStart($event, list.id)"
+          (touchmove)="onTouchMove($event, list.id)"
+          (touchend)="onTouchEnd($event, list.id)"
+          (mousedown)="onMouseDown($event, list.id)">
+          
+          <!-- List Icon -->
+          <div class="list-icon">
+            {{ list.icon || '📋' }}
           </div>
+          
+          <!-- List Content -->
+          <div class="list-content">
+            <div class="list-name">{{ list.name }}</div>
+            <div class="list-info" *ngIf="list.articleIds.length > 0">
+              {{ list.articleIds.length }} Artikel{{ list.articleIds.length !== 1 ? '' : '' }}
+            </div>
+          </div>
+          
+          <!-- Item count badge -->
+          <div class="item-count" 
+               *ngIf="getItemCountText(list)"
+               [style.background-color]="list.color || '#757575'">
+            {{ getItemCountText(list) }}
+          </div>
+          
+
+          
+          <!-- Navigation arrow -->
+          <mat-icon class="nav-arrow">chevron_right</mat-icon>
         </div>
-        
-        <!-- Item count badge -->
-        <div class="item-count" 
-             *ngIf="getItemCountText(list)"
-             [style.background-color]="list.color || '#757575'">
-          {{ getItemCountText(list) }}
-        </div>
-        
-        <!-- Navigation arrow -->
-        <mat-icon class="nav-arrow">chevron_right</mat-icon>
       </div>
     </div>
 
@@ -48,6 +66,15 @@
       <mat-icon class="empty-icon">list</mat-icon>
       <h3>Keine Listen vorhanden</h3>
       <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
+      <p class="swipe-hint">💡 Tipp: Wische nach links um Listen zu löschen</p>
+    </div>
+  </div>
+
+  <!-- Swipe Hint (shown after first list is created) -->
+  <div class="swipe-hint-footer" *ngIf="(lists$ | async)?.length === 1">
+    <div class="hint-content">
+      <mat-icon>swipe</mat-icon>
+      <span>Wische nach links um Listen zu löschen</span>
     </div>
   </div>
 </div>

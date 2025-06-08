@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 
 import { ShoppingList, Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
@@ -47,7 +48,8 @@ interface ArticleWithToggleAndAmount extends Article {
     MatInputModule,
     MatSnackBarModule,
     MatSlideToggleModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule
   ],
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
@@ -82,7 +84,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private router: Router,
     private dataService: DataService,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private dialog: MatDialog
   ) {
     console.log('🔴 Constructor starting...');
     
@@ -446,16 +449,64 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onClearAllItems(): void {
-    console.log('Clear all items');
+    if (!this.currentList) return;
+    
+    const count = this.currentList.articleIds.length;
+    if (count === 0) {
+      this.snackBar.open('Liste ist bereits leer', '', { duration: 1500 });
+      return;
+    }
+    
+    const confirmed = confirm(`Alle ${count} Artikel von der Liste entfernen?`);
+    if (confirmed) {
+      this.dataService.clearAllItemsFromList(this.listId).subscribe({
+        next: (success) => {
+          if (success) {
+            this.snackBar.open('Liste geleert', '', { duration: 1500 });
+          } else {
+            this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 });
+          }
+        },
+        error: (error) => {
+          console.error('Error clearing list:', error);
+          this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 });
+        }
+      });
+    }
   }
 
   onEditList(): void {
-    this.snackBar.open('Liste bearbeiten - Coming soon!', '', { duration: 1500 });
+    if (!this.currentList) return;
+    
+    // Navigate to the add-list form but in edit mode
+    this.router.navigate(['/lists/add'], {
+      queryParams: { 
+        editId: this.listId,
+        returnTo: `/lists/${this.listId}?mode=edit`
+      }
+    });
   }
 
   onDeleteList(): void {
-    if (confirm('Liste wirklich löschen?')) {
-      this.router.navigate(['/lists']);
+    if (!this.currentList) return;
+    
+    const confirmed = confirm(`Liste "${this.currentList.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`);
+    
+    if (confirmed) {
+      this.dataService.deleteList(this.listId).subscribe({
+        next: (success) => {
+          if (success) {
+            this.snackBar.open('Liste gelöscht', '', { duration: 1500 });
+            this.router.navigate(['/lists']);
+          } else {
+            this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 });
+          }
+        },
+        error: (error) => {
+          console.error('Error deleting list:', error);
+          this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 });
+        }
+      });
     }
   }
 }
