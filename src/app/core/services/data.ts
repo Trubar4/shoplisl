@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, from, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-
+import { map, catchError, mergeMap } from 'rxjs/operators'; // Add mergeMap here
 // Direct Firebase imports (more reliable in StackBlitz)
 import { initializeApp } from 'firebase/app';
 import { 
@@ -11,7 +10,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  getDocs, 
+  getDocs,     // <- Already there
   getDoc,
   onSnapshot,
   query,
@@ -658,5 +657,211 @@ export class DataService {
     if (this.listsUnsubscribe) {
       this.listsUnsubscribe();
     }
+  }
+
+   /**
+   * Check if an article with the given name already exists
+   */
+   checkArticleNameExists(name: string, excludeId?: string): Observable<boolean> {
+    return this.getArticles().pipe(
+      map(articles => {
+        const trimmedName = name.trim().toLowerCase();
+        return articles.some(article => 
+          article.id !== excludeId && 
+          article.name.trim().toLowerCase() === trimmedName
+        );
+      })
+    );
+  }
+
+  /**
+   * Get all lists that contain a specific article
+   */
+  getListsContainingArticle(articleId: string): Observable<ShoppingList[]> {
+    return this.getLists().pipe(
+      map(lists => lists.filter(list => list.articleIds.includes(articleId)))
+    );
+  }
+
+  /**
+   * Get lists where the article is active (not checked off)
+   */
+  getListsWithActiveArticle(articleId: string): Observable<ShoppingList[]> {
+    return this.getLists().pipe(
+      map(lists => lists.filter(list => {
+        const isInList = list.articleIds.includes(articleId);
+        const itemState = list.itemStates[articleId];
+        const isActive = isInList && (!itemState || !itemState.isChecked);
+        return isActive;
+      }))
+    );
+  }
+
+  /**
+   * Remove an article from all lists where it's inactive (checked off)
+   * and delete the article itself
+   */
+  deleteArticleAndCleanupLists(articleId: string): Observable<{
+    success: boolean;
+    activeInLists?: string[];
+    error?: string;
+  }> {
+    return this.getListsWithActiveArticle(articleId).pipe(
+      mergeMap(activeInLists => {
+        if (activeInLists.length > 0) {
+          // Article is active in some lists, return warning
+          return of({
+            success: false,
+            activeInLists: activeInLists.map(list => list.name)
+          });
+        }
+
+        // Article is not active anywhere, safe to delete
+        return this.getListsContainingArticle(articleId).pipe(
+          mergeMap(allLists => {
+            // Remove from all lists (these should only be lists where it's checked off)
+            const removePromises = allLists.map(list => 
+              this.removeArticleFromList(list.id, articleId).toPromise()
+            );
+
+            return from(Promise.all(removePromises)).pipe(
+              mergeMap(() => {
+                // Now delete the article itself
+                return this.deleteArticle(articleId).pipe(
+                  map(deleteSuccess => ({
+                    success: deleteSuccess,
+                    error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
+                  }))
+                );
+              })
+            );
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('Error in deleteArticleAndCleanupLists:', error);
+        return of({
+          success: false,
+          error: 'Unerwarteter Fehler beim Löschen'
+        });
+      })
+    );
+  }
+
+  /**
+   * Create article with duplicate name checking (FIXED VERSION)
+   */
+  createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<{
+    success: boolean;
+    article?: Article;
+    isDuplicate?: boolean;
+    error?: string;
+  }> {
+    // Get current articles snapshot (not real-time) to avoid timing issues
+    return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`))).pipe(
+      mergeMap(snapshot => {
+        // Check for duplicates in the snapshot
+        const trimmedName = article.name.trim().toLowerCase();
+        const duplicate = snapshot.docs.some(doc => {
+          const data = doc.data();
+          return data['name'].trim().toLowerCase() === trimmedName;
+        });
+
+        if (duplicate) {
+          return of({
+            success: false,
+            isDuplicate: true
+          });
+        }
+
+        // No duplicate found, create the article
+        return this.createArticle(article).pipe(
+          map(createdArticle => ({
+            success: true,
+            article: createdArticle
+          })),
+          catchError(error => {
+            console.error('Error creating article:', error);
+            return of({
+              success: false,
+              error: 'Fehler beim Erstellen des Artikels'
+            });
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('Error checking duplicates:', error);
+        return of({
+          success: false,
+          error: 'Fehler beim Prüfen auf Duplikate'
+        });
+      })
+    );
+  }
+
+  /**
+   * Update article with duplicate name checking (FIXED VERSION)
+   */
+  updateArticleWithDuplicateCheck(
+    id: string, 
+    updates: Partial<Article>
+  ): Observable<{
+    success: boolean;
+    article?: Article;
+    isDuplicate?: boolean;
+    error?: string;
+  }> {
+    // Only check for duplicates if name is being updated
+    if (!updates.name) {
+      return this.updateArticle(id, updates).pipe(
+        map(updatedArticle => ({
+          success: !!updatedArticle,
+          article: updatedArticle || undefined,
+          error: updatedArticle ? undefined : 'Fehler beim Aktualisieren'
+        }))
+      );
+    }
+
+    // Get current articles snapshot (not real-time) to avoid timing issues
+    return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`))).pipe(
+      mergeMap(snapshot => {
+        // Check for duplicates in the snapshot, excluding current article
+        const trimmedName = updates.name!.trim().toLowerCase();
+        const duplicate = snapshot.docs.some(doc => {
+          const data = doc.data();
+          return doc.id !== id && data['name'].trim().toLowerCase() === trimmedName;
+        });
+
+        if (duplicate) {
+          return of({
+            success: false,
+            isDuplicate: true
+          });
+        }
+
+        // No duplicate found, update the article
+        return this.updateArticle(id, updates).pipe(
+          map(updatedArticle => ({
+            success: !!updatedArticle,
+            article: updatedArticle || undefined,
+            error: updatedArticle ? undefined : 'Fehler beim Aktualisieren'
+          })),
+          catchError(error => {
+            console.error('Error updating article:', error);
+            return of({
+              success: false,
+              error: 'Fehler beim Aktualisieren des Artikels'
+            });
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('Error checking duplicates:', error);
+        return of({
+          success: false,
+          error: 'Fehler beim Prüfen auf Duplikate'
+        });
+      })
+    );
   }
 }

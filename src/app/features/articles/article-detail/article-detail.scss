@@ -1,177 +1,338 @@
+// Add these styles to your existing article-detail.scss file
+
 .article-detail {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Roboto', sans-serif;
-  
+  min-height: 100vh;
+  background-color: #f5f5f5;
+
   .app-header {
-    background-color: #1a9edb !important;
-    color: white !important;
-    
-    span {
-      font-weight: 500;
+    .spacer {
+      flex: 1 1 auto;
     }
-    
-    // Ensure all icons in header are white
-    .mat-icon-button .mat-icon {
-      color: white !important;
-    }
-    
+
     .delete-button {
-      .mat-icon {
-        color: white !important;
+      position: relative;
+      
+      mat-progress-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
       }
     }
   }
-  
+
   .loading {
-    flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #666;
+    padding: 2rem;
+    
+    mat-progress-spinner {
+      margin-bottom: 1rem;
+    }
+    
+    p {
+      margin: 0;
+      color: #666;
+    }
   }
-  
+
   .form-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    padding-bottom: 100px; // Add space for fixed buttons
-    background-color: #f5f5f5;
+    padding: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
   }
 
   .article-form {
     background: white;
     border-radius: 8px;
-    padding: 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
     .full-width {
       width: 100%;
-      margin-bottom: 16px;
+      margin-bottom: 1rem;
     }
 
     .icon-section {
-      margin: 24px 0;
+      margin: 1.5rem 0;
 
       h3 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.1rem;
         font-weight: 500;
-        color: #424242;
       }
 
       .current-icon {
         display: flex;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
+        gap: 1rem;
+        margin-bottom: 1rem;
 
         .icon-preview {
-          font-size: 48px;
-          min-width: 60px;
-          text-align: center;
-          padding: 8px;
-          border: 2px dashed #e0e0e0;
+          width: 48px;
+          height: 48px;
+          border: 2px solid #e0e0e0;
           border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          background: #fafafa;
         }
 
         .icon-input {
           flex: 1;
+          margin-bottom: 0;
         }
       }
 
       .emoji-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-        gap: 8px;
-        margin-top: 16px;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 0.5rem;
 
         .emoji-button {
-          width: 50px;
-          height: 50px;
-          border: 2px solid #e0e0e0;
-          border-radius: 8px;
+          aspect-ratio: 1;
+          border: 1px solid #e0e0e0;
+          border-radius: 6px;
           background: white;
-          font-size: 24px;
+          font-size: 1.2rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
 
-          &:hover {
-            border-color: #1a9edb;
-            background-color: #e3f2fd;
+          &:hover:not(:disabled) {
+            background: #f0f0f0;
+            border-color: #2196f3;
           }
 
           &.selected {
-            border-color: #1a9edb;
-            background-color: #1a9edb;
+            background: #2196f3;
+            border-color: #2196f3;
             color: white;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+
+    .list-membership-section {
+      margin: 1.5rem 0;
+      padding-top: 1rem;
+      border-top: 1px solid #e0e0e0;
+
+      h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 500;
+      }
+
+      .lists-container {
+        min-height: 60px;
+        
+        .lists-chips {
+          mat-chip-set {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          }
+
+          .list-chip {
+            min-height: 36px;
+            border-radius: 18px;
+            color: rgba(0, 0, 0, 0.87);
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            
+            .list-name {
+              margin-right: 0.5rem;
+            }
+
+            button[matChipRemove] {
+              border: none;
+              background: transparent;
+              cursor: pointer;
+              padding: 2px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: background-color 0.2s ease;
+
+              &:hover {
+                background-color: rgba(0, 0, 0, 0.1);
+              }
+
+              mat-icon {
+                font-size: 16px;
+                width: 16px;
+                height: 16px;
+              }
+            }
+          }
+        }
+
+        .no-lists-message {
+          color: #666;
+          font-style: italic;
+          margin: 0;
+          padding: 1rem 0;
+        }
+
+        .loading-lists {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #666;
+          padding: 1rem 0;
+
+          mat-progress-spinner {
+            flex-shrink: 0;
           }
         }
       }
     }
 
     .action-buttons {
-      position: fixed;
-      bottom: 64px;
-      left: 0;
-      right: 0;
       display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      margin: 0;
-      padding: 16px;
-      background-color: white;
-      border-top: 1px solid #e0e0e0;
-      box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
-      z-index: 1050;
+      gap: 0.5rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
 
       .cancel-button {
-        min-width: 80px;
+        flex: 1;
+        min-width: 120px;
       }
 
       .delete-button-text {
-        min-width: 80px;
-        color: #d32f2f; // Keep delete buttons red for danger
+        flex: 1;
+        min-width: 120px;
+        position: relative;
+        
+        mat-progress-spinner {
+          position: absolute;
+          left: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        
+        span {
+          display: inline-block;
+          width: 100%;
+        }
+        
+        &:has(mat-progress-spinner) span {
+          margin-left: 24px;
+        }
       }
 
       .save-button {
-        min-width: 100px;
-        background-color: #1a9edb;
+        flex: 2;
+        min-width: 120px;
+        position: relative;
         
-        &:disabled {
-          background-color: #ccc;
+        mat-progress-spinner {
+          position: absolute;
+          left: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        
+        span {
+          display: inline-block;
+          width: 100%;
+        }
+        
+        &:has(mat-progress-spinner) span {
+          margin-left: 24px;
         }
       }
     }
   }
 }
 
-// Mobile responsiveness
-@media (max-width: 768px) {
+// Responsive design
+@media (max-width: 600px) {
   .article-detail {
     .form-container {
-      padding: 16px;
-      padding-bottom: 90px; // Adjusted for mobile
+      padding: 0.5rem;
     }
 
     .article-form {
-      padding: 20px;
+      padding: 1rem;
+      
+      .icon-section {
+        .emoji-grid {
+          grid-template-columns: repeat(6, 1fr);
+        }
+      }
 
       .action-buttons {
-        position: fixed;
-        bottom: 56px; // Adjusted for mobile tab bar
-        gap: 8px;
-        padding: 12px 16px;
+        flex-direction: column;
+        
+        button {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+      }
+    }
+  }
+}
 
-        .cancel-button, .delete-button-text {
-          min-width: 70px;
-          font-size: 13px;
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .article-detail {
+    background-color: #121212;
+
+    .article-form {
+      background: #1e1e1e;
+      color: white;
+
+      .icon-section {
+        h3 {
+          color: #e0e0e0;
         }
 
-        .save-button {
-          min-width: 80px;
-          font-size: 13px;
+        .current-icon .icon-preview {
+          border-color: #333;
+          background: #2a2a2a;
+        }
+
+        .emoji-grid .emoji-button {
+          background: #2a2a2a;
+          border-color: #333;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: #333;
+            border-color: #2196f3;
+          }
+        }
+      }
+
+      .list-membership-section {
+        border-top-color: #333;
+
+        h3 {
+          color: #e0e0e0;
+        }
+
+        .no-lists-message {
+          color: #999;
+        }
+
+        .loading-lists {
+          color: #999;
         }
       }
     }

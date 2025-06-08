@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -7,9 +8,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, Router } from '@angular/router';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
 
-import { Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
 
 @Component({
@@ -23,18 +25,22 @@ import { DataService } from '../../../core/services/data';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './add-article.html',
   styleUrls: ['./add-article.scss']
 })
-export class AddArticleComponent {
+export class AddArticleComponent implements OnInit, OnDestroy {
   article = {
     name: '',
     amount: '',
     notes: '',
-    icon: ''
+    icon: '📦'
   };
+  
+  isSaving = false;
+  private destroy$ = new Subject<void>();
 
   // Common emojis for quick selection
   commonEmojis = [
@@ -46,14 +52,17 @@ export class AddArticleComponent {
   constructor(
     private dataService: DataService,
     private router: Router,
-    private snackBar: MatSnackBar,
-    private route: ActivatedRoute // Add this import
-  ) {
-    // Pre-fill name if passed via query parameter
-    const preFillName = this.route.snapshot.queryParamMap.get('name');
-    if (preFillName) {
-      this.article.name = preFillName;
-    }
+    private route: ActivatedRoute,
+    private snackBar: MatSnackBar
+  ) {}
+
+  ngOnInit(): void {
+    // Component initialization if needed
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   onEmojiSelect(emoji: string): void {
@@ -65,61 +74,89 @@ export class AddArticleComponent {
       this.snackBar.open('Name ist erforderlich', 'OK', { duration: 3000 });
       return;
     }
-  
-    this.dataService.createArticle({
-      name: this.article.name.trim(),
-      amount: this.article.amount.trim() || undefined,
-      notes: this.article.notes.trim() || undefined,
-      icon: this.article.icon || '📦'
-    }).subscribe((newArticle) => {
-      this.snackBar.open('Artikel erfolgreich hinzugefügt', 'OK', { duration: 2000 });
-      
-      // Check if we should return to a list and auto-add the article
-      const returnToList = this.route.snapshot.queryParamMap.get('returnToList');
-      const autoAdd = this.route.snapshot.queryParamMap.get('autoAdd');
-      
-      if (returnToList && autoAdd === 'true' && newArticle) {
-        // Auto-add the new article to the list
-        this.dataService.addArticleToList(returnToList, newArticle.id).subscribe(() => {
-          this.router.navigate(['/lists', returnToList], {
-            queryParams: { mode: 'edit' }
+
+    this.isSaving = true;
+
+    // Get current articles ONCE to check for duplicates
+    this.dataService.getArticles()
+      .pipe(
+        take(1), // Only take the current snapshot, don't listen for updates
+        takeUntil(this.destroy$)
+      )
+      .subscribe(articles => {
+        // Check for duplicates
+        const trimmedName = this.article.name.trim().toLowerCase();
+        const duplicate = articles.find(article => 
+          article.name.trim().toLowerCase() === trimmedName
+        );
+
+        if (duplicate) {
+          this.isSaving = false;
+          alert(`Ein Artikel mit dem Namen "${this.article.name}" existiert bereits. Bitte wählen Sie einen anderen Namen.`);
+          return;
+        }
+
+        // No duplicate, create the article
+        const newArticle = {
+          name: this.article.name.trim(),
+          amount: this.article.amount.trim() || undefined,
+          notes: this.article.notes.trim() || undefined,
+          icon: this.article.icon || '📦'
+        };
+
+        this.dataService.createArticle(newArticle)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (createdArticle) => {
+              this.isSaving = false;
+              this.snackBar.open('Artikel erfolgreich erstellt', 'OK', { duration: 2000 });
+              
+              // Check if we should return to a specific list
+              const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+              const listId = this.route.snapshot.queryParamMap.get('listId');
+              
+              if (listId && createdArticle) {
+                // Add the new article to the specified list
+                this.dataService.addArticleToList(listId, createdArticle.id)
+                  .pipe(takeUntil(this.destroy$))
+                  .subscribe(addSuccess => {
+                    if (addSuccess) {
+                      this.snackBar.open('Artikel zur Liste hinzugefügt', 'OK', { duration: 2000 });
+                    }
+                    this.navigateBack(returnTo);
+                  });
+              } else {
+                this.navigateBack(returnTo);
+              }
+            },
+            error: (error) => {
+              this.isSaving = false;
+              console.error('Error creating article:', error);
+              this.snackBar.open('Fehler beim Erstellen des Artikels', 'OK', { duration: 3000 });
+            }
           });
-        });
-      } else {
-        this.router.navigate(['/articles']);
-      }
-    });
+      });
+  }
+
+  private navigateBack(returnTo?: string | null): void {
+    if (returnTo) {
+      this.router.navigateByUrl(returnTo);
+    } else {
+      this.router.navigate(['/articles']);
+    }
   }
 
   onCancel(): void {
-    // Check if there's a returnTo parameter
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
-    const mode = this.route.snapshot.queryParamMap.get('mode');
-    
-    if (returnTo) {
-      if (mode) {
-        this.router.navigate([returnTo], { queryParams: { mode: mode } });
-      } else {
-        this.router.navigateByUrl(returnTo);
-      }
-    } else {
-      this.router.navigate(['/articles']);
-    }
+    this.navigateBack(returnTo);
   }
 
   onBack(): void {
-    // Check if there's a returnTo parameter
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
-    const mode = this.route.snapshot.queryParamMap.get('mode');
-    
-    if (returnTo) {
-      if (mode) {
-        this.router.navigate([returnTo], { queryParams: { mode: mode } });
-      } else {
-        this.router.navigateByUrl(returnTo);
-      }
-    } else {
-      this.router.navigate(['/articles']);
-    }
+    this.navigateBack(returnTo);
+  }
+
+  hasValidData(): boolean {
+    return this.article.name.trim().length > 0;
   }
 }

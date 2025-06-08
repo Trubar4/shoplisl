@@ -1,0 +1,52 @@
+.confirm-dialog {
+    min-width: 300px;
+    max-width: 500px;
+  
+    h2[mat-dialog-title] {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 1rem 0;
+      font-size: 1.25rem;
+      font-weight: 500;
+  
+      .warning-icon {
+        color: #f44336;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+  
+    mat-dialog-content {
+      margin: 0 0 1.5rem 0;
+      
+      p {
+        margin: 0;
+        line-height: 1.5;
+        color: rgba(0, 0, 0, 0.87);
+      }
+    }
+  
+    mat-dialog-actions {
+      padding: 0;
+      margin: 0;
+      gap: 0.5rem;
+  
+      .cancel-button {
+        min-width: 80px;
+      }
+  
+      .confirm-button {
+        min-width: 80px;
+      }
+    }
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    .confirm-dialog {
+      mat-dialog-content p {
+        color: rgba(255, 255, 255, 0.87);
+      }
+    }
+  }
