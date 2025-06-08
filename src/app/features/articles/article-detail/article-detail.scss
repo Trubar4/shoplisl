@@ -36,6 +36,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    padding-bottom: 100px; // Add space for fixed buttons
     background-color: #f5f5f5;
   }
 
@@ -111,10 +112,19 @@
     }
 
     .action-buttons {
+      position: fixed;
+      bottom: 64px;
+      left: 0;
+      right: 0;
       display: flex;
       gap: 12px;
       justify-content: flex-end;
-      margin-top: 32px;
+      margin: 0;
+      padding: 16px;
+      background-color: white;
+      border-top: 1px solid #e0e0e0;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+      z-index: 1050;
 
       .cancel-button {
         min-width: 80px;
@@ -142,16 +152,26 @@
   .article-detail {
     .form-container {
       padding: 16px;
+      padding-bottom: 90px; // Adjusted for mobile
     }
 
     .article-form {
       padding: 20px;
 
       .action-buttons {
-        flex-direction: column;
+        position: fixed;
+        bottom: 56px; // Adjusted for mobile tab bar
+        gap: 8px;
+        padding: 12px 16px;
 
-        button {
-          width: 100%;
+        .cancel-button, .delete-button-text {
+          min-width: 70px;
+          font-size: 13px;
+        }
+
+        .save-button {
+          min-width: 80px;
+          font-size: 13px;
         }
       }
     }

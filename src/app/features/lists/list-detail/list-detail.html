@@ -198,14 +198,6 @@
     <div class="edit-actions">
       <button 
         mat-button 
-        (click)="onEditList()"
-        class="action-button primary-button"
-        [style.background-color]="getCurrentListColor()"
-        [style.color]="getContrastColor(getCurrentListColor())">
-        Bearbeiten
-      </button>
-      <button 
-        mat-button 
         (click)="onClearAllItems()"
         class="action-button secondary-button"
         [style.color]="getCurrentListColor()">
@@ -217,6 +209,14 @@
         class="action-button tertiary-button"
         [style.color]="getLightColor(getCurrentListColor())">
         Löschen
+      </button>
+      <button 
+        mat-raised-button 
+        (click)="onEditList()"
+        class="action-button primary-button"
+        [style.background-color]="getCurrentListColor()"
+        [style.color]="getContrastColor(getCurrentListColor())">
+        Bearbeiten
       </button>
     </div>
   </div>
