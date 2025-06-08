@@ -68,21 +68,62 @@
     width: 100%;
   }
   
+  // === SWIPE CONTAINER (Same as lists-overview) ===
+  .article-item-container {
+    position: relative;
+    background-color: white;
+    overflow: hidden;
+    border-bottom: 1px solid #e0e0e0;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    // Delete indicator (shown during swipe)
+    .delete-indicator {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 120px;
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 1;
+      
+      .mat-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+      
+      span {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+  
   .article-item {
     display: flex;
     align-items: center;
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
     cursor: pointer;
     min-height: 60px;
-    transition: background-color 0.2s;
+    position: relative;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    z-index: 2;
     
     &:hover {
       background-color: rgba(0, 0, 0, 0.04);
-    }
-    
-    &:last-child {
-      border-bottom: none;
     }
     
     .article-icon {
@@ -170,18 +211,111 @@
 // === MOBILE RESPONSIVENESS ===
 @media (max-width: 768px) {
   .article-overview {
-    .article-content {
-      .article-header {
-        flex-wrap: wrap;
-        gap: 8px;
+    .article-item {
+      padding: 12px 16px;
+      min-height: 64px;
+      
+      .article-icon {
+        font-size: 24px;
+        margin-right: 12px;
+        min-width: 36px;
       }
+    }
+    
+    .delete-indicator {
+      width: 100px;
+      
+      .mat-icon {
+        font-size: 20px;
+      }
+      
+      span {
+        font-size: 11px;
+      }
+    }
+  }
+}
+
+// === EXTRA SMALL SCREENS ===
+@media (max-width: 480px) {
+  .article-overview {
+    .article-item {
+      padding: 10px 12px;
+      min-height: 60px;
+      
+      .article-icon {
+        font-size: 22px;
+        margin-right: 10px;
+        min-width: 32px;
+      }
+      
+      .article-content {
+        .article-header {
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        
+        .article-name {
+          font-size: 15px;
+        }
+        
+        .article-notes {
+          font-size: 13px;
+        }
+      }
+      
+      .nav-arrow {
+        font-size: 18px;
+      }
+    }
+    
+    .delete-indicator {
+      width: 80px;
+      
+      .mat-icon {
+        font-size: 18px;
+        margin-bottom: 2px;
+      }
+      
+      span {
+        font-size: 10px;
+      }
+    }
+  }
+}
+
+// === PREVENT TEXT SELECTION DURING SWIPE (Same as lists-overview) ===
+.article-item-container {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  
+  * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+}
+
+// === HIGH DPI DISPLAYS ===
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .article-overview {
+    .article-item {
+      box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .delete-indicator {
+      box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.1);
     }
   }
 }
 
 // === ACCESSIBILITY ===
 @media (prefers-reduced-motion: reduce) {
-  .article-item {
+  .article-item,
+  .delete-indicator {
     transition: none;
   }
 }

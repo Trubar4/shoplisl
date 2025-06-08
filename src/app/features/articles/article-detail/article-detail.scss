@@ -158,6 +158,11 @@
               margin-right: 0.5rem;
             }
 
+            .white-text {
+              color: white;
+            }
+            
+
             button[matChipRemove] {
               border: none;
               background: transparent;
@@ -203,62 +208,58 @@
       }
     }
 
-    .action-buttons {
+    .action-button {
+      flex: 1;
+      height: 48px;
+      min-height: 48px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
       display: flex;
-      gap: 0.5rem;
-      margin-top: 2rem;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
 
-      .cancel-button {
-        flex: 1;
-        min-width: 120px;
-      }
-
-      .delete-button-text {
-        flex: 1;
-        min-width: 120px;
-        position: relative;
-        
-        mat-progress-spinner {
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-        }
-        
-        span {
-          display: inline-block;
-          width: 100%;
-        }
-        
-        &:has(mat-progress-spinner) span {
-          margin-left: 24px;
+      &.primary-button {
+        border-radius: 24px;
+        font-weight: 500;
+        text-transform: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
       }
 
-      .save-button {
-        flex: 2;
-        min-width: 120px;
-        position: relative;
-        
-        mat-progress-spinner {
-          position: absolute;
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
+      &.secondary-button {
+        border-radius: 24px;
+        background-color: transparent;
+        border-color: var(--list-primary-color, #1a9edb);
+
+        &:hover {
+          background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.1);
         }
-        
-        span {
-          display: inline-block;
-          width: 100%;
-        }
-        
-        &:has(mat-progress-spinner) span {
-          margin-left: 24px;
+      }
+
+      &.tertiary-button {
+        border-radius: 24px;
+        background-color: transparent;
+        border-color: var(--list-light-color, #a8d4f0);
+
+        &:hover {
+          background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.05);
         }
       }
     }
   }
+
+
 }
 
 // Responsive design

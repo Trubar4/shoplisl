@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
+import { map, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -10,9 +10,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-article-overview',
@@ -25,19 +29,36 @@ import { DataService } from '../../../core/services/data';
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './article-overview.html',
   styleUrls: ['./article-overview.scss']
 })
-export class ArticleOverviewComponent implements OnInit {
+export class ArticleOverviewComponent implements OnInit, OnDestroy {
   searchQuery$ = new BehaviorSubject<string>('');
   filteredArticles$: Observable<Article[]>;
   searchQuery = '';
   
+  // Swipe state management (same as lists-overview)
+  swipeStates: { [articleId: string]: { 
+    isSwipeActive: boolean; 
+    swipeDistance: number;
+    startX: number;
+    currentX: number;
+  } } = {};
+  
+  private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
+  private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
+  private destroy$ = new Subject<void>();
+  
   constructor(
     private dataService: DataService,
-    private router: Router
+    private router: Router,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {
     // Combine articles with search query for filtering
     this.filteredArticles$ = combineLatest([
@@ -63,12 +84,20 @@ export class ArticleOverviewComponent implements OnInit {
 
   ngOnInit(): void {}
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   onSearchQueryChange(): void {
     this.searchQuery$.next(this.searchQuery.trim());
   }
 
   onArticleClick(article: Article): void {
-    this.router.navigate(['/articles', article.id]);
+    // Only navigate if not swiping (same as lists-overview)
+    if (!this.swipeStates[article.id]?.isSwipeActive) {
+      this.router.navigate(['/articles', article.id]);
+    }
   }
 
   onAddArticle(): void {
@@ -84,5 +113,214 @@ export class ArticleOverviewComponent implements OnInit {
     } else {
       this.router.navigate(['/articles/add']);
     }
+  }
+
+  // === SWIPE GESTURE HANDLERS (Same as lists-overview) ===
+  
+  onTouchStart(event: TouchEvent, articleId: string): void {
+    const touch = event.touches[0];
+    this.swipeStates[articleId] = {
+      isSwipeActive: false,
+      swipeDistance: 0,
+      startX: touch.clientX,
+      currentX: touch.clientX
+    };
+  }
+
+  onTouchMove(event: TouchEvent, articleId: string): void {
+    if (!this.swipeStates[articleId]) return;
+    
+    event.preventDefault(); // Prevent scrolling while swiping
+    const touch = event.touches[0];
+    const swipeState = this.swipeStates[articleId];
+    
+    swipeState.currentX = touch.clientX;
+    const deltaX = swipeState.startX - swipeState.currentX;
+    
+    // Only allow left swipe (positive deltaX)
+    if (deltaX > 10) {
+      swipeState.isSwipeActive = true;
+      swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
+      
+      // Update the visual position
+      this.updateSwipePosition(articleId, swipeState.swipeDistance);
+    } else if (deltaX < -10) {
+      // Right swipe - reset
+      this.resetSwipe(articleId);
+    }
+  }
+
+  onTouchEnd(event: TouchEvent, articleId: string): void {
+    if (!this.swipeStates[articleId]) return;
+    
+    const swipeState = this.swipeStates[articleId];
+    
+    if (swipeState.swipeDistance > this.SWIPE_THRESHOLD) {
+      // Trigger delete action
+      this.onSwipeDelete(articleId);
+    } else {
+      // Reset swipe
+      this.resetSwipe(articleId);
+    }
+  }
+
+  // Mouse events for desktop testing
+  onMouseDown(event: MouseEvent, articleId: string): void {
+    event.preventDefault();
+    this.swipeStates[articleId] = {
+      isSwipeActive: false,
+      swipeDistance: 0,
+      startX: event.clientX,
+      currentX: event.clientX
+    };
+    
+    // Add mouse move and up listeners
+    const onMouseMove = (e: MouseEvent) => this.onMouseMove(e, articleId);
+    const onMouseUp = (e: MouseEvent) => {
+      this.onMouseUp(e, articleId);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  onMouseMove(event: MouseEvent, articleId: string): void {
+    if (!this.swipeStates[articleId]) return;
+    
+    const swipeState = this.swipeStates[articleId];
+    swipeState.currentX = event.clientX;
+    const deltaX = swipeState.startX - swipeState.currentX;
+    
+    // Only allow left swipe (positive deltaX)
+    if (deltaX > 10) {
+      swipeState.isSwipeActive = true;
+      swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
+      
+      // Update the visual position
+      this.updateSwipePosition(articleId, swipeState.swipeDistance);
+    } else if (deltaX < -10) {
+      // Right swipe - reset
+      this.resetSwipe(articleId);
+    }
+  }
+
+  onMouseUp(event: MouseEvent, articleId: string): void {
+    this.onTouchEnd(event as any, articleId);
+  }
+
+  private updateSwipePosition(articleId: string, distance: number): void {
+    const element = document.querySelector(`[data-article-id="${articleId}"]`) as HTMLElement;
+    if (element) {
+      element.style.transform = `translateX(-${distance}px)`;
+      element.style.transition = 'none';
+      
+      // Update delete indicator opacity
+      const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
+      if (deleteIndicator) {
+        const opacity = Math.min(distance / this.SWIPE_THRESHOLD, 1);
+        deleteIndicator.style.opacity = opacity.toString();
+        deleteIndicator.style.transform = `translateX(${Math.max(0, this.MAX_SWIPE_DISTANCE - distance)}px)`;
+      }
+    }
+  }
+
+  private resetSwipe(articleId: string): void {
+    const element = document.querySelector(`[data-article-id="${articleId}"]`) as HTMLElement;
+    if (element) {
+      element.style.transform = 'translateX(0)';
+      element.style.transition = 'transform 0.3s ease';
+      
+      // Reset delete indicator
+      const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
+      if (deleteIndicator) {
+        deleteIndicator.style.opacity = '0';
+      }
+    }
+    
+    // Reset swipe state after animation
+    setTimeout(() => {
+      if (this.swipeStates[articleId]) {
+        this.swipeStates[articleId].isSwipeActive = false;
+        this.swipeStates[articleId].swipeDistance = 0;
+      }
+    }, 300);
+  }
+
+  private onSwipeDelete(articleId: string): void {
+    // Find the article to get its name
+    this.dataService.getArticles().pipe(takeUntil(this.destroy$)).subscribe(articles => {
+      const article = articles.find(a => a.id === articleId);
+      if (!article) return;
+      
+      // Reset swipe immediately
+      this.resetSwipe(articleId);
+      
+      // Check if article is active in any lists first
+      this.dataService.getListsWithActiveArticle(articleId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(activeInLists => {
+          if (activeInLists.length > 0) {
+            const listNames = activeInLists.map(list => list.name).join(', ');
+            this.showActiveInListsDialog(article.name, listNames);
+          } else {
+            this.showDeleteConfirmation(article);
+          }
+        });
+    });
+  }
+
+  private showActiveInListsDialog(articleName: string, listNames: string): void {
+    const dialogData: ConfirmDialogData = {
+      title: 'Artikel kann nicht gelöscht werden',
+      message: `Der Artikel "${articleName}" ist noch aktiv in folgenden Listen: ${listNames}. Entfernen Sie den Artikel zuerst aus diesen Listen oder setzen Sie ihn auf "erledigt".`,
+      confirmText: 'Verstanden',
+      showCancel: false,
+      isDestructive: false
+    };
+
+    this.dialog.open(ConfirmDialogComponent, {
+      width: '90%',
+      maxWidth: '400px',
+      data: dialogData
+    });
+  }
+
+  private showDeleteConfirmation(article: Article): void {
+    const dialogData: ConfirmDialogData = {
+      title: 'Artikel löschen',
+      message: `Möchten Sie "${article.name}" wirklich löschen? Der Artikel wird auch aus allen Listen entfernt, in denen er als erledigt markiert ist.`,
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      showCancel: true,
+      isDestructive: true
+    };
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '90%',
+      maxWidth: '400px',
+      data: dialogData
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.performDelete(article);
+      }
+    });
+  }
+
+  private performDelete(article: Article): void {
+    this.dataService.deleteArticleAndCleanupLists(article.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        if (result.success) {
+          this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
+        } else if (result.activeInLists) {
+          this.snackBar.open('Artikel ist noch in aktiven Listen', 'OK', { duration: 3000 });
+        } else {
+          this.snackBar.open(result.error || 'Fehler beim Löschen', 'OK', { duration: 3000 });
+        }
+      });
   }
 }

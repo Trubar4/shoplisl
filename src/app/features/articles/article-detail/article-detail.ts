@@ -227,4 +227,5 @@ export class ArticleDetailComponent implements OnInit, OnDestroy {
            this.article.notes !== (this.originalArticle.notes || '') ||
            this.article.icon !== this.originalArticle.icon;
   }
+  
 }

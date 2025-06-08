@@ -110,17 +110,17 @@
           <div *ngIf="lists.length > 0; else noListsContent" class="lists-chips">
             <mat-chip-set>
               <mat-chip 
-                *ngFor="let list of lists" 
-                class="list-chip"
-                [style.background-color]="list.color || '#e0e0e0'">
-                <span class="list-name">{{ list.name }}</span>
-                <button 
-                  matChipRemove 
-                  (click)="onRemoveFromList(list)"
-                  [attr.aria-label]="'Aus ' + list.name + ' entfernen'">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </mat-chip>
+              *ngFor="let list of lists" 
+              class="list-chip white-text"
+              [style.background-color]="list.color || '#e0e0e0'">
+              <span class="list-name white-text">{{ list.name }}</span>
+              <button 
+                matChipRemove 
+                (click)="onRemoveFromList(list)"
+                [attr.aria-label]="'Aus ' + list.name + ' entfernen'">
+                <mat-icon class="white-text">close</mat-icon>
+              </button>
+            </mat-chip>
             </mat-chip-set>
           </div>
           
