@@ -19,7 +19,7 @@ interface ArticleWithToggle extends Article {
 }
 
 @Component({
-  selector: 'app-add-articles',
+  selector: 'app-add-articles-to-list',
   standalone: true,
   imports: [
     CommonModule,
@@ -34,7 +34,7 @@ interface ArticleWithToggle extends Article {
   templateUrl: './add-articles.html',
   styleUrls: ['./add-articles.scss']
 })
-export class AddArticlesComponent implements OnInit {
+export class AddArticlesToListComponent implements OnInit {
   listId: string;
   list$: Observable<ShoppingList | undefined>;
   articlesWithToggle$: Observable<ArticleWithToggle[]>;

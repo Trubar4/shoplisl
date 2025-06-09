@@ -35,7 +35,7 @@
           [disabled]="isSaving">
       </mat-form-field>
         
-      <!-- Notes Field -->
+      <!-- Notes Field - MOVED ABOVE DEPARTMENT -->
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Notizen</mat-label>
         <textarea 
@@ -47,6 +47,65 @@
           rows="3">
         </textarea>
       </mat-form-field>
+
+      <!-- Department Selection -->
+      <div class="department-selector">
+        <h3 class="section-title">Abteilung</h3>
+        <p class="section-subtitle">Wähle eine Abteilung für bessere Organisation</p>
+        
+        <div class="department-grid">
+          <!-- No Department Option -->
+          <mat-card 
+            class="department-card"
+            [class.selected]="article.departmentId === null"
+            (click)="onDepartmentSelected(null)">
+            <mat-card-content>
+              <div class="department-content">
+                <div class="department-icon">
+                  <span class="no-department-icon">❓</span>
+                </div>
+                <div class="department-info">
+                  <div class="department-name">Keine Abteilung</div>
+                  <mat-radio-button 
+                    [value]="null"
+                    [(ngModel)]="article.departmentId"
+                    name="department"
+                    class="department-radio">
+                  </mat-radio-button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Department Options -->
+          <mat-card 
+            *ngFor="let department of departments" 
+            class="department-card"
+            [class.selected]="article.departmentId === department.id"
+            (click)="onDepartmentSelected(department.id)">
+            <mat-card-content>
+              <div class="department-content">
+                <div class="department-icon">
+                  <img 
+                    [src]="getDepartmentIconPath(department.icon)" 
+                    [alt]="department.nameGerman"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                  <span class="fallback-icon" style="display: none;">📦</span>
+                </div>
+                <div class="department-info">
+                  <div class="department-name">{{ department.nameGerman }}</div>
+                  <mat-radio-button 
+                    [value]="department.id"
+                    [(ngModel)]="article.departmentId"
+                    name="department"
+                    class="department-radio">
+                  </mat-radio-button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
 
       <!-- Icon Selection -->
       <div class="icon-section">

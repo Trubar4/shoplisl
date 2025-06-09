@@ -184,6 +184,7 @@ export class DataService {
               notes: data['notes'],
               icon: data['icon'],
               categoryId: data['categoryId'],
+              departmentId: data['departmentId'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               availableInShops: data['availableInShops'] || [],
@@ -248,6 +249,7 @@ export class DataService {
             notes: data['notes'],
             icon: data['icon'],
             categoryId: data['categoryId'],
+            departmentId: data['departmentId'], 
             createdAt: data['createdAt']?.toDate() || new Date(),
             updatedAt: data['updatedAt']?.toDate() || new Date(),
             availableInShops: data['availableInShops'] || [],
@@ -270,6 +272,7 @@ export class DataService {
       notes: article.notes || '',
       icon: article.icon || '📦',
       categoryId: article.categoryId || '',
+      departmentId: article.departmentId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
       createdAt: Timestamp.now(),
@@ -303,6 +306,7 @@ export class DataService {
     if (updates.notes !== undefined) updateData.notes = updates.notes || '';
     if (updates.icon !== undefined) updateData.icon = updates.icon || '📦';
     if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId || '';
+    if (updates.departmentId !== undefined) updateData.departmentId = updates.departmentId || '';
     if (updates.availableInShops !== undefined) updateData.availableInShops = updates.availableInShops || [];
     if (updates.usageCount !== undefined) updateData.usageCount = updates.usageCount || 0;
 

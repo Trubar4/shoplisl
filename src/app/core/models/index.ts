@@ -5,6 +5,7 @@ export interface Article {
   notes?: string;
   icon?: string;
   categoryId?: string;
+  departmentId?: string; // NEW: Add this field
   createdAt: Date;
   updatedAt: Date;
   // Future: shop availability, usage stats
@@ -12,6 +13,16 @@ export interface Article {
   usageCount?: number;
 }
 
+// NEW: Add this Department interface
+export interface Department {
+  id: string;
+  nameGerman: string;
+  nameEnglish: string;
+  icon: string; // filename in /public/icons/
+  color?: string; // optional color for UI theming
+}
+
+// Keep all your existing interfaces as they are:
 export interface ArticleCategory {
   id: string;
   name: string;

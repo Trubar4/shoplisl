@@ -9,10 +9,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatCardModule } from '@angular/material/card';
 import { Subject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 
 import { DataService } from '../../../core/services/data';
+import { DepartmentService } from '../../../core/services/department.service';
+import { Department } from '../../../core/models';
 
 @Component({
   selector: 'app-add-article',
@@ -26,7 +30,9 @@ import { DataService } from '../../../core/services/data';
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatRadioModule,
+    MatCardModule
   ],
   templateUrl: './add-article.html',
   styleUrls: ['./add-article.scss']
@@ -36,13 +42,14 @@ export class AddArticleComponent implements OnInit, OnDestroy {
     name: '',
     amount: '',
     notes: '',
-    icon: '📦'
+    icon: '📦',
+    departmentId: null as string | null
   };
   
   isSaving = false;
+  departments: Department[] = [];
   private destroy$ = new Subject<void>();
 
-  // Common emojis for quick selection
   commonEmojis = [
     '🍎', '🍌', '🍓', '🥝', '🍊', '🍇', '🥕', '🥬',
     '🍞', '🥛', '🧀', '🥚', '🍖', '🐟', '🍝', '🍚',
@@ -51,13 +58,16 @@ export class AddArticleComponent implements OnInit, OnDestroy {
 
   constructor(
     private dataService: DataService,
+    private departmentService: DepartmentService,
     private router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
-    // Component initialization if needed
+    this.departmentService.getDepartments().subscribe(departments => {
+      this.departments = departments;
+    });
   }
 
   ngOnDestroy(): void {
@@ -69,6 +79,15 @@ export class AddArticleComponent implements OnInit, OnDestroy {
     this.article.icon = emoji;
   }
 
+  onDepartmentSelected(departmentId: string | null): void {
+    this.article.departmentId = departmentId;
+  }
+
+  getDepartmentIconPath(iconFilename: string): string {
+    // Update this path based on your actual icon location
+    return `/public/icons/${iconFilename}`;
+  }
+
   onSave(): void {
     if (!this.article.name.trim()) {
       this.snackBar.open('Name ist erforderlich', 'OK', { duration: 3000 });
@@ -77,14 +96,12 @@ export class AddArticleComponent implements OnInit, OnDestroy {
 
     this.isSaving = true;
 
-    // Get current articles ONCE to check for duplicates
     this.dataService.getArticles()
       .pipe(
-        take(1), // Only take the current snapshot, don't listen for updates
+        take(1),
         takeUntil(this.destroy$)
       )
       .subscribe(articles => {
-        // Check for duplicates
         const trimmedName = this.article.name.trim().toLowerCase();
         const duplicate = articles.find(article => 
           article.name.trim().toLowerCase() === trimmedName
@@ -96,12 +113,12 @@ export class AddArticleComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // No duplicate, create the article
         const newArticle = {
           name: this.article.name.trim(),
           amount: this.article.amount.trim() || undefined,
           notes: this.article.notes.trim() || undefined,
-          icon: this.article.icon || '📦'
+          icon: this.article.icon || '📦',
+          departmentId: this.article.departmentId || undefined
         };
 
         this.dataService.createArticle(newArticle)
@@ -111,12 +128,10 @@ export class AddArticleComponent implements OnInit, OnDestroy {
               this.isSaving = false;
               this.snackBar.open('Artikel erfolgreich erstellt', 'OK', { duration: 2000 });
               
-              // Check if we should return to a specific list
               const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
               const listId = this.route.snapshot.queryParamMap.get('listId');
               
               if (listId && createdArticle) {
-                // Add the new article to the specified list
                 this.dataService.addArticleToList(listId, createdArticle.id)
                   .pipe(takeUntil(this.destroy$))
                   .subscribe(addSuccess => {
