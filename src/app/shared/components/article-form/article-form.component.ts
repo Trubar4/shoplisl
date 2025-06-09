@@ -10,7 +10,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipModule } from '@angular/material/chips';
+import { MatChipsModule } from '@angular/material/chips';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -40,7 +40,7 @@ export interface ArticleFormData {
     MatProgressSpinnerModule,
     MatRadioModule,
     MatCardModule,
-    MatChipModule
+    MatChipsModule
   ],
   templateUrl: './article-form.component.html',
   styleUrls: ['./article-form.component.scss']

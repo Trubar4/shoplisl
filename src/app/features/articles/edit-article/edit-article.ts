@@ -29,7 +29,7 @@ import { ArticleFormComponent, ArticleFormData } from '../../../shared/component
   styleUrls: ['./edit-article.scss']
 })
 export class EditArticleComponent implements OnInit, OnDestroy {
-  article: Article | null = null;
+  article: Article | undefined = undefined;
   isLoading = true;
   isSaving = false;
   isDeleting = false;
@@ -53,12 +53,12 @@ export class EditArticleComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (article) => {
-          this.article = article;
-          this.isLoading = false;
-        },
+            this.article = article || undefined;
+            this.isLoading = false;
+          },
         error: (error) => {
           console.error('Error loading article:', error);
-          this.article = null;
+          this.article = undefined;;
           this.isLoading = false;
           this.snackBar.open('Fehler beim Laden', 'OK', { duration: 3000 });
         }

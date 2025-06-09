@@ -5,7 +5,7 @@ import { ListDetailComponent } from './features/lists/list-detail/list-detail';
 import { AddArticlesToListComponent } from './features/lists/add-articles/add-articles';
 import { ArticleOverviewComponent } from './features/articles/article-overview/article-overview';
 import { AddArticleComponent } from './features/articles/add-article/add-article';
-import { ArticleDetailComponent } from './features/articles/article-detail/article-detail';
+import { EditArticleComponent } from './features/articles/edit-article/edit-article';
 
 export const routes: Routes = [
   {
@@ -38,8 +38,8 @@ export const routes: Routes = [
     component: AddArticleComponent
   },
   {
-    path: 'articles/:id',
-    component: ArticleDetailComponent
+    path: 'articles/edit/:id', 
+    component: EditArticleComponent
   },
   {
     path: 'shops',

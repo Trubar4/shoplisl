@@ -14,14 +14,7 @@
     </div>
   
     <!-- Article Not Found -->
-    <div *ngIf="!isLoading && !article" class="error-container">
-      <mat-icon class="error-icon">error</mat-icon>
-      <h2>Artikel nicht gefunden</h2>
-      <p>Der angeforderte Artikel konnte nicht gefunden werden.</p>
-      <button mat-raised-button color="primary" (click)="onBack()">
-        Zurück
-      </button>
-    </div>
+    <div *ngIf="!isLoading && !article" class="error-container"></div>
   
     <!-- Unified Form -->
     <app-article-form
