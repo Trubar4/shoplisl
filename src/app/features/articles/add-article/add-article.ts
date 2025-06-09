@@ -81,11 +81,12 @@ export class AddArticleComponent implements OnInit, OnDestroy {
 
   onDepartmentSelected(departmentId: string | null): void {
     this.article.departmentId = departmentId;
+    console.log('Department selected:', departmentId); // Debug log
   }
 
   getDepartmentIconPath(iconFilename: string): string {
-    // Update this path based on your actual icon location
-    return `/public/icons/${iconFilename}`;
+    // Correct path: public folder is served at root
+    return `/icons/${iconFilename}`;
   }
 
   onSave(): void {

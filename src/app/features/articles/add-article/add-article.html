@@ -68,9 +68,11 @@
                   <div class="department-name">Keine Abteilung</div>
                   <mat-radio-button 
                     [value]="null"
-                    [(ngModel)]="article.departmentId"
+                    [checked]="article.departmentId === null"
                     name="department"
-                    class="department-radio">
+                    color="primary"
+                    class="department-radio"
+                    (click)="$event.stopPropagation()">
                   </mat-radio-button>
                 </div>
               </div>
@@ -96,9 +98,11 @@
                   <div class="department-name">{{ department.nameGerman }}</div>
                   <mat-radio-button 
                     [value]="department.id"
-                    [(ngModel)]="article.departmentId"
+                    [checked]="article.departmentId === department.id"
                     name="department"
-                    class="department-radio">
+                    color="primary"
+                    class="department-radio"
+                    (click)="$event.stopPropagation()">
                   </mat-radio-button>
                 </div>
               </div>

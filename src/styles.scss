@@ -62,3 +62,40 @@ html, body {
     padding-bottom: 80px;
   }
 }
+
+/* Add this to src/styles.scss for global radio button color fix */
+
+/* Override Material radio button theme globally */
+.mat-mdc-radio-button {
+  --mdc-radio-selected-icon-color: #212121 !important;
+  --mdc-radio-selected-hover-icon-color: #212121 !important;
+  --mdc-radio-selected-pressed-icon-color: #212121 !important;
+  --mdc-radio-unselected-icon-color: #424242 !important;
+  --mdc-radio-unselected-hover-icon-color: #424242 !important;
+  --mdc-radio-unselected-pressed-icon-color: #424242 !important;
+}
+
+/* Force black colors for all radio buttons */
+.mat-mdc-radio-button .mdc-radio__outer-circle {
+  border-color: #424242 !important;
+}
+
+.mat-mdc-radio-button .mdc-radio__inner-circle {
+  border-color: #212121 !important;
+  background-color: #212121 !important;
+}
+
+.mat-mdc-radio-button.mat-mdc-radio-checked .mdc-radio__outer-circle {
+  border-color: #212121 !important;
+}
+
+.mat-mdc-radio-button.mat-mdc-radio-checked .mdc-radio__inner-circle {
+  border-color: #212121 !important;
+  background-color: #212121 !important;
+}
+
+/* Override any accent colors */
+.mat-accent .mat-mdc-radio-button,
+.mat-mdc-radio-button.mat-accent {
+  --mdc-radio-selected-icon-color: #212121 !important;
+}
