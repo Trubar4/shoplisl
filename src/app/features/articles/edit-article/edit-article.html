@@ -1,0 +1,38 @@
+<div class="edit-article">
+    <!-- Header -->
+    <mat-toolbar color="primary" class="app-header">
+      <button mat-icon-button (click)="onBack()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <span>Artikel bearbeiten</span>
+    </mat-toolbar>
+  
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+      <p>Artikel wird geladen...</p>
+    </div>
+  
+    <!-- Article Not Found -->
+    <div *ngIf="!isLoading && !article" class="error-container">
+      <mat-icon class="error-icon">error</mat-icon>
+      <h2>Artikel nicht gefunden</h2>
+      <p>Der angeforderte Artikel konnte nicht gefunden werden.</p>
+      <button mat-raised-button color="primary" (click)="onBack()">
+        Zurück
+      </button>
+    </div>
+  
+    <!-- Unified Form -->
+    <app-article-form
+      *ngIf="!isLoading && article"
+      [article]="article"
+      [isEditMode]="true"
+      [isSubmitting]="isSaving"
+      [isDeleting]="isDeleting"
+      (formSubmit)="onSave($event)"
+      (formCancel)="onCancel()"
+      (formDelete)="onDelete()"
+      (removeFromList)="onRemoveFromList($event)">
+    </app-article-form>
+  </div>

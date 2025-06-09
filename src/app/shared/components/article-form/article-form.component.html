@@ -1,0 +1,222 @@
+<!-- src/app/shared/components/article-form/article-form.component.html -->
+<div class="article-form-container">
+    <form class="article-form" (ngSubmit)="onSubmit()">
+      
+      <!-- Name Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Name</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="formData.name" 
+          name="name"
+          placeholder="z.B. Erdbeeren"
+          [disabled]="isSubmitting"
+          required
+          [autofocus]="!isEditMode">
+      </mat-form-field>
+  
+      <!-- Amount Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Menge</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="formData.amount" 
+          name="amount"
+          placeholder="z.B. 500g, 2 Stück, 1 Pack"
+          [disabled]="isSubmitting">
+      </mat-form-field>
+        
+      <!-- Notes Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Notizen</mat-label>
+        <textarea 
+          matInput 
+          [(ngModel)]="formData.notes" 
+          name="notes"
+          placeholder="Zusätzliche Informationen..."
+          [disabled]="isSubmitting"
+          rows="3">
+        </textarea>
+      </mat-form-field>
+  
+      <!-- Lists Info (Edit Mode Only) -->
+      <div *ngIf="isEditMode && containingLists$" class="list-membership-section">
+        <h3 class="section-title">In diesen Listen enthalten</h3>
+        
+        <div class="lists-container" *ngIf="containingLists$ | async as lists; else loadingLists">
+          <div *ngIf="lists.length > 0; else noListsContent" class="lists-chips">
+            <mat-chip-set>
+              <mat-chip 
+                *ngFor="let list of lists" 
+                class="list-chip white-text"
+                [style.background-color]="list.color || '#e0e0e0'">
+                <span class="list-name white-text">{{ list.name }}</span>
+                <button 
+                  matChipRemove 
+                  (click)="onRemoveFromList(list)"
+                  [attr.aria-label]="'Aus ' + list.name + ' entfernen'">
+                  <mat-icon class="white-text">close</mat-icon>
+                </button>
+              </mat-chip>
+            </mat-chip-set>
+          </div>
+          
+          <ng-template #noListsContent>
+            <p class="no-lists-message">
+              Dieser Artikel ist in keiner Liste enthalten.
+            </p>
+          </ng-template>
+        </div>
+        
+        <ng-template #loadingLists>
+          <div class="loading-lists">
+            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+            <span>Listen werden geladen...</span>
+          </div>
+        </ng-template>
+      </div>
+  
+      <!-- Department Selection -->
+      <div class="department-selector">
+        <h3 class="section-title">Abteilung</h3>
+        <p class="section-subtitle">Wähle eine Abteilung für bessere Organisation</p>
+        
+        <div class="department-grid">
+          <!-- No Department Option -->
+          <mat-card 
+            class="department-card"
+            [class.selected]="formData.departmentId === undefined"
+            (click)="onDepartmentSelected(null)">
+            <mat-card-content>
+              <div class="department-content">
+                <div class="department-icon">
+                  <span class="no-department-icon">❓</span>
+                </div>
+                <div class="department-info">
+                  <div class="department-name">Keine Abteilung</div>
+                  <mat-radio-button 
+                    [value]="null"
+                    [checked]="formData.departmentId === undefined"
+                    name="department"
+                    color="primary"
+                    class="department-radio"
+                    (click)="$event.stopPropagation()">
+                  </mat-radio-button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+  
+          <!-- Department Options -->
+          <mat-card 
+            *ngFor="let department of departments" 
+            class="department-card"
+            [class.selected]="formData.departmentId === department.id"
+            (click)="onDepartmentSelected(department.id)">
+            <mat-card-content>
+              <div class="department-content">
+                <div class="department-icon">
+                  <img 
+                    [src]="getDepartmentIconPath(department.icon)" 
+                    [alt]="department.nameGerman"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                  <span class="fallback-icon" style="display: none;">📦</span>
+                </div>
+                <div class="department-info">
+                  <div class="department-name">{{ department.nameGerman }}</div>
+                  <mat-radio-button 
+                    [value]="department.id"
+                    [checked]="formData.departmentId === department.id"
+                    name="department"
+                    color="primary"
+                    class="department-radio"
+                    (click)="$event.stopPropagation()">
+                  </mat-radio-button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+  
+      <!-- Icon Selection -->
+      <div class="icon-section">
+        <h3 class="section-title">Icon auswählen</h3>
+        
+        <!-- Current Icon Display -->
+        <div class="current-icon">
+          <div class="icon-preview">
+            {{ formData.icon }}
+          </div>
+          <mat-form-field appearance="outline" class="icon-input">
+            <mat-label>Eigenes Icon</mat-label>
+            <input 
+              matInput 
+              [(ngModel)]="formData.icon" 
+              name="icon"
+              placeholder="Emoji eingeben..."
+              [disabled]="isSubmitting"
+              maxlength="2">
+          </mat-form-field>
+        </div>
+  
+        <!-- Common Emojis -->
+        <div class="emoji-grid">
+          <button 
+            *ngFor="let emoji of commonEmojis" 
+            type="button"
+            class="emoji-button"
+            [class.selected]="formData.icon === emoji"
+            [disabled]="isSubmitting"
+            (click)="onEmojiSelect(emoji)">
+            {{ emoji }}
+          </button>
+        </div>
+      </div>
+  
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button 
+          type="button" 
+          mat-button 
+          (click)="onCancel()"
+          [disabled]="isSubmitting || isDeleting"
+          class="action-button secondary-button">
+          Abbrechen
+        </button>
+  
+        <!-- Delete Button (Edit Mode Only) -->
+        <button 
+          *ngIf="isEditMode"
+          type="button"
+          mat-button 
+          (click)="onDelete()"
+          [disabled]="isSubmitting || isDeleting"
+          class="action-button tertiary-button">
+          <mat-progress-spinner 
+            *ngIf="isDeleting" 
+            diameter="16" 
+            mode="indeterminate">
+          </mat-progress-spinner>
+          <span *ngIf="!isDeleting">Löschen</span>
+          <span *ngIf="isDeleting">Wird gelöscht...</span>
+        </button>
+  
+        <!-- Save/Create Button -->
+        <button 
+          type="submit" 
+          mat-raised-button 
+          color="primary"
+          [disabled]="!hasValidData() || !hasChanges() || isSubmitting || isDeleting"
+          class="action-button primary-button">
+          <mat-progress-spinner 
+            *ngIf="isSubmitting" 
+            diameter="16" 
+            mode="indeterminate">
+          </mat-progress-spinner>
+          <span *ngIf="!isSubmitting">{{ isEditMode ? 'Speichern' : 'Erstellen' }}</span>
+          <span *ngIf="isSubmitting">{{ isEditMode ? 'Wird gespeichert...' : 'Wird erstellt...' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>

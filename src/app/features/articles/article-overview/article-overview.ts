@@ -98,7 +98,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   onArticleClick(article: Article): void {
     // Only navigate if not swiping (same as lists-overview)
     if (!this.swipeStates[article.id]?.isSwipeActive) {
-      this.router.navigate(['/articles', article.id]);
+      this.router.navigate(['/articles/edit', article.id])
     }
   }
 
