@@ -62,6 +62,13 @@
     flex: 1;
     overflow-y: auto;
     background-color: white;
+    
+    // Add these touch scrolling properties:
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+    min-height: 0;
   }
 
   .articles-list {

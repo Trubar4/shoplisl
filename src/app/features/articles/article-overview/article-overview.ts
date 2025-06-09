@@ -48,6 +48,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     swipeDistance: number;
     startX: number;
     currentX: number;
+    startY: number;
+    currentY: number;
   } } = {};
   
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
@@ -123,33 +125,50 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       isSwipeActive: false,
       swipeDistance: 0,
       startX: touch.clientX,
-      currentX: touch.clientX
+      currentX: touch.clientX,
+      startY: touch.clientY, // Add startY to track vertical movement
+      currentY: touch.clientY
     };
   }
-
+  
   onTouchMove(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
     
-    event.preventDefault(); // Prevent scrolling while swiping
     const touch = event.touches[0];
     const swipeState = this.swipeStates[articleId];
     
     swipeState.currentX = touch.clientX;
-    const deltaX = swipeState.startX - swipeState.currentX;
+    swipeState.currentY = touch.clientY;
     
-    // Only allow left swipe (positive deltaX)
-    if (deltaX > 10) {
-      swipeState.isSwipeActive = true;
-      swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
+    const deltaX = swipeState.startX - swipeState.currentX;
+    const deltaY = Math.abs(swipeState.startY - swipeState.currentY);
+    
+    // Only prevent default if this is clearly a horizontal swipe
+    // Allow vertical scrolling unless horizontal swipe is dominant
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      // This is a horizontal swipe - prevent scrolling
+      event.preventDefault();
       
-      // Update the visual position
-      this.updateSwipePosition(articleId, swipeState.swipeDistance);
-    } else if (deltaX < -10) {
-      // Right swipe - reset
-      this.resetSwipe(articleId);
+      // Only allow left swipe (positive deltaX)
+      if (deltaX > 10) {
+        swipeState.isSwipeActive = true;
+        swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
+        
+        // Update the visual position
+        this.updateSwipePosition(articleId, swipeState.swipeDistance);
+      } else if (deltaX < -10) {
+        // Right swipe - reset
+        this.resetSwipe(articleId);
+      }
+    } else if (deltaY > 10) {
+      // This is vertical scrolling - reset any active swipe and allow scrolling
+      if (swipeState.isSwipeActive) {
+        this.resetSwipe(articleId);
+      }
+      // Don't prevent default - allow natural scrolling
     }
   }
-
+  
   onTouchEnd(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
     
@@ -171,7 +190,9 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       isSwipeActive: false,
       swipeDistance: 0,
       startX: event.clientX,
-      currentX: event.clientX
+      currentX: event.clientX,
+      startY: event.clientY,    // Add this line
+      currentY: event.clientY   // Add this line
     };
     
     // Add mouse move and up listeners
@@ -185,12 +206,13 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }
-
+  
   onMouseMove(event: MouseEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
     
     const swipeState = this.swipeStates[articleId];
     swipeState.currentX = event.clientX;
+    swipeState.currentY = event.clientY;  // Add this line
     const deltaX = swipeState.startX - swipeState.currentX;
     
     // Only allow left swipe (positive deltaX)
