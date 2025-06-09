@@ -84,6 +84,20 @@
     overflow-y: auto;
     background-color: white;
     padding-bottom: 80px;
+    
+    // Touch scrolling fixes
+    -webkit-overflow-scrolling: touch; // iOS Safari smooth scrolling
+    touch-action: pan-y; // Enable vertical touch scrolling
+    overscroll-behavior-y: contain; // Prevent page bounce on iOS
+    scroll-behavior: smooth; // Smooth scrolling behavior
+    
+    // Ensure proper height calculation
+    min-height: 0; // Allow flex child to shrink below content size
+    
+    // Additional mobile optimizations
+    @supports (-webkit-overflow-scrolling: touch) {
+      -webkit-overflow-scrolling: touch;
+    }
   }
 
   .article-item {
