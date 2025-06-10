@@ -379,285 +379,279 @@
     }
   }
 
-  // === AGGRESSIVE iPad FAB Fix ===
-// Replace your existing .fab-container styles with this simplified version
-
-.fab-container {
-  position: fixed;
-  bottom: 93px;
-  right: 24px;
-  z-index: 9999 !important; // Force high z-index
-  
-  @supports (bottom: calc(93px + env(safe-area-inset-bottom))) {
-    bottom: calc(93px + env(safe-area-inset-bottom));
-  }
-  
-  // Force visibility on all iOS devices
-  -webkit-transform: translateZ(0) !important;
-  transform: translateZ(0) !important;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  will-change: transform;
-  
-  .fab-backdrop {
+  //FAB styles
+  .fab-container {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.3) !important;
-    z-index: 9998 !important;
-    opacity: 0;
+    bottom: 93px;
+    right: 24px;
+    z-index: 9999 !important; // Force high z-index
     
-    // Force visibility
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-  }
-  
-  .fab-menu {
-    position: absolute;
-    bottom: 80px;
-    right: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    z-index: 10001 !important;
-    
-    // Start invisible
-    opacity: 0 !important;
-    visibility: hidden !important;
-    transform: translateY(20px) translateZ(0) !important;
-    pointer-events: none !important;
-    
-    // Force iOS rendering
-    -webkit-transform: translateY(20px) translateZ(0) !important;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    will-change: transform, opacity, visibility;
-    
-    // Simple transition - no cubic-bezier
-    transition: all 0.3s ease !important;
-    -webkit-transition: all 0.3s ease !important;
-    
-    &.expanded {
-      // Force visible
-      opacity: 1 !important;
-      visibility: visible !important;
-      transform: translateY(0) translateZ(0) !important;
-      -webkit-transform: translateY(0) translateZ(0) !important;
-      pointer-events: all !important;
-      
-      .fab-option {
-        // Force each option visible
-        opacity: 1 !important;
-        visibility: visible !important;
-        transform: translateY(0) scale(1) translateZ(0) !important;
-        -webkit-transform: translateY(0) scale(1) translateZ(0) !important;
-        
-        // Staggered appearance
-        &:nth-child(1) { 
-          transition-delay: 0.1s !important; 
-          -webkit-transition-delay: 0.1s !important;
-        }
-        &:nth-child(2) { 
-          transition-delay: 0.15s !important; 
-          -webkit-transition-delay: 0.15s !important;
-        }
-        &:nth-child(3) { 
-          transition-delay: 0.2s !important; 
-          -webkit-transition-delay: 0.2s !important;
-        }
-      }
+    @supports (bottom: calc(93px + env(safe-area-inset-bottom))) {
+      bottom: calc(93px + env(safe-area-inset-bottom));
     }
     
-    .fab-options { 
-      display: flex; 
-      flex-direction: column; 
-      gap: 16px; 
-      margin-bottom: 16px;
-      align-items: flex-end;
-      z-index: 10002 !important;
-    }
-    
-    .fab-option {
-      // Start invisible
-      opacity: 0 !important;
-      visibility: hidden !important;
-      transform: translateY(10px) scale(0.8) translateZ(0) !important;
-      -webkit-transform: translateY(10px) scale(0.8) translateZ(0) !important;
-      
-      // Force iOS rendering
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-      will-change: transform, opacity, visibility;
-      
-      // Basic styling - no gradients, no CSS variables
-      position: relative;
-      background: #1976d2 !important; // Solid blue - no gradients
-      color: white !important; // Solid white
-      border: none !important;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important; // Simplified shadow
-      
-      // Simple transition
-      transition: all 0.2s ease !important;
-      -webkit-transition: all 0.2s ease !important;
-      
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 0 !important;
-      min-width: 120px !important;
-      height: 48px !important;
-      border-radius: 24px !important;
-      z-index: 10003 !important;
-      
-      // Force material button override
-      &.mat-mini-fab {
-        background: #1976d2 !important;
-        color: white !important;
-        width: 120px !important;
-        height: 48px !important;
-        min-width: 120px !important;
-      }
-      
-      &:hover {
-        background: #1565c0 !important; // Darker blue on hover
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
-        transform: translateY(-2px) translateZ(0) !important;
-        -webkit-transform: translateY(-2px) translateZ(0) !important;
-      }
-      
-      &.active {
-        background: #0d47a1 !important; // Even darker blue when active
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
-      }
-      
-      .mat-icon { 
-        margin-left: 12px !important; 
-        font-size: 20px !important; 
-        width: 20px !important; 
-        height: 20px !important;
-        color: white !important;
-      }
-      
-      .fab-label { 
-        font-size: 14px !important; 
-        font-weight: 500 !important; 
-        margin-right: 16px !important; 
-        white-space: nowrap !important;
-        color: white !important;
-      }
-    }
-  }
-  
-  .main-fab {
-    // Force iOS rendering
+    // Force visibility on all iOS devices
     -webkit-transform: translateZ(0) !important;
     transform: translateZ(0) !important;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     will-change: transform;
-    z-index: 10000 !important;
     
-    // Basic styling - no gradients, no CSS variables
-    background: #1976d2 !important; // Solid blue
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
-    
-    // Simple transition
-    transition: all 0.3s ease !important;
-    -webkit-transition: all 0.3s ease !important;
-    
-    // Force material FAB override
-    &.mat-fab {
-      background: #1976d2 !important;
-      color: white !important;
-    }
-    
-    &:hover {
-      background: #1565c0 !important;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-      transform: translateY(-2px) translateZ(0) !important;
-      -webkit-transform: translateY(-2px) translateZ(0) !important;
-    }
-    
-    &.expanded {
-      background: #f44336 !important; // Red when expanded
-      box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4) !important;
-      transform: rotate(180deg) translateZ(0) !important;
-      -webkit-transform: rotate(180deg) translateZ(0) !important;
+    .fab-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.3) !important;
+      z-index: 9998 !important;
+      opacity: 0;
       
-      &:hover { 
-        background: #e53935 !important;
-      }
-    }
-    
-    .mat-icon { 
-      transition: transform 0.3s ease !important;
-      -webkit-transition: -webkit-transform 0.3s ease !important;
-      font-size: 24px !important;
-      color: white !important;
-      
-      &.rotated { 
-        transform: rotate(180deg) !important;
-        -webkit-transform: rotate(180deg) !important;
-      }
-    }
-  }
-}
-
-// Remove animations completely for iOS
-@supports (-webkit-touch-callout: none) {
-  // iOS Safari specific overrides
-  .fab-container {
-    .fab-option {
-      // Remove all animations on iOS
-      animation: none !important;
-      -webkit-animation: none !important;
-      
-      // Force appearance
-      -webkit-appearance: none !important;
-      -webkit-tap-highlight-color: transparent !important;
-      
-      // Ensure it's always above other elements
-      position: relative !important;
-      z-index: 10005 !important;
-    }
-    
-    .main-fab {
-      -webkit-appearance: none !important;
-      -webkit-tap-highlight-color: transparent !important;
-      position: relative !important;
-      z-index: 10004 !important;
+      // Force visibility
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
     
     .fab-menu {
-      // Force block display on iOS if needed
+      position: absolute;
+      bottom: 80px;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 10001 !important;
+      
+      // Start invisible
+      opacity: 0 !important;
+      visibility: hidden !important;
+      transform: translateY(20px) translateZ(0) !important;
+      pointer-events: none !important;
+      
+      // Force iOS rendering
+      -webkit-transform: translateY(20px) translateZ(0) !important;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      will-change: transform, opacity, visibility;
+      
+      // Simple transition - no cubic-bezier
+      transition: all 0.3s ease !important;
+      -webkit-transition: all 0.3s ease !important;
+      
       &.expanded {
-        display: flex !important;
+        // Force visible
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) translateZ(0) !important;
+        -webkit-transform: translateY(0) translateZ(0) !important;
+        pointer-events: all !important;
+        
+        .fab-option {
+          // Force each option visible
+          opacity: 1 !important;
+          visibility: visible !important;
+          transform: translateY(0) scale(1) translateZ(0) !important;
+          -webkit-transform: translateY(0) scale(1) translateZ(0) !important;
+          
+          // Staggered appearance
+          &:nth-child(1) { 
+            transition-delay: 0.1s !important; 
+            -webkit-transition-delay: 0.1s !important;
+          }
+          &:nth-child(2) { 
+            transition-delay: 0.15s !important; 
+            -webkit-transition-delay: 0.15s !important;
+          }
+          &:nth-child(3) { 
+            transition-delay: 0.2s !important; 
+            -webkit-transition-delay: 0.2s !important;
+          }
+        }
+      }
+      
+      .fab-options { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 16px; 
+        margin-bottom: 16px;
+        align-items: flex-end;
+        z-index: 10002 !important;
+      }
+      
+      .fab-option {
+        // Start invisible
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(10px) scale(0.8) translateZ(0) !important;
+        -webkit-transform: translateY(10px) scale(0.8) translateZ(0) !important;
+        
+        // Force iOS rendering
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        will-change: transform, opacity, visibility;
+        
+        // Basic styling with dynamic list colors and iOS-safe fallbacks
+        position: relative;
+        background: #1976d2 !important; // iOS Safari fallback
+        background: var(--list-primary-color, #1976d2) !important; // Dynamic list color
+        color: white !important; // iOS Safari fallback  
+        color: var(--list-contrast-color, white) !important; // Dynamic contrast
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important; // Simplified shadow
+        
+        // Simple transition
+        transition: all 0.2s ease !important;
+        -webkit-transition: all 0.2s ease !important;
+        
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 !important;
+        min-width: 120px !important;
+        height: 48px !important;
+        border-radius: 24px !important;
+        z-index: 10003 !important;
+        
+        // Force material button override with dynamic colors
+        &.mat-mini-fab {
+          background: #1976d2 !important; // iOS Safari fallback
+          background: var(--list-primary-color, #1976d2) !important; // Dynamic list color
+          color: white !important; // iOS Safari fallback
+          color: var(--list-contrast-color, white) !important; // Dynamic contrast
+          width: 120px !important;
+          height: 48px !important;
+          min-width: 120px !important;
+        }
+        
+        &:hover {
+          background: #1565c0 !important; // iOS Safari fallback
+          background: var(--list-dark-color, #1565c0) !important; // Dynamic dark color
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+          transform: translateY(-2px) translateZ(0) !important;
+          -webkit-transform: translateY(-2px) translateZ(0) !important;
+        }
+        
+        &.active {
+          background: #0d47a1 !important; // iOS Safari fallback
+          background: var(--list-dark-color, #0d47a1) !important; // Dynamic dark color
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+        }
+        
+        .mat-icon { 
+          margin-left: 12px !important; 
+          font-size: 20px !important; 
+          width: 20px !important; 
+          height: 20px !important;
+          color: white !important; // iOS Safari fallback
+          color: var(--list-contrast-color, white) !important; // Dynamic contrast
+        }
+        
+        .fab-label { 
+          font-size: 14px !important; 
+          font-weight: 500 !important; 
+          margin-right: 16px !important; 
+          white-space: nowrap !important;
+          color: white !important; // iOS Safari fallback
+          color: var(--list-contrast-color, white) !important; // Dynamic contrast
+        }
+      }
+    }
+    
+    .main-fab {
+      // Force iOS rendering
+      -webkit-transform: translateZ(0) !important;
+      transform: translateZ(0) !important;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      will-change: transform;
+      z-index: 10000 !important;
+      
+      // Basic styling with dynamic list colors and iOS-safe fallbacks
+      background: #1976d2 !important; // iOS Safari fallback
+      background: var(--list-primary-color, #1976d2) !important; // Dynamic list color
+      color: white !important; // iOS Safari fallback
+      color: var(--list-contrast-color, white) !important; // Dynamic contrast
+      border: none !important;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+      
+      // Simple transition
+      transition: all 0.3s ease !important;
+      -webkit-transition: all 0.3s ease !important;
+      
+      // Force material FAB override with dynamic colors
+      &.mat-fab {
+        background: #1976d2 !important; // iOS Safari fallback
+        background: var(--list-primary-color, #1976d2) !important; // Dynamic list color
+        color: white !important; // iOS Safari fallback
+        color: var(--list-contrast-color, white) !important; // Dynamic contrast
+      }
+      
+      &:hover {
+        background: #1565c0 !important; // iOS Safari fallback
+        background: var(--list-dark-color, #1565c0) !important; // Dynamic dark color
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+        transform: translateY(-2px) translateZ(0) !important;
+        -webkit-transform: translateY(-2px) translateZ(0) !important;
+      }
+      
+      &.expanded {
+        background: #f44336 !important; // Red when expanded
+        box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4) !important;
+        transform: rotate(180deg) translateZ(0) !important;
+        -webkit-transform: rotate(180deg) translateZ(0) !important;
+        
+        &:hover { 
+          background: #e53935 !important;
+        }
+      }
+      
+      .mat-icon { 
+        transition: transform 0.3s ease !important;
+        -webkit-transition: -webkit-transform 0.3s ease !important;
+        font-size: 24px !important;
+        color: white !important; // iOS Safari fallback
+        color: var(--list-contrast-color, white) !important; // Dynamic contrast
+        
+        &.rotated { 
+          transform: rotate(180deg) !important;
+          -webkit-transform: rotate(180deg) !important;
+        }
       }
     }
   }
-}
-
-// Debug styles - add these temporarily to see if elements are being rendered
-.fab-container {
-  // Uncomment these lines to debug positioning on iPad:
-   border: 2px solid red !important;
-   background: rgba(255, 0, 0, 0.3) !important;
   
-  .fab-option {
-    // Uncomment to debug each option:
-     border: 2px solid green !important;
-     background: lime !important;
+  // Remove animations completely for iOS
+  @supports (-webkit-touch-callout: none) {
+    // iOS Safari specific overrides
+    .fab-container {
+      .fab-option {
+        // Remove all animations on iOS
+        animation: none !important;
+        -webkit-animation: none !important;
+        
+        // Force appearance
+        -webkit-appearance: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        
+        // Ensure it's always above other elements
+        position: relative !important;
+        z-index: 10005 !important;
+      }
+      
+      .main-fab {
+        -webkit-appearance: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        position: relative !important;
+        z-index: 10004 !important;
+      }
+      
+      .fab-menu {
+        // Force block display on iOS if needed
+        &.expanded {
+          display: flex !important;
+        }
+      }
+    }
   }
-  
-  .main-fab {
-     //Uncomment to debug main FAB:
-     border: 2px solid blue !important;
-  }
-}
 
 :root {
   --list-primary-color: #1a9edb;
