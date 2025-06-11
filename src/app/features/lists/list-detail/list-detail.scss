@@ -386,16 +386,16 @@
     right: 24px;
     z-index: 9999 !important; // Force high z-index
     
-    @supports (bottom: calc(93px + env(safe-area-inset-bottom))) {
-      bottom: calc(93px + env(safe-area-inset-bottom));
-    }
-    
-    // Force visibility on all iOS devices
+    // Force visibility on all iOS devices - moved before nested rules
     -webkit-transform: translateZ(0) !important;
     transform: translateZ(0) !important;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     will-change: transform;
+    
+    @supports (bottom: calc(93px + env(safe-area-inset-bottom))) {
+      bottom: calc(93px + env(safe-area-inset-bottom));
+    }
     
     .fab-backdrop {
       position: fixed;
@@ -407,7 +407,7 @@
       z-index: 9998 !important;
       opacity: 0;
       
-      // Force visibility
+      // Force visibility - moved before any potential nested rules
       -webkit-transform: translateZ(0);
       transform: translateZ(0);
     }
@@ -427,7 +427,7 @@
       transform: translateY(20px) translateZ(0) !important;
       pointer-events: none !important;
       
-      // Force iOS rendering
+      // Force iOS rendering - moved before nested rules
       -webkit-transform: translateY(20px) translateZ(0) !important;
       -webkit-backface-visibility: hidden;
       backface-visibility: hidden;
@@ -484,7 +484,7 @@
         transform: translateY(10px) scale(0.8) translateZ(0) !important;
         -webkit-transform: translateY(10px) scale(0.8) translateZ(0) !important;
         
-        // Force iOS rendering
+        // Force iOS rendering - moved before nested rules
         -webkit-backface-visibility: hidden;
         backface-visibility: hidden;
         will-change: transform, opacity, visibility;
@@ -557,7 +557,7 @@
     }
     
     .main-fab {
-      // Force iOS rendering
+      // Force iOS rendering - moved before nested rules
       -webkit-transform: translateZ(0) !important;
       transform: translateZ(0) !important;
       -webkit-backface-visibility: hidden;
@@ -624,7 +624,7 @@
     // iOS Safari specific overrides
     .fab-container {
       .fab-option {
-        // Remove all animations on iOS
+        // Remove all animations on iOS - moved before other rules
         animation: none !important;
         -webkit-animation: none !important;
         
@@ -638,6 +638,7 @@
       }
       
       .main-fab {
+        // iOS specific properties - moved before other rules
         -webkit-appearance: none !important;
         -webkit-tap-highlight-color: transparent !important;
         position: relative !important;
