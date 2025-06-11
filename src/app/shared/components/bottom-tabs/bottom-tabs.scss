@@ -29,6 +29,7 @@
     transition: all 0.2s ease;
     padding: 8px 4px 8px 4px; /* Fixed padding for better alignment */
     min-height: 52px; /* Reduced for better proportion */
+    position: relative; /* Added for underline positioning */
     
     &:hover {
       background-color: rgba(0, 0, 0, 0.04);
@@ -36,6 +37,19 @@
     
     &.active {
       color: #1a9edb; /* Keep original blue color */
+      
+      /* Add visible underline for active tab */
+      &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 32px;
+        height: 3px;
+        background-color: #1a9edb;
+        border-radius: 2px 2px 0 0;
+      }
       
       .tab-icon {
         transform: scale(1.05); /* Reduced scale to prevent misalignment */
@@ -90,6 +104,11 @@
       padding: 6px 4px 6px 4px; /* Fixed mobile padding */
       min-height: 48px; /* Reduced for better mobile proportion */
       
+      &.active::before {
+        width: 28px; /* Slightly smaller underline for mobile */
+        height: 2px;
+      }
+      
       .tab-icon {
         font-size: 22px;
         width: 22px;
@@ -119,8 +138,12 @@
     border-top: 2px solid black;
     
     .tab-item.active {
-      border-top: 3px solid #1a9edb;
       background-color: rgba(26, 158, 219, 0.1);
+      
+      &::before {
+        height: 4px; /* Thicker underline for high contrast */
+        background-color: #1a9edb;
+      }
     }
   }
 }
@@ -131,6 +154,10 @@
     transition: none;
     
     .tab-icon {
+      transition: none;
+    }
+    
+    &.active::before {
       transition: none;
     }
   }

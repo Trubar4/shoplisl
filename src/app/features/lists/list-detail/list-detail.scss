@@ -89,7 +89,7 @@
     min-height: 0;
   }
 
-  // Department Groups - Alphabetical Style
+  // Department Groups - No headers anymore
   .department-group {
     margin-bottom: 0;
     
@@ -98,7 +98,7 @@
     }
   }
 
-  // Article Items - UPDATED for alphabetical style
+  // Article Items - UPDATED for inline department icons
   .article-item {
     display: flex;
     align-items: center;
@@ -106,31 +106,37 @@
     transition: all 0.2s ease;
     min-height: 56px;
     
-    // Add extra padding for first item in group with department icon
+    // Adjust padding for first item in group with department icon
     &.first-in-group {
       padding-left: 8px; // Less padding since department icon needs space
     }
 
-    // Department icon (same size as article icons, like letters in alphabetical lists)
+    // All other articles get same indentation as first article content
+    &:not(.first-in-group) {
+      padding-left: 64px; // 8px + 40px (icon) + 16px (margin) = 64px
+    }
+
+    // Department icon - same size as article icons, uses calculated filter
     .department-icon {
-      width: 10px;
-      height: 10px;
+      width: 40px; // Same as article icon
+      height: 40px;
       margin-right: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 10px; // Same size as article icons
+      font-size: 28px; // Same size as article icons
 
       img {
-        width: 10px;
-        height: 10px;
+        width: 28px;
+        height: 28px;
         object-fit: contain;
+        // Filter applied dynamically via [style.filter]
       }
 
       .fallback-icon {
-        font-size: 10px;
-        color: #757575;
+        font-size: 28px;
+        // Color applied dynamically via [style.color]
       }
     }
 
@@ -151,7 +157,6 @@
       .article-header {
         display: flex;
         align-items: center;
-        gap: 8px;
         margin-bottom: 2px;
 
         .article-name {
@@ -164,58 +169,6 @@
             text-decoration: line-through;
           }
         }
-
-        .article-amount {
-          background-color: var(--list-primary-color, #1a9edb);
-          color: var(--list-contrast-color, white);
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 500;
-          flex-shrink: 0;
-          transition: all 0.2s ease;
-
-          &.clickable, &.editable {
-            cursor: pointer;
-            
-            &:hover {
-              opacity: 0.8;
-              transform: scale(1.05);
-            }
-          }
-
-          &.empty {
-            background-color: #e0e0e0;
-            color: #757575;
-
-            &.editable {
-              background-color: var(--list-light-color, #a8d4f0);
-              color: var(--list-primary-color, #1a9edb);
-            }
-          }
-
-          &.disabled {
-            background-color: #e0e0e0;
-            color: #757575;
-            cursor: default;
-          }
-
-          &.strikethrough {
-            text-decoration: line-through;
-          }
-        }
-
-        .info-button {
-          flex-shrink: 0;
-          width: 32px;
-          height: 32px;
-          margin: 0;
-          
-          .mat-icon {
-            color: #757575;
-            font-size: 20px;
-          }
-        }
       }
 
       .article-notes {
@@ -225,6 +178,71 @@
 
         &.strikethrough {
           text-decoration: line-through;
+        }
+      }
+    }
+
+    .article-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+
+      .article-amount {
+        background-color: var(--list-primary-color, #1a9edb);
+        color: var(--list-contrast-color, white);
+        padding: 6px 8px; // Slightly more padding for better alignment
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1; // Ensure consistent line height
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px; // Consistent minimum height
+        transition: all 0.2s ease;
+
+        &.clickable, &.editable {
+          cursor: pointer;
+          
+          &:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+          }
+        }
+
+        &.empty {
+          background-color: #e0e0e0;
+          color: #757575;
+
+          &.editable {
+            background-color: var(--list-light-color, #a8d4f0);
+            color: var(--list-primary-color, #1a9edb);
+          }
+        }
+
+        &.disabled {
+          background-color: #e0e0e0;
+          color: #757575;
+          cursor: default;
+        }
+
+        &.strikethrough {
+          text-decoration: line-through;
+        }
+      }
+
+      .info-button {
+        width: 50px;
+        height: 32px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        .mat-icon {
+          color: #757575;
+          font-size: 20px;
+          line-height: 1;
         }
       }
     }
