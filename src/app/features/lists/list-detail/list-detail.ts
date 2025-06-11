@@ -15,9 +15,9 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-
-import { ShoppingList, Article } from '../../../core/models';
+import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
+import { DepartmentService } from '../../../core/services/department.service';
 
 type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
@@ -31,6 +31,16 @@ interface ArticleWithState extends Article {
 interface ArticleWithToggleAndAmount extends Article {
   isInList: boolean;
   listAmount?: string;
+}
+
+interface DepartmentGroup {
+  department: Department;
+  articles: ArticleWithState[];
+}
+
+interface DepartmentGroupEdit {
+  department: Department;
+  articles: ArticleWithToggleAndAmount[];
 }
 
 @Component({
@@ -57,6 +67,8 @@ interface ArticleWithToggleAndAmount extends Article {
 export class ListDetailComponent implements OnInit, OnDestroy {
   listId: string = '';
   list$!: Observable<ShoppingList | undefined>;
+  departmentGroups$!: Observable<DepartmentGroup[]>;
+  departmentGroupsEdit$!: Observable<DepartmentGroupEdit[]>;
   
   // Simple mode management
   currentMode: ViewMode = 'shopping';
@@ -83,6 +95,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private dataService: DataService,
+    private departmentService: DepartmentService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog
@@ -186,6 +199,83 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       })
     );
     
+    // Grouped observables for department sections
+    this.departmentGroups$ = combineLatest([
+      this.listArticles$,
+      this.departmentService.getDepartments()
+    ]).pipe(
+      map(([articles, departments]) => {
+        const groups: DepartmentGroup[] = [];
+        
+        // Group articles by department
+        const departmentMap = new Map<string, ArticleWithState[]>();
+        
+        articles.forEach(article => {
+          const deptId = article.departmentId || 'miscellaneous';
+          if (!departmentMap.has(deptId)) {
+            departmentMap.set(deptId, []);
+          }
+          departmentMap.get(deptId)!.push(article);
+        });
+        
+        // Create groups with department info, only for departments that have articles
+        departmentMap.forEach((articles, deptId) => {
+          const department = departments.find(d => d.id === deptId) || {
+            id: 'miscellaneous',
+            nameGerman: 'Sonstiges',
+            nameEnglish: 'Miscellaneous',
+            icon: 'Help-Chat-2--Streamline-Core-Remix.png'
+          };
+          
+          groups.push({
+            department,
+            articles: articles.sort((a, b) => a.name.localeCompare(b.name))
+          });
+        });
+        
+        // Sort groups by department name
+        return groups.sort((a, b) => a.department.nameGerman.localeCompare(b.department.nameGerman));
+      })
+    );
+
+    this.departmentGroupsEdit$ = combineLatest([
+      this.allArticlesWithState$,
+      this.departmentService.getDepartments()
+    ]).pipe(
+      map(([articles, departments]) => {
+        const groups: DepartmentGroupEdit[] = [];
+        
+        // Group articles by department
+        const departmentMap = new Map<string, ArticleWithToggleAndAmount[]>();
+        
+        articles.forEach(article => {
+          const deptId = article.departmentId || 'miscellaneous';
+          if (!departmentMap.has(deptId)) {
+            departmentMap.set(deptId, []);
+          }
+          departmentMap.get(deptId)!.push(article);
+        });
+        
+        // Create groups with department info, only for departments that have articles
+        departmentMap.forEach((articles, deptId) => {
+          const department = departments.find(d => d.id === deptId) || {
+            id: 'miscellaneous',
+            nameGerman: 'Sonstiges', 
+            nameEnglish: 'Miscellaneous',
+            icon: 'Help-Chat-2--Streamline-Core-Remix.png'
+          };
+          
+          groups.push({
+            department,
+            articles: articles.sort((a, b) => a.name.localeCompare(b.name))
+          });
+        });
+        
+        // Sort groups by department name
+        return groups.sort((a, b) => a.department.nameGerman.localeCompare(b.department.nameGerman));
+      })
+    );
+
     console.log('🔴 Constructor finished successfully');
   }
 
@@ -350,6 +440,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     return `rgb(${darkR}, ${darkG}, ${darkB})`;
   }
 
+  getDepartmentIconPath(departmentId: string): string {
+    return this.departmentService.getDepartmentIconPath(departmentId);
+  }
+
   onArticleToggle(article: any): void {
     this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
       next: (success) => {
@@ -392,8 +486,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   onCreateNewArticle(): void {
     this.router.navigate(['/articles/add'], {
       queryParams: { 
-        returnToList: this.listId,
-        autoAdd: 'true'
+        returnTo: `/lists/${this.listId}?mode=edit`,
+        listId: this.listId
       }
     });
   }

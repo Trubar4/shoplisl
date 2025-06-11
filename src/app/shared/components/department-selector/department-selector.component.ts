@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 
@@ -15,6 +16,7 @@ import { DepartmentService } from '../../../core/services/department.service';
     CommonModule,
     MatRadioModule,
     MatCardModule,
+    MatIconModule,
     FormsModule
   ],
   templateUrl: './department-selector.component.html',
