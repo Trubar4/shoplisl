@@ -262,9 +262,10 @@
     <div 
       class="fab-backdrop" 
       *ngIf="isFabExpanded"
+      [class.visible]="isFabExpanded"
       (click)="closeFab()">
     </div>
-
+  
     <!-- Expandable Filter Options -->
     <div class="fab-menu" [class.expanded]="isFabExpanded">
       <!-- Shopping Mode Filters -->
@@ -272,7 +273,7 @@
         <button 
           mat-mini-fab 
           [class.active]="currentShoppingFilter === 'erledigt'"
-          (click)="setShoppingFilter('erledigt')"
+          (click)="setShoppingFilter('erledigt'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Erledigt">
           <mat-icon>check_circle</mat-icon>
@@ -282,7 +283,7 @@
         <button 
           mat-mini-fab 
           [class.active]="currentShoppingFilter === 'offen'"
-          (click)="setShoppingFilter('offen')"
+          (click)="setShoppingFilter('offen'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Offen">
           <mat-icon>radio_button_unchecked</mat-icon>
@@ -292,20 +293,20 @@
         <button 
           mat-mini-fab 
           [class.active]="currentShoppingFilter === 'alle'"
-          (click)="setShoppingFilter('alle')"
+          (click)="setShoppingFilter('alle'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Alle">
           <mat-icon>list</mat-icon>
           <span class="fab-label">Alle</span>
         </button>
       </div>
-
+  
       <!-- Edit Mode Filters -->
       <div *ngIf="currentMode === 'edit'" class="fab-options">
         <button 
           mat-mini-fab 
           [class.active]="currentEditFilter === 'fehlend'"
-          (click)="setEditFilter('fehlend')"
+          (click)="setEditFilter('fehlend'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Fehlend">
           <mat-icon>remove_circle_outline</mat-icon>
@@ -315,7 +316,7 @@
         <button 
           mat-mini-fab 
           [class.active]="currentEditFilter === 'gelistet'"
-          (click)="setEditFilter('gelistet')"
+          (click)="setEditFilter('gelistet'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Gelistet">
           <mat-icon>add_circle</mat-icon>
@@ -325,7 +326,7 @@
         <button 
           mat-mini-fab 
           [class.active]="currentEditFilter === 'alle'"
-          (click)="setEditFilter('alle')"
+          (click)="setEditFilter('alle'); $event.stopPropagation()"
           class="fab-option"
           matTooltip="Alle">
           <mat-icon>apps</mat-icon>
@@ -333,15 +334,14 @@
         </button>
       </div>
     </div>
-
+  
     <!-- Main FAB Button -->
     <button 
       mat-fab 
-      (click)="toggleFab()"
+      (click)="toggleFab(); $event.stopPropagation()"
       class="main-fab"
       [class.expanded]="isFabExpanded"
       matTooltip="Filter">
       <mat-icon [class.rotated]="isFabExpanded">tune</mat-icon>
     </button>
   </div>
-</div>

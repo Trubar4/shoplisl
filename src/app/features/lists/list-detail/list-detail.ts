@@ -648,24 +648,47 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   // Filter methods for shopping mode
   setShoppingFilter(filter: ShoppingFilter): void {
+    console.log('🔍 setShoppingFilter called with:', filter);
+    console.log('🔍 Current mode:', this.currentMode);
+    console.log('🔍 Previous filter:', this.currentShoppingFilter);
+    
     this.currentShoppingFilter = filter;
     this.shoppingFilter$.next(filter);
     this.isFabExpanded = false; // Close FAB after selection
+    
+    console.log('🔍 Filter updated to:', this.currentShoppingFilter);
+    console.log('🔍 FAB expanded:', this.isFabExpanded);
+    
+    // Force change detection
+    this.cdr.detectChanges();
   }
 
   // Filter methods for edit mode
   setEditFilter(filter: EditFilter): void {
+    console.log('🔍 setEditFilter called with:', filter);
+    console.log('🔍 Current mode:', this.currentMode);
+    console.log('🔍 Previous filter:', this.currentEditFilter);
+    
     this.currentEditFilter = filter;
     this.editFilter$.next(filter);
     this.isFabExpanded = false; // Close FAB after selection
+    
+    console.log('🔍 Filter updated to:', this.currentEditFilter);
+    console.log('🔍 FAB expanded:', this.isFabExpanded);
+    
+    // Force change detection
+    this.cdr.detectChanges();
   }
 
   // FAB methods
   toggleFab(): void {
+    console.log('🔍 toggleFab called, current state:', this.isFabExpanded);
     this.isFabExpanded = !this.isFabExpanded;
+    console.log('🔍 FAB expanded after toggle:', this.isFabExpanded);
   }
-
+  
   closeFab(): void {
+    console.log('🔍 closeFab called');
     this.isFabExpanded = false;
   }
 

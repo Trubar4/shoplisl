@@ -16,28 +16,54 @@
     .mat-icon-button .mat-icon {
       color: white !important;
     }
+
+    .mat-mdc-form-field {
+      margin-bottom: 0 !important;
+    }
+    
+    .mat-mdc-form-field-wrapper {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+    }
   }
 
   // === SEARCH CONTAINER ===
   .search-container {
     background: white;
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 16px 0px 16px; /* CHANGED: Remove bottom padding completely */
+    border-bottom: none; /* CHANGED: Remove border that adds visual space */
+    margin: 0; /* ENSURE: No margins */
+    max-height: 70px;        /* Controls maximum height */
+    min-height: 60px;        /* Optional: minimum height */
+    overflow: hidden;        /* Prevents content overflow */
+    box-sizing: border-box;  /* Include padding in height calculation */
 
     .search-field {
       width: 100%;
+      margin-bottom: 0px; /* ADD: Small margin to search field itself */
       
       .mat-mdc-text-field-wrapper {
         background-color: #f8f9fa;
+      }
+      
+      /* Force remove Material Design spacing */
+      .mat-mdc-form-field {
+        margin-bottom: 0 !important;
+      }
+      
+      .mat-mdc-form-field-wrapper {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
       }
     }
   }
 
   // === ADD BUTTON CONTAINER ===
   .add-button-container {
+    margin: 0;
     background: white;
-    padding: 0 16px 16px 16px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 4px 16px 4px 16px;
+    border-bottom: none;
 
     .add-article-button {
       width: 100%;
@@ -62,6 +88,8 @@
     flex: 1;
     overflow-y: auto;
     background-color: white;
+    margin: 0;
+    padding-bottom: 90px;
     
     // Add these touch scrolling properties:
     -webkit-overflow-scrolling: touch;
