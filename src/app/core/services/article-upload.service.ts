@@ -1,6 +1,6 @@
 // src/app/core/services/article-upload.service.ts
 import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { Article } from '../models';
 
 @Injectable({
@@ -9,7 +9,7 @@ import { Article } from '../models';
 export class ArticleUploadService {
   private readonly COLLECTION = 'articles';
 
-  constructor(private firestore: AngularFirestore) {}
+  constructor(private firestore: Firestore) {}
 
   async uploadArticles(): Promise<void> {
     const articles: Omit<Article, 'id'>[] = [
@@ -231,10 +231,12 @@ export class ArticleUploadService {
     const batchSize = 10;
 
     try {
+      const articlesCollection = collection(this.firestore, this.COLLECTION);
+      
       for (let i = 0; i < articles.length; i += batchSize) {
         const batch = articles.slice(i, i + batchSize);
         const promises = batch.map(async (article) => {
-          return this.firestore.collection(this.COLLECTION).add(article);
+          return addDoc(articlesCollection, article);
         });
 
         await Promise.all(promises);
