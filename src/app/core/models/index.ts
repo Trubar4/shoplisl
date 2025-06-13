@@ -5,7 +5,7 @@ export interface Article {
   notes?: string;
   icon?: string;
   categoryId?: string;
-  departmentId?: string; // NEW: Add this field
+  departmentId?: string; // Already there
   createdAt: Date;
   updatedAt: Date;
   // Future: shop availability, usage stats
@@ -13,7 +13,7 @@ export interface Article {
   usageCount?: number;
 }
 
-// NEW: Add this Department interface
+// Keep your existing Department interface
 export interface Department {
   id: string;
   nameGerman: string;
@@ -38,6 +38,7 @@ export interface ListItemState {
   checkedAt?: Date;
 }
 
+// UPDATED: Added departmentOrder field
 export interface ShoppingList {
   id: string;
   name: string;
@@ -46,6 +47,7 @@ export interface ShoppingList {
   shopId?: string;
   articleIds: string[];
   itemStates: { [articleId: string]: ListItemState };
+  departmentOrder?: string[]; // NEW: Custom department order for this list
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,3 +86,32 @@ export interface UserPreferences {
   theme: 'light' | 'dark' | 'auto';
   fontSize: 'small' | 'medium' | 'large';
 }
+
+// NEW: Default department order constant
+export const DEFAULT_DEPARTMENT_ORDER = [
+  'bread',
+  'fruit-vegetables', 
+  'sausage-cheese-counter',
+  'fridge-meat',
+  'fish',
+  'dairy-products',
+  'spices-oils',
+  'noodles-rice',
+  'tins-jars',
+  'pastries',
+  'beverages-alcohol',
+  'frozen-goods',
+  'sweet-salty',
+  'international',
+  'body-care',
+  'cleaning-agents',
+  'household-goods',
+  'stationery',
+  'breakfast',
+  'baby',
+  'pet-supplies',
+  'miscellaneous',
+  'season',
+  'medicine',
+  'drugstore'
+];

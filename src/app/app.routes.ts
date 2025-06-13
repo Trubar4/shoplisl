@@ -6,6 +6,7 @@ import { AddArticlesToListComponent } from './features/lists/add-articles/add-ar
 import { ArticleOverviewComponent } from './features/articles/article-overview/article-overview';
 import { AddArticleComponent } from './features/articles/add-article/add-article';
 import { EditArticleComponent } from './features/articles/edit-article/edit-article';
+import { DepartmentSortComponent } from './features/lists/department-sort/department-sort.component';
 import { ArticleUploadComponent } from './core/services/article-upload.component';
 import { ListUploadComponent } from './core/services/list-upload.component';
 
@@ -58,5 +59,9 @@ export const routes: Routes = [
   {
     path: 'admin/upload-list',
     component: ListUploadComponent
+  },
+  {
+    path: 'lists/:id/departments',
+    component: DepartmentSortComponent
   }
 ];

@@ -130,7 +130,7 @@
       </mat-form-field>
     </div>
 
-    <!-- Add New Article Button -->
+    <!-- Add New Article and Department Sort Buttons -->
     <div class="add-button-container">
       <button 
         mat-raised-button 
@@ -140,6 +140,17 @@
         [style.color]="getContrastColor(getCurrentListColor())">
         <mat-icon>add</mat-icon>
         Neuer Artikel
+      </button>
+      
+      <!-- NEW: Department Sort Button -->
+      <button 
+        mat-stroked-button 
+        (click)="onDepartmentSort()"
+        class="department-sort-button"
+        [style.border-color]="getCurrentListColor()"
+        [style.color]="getCurrentListColor()">
+        <mat-icon>reorder</mat-icon>
+        Bereiche
       </button>
     </div>
 

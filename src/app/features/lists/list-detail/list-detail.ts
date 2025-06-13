@@ -18,6 +18,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
 import { DepartmentService } from '../../../core/services/department.service';
+import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 
 type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
@@ -361,6 +362,7 @@ class ColorFilterSolver {
   styleUrls: ['./list-detail.scss']
 })
 export class ListDetailComponent implements OnInit, OnDestroy {
+  private departmentIconFilterCache: string = '';
   listId: string = '';
   list$!: Observable<ShoppingList | undefined>;
   departmentGroups$!: Observable<DepartmentGroup[]>;
@@ -498,7 +500,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     // Grouped observables for department sections
     this.departmentGroups$ = combineLatest([
       this.listArticles$,
-      this.departmentService.getDepartments()
+      this.departmentService.getDepartments(),
+      this.list$
     ]).pipe(
       map(([articles, departments]) => {
         const groups: DepartmentGroup[] = [];
@@ -536,9 +539,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
     this.departmentGroupsEdit$ = combineLatest([
       this.allArticlesWithState$,
-      this.departmentService.getDepartments()
+      this.departmentService.getDepartments(),
+      this.list$
     ]).pipe(
-      map(([articles, departments]) => {
+      map(([articles, departments, list]) => {
         const groups: DepartmentGroupEdit[] = [];
         
         // Group articles by department
@@ -584,17 +588,119 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       this.currentMode = 'edit';
     }
     
-    // Simple subscription to check if list exists and set CSS custom properties
+    // UPDATED: Use custom department order for grouping
+    this.departmentGroups$ = combineLatest([
+      this.listArticles$,
+      this.departmentService.getDepartments(),
+      this.list$
+    ]).pipe(
+      map(([articles, departments, list]) => {
+        if (!list) return [];
+        
+        console.log('🔍 Building department groups...');
+        console.log('🔍 List:', list.name);
+        console.log('🔍 List departmentOrder:', list.departmentOrder);
+        console.log('🔍 DEFAULT_DEPARTMENT_ORDER:', DEFAULT_DEPARTMENT_ORDER);
+        
+        const groups: DepartmentGroup[] = [];
+        
+        // Get custom department order for this list, fallback to default
+        const departmentOrder = list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
+        console.log('🔍 Using departmentOrder:', departmentOrder);
+        
+        // Group articles by department
+        const departmentMap = new Map<string, ArticleWithState[]>();
+        
+        articles.forEach(article => {
+          const deptId = article.departmentId || 'miscellaneous';
+          if (!departmentMap.has(deptId)) {
+            departmentMap.set(deptId, []);
+          }
+          departmentMap.get(deptId)!.push(article);
+        });
+        
+        // Create groups in the custom order, only for departments that have articles
+        departmentOrder.forEach(deptId => {
+          if (departmentMap.has(deptId)) {
+            const department = departments.find(d => d.id === deptId) || {
+              id: 'miscellaneous',
+              nameGerman: 'Sonstiges',
+              nameEnglish: 'Miscellaneous',
+              icon: 'Help-Chat-2--Streamline-Core-Remix.png'
+            };
+            
+            groups.push({
+              department,
+              articles: departmentMap.get(deptId)!.sort((a, b) => a.name.localeCompare(b.name))
+            });
+          }
+        });
+        
+        return groups;
+      })
+    );
+  
+    this.departmentGroupsEdit$ = combineLatest([
+      this.allArticlesWithState$,
+      this.departmentService.getDepartments(),
+      this.list$
+    ]).pipe(
+      map(([articles, departments, list]) => {
+        if (!list) return [];
+        
+        console.log('🔍 Building department groups EDIT...');
+        console.log('🔍 List departmentOrder:', list.departmentOrder);
+        
+        const groups: DepartmentGroupEdit[] = [];
+        
+        // Get custom department order for this list, fallback to default
+        const departmentOrder = list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
+        console.log('🔍 Using departmentOrder EDIT:', departmentOrder);
+            
+        // Group articles by department
+        const departmentMap = new Map<string, ArticleWithToggleAndAmount[]>();
+        
+        articles.forEach(article => {
+          const deptId = article.departmentId || 'miscellaneous';
+          if (!departmentMap.has(deptId)) {
+            departmentMap.set(deptId, []);
+          }
+          departmentMap.get(deptId)!.push(article);
+        });
+        
+        // Create groups in the custom order, only for departments that have articles
+        departmentOrder.forEach(deptId => {
+          if (departmentMap.has(deptId)) {
+            const department = departments.find(d => d.id === deptId) || {
+              id: 'miscellaneous',
+              nameGerman: 'Sonstiges',
+              nameEnglish: 'Miscellaneous',
+              icon: 'Help-Chat-2--Streamline-Core-Remix.png'
+            };
+            
+            groups.push({
+              department,
+              articles: departmentMap.get(deptId)!.sort((a, b) => a.name.localeCompare(b.name))
+            });
+          }
+        });
+        
+        return groups;
+      })
+    );
+  
     this.list$.subscribe({
       next: (list) => {
         console.log('🔴 List received:', list?.name || 'No list');
         this.currentList = list || null;
         
+        // Clear filter cache when list changes
+        this.departmentIconFilterCache = '';
+        
         // Set CSS custom properties for dynamic theming
         if (list && list.color) {
           this.updateThemeColors(list.color);
         } else {
-          // Use default blue if no color is set
           this.updateThemeColors('#1a9edb');
         }
         
@@ -924,13 +1030,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   getDepartmentIconFilter(): string {
+    if (this.departmentIconFilterCache) {
+      return this.departmentIconFilterCache;
+    }
+  
     const hex = this.getCurrentListColor();
     if (!hex) return '';
     
     const rgb = this.hexToRgb(hex);
     if (!rgb) return '';
     
-    return this.rgbToCssFilter(rgb);
+    this.departmentIconFilterCache = this.rgbToCssFilter(rgb);
+    return this.departmentIconFilterCache;
   }
   
   private hexToRgb(hex: string): { r: number, g: number, b: number } | null {
@@ -968,6 +1079,27 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
     
     return result.filter;
+  }
+
+  onDepartmentSort(): void {
+    console.log('🔍 onDepartmentSort called');
+    console.log('🔍 Current list:', this.currentList);
+    console.log('🔍 List ID:', this.listId);
+    
+    if (!this.currentList) {
+      console.error('🔍 No current list available');
+      return;
+    }
+    
+    console.log('🔍 Navigating to departments...');
+    this.router.navigate(['/lists', this.listId, 'departments']).then(
+      (success) => {
+        console.log('🔍 Navigation result:', success);
+      },
+      (error) => {
+        console.error('🔍 Navigation error:', error);
+      }
+    );
   }
   
 }

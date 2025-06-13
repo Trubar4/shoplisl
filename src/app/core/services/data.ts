@@ -20,6 +20,7 @@ import {
 
 import { Article, ArticleCategory, ShoppingList } from '../models';
 import { environment } from '../../../environments/environment';
+import { DEFAULT_DEPARTMENT_ORDER } from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -54,6 +55,8 @@ export class DataService {
     
     // Set up real-time listeners for shared data
     this.setupRealtimeListeners();
+
+    this.handleDepartmentOrderMigration();
     
     // Check if we need to migrate from device-specific data
     this.handleDataMigration();
@@ -216,6 +219,7 @@ export class DataService {
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
               itemStates: data['itemStates'] || {},
+              departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
             });
@@ -352,6 +356,7 @@ export class DataService {
             shopId: data['shopId'],
             articleIds: data['articleIds'] || [],
             itemStates: data['itemStates'] || {},
+            departmentOrder: data['departmentOrder'],
             createdAt: data['createdAt']?.toDate() || new Date(),
             updatedAt: data['updatedAt']?.toDate() || new Date()
           } as ShoppingList;
@@ -868,4 +873,111 @@ export class DataService {
       })
     );
   }
+
+
+/**
+ * Update the department order for a specific list
+ */
+updateListDepartmentOrder(listId: string, departmentOrder: string[]): Observable<boolean> {
+  return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+    departmentOrder: departmentOrder,
+    updatedAt: Timestamp.now()
+  })).pipe(
+    map(() => true),
+    catchError(error => {
+      console.error('Error updating department order:', error);
+      return of(false);
+    })
+  );
+}
+
+/**
+ * Get department order for a specific list, fallback to default order
+ */
+getListDepartmentOrder(listId: string): Observable<string[]> {
+  return this.getList(listId).pipe(
+    map(list => {
+      if (!list) return DEFAULT_DEPARTMENT_ORDER;
+      return list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
+    })
+  );
+}
+
+/**
+ * Migration function: Add default department order to existing lists
+ */
+async migrateDepartmentOrderToExistingLists(): Promise<void> {
+  console.log('🔄 Starting department order migration...');
+  
+  try {
+    // Get all existing lists
+    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    
+    let updatedCount = 0;
+    let skippedCount = 0;
+    
+    for (const listDoc of listsSnapshot.docs) {
+      const listData = listDoc.data();
+      
+      // Only update lists that don't have departmentOrder yet
+      if (!listData['departmentOrder']) {
+        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+          departmentOrder: DEFAULT_DEPARTMENT_ORDER,
+          updatedAt: Timestamp.now()
+        });
+        
+        updatedCount++;
+        console.log(`✅ Updated list "${listData['name']}" with default department order`);
+      } else {
+        skippedCount++;
+        console.log(`⏭️ Skipped list "${listData['name']}" (already has department order)`);
+      }
+    }
+    
+    console.log(`🎉 Migration completed! Updated: ${updatedCount}, Skipped: ${skippedCount}`);
+    
+    // Refresh the data after migration
+    await this.refreshData();
+    
+  } catch (error) {
+    console.error('❌ Error during department order migration:', error);
+  }
+}
+
+/**
+ * Check if migration is needed (for showing migration prompt)
+ */
+async checkIfDepartmentOrderMigrationNeeded(): Promise<boolean> {
+  try {
+    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    
+    // Check if any list is missing departmentOrder
+    return listsSnapshot.docs.some(doc => {
+      const data = doc.data();
+      return !data['departmentOrder'];
+    });
+  } catch (error) {
+    console.error('Error checking migration status:', error);
+    return false;
+  }
+}
+
+/**
+ * Handle automatic migration on startup
+ */
+private async handleDepartmentOrderMigration(): Promise<void> {
+  try {
+    const needsMigration = await this.checkIfDepartmentOrderMigrationNeeded();
+    
+    if (needsMigration) {
+      console.log('🔄 Department order migration needed, starting...');
+      await this.migrateDepartmentOrderToExistingLists();
+    } else {
+      console.log('✅ Department order migration not needed');
+    }
+  } catch (error) {
+    console.error('Error checking migration status:', error);
+  }
+}
+
 }
