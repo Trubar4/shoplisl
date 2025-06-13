@@ -7,6 +7,7 @@ import { ArticleOverviewComponent } from './features/articles/article-overview/a
 import { AddArticleComponent } from './features/articles/add-article/add-article';
 import { EditArticleComponent } from './features/articles/edit-article/edit-article';
 import { ArticleUploadComponent } from './core/services/article-upload.component';
+import { ListUploadComponent } from './core/services/list-upload.component';
 
 export const routes: Routes = [
   {
@@ -53,5 +54,9 @@ export const routes: Routes = [
   {
     path: 'admin/upload',
     component: ArticleUploadComponent
+  },
+  {
+    path: 'admin/upload-list',
+    component: ListUploadComponent
   }
 ];

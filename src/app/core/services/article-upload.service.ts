@@ -1,6 +1,7 @@
 // src/app/core/services/article-upload.service.ts
 import { Injectable } from '@angular/core';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import { Article } from '../models';
 
 @Injectable({
@@ -8,8 +9,29 @@ import { Article } from '../models';
 })
 export class ArticleUploadService {
   private readonly COLLECTION = 'articles';
+  private firestore: any;
+  private readonly SHARED_USER_ID = 'shared-shoplisl-user';
 
-  constructor(private firestore: Firestore) {}
+  constructor() {
+    // Initialize Firebase directly (same as DataService)
+    const firebaseConfig = {
+      projectId: 'shoplisl',
+      apiKey: 'AIzaSyADgZN2cKD43ABoVmaCX3UfCbmkcrbYslg',
+      authDomain: 'shoplisl.firebaseapp.com',
+      storageBucket: 'shoplisl.appspot.com', 
+      messagingSenderId: '238499687274',
+      appId: '1:238499687274:web:c54bad5031d5531be8d313'
+    };
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      this.firestore = getFirestore(app);
+      console.log('✅ ArticleUploadService: Firebase initialized successfully');
+    } catch (error) {
+      console.error('❌ ArticleUploadService: Firebase initialization failed:', error);
+      throw error;
+    }
+  }
 
   async uploadArticles(): Promise<void> {
     const articles: Omit<Article, 'id'>[] = [
@@ -231,7 +253,7 @@ export class ArticleUploadService {
     const batchSize = 10;
 
     try {
-      const articlesCollection = collection(this.firestore, this.COLLECTION);
+      const articlesCollection = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
       
       for (let i = 0; i < articles.length; i += batchSize) {
         const batch = articles.slice(i, i + batchSize);
@@ -243,6 +265,7 @@ export class ArticleUploadService {
         uploadedCount += batch.length;
         console.log(`Uploaded ${uploadedCount}/${articles.length} articles`);
         
+        // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 

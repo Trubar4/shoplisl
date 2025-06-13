@@ -28,9 +28,9 @@ export class DepartmentService {
     },
     {
       id: 'fridge-meat',
-      nameGerman: 'Kühlschrank Fleisch',
-      nameEnglish: 'Fridge Meat',
-      icon: 'Meat--Streamline-Core-Remix.png'
+      nameGerman: 'Kühlschrank inkl. Fleisch etc.',
+      nameEnglish: 'Fridge incl. meat etc',
+      icon: 'Refrigerator--Streamline-Core.png'
     },
     {
       id: 'fish',
