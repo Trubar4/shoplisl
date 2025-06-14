@@ -38,11 +38,11 @@ export class BottomTabsComponent {
     if (route === '/articles') {
       return this.currentUrl === '/articles' || this.currentUrl.startsWith('/articles/');
     }
-    if (route === '/shops') {
-      return this.currentUrl === '/shops' || this.currentUrl.startsWith('/shops/');
-    }
     if (route === '/recipes') {
       return this.currentUrl === '/recipes' || this.currentUrl.startsWith('/recipes/');
+    }
+    if (route === '/assistant') {
+      return this.currentUrl === '/assistant' || this.currentUrl.startsWith('/assistant/');
     }
     return this.currentUrl === route;
   }

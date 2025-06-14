@@ -52,7 +52,7 @@ interface DepartmentWithVisibility extends Department {
 
       <!-- Loading -->
       <div *ngIf="isLoading" class="loading">
-        <p>Bereiche werden geladen...</p>
+        <p>Abteilungen werden geladen...</p>
       </div>
 
       <!-- Content -->
@@ -60,7 +60,7 @@ interface DepartmentWithVisibility extends Department {
         <!-- Instructions -->
         <div class="instructions">
           <mat-icon>info_outline</mat-icon>
-          <p>Ziehe die Bereiche in die gewünschte Reihenfolge für deine Einkaufstour</p>
+          <p>Ziehe die Abteilungen in die gewünschte Reihenfolge für deine Einkaufstour</p>
         </div>
 
         <!-- Sortable Department List -->

@@ -326,6 +326,7 @@
     .add-article-button {
       flex: 1;
       min-width: 0;
+      min-height: 40px;
       height: 48px;
       font-weight: 500;
       display: flex;
@@ -335,6 +336,7 @@
       padding: 0 24px;
       border-radius: 24px;
       white-space: nowrap;
+      width: 50%;
       
       mat-icon {
         font-size: 20px;
@@ -346,6 +348,8 @@
     .department-sort-button {
       flex: 0 0 auto;
       min-width: 120px;
+      min-height: 40px;
+      width: 50%;
       height: 48px;
       font-weight: 500;
       display: flex;
