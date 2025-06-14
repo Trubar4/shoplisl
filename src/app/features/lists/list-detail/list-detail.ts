@@ -416,9 +416,13 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.listArticles$ = combineLatest([
       this.list$,
       this.dataService.getArticles(),
+      this.searchQuery$.pipe(
+        debounceTime(300),
+        distinctUntilChanged()
+      ),
       this.shoppingFilter$
     ]).pipe(
-      map(([list, articles, filter]) => {
+      map(([list, articles, query, filter]) => {
         if (!list) return [];
         
         let filteredArticles = articles
@@ -427,9 +431,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
             ...article,
             isChecked: list.itemStates[article.id]?.isChecked || false,
             isInList: true
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-
+          }));
+    
+        // Apply search filter if query exists
+        if (query && query.trim()) {
+          filteredArticles = filteredArticles.filter(article =>
+            article.name.toLowerCase().includes(query.toLowerCase()) ||
+            (article.notes && article.notes.toLowerCase().includes(query.toLowerCase()))
+          );
+        }
+    
+        // Sort articles
+        filteredArticles = filteredArticles.sort((a, b) => a.name.localeCompare(b.name));
+    
         // Apply shopping filter
         switch (filter) {
           case 'offen':
@@ -443,7 +457,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
             // Show all articles
             break;
         }
-
+    
         return filteredArticles;
       })
     );
@@ -812,12 +826,16 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   switchToShoppingMode(): void {
     this.currentMode = 'shopping';
+    // Clear search when switching to shopping mode
     this.searchQuery = '';
     this.searchQuery$.next('');
   }
 
   switchToEditMode(): void {
     this.currentMode = 'edit';
+    // Clear search when switching to edit mode  
+    this.searchQuery = '';
+    this.searchQuery$.next('');
   }
 
   getCurrentListColor(): string {

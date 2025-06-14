@@ -38,7 +38,7 @@ interface DepartmentWithVisibility extends Department {
         </button>
         <div class="header-content">
           <span class="list-icon">{{ currentList?.icon || '📋' }}</span>
-          <span class="list-name">Marktaufteilung</span>
+          <span class="list-name">Reihenfolge Abteilungen im Geschäft</span>
         </div>
         <span class="spacer"></span>
         <button 
