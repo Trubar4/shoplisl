@@ -8,5 +8,5 @@
       messagingSenderId: "238499687274", // Your actual sender ID
       appId: "1:238499687274:web:c54bad5031d5531be8d313" // Your actual app ID
     },
-    groqApiKey: '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'
+    groqApiKey: ''
   };
