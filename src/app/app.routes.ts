@@ -9,6 +9,8 @@ import { EditArticleComponent } from './features/articles/edit-article/edit-arti
 import { DepartmentSortComponent } from './features/lists/department-sort/department-sort.component';
 import { ArticleUploadComponent } from './core/services/article-upload.component';
 import { ListUploadComponent } from './core/services/list-upload.component';
+import { VoiceAIAssistantComponent } from './shared/components/voice-ai-assistant/voice-ai-assistant.component';
+
 
 export const routes: Routes = [
   {
@@ -45,10 +47,6 @@ export const routes: Routes = [
     component: EditArticleComponent
   },
   {
-    path: 'shops',
-    component: ListsOverviewComponent
-  },
-  {
     path: 'recipes',
     component: ListsOverviewComponent
   },
@@ -63,5 +61,9 @@ export const routes: Routes = [
   {
     path: 'lists/:id/departments',
     component: DepartmentSortComponent
+  },
+  { 
+    path: 'ai-assistant', 
+    component: VoiceAIAssistantComponent 
   }
 ];

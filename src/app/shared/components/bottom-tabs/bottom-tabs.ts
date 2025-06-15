@@ -41,8 +41,8 @@ export class BottomTabsComponent {
     if (route === '/recipes') {
       return this.currentUrl === '/recipes' || this.currentUrl.startsWith('/recipes/');
     }
-    if (route === '/assistant') {
-      return this.currentUrl === '/assistant' || this.currentUrl.startsWith('/assistant/');
+    if (route === '/ai-assistant') {
+      return this.currentUrl === '/ai-assistant' || this.currentUrl.startsWith('/ai-assistant/');
     }
     return this.currentUrl === route;
   }
