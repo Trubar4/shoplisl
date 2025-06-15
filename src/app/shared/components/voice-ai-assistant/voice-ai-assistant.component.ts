@@ -1,7 +1,7 @@
 // src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,9 +14,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatChipsModule } from '@angular/material/chips';
 
-// Uncomment AI service import
+// Import services
 import { AIService, AIExecutionResult, DisambiguationOption, PendingAction } from '../../../core/services/ai.service';
+import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
+import { DepartmentService } from '../../../core/services/department.service';
 
 interface ChatMessage {
   text: string;
@@ -39,7 +43,9 @@ interface ChatMessage {
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatToolbarModule,
-    MatDialogModule
+    MatDialogModule,
+    MatTooltipModule,
+    MatChipsModule
   ],
   template: `
     <div class="ai-assistant-container">
@@ -50,25 +56,31 @@ interface ChatMessage {
         </button>
         <span>AI Assistent</span>
         <span class="spacer"></span>
-        <button mat-icon-button (click)="clearChat()">
+        <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
           <mat-icon>clear_all</mat-icon>
+        </button>
+        <button mat-icon-button (click)="exportChat()" matTooltip="Chat exportieren">
+          <mat-icon>download</mat-icon>
         </button>
       </mat-toolbar>
 
       <!-- Chat Messages -->
       <div class="messages-container" #messagesContainer>
-        <div *ngIf="messages.length === 0" class="welcome-message">
+        <!-- Welcome message when empty -->
+        <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
           <mat-icon class="welcome-icon">psychology</mat-icon>
           <h3>Hallo! Ich bin dein AI Assistent</h3>
           <p>Du kannst mir sagen:</p>
           <ul>
-            <li>"Füge Bananen und Brot zu Spar hinzu"</li>
+            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
             <li>"Erstelle neue Liste ADEG"</li>
-            <li>"Hilfe"</li>
+            <li>"API Key setup" (für erweiterte Funktionen)</li>
           </ul>
+          <p class="chat-stats">{{ getChatStats() }}</p>
         </div>
 
-        <div *ngFor="let message of messages" 
+        <!-- Chat messages from observable -->
+        <div *ngFor="let message of (messages$ | async)" 
              [class]="'message message-' + message.type">
           <div class="message-content">
             <div class="message-text">{{ message.text }}</div>
@@ -87,19 +99,79 @@ interface ChatMessage {
         </div>
       </div>
 
-      <!-- Disambiguation Dialog -->
-      <div *ngIf="pendingDisambiguation" class="disambiguation-panel">
-        <mat-card>
+      <!-- Enhanced Disambiguation Panel -->
+      <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-panel">
+        <mat-card class="disambiguation-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon color="primary">help_outline</mat-icon>
+              Smart Disambiguation
+            </mat-card-title>
+            <mat-card-subtitle>{{ disambiguation.message }}</mat-card-subtitle>
+          </mat-card-header>
+          
           <mat-card-content>
-            <p><strong>{{ pendingDisambiguation.message }}</strong></p>
+            <div class="disambiguation-info">
+              <p><strong>Eingabe:</strong> "{{ disambiguation.pendingAction.originalInput }}"</p>
+              <p *ngIf="disambiguation.pendingAction.extractedQuantity">
+                <strong>Erkannte Menge:</strong> {{ disambiguation.pendingAction.extractedQuantity }}
+              </p>
+            </div>
+
             <div class="disambiguation-options">
-              <button *ngFor="let option of pendingDisambiguation.options"
-                      mat-raised-button
-                      color="primary"
-                      (click)="selectDisambiguationOption(option)"
-                      class="option-button">
-                ({{ option.option }}) {{ option.label }}
-              </button>
+              <div 
+                *ngFor="let option of disambiguation.options; trackBy: trackByOptionId"
+                class="disambiguation-option"
+                [class.new-option]="option.type === 'new'"
+                [class.existing-option]="option.type === 'existing'"
+                (click)="selectDisambiguationOption(option)">
+                
+                <mat-card class="option-card" 
+                          [class.new-item-card]="option.type === 'new'"
+                          [class.existing-item-card]="option.type === 'existing'">
+                  <mat-card-content>
+                    <div class="option-header">
+                      <div class="option-main">
+                        <div class="option-icon-container">
+                          <span class="option-icon">{{ option.icon || '📦' }}</span>
+                        </div>
+                        <div class="option-details">
+                          <div class="option-name">{{ option.displayName }}</div>
+                          <div class="option-meta">
+                            <span class="department-info">
+                              <mat-icon class="small-icon">category</mat-icon>
+                              {{ getDepartmentName(option.department) }}
+                            </span>
+                            <span *ngIf="option.article?.amount" class="amount-info">
+                              <mat-icon class="small-icon">straighten</mat-icon>
+                              {{ option.article.amount }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="option-confidence">
+                        <mat-chip 
+                          [color]="getConfidenceColor(option.confidence)"
+                          [matTooltip]="getConfidenceText(option.confidence)">
+                          {{ Math.round(option.confidence * 100) }}%
+                        </mat-chip>
+                      </div>
+                    </div>
+                    
+                    <div class="option-actions">
+                      <span *ngIf="option.type === 'existing'" class="action-hint">
+                        <mat-icon class="small-icon">update</mat-icon>
+                        Bestehenden Artikel verwenden
+                      </span>
+                      <span *ngIf="option.type === 'new'" class="action-hint">
+                        <mat-icon class="small-icon">add_circle</mat-icon>
+                        Neuen Artikel erstellen
+                      </span>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
             </div>
           </mat-card-content>
         </mat-card>
@@ -128,7 +200,7 @@ interface ChatMessage {
             <input matInput 
                    [(ngModel)]="currentMessage"
                    (keyup.enter)="sendMessage()"
-                   placeholder="z.B. Füge Bananen zu Spar hinzu"
+                   placeholder="z.B. Füge 2kg Bananen hinzu"
                    [disabled]="isProcessing || isRecording">
           </mat-form-field>
           
@@ -150,21 +222,7 @@ interface ChatMessage {
           </button>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-          <button mat-stroked-button 
-                  (click)="sendQuickMessage('Hilfe')"
-                  [disabled]="isProcessing">
-            <mat-icon>help</mat-icon>
-            Hilfe
-          </button>
-          <button mat-stroked-button 
-                  (click)="sendQuickMessage('Zeige meine Listen')"
-                  [disabled]="isProcessing">
-            <mat-icon>list</mat-icon>
-            Meine Listen
-          </button>
-        </div>
+
       </div>
     </div>
   `,
@@ -173,7 +231,10 @@ interface ChatMessage {
 export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   
-  messages: ChatMessage[] = [];
+  // 🔧 FIX: Use observables for persistence
+  messages$: Observable<ChatMessage[]>;
+  disambiguation$: Observable<any>;
+  
   currentMessage = '';
   isProcessing = false;
   isRecording = false;
@@ -182,28 +243,37 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   private recognition: any;
   private synthesis: SpeechSynthesis;
   
-  // Disambiguation state
-  pendingDisambiguation: {
-    message: string;
-    options: DisambiguationOption[];
-    pendingAction: PendingAction;
-  } | null = null;
-  
   private destroy$ = new Subject<void>();
 
   constructor(
-    private aiService: AIService,  // ✅ Uncomment this
+    private aiService: AIService,
+    private chatPersistence: ChatPersistenceService,
+    private departmentService: DepartmentService,
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {
     this.synthesis = window.speechSynthesis;
+    
+    // 🔧 FIX: Subscribe to persistent chat data
+    this.messages$ = this.chatPersistence.messages$;
+    this.disambiguation$ = this.chatPersistence.disambiguation$;
+    
     this.initializeSpeechRecognition();
   }
 
   ngOnInit(): void {
-    // Add welcome message
-    this.addSystemMessage('Willkommen! Sage mir, was ich für dich tun kann.');
+    // 🔧 FIX: Initialize chat if empty
+    this.chatPersistence.initializeIfEmpty();
+    
+    // Auto-scroll when new messages arrive
+    this.messages$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      setTimeout(() => this.scrollToBottom(), 100);
+    });
+    
+    // Log chat status for debugging
+    const summary = this.chatPersistence.getChatSummary();
+    console.log('💬 Chat loaded:', summary);
   }
 
   ngOnDestroy(): void {
@@ -217,16 +287,18 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   clearChat(): void {
-    this.messages = [];
-    this.pendingDisambiguation = null;
-    this.addSystemMessage('Chat geleert. Wie kann ich dir helfen?');
+    this.chatPersistence.clearMessages();
+    this.chatPersistence.initializeIfEmpty();
+    this.snackBar.open('Chat geleert', '', { duration: 1500 });
   }
 
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
 
     const userMessage = this.currentMessage.trim();
-    this.addMessage(userMessage, 'user');
+    
+    // 🔧 FIX: Use persistence service
+    this.chatPersistence.addMessage(userMessage, 'user');
     this.currentMessage = '';
     this.isProcessing = true;
 
@@ -238,7 +310,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       await this.handleAIResult(result);
     } catch (error) {
       console.error('AI error:', error);
-      this.addMessage('Entschuldigung, ein Fehler ist aufgetreten.', 'error');
+      this.chatPersistence.addMessage('Entschuldigung, ein Fehler ist aufgetreten.', 'error');
     } finally {
       this.isProcessing = false;
       this.scrollToBottom();
@@ -259,19 +331,24 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   selectDisambiguationOption(option: DisambiguationOption): void {
-    if (!this.pendingDisambiguation) return;
+    // Get current disambiguation state
+    const disambiguation = this.chatPersistence.getDisambiguation();
+    if (!disambiguation) return;
 
-    const pendingAction = this.pendingDisambiguation.pendingAction;
-    this.pendingDisambiguation = null;
+    const pendingAction = disambiguation.pendingAction;
+    
+    // Clear disambiguation state
+    this.chatPersistence.setDisambiguation(null);
 
-    this.addMessage(`(${option.option}) ${option.label}`, 'user');
+    // Add user choice as message
+    this.chatPersistence.addMessage(`Ausgewählt: ${option.displayName}`, 'user');
     this.isProcessing = true;
 
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: any) => this.handleAIResult(result))
       .catch((error: any) => {
         console.error('Disambiguation error:', error);
-        this.addMessage('Fehler beim Ausführen der Aktion.', 'error');
+        this.chatPersistence.addMessage('Fehler beim Ausführen der Aktion.', 'error');
       })
       .finally(() => {
         this.isProcessing = false;
@@ -346,14 +423,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
-    this.addMessage(result.message, result.success ? 'assistant' : 'error');
+    // 🔧 FIX: Use persistence service for messages
+    this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
 
+    // 🔧 FIX: Handle disambiguation with persistence
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
-      this.pendingDisambiguation = {
+      this.chatPersistence.setDisambiguation({
         message: result.message,
         options: result.disambiguationOptions,
         pendingAction: result.pendingAction
-      };
+      });
     }
 
     if (result.success && result.listId) {
@@ -367,7 +446,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }
 
     if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
-      this.addSystemMessage(`Tipp: Sage "Erstelle Liste ${result.suggestedData.listName}" um sie anzulegen.`);
+      this.chatPersistence.addMessage(`Tipp: Sage "Erstelle Liste ${result.suggestedData.listName}" um sie anzulegen.`, 'system');
     }
   }
 
@@ -385,30 +464,66 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.synthesis.speak(utterance);
   }
 
-  private addMessage(text: string, type: 'user' | 'assistant' | 'error'): void {
-    this.messages.push({
-      text,
-      type,
-      timestamp: new Date()
-    });
-    
-    setTimeout(() => this.scrollToBottom(), 100);
-  }
-
-  private addSystemMessage(text: string): void {
-    this.messages.push({
-      text,
-      type: 'system',
-      timestamp: new Date()
-    });
-    
-    setTimeout(() => this.scrollToBottom(), 100);
-  }
-
   private scrollToBottom(): void {
     if (this.messagesContainer) {
       const element = this.messagesContainer.nativeElement;
       element.scrollTop = element.scrollHeight;
     }
   }
+
+  // 🔧 FIX: Additional methods for chat management
+  exportChat(): void {
+    const chatHistory = this.chatPersistence.exportChatHistory();
+    
+    // Create downloadable file
+    const blob = new Blob([chatHistory], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shoplisl-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    this.snackBar.open('Chat exportiert', '', { duration: 1500 });
+  }
+
+  getChatStats(): string {
+    const summary = this.chatPersistence.getChatSummary();
+    return `${summary.messageCount} Nachrichten${summary.oldestMessage ? ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}` : ''}`;
+  }
+
+  // 🎯 Enhanced disambiguation helper methods
+  getDepartmentName(departmentId?: string): string {
+    if (!departmentId) return 'Unbekannt';
+    return this.departmentService.getDepartmentName(departmentId, 'german');
+  }
+
+  getDepartmentIcon(departmentId?: string): string {
+    if (!departmentId) return '📦';
+    return this.departmentService.getDepartmentIconPath(departmentId);
+  }
+
+  getConfidenceColor(confidence: number): string {
+    if (confidence >= 0.8) return 'primary';
+    if (confidence >= 0.6) return 'warn';
+    return 'accent';
+  }
+
+  getConfidenceText(confidence: number): string {
+    const percentage = Math.round(confidence * 100);
+    if (percentage >= 90) return `${percentage}% - Exakte Übereinstimmung`;
+    if (percentage >= 70) return `${percentage}% - Sehr ähnlich`;
+    if (percentage >= 50) return `${percentage}% - Ähnlich`;
+    return `${percentage}% - Entfernt ähnlich`;
+  }
+
+  // TrackBy function for disambiguation options
+  trackByOptionId(index: number, option: DisambiguationOption): string {
+    return option.id;
+  }
+
+  // Round function for template
+  Math = Math;
 }

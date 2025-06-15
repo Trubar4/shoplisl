@@ -100,6 +100,13 @@ html, body {
   --mdc-radio-selected-icon-color: #212121 !important;
 }
 
+/* Fix for bottom navigation text consistency */
+.mat-mdc-tab-group .mat-mdc-tab .mdc-tab__text-label,
+app-bottom-tabs .bottom-navigation .nav-item span {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
 /* Utility class for content that needs to scroll above bottom tabs */
 .scrollable-above-tabs {
   overflow-y: auto;

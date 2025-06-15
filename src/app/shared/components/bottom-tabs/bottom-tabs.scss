@@ -91,6 +91,36 @@
   }
 }
 
+/* Fix for "Assistent" text size in bottom navigation */
+.mat-mdc-tab-group,
+.mat-tab-nav-bar,
+.bottom-navigation,
+.bottom-tabs {
+  
+  /* Ensure all tab labels have consistent font size */
+  .mat-mdc-tab .mdc-tab__text-label,
+  .mat-tab-label-content,
+  .tab-label,
+  mat-tab .mat-tab-label-content {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Specific fix for bottom navigation items */
+  .mat-mdc-tab-nav-panel .mat-mdc-tab-link,
+  .bottom-tab-item,
+  .navigation-item {
+    .tab-text,
+    span:not(.mat-icon) {
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      text-align: center !important;
+      white-space: nowrap !important;
+    }
+  }
+}
+
 /* Mobile specific adjustments */
 @media (max-width: 768px) {
   .bottom-tabs {
