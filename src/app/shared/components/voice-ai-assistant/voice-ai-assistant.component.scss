@@ -308,7 +308,8 @@
 
   .input-area {
     position: fixed;
-    bottom: 60px;
+    /* 🔧 FIX: Proper positioning to account for bottom tabs and safe areas */
+    bottom: 61px; /* Match desktop bottom tab height */
     left: 0;
     right: 0;
     background: rgba(255, 255, 255, 0.95);
@@ -317,6 +318,11 @@
     padding: 8px;
     z-index: 50;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+
+    /* 🔧 FIX: Support for PWA safe areas */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      bottom: calc(61px + env(safe-area-inset-bottom));
+    }
 
     .input-controls {
       display: flex !important;
@@ -415,12 +421,13 @@
 @media (max-width: 768px) {
   .ai-assistant-container {
     .messages-container {
-      padding: 12px 12px 120px;
+      padding: 12px 12px 140px; /* 🔧 FIX: Increased bottom padding for mobile */
       .message .message-content { max-width: 85%; }
     }
 
     .disambiguation-panel {
-      bottom: 130px;
+      /* 🔧 FIX: Position above input area properly on mobile */
+      bottom: calc(130px + env(safe-area-inset-bottom, 0px));
       left: 12px;
       right: 12px;
       max-height: 50vh;
@@ -428,6 +435,14 @@
 
     .input-area {
       padding: 8px;
+      /* 🔧 FIX: Correct mobile positioning */
+      bottom: 58px; /* Match mobile bottom tab height */
+      
+      /* 🔧 FIX: Mobile safe area support */
+      @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        bottom: calc(58px + env(safe-area-inset-bottom));
+      }
+      
       .input-controls {
         gap: 4px;
         button {
@@ -450,6 +465,38 @@
             input { height: 28px !important; line-height: 28px !important; }
           }
         }
+      }
+    }
+  }
+}
+
+/* 🔧 FIX: Additional safe area support for various devices */
+@supports (bottom: env(safe-area-inset-bottom)) {
+  .ai-assistant-container {
+    .input-area {
+      /* Ensure input is always above bottom tabs regardless of safe area */
+      bottom: calc(61px + env(safe-area-inset-bottom));
+      
+      @media (max-width: 768px) {
+        bottom: calc(58px + env(safe-area-inset-bottom));
+      }
+    }
+    
+    .messages-container {
+      /* Adjust message container padding to account for larger input area */
+      padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+      
+      @media (max-width: 768px) {
+        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+    
+    .disambiguation-panel {
+      /* Keep disambiguation panel above input area */
+      bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+      
+      @media (max-width: 768px) {
+        bottom: calc(130px + env(safe-area-inset-bottom, 0px));
       }
     }
   }
