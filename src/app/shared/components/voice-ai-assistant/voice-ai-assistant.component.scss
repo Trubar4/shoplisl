@@ -277,32 +277,47 @@
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    /* 🔧 FIX: Don't extend to bottom - account for bottom tabs */
+    bottom: 120px; /* Leave space for bottom tabs + padding */
     background: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-
+    /* 🔧 FIX: Higher z-index than bottom tabs (which have 1000) */
+    z-index: 1001;
+  
     .recording-content {
       background: white;
       padding: 40px;
       border-radius: 20px;
       text-align: center;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
-
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      
+      /* 🔧 FIX: Ensure content doesn't get too close to bottom */
+      margin-bottom: 20px;
+  
       .recording-icon {
         font-size: 64px;
         color: #f44336;
         margin-bottom: 20px;
         animation: recordingPulse 1.5s ease-in-out infinite;
       }
-      p { font-size: 18px; margin: 20px 0; color: #333; }
+      
+      p { 
+        font-size: 18px; 
+        margin: 20px 0; 
+        color: #333; 
+      }
+      
       .recording-animation {
         display: flex;
         justify-content: center;
         align-items: center;
         margin: 20px 0;
+        
         .wave {
           width: 4px;
           height: 20px;
@@ -310,11 +325,135 @@
           margin: 0 2px;
           border-radius: 2px;
           animation: waveAnimation 1s ease-in-out infinite;
+          
           &:nth-child(2) { animation-delay: 0.1s; }
           &:nth-child(3) { animation-delay: 0.2s; }
         }
       }
+      
+      button {
+        margin-top: 16px;
+        padding: 12px 24px;
+        min-height: 44px; /* Touch target */
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+      }
     }
+  
+    /* Desktop specific adjustments */
+    @media (min-width: 769px) {
+      /* Desktop has more space, can use more of viewport */
+      bottom: 80px; /* Account for desktop bottom tabs + extra padding */
+      
+      .recording-content {
+        max-width: 500px; /* Fixed width on desktop */
+        max-height: calc(100vh - 160px); /* Account for header + bottom space */
+        
+        .recording-icon {
+          font-size: 72px; /* Larger on desktop */
+        }
+        
+        p {
+          font-size: 20px; /* Larger text on desktop */
+        }
+      }
+    }
+  
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      bottom: 120px; /* Account for mobile bottom tabs */
+      padding: 16px; /* Add side padding on mobile */
+      
+      .recording-content {
+        max-width: 95vw;
+        max-height: calc(100vh - 150px);
+        padding: 30px 20px;
+        margin-bottom: 10px; /* Less margin on mobile */
+        
+        .recording-icon {
+          font-size: 48px; /* Smaller on mobile */
+          margin-bottom: 16px;
+        }
+        
+        p {
+          font-size: 16px;
+          margin: 16px 0;
+        }
+        
+        .recording-animation {
+          margin: 16px 0;
+          
+          .wave {
+            width: 3px;
+            height: 16px;
+          }
+        }
+        
+        button {
+          padding: 14px 28px;
+          font-size: 16px;
+          width: 100%; /* Full width on mobile */
+        }
+      }
+    }
+  
+    /* PWA specific adjustments */
+    @media all and (display-mode: standalone) {
+      /* Account for PWA safe areas */
+      bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+      z-index: 1002; /* Even higher in PWA mode */
+      
+      .recording-content {
+        max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 160px);
+      }
+      
+      @media (max-width: 768px) {
+        bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+  
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      background: rgba(0, 0, 0, 0.95); /* Darker background */
+      
+      .recording-content {
+        border: 2px solid #333;
+        
+        .recording-icon {
+          color: #d32f2f; /* Darker red for better contrast */
+        }
+      }
+    }
+  
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      .recording-content {
+        .recording-icon {
+          animation: none; /* Disable pulsing animation */
+        }
+        
+        .recording-animation .wave {
+          animation: none; /* Disable wave animation */
+          height: 20px; /* Static height */
+        }
+        
+        button:hover {
+          transform: none; /* Disable hover transform */
+        }
+      }
+    }
+  }
+  
+  /* Additional z-index fix: Ensure input area doesn't interfere */
+  .input-area {
+    /* Lower z-index than recording overlay */
+    z-index: 50 !important;
   }
 
   .input-area {
