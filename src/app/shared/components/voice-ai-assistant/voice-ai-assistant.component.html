@@ -9,7 +9,7 @@
       <span class="spacer"></span>
       
       <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
-        <mat-icon>clear_all</mat-icon>
+        <mat-icon>delete</mat-icon>
       </button>
       <button mat-icon-button (click)="exportChat()" matTooltip="Chat exportieren">
         <mat-icon>download</mat-icon>
@@ -72,83 +72,129 @@
       </div>
     </div>
   
-    <!-- Enhanced Disambiguation Panel -->
-    <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-panel">
-      <mat-card class="disambiguation-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon color="primary">help_outline</mat-icon>
-            Smart Disambiguation
-          </mat-card-title>
-          <mat-card-subtitle>{{ disambiguation.message }}</mat-card-subtitle>
-        </mat-card-header>
-        
-        <mat-card-content>
-          <div class="disambiguation-info">
-            <p><strong>Eingabe:</strong> "{{ disambiguation.pendingAction.originalInput }}"</p>
-            <p *ngIf="disambiguation.pendingAction.extractedQuantity">
-              <strong>Erkannte Menge:</strong> {{ disambiguation.pendingAction.extractedQuantity }}
-            </p>
-          </div>
+<!-- DISAMBIGUATION PANEL - Enhanced for List Selection -->
+<div class="disambiguation-panel" *ngIf="disambiguation$ | async as disambiguation">
+    <mat-card class="disambiguation-card">
+      <!-- Header -->
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon [style.color]="getDisambiguationHeaderColor(disambiguation)">
+            {{ getDisambiguationHeaderIcon(disambiguation) }}
+          </mat-icon>
+          {{ getDisambiguationHeaderTitle(disambiguation) }}
+        </mat-card-title>
+        <mat-card-subtitle>
+          {{ disambiguation.message }}
+        </mat-card-subtitle>
+      </mat-card-header>
   
-          <div class="disambiguation-options">
-            <div 
-              *ngFor="let option of disambiguation.options; trackBy: trackByOptionId"
-              class="disambiguation-option"
-              [class.new-option]="option.type === 'new'"
-              [class.existing-option]="option.type === 'existing'"
-              (click)="selectDisambiguationOption(option)">
-              
-              <mat-card class="option-card" 
-                        [class.new-item-card]="option.type === 'new'"
-                        [class.existing-item-card]="option.type === 'existing'">
-                <mat-card-content>
-                  <div class="option-header">
-                    <div class="option-main">
-                      <div class="option-icon-container">
-                        <span class="option-icon">{{ option.icon || '📦' }}</span>
-                      </div>
-                      <div class="option-details">
-                        <div class="option-name">{{ option.displayName }}</div>
-                        <div class="option-meta">
-                          <span class="department-info">
-                            <mat-icon class="small-icon">category</mat-icon>
-                            {{ getDepartmentName(option.department) }}
-                          </span>
-                          <span *ngIf="option.article?.amount" class="amount-info">
-                            <mat-icon class="small-icon">straighten</mat-icon>
-                            {{ option.article.amount }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="option-confidence">
-                      <mat-chip 
-                        [color]="getConfidenceColor(option.confidence)"
-                        [matTooltip]="getConfidenceText(option.confidence)">
-                        {{ Math.round(option.confidence * 100) }}%
-                      </mat-chip>
+      <!-- Disambiguation Info -->
+      <div class="disambiguation-info" *ngIf="disambiguation.pendingAction">
+        <p><strong>Artikel:</strong> {{ disambiguation.pendingAction.itemName }}</p>
+        <p *ngIf="disambiguation.pendingAction.extractedQuantity">
+          <strong>Menge:</strong> {{ disambiguation.pendingAction.extractedQuantity }}
+        </p>
+        <p><strong>Aktion:</strong> {{ getActionDescription(disambiguation.pendingAction) }}</p>
+      </div>
+  
+      <!-- Options Grid -->
+      <div class="disambiguation-options">
+        <div 
+          class="disambiguation-option" 
+          *ngFor="let option of disambiguation.options; trackBy: trackByOptionId"
+          (click)="selectDisambiguationOption(option)">
+          
+          <!-- Article Disambiguation Card -->
+          <mat-card 
+            class="option-card"
+            [ngClass]="{
+              'existing-item-card': option.type === 'existing' && !isListSelection(disambiguation.pendingAction),
+              'new-item-card': option.type === 'new',
+              'list-selection-card': isListSelection(disambiguation.pendingAction)
+            }">
+            
+            <mat-card-content>
+              <div class="option-header">
+                <!-- Main Content -->
+                <div class="option-main">
+                  <!-- Icon -->
+                  <div class="option-icon-container">
+                    <div class="option-icon">
+                      {{ option.icon || getDefaultIcon(option) }}
                     </div>
                   </div>
-                  
-                  <div class="option-actions">
-                    <span *ngIf="option.type === 'existing'" class="action-hint">
-                      <mat-icon class="small-icon">update</mat-icon>
-                      Bestehenden Artikel verwenden
-                    </span>
-                    <span *ngIf="option.type === 'new'" class="action-hint">
-                      <mat-icon class="small-icon">add_circle</mat-icon>
-                      Neuen Artikel erstellen
-                    </span>
+  
+                  <!-- Details -->
+                  <div class="option-details">
+                    <!-- Name -->
+                    <div class="option-name">
+                      {{ option.displayName }}
+                    </div>
+  
+                    <!-- Meta Information -->
+                    <div class="option-meta">
+                      <!-- For Article Disambiguation -->
+                      <div class="department-info" *ngIf="!isListSelection(disambiguation.pendingAction)">
+                        <span class="small-icon">🏪</span>
+                        {{ getDepartmentName(option.department) }}
+                      </div>
+                      
+                      <!-- For List Selection -->
+                      <div class="list-info" *ngIf="isListSelection(disambiguation.pendingAction)">
+                        <span class="small-icon">📊</span>
+                        {{ option.department }} <!-- This contains item count for lists -->
+                      </div>
+  
+                      <!-- Amount Info (if available) -->
+                      <div class="amount-info" *ngIf="option.article?.amount">
+                        <span class="small-icon">⚖️</span>
+                        {{ option.article.amount }}
+                      </div>
+                    </div>
                   </div>
-                </mat-card-content>
-              </mat-card>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+                </div>
+  
+                <!-- Confidence/Status Badge -->
+                <div class="option-confidence" *ngIf="!isListSelection(disambiguation.pendingAction)">
+                  <mat-chip [color]="getConfidenceColor(option.confidence)">
+                    {{ getConfidenceText(option.confidence) }}
+                  </mat-chip>
+                </div>
+  
+                <!-- List Color Indicator -->
+                <div class="list-color-indicator" *ngIf="isListSelection(disambiguation.pendingAction)">
+                  <div 
+                    class="color-dot" 
+                    [style.background-color]="getListColor(option)">
+                  </div>
+                </div>
+              </div>
+  
+              <!-- Action Hint -->
+              <div class="option-actions">
+                <div class="action-hint">
+                  <span class="small-icon">👆</span>
+                  {{ getActionHint(option, disambiguation.pendingAction) }}
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+  
+      <!-- Cancel Action -->
+      <div class="disambiguation-cancel" style="margin-top: 16px; text-align: center;">
+        <button 
+          mat-stroked-button 
+          color="warn" 
+          (click)="cancelDisambiguation()"
+          style="width: 100%;">
+          <mat-icon>cancel</mat-icon>
+          Abbrechen
+        </button>
+      </div>
+    </mat-card>
+  </div>
   
     <!-- Voice Recording Overlay - Fixed positioning -->
     <div *ngIf="isRecording" class="recording-overlay">

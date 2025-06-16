@@ -20,10 +20,31 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 
-// Application services
-import { AIService, AIExecutionResult, DisambiguationOption, PendingAction } from '../../../core/services/ai.service';
+// Application services - Import with explicit types
+import { 
+  AIService, 
+  AIExecutionResult, 
+  DisambiguationOption
+} from '../../../core/services/ai.service';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
+
+// Local type definitions to ensure compatibility
+interface ExtendedPendingAction {
+  type: 'add_item' | 'create_list' | 'select_list';
+  originalInput: string;
+  itemName: string;
+  extractedQuantity?: string;
+  listName?: string;
+  suggestedDepartment?: string;
+  articleToAdd?: {
+    id?: string;
+    name: string;
+    amount?: string;
+    departmentId?: string;
+    icon?: string;
+  };
+}
 
 // Interfaces
 interface ChatMessage {
@@ -184,6 +205,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
     const userMessage = this.currentMessage.trim();
     
+    // Clear any existing disambiguation
+    this.chatPersistence.setDisambiguation(null);
+    
     this.chatPersistence.addMessage(userMessage, 'user');
     this.currentMessage = '';
     this.isProcessing = true;
@@ -196,7 +220,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       await this.handleAIResult(result);
     } catch (error) {
       console.error('AI error:', error);
-      this.chatPersistence.addMessage('Entschuldigung, ein Fehler ist aufgetreten.', 'error');
+      this.chatPersistence.addMessage(
+        '❌ Entschuldigung, ein Fehler ist aufgetreten.\n\n💡 Versuche es mit:\n• "Hilfe" für verfügbare Befehle\n• "Test" für System-Status', 
+        'error'
+      );
     } finally {
       this.isProcessing = false;
       this.scrollToBottom();
@@ -204,31 +231,56 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   sendQuickMessage(message: string): void {
+    // Clear any existing disambiguation when sending quick messages
+    this.chatPersistence.setDisambiguation(null);
+    
     this.currentMessage = message;
     this.sendMessage();
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
+    // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
 
+    // Handle disambiguation (both article and list selection)
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
       this.handleDisambiguation(result);
     }
 
+    // Handle successful actions
     if (result.success && result.listId) {
       this.handleSuccessfulAction(result);
     }
 
+    // Handle suggestions
     if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
       this.handleSuggestion(result);
+    }
+
+    // Provide additional feedback for list-related actions
+    if (result.success && result.message.includes('Liste')) {
+      setTimeout(() => {
+        this.chatPersistence.addMessage(
+          '💡 Weitere Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Zeige Listen" - Alle Listen anzeigen',
+          'system'
+        );
+      }, 1500);
     }
   }
 
   private handleDisambiguation(result: AIExecutionResult): void {
+    if (!result.disambiguationOptions || !result.pendingAction) {
+      console.error('Invalid disambiguation data:', result);
+      return;
+    }
+
+    // Type assertion to ensure compatibility with ChatPersistenceService
+    const pendingAction = result.pendingAction as any;
+    
     this.chatPersistence.setDisambiguation({
       message: result.message,
-      options: result.disambiguationOptions!,
-      pendingAction: result.pendingAction!
+      options: result.disambiguationOptions,
+      pendingAction: pendingAction
     });
   }
 
@@ -249,6 +301,112 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
+  // ENHANCED DISAMBIGUATION METHODS
+  // ========================================
+
+  /**
+   * Check if current disambiguation is for list selection
+   */
+  isListSelection(pendingAction: ExtendedPendingAction | null | undefined): boolean {
+    return pendingAction?.type === 'select_list';
+  }
+
+  /**
+   * Get disambiguation header color based on type
+   */
+  getDisambiguationHeaderColor(disambiguation: any): string {
+    if (this.isListSelection(disambiguation.pendingAction)) {
+      return '#2196f3'; // Blue for list selection
+    }
+    return '#ff9800'; // Orange for article disambiguation
+  }
+
+  /**
+   * Get disambiguation header icon based on type
+   */
+  getDisambiguationHeaderIcon(disambiguation: any): string {
+    if (this.isListSelection(disambiguation.pendingAction)) {
+      return 'playlist_add'; // List selection icon
+    }
+    return 'help_outline'; // Article disambiguation icon
+  }
+
+  /**
+   * Get disambiguation header title based on type
+   */
+  getDisambiguationHeaderTitle(disambiguation: any): string {
+    if (this.isListSelection(disambiguation.pendingAction)) {
+      return 'Liste auswählen';
+    }
+    return 'Artikel auswählen';
+  }
+
+  /**
+   * Get action description for pending action
+   */
+  getActionDescription(pendingAction: ExtendedPendingAction | null | undefined): string {
+    if (!pendingAction) return 'Unbekannte Aktion';
+    
+    switch (pendingAction.type) {
+      case 'add_item':
+        return pendingAction.listName ? 
+          `Hinzufügen zu "${pendingAction.listName}"` : 
+          'Hinzufügen zur Liste';
+      case 'create_list':
+        return `Neue Liste "${pendingAction.listName}" erstellen`;
+      case 'select_list':
+        return 'Zur ausgewählten Liste hinzufügen';
+      default:
+        return 'Unbekannte Aktion';
+    }
+  }
+
+  /**
+   * Get default icon for disambiguation option
+   */
+  getDefaultIcon(option: DisambiguationOption): string {
+    if (option.type === 'new') {
+      return '✨'; // New item icon
+    }
+    return option.icon || '📦'; // Default icon
+  }
+
+  /**
+   * Get list color for list selection options
+   */
+  getListColor(option: DisambiguationOption): string {
+    // For list selection, we can extract color from the option or use default
+    // This assumes you store the list color somehow in the option
+    // You might need to modify the AI service to include this information
+    return '#2196f3'; // Default blue, but you can enhance this
+  }
+
+  /**
+   * Get action hint text for disambiguation options
+   */
+  getActionHint(option: DisambiguationOption, pendingAction: ExtendedPendingAction | null | undefined): string {
+    if (!pendingAction) return 'Unbekannte Aktion';
+    
+    if (this.isListSelection(pendingAction)) {
+      return `Zu "${option.displayName}" hinzufügen`;
+    }
+
+    if (option.type === 'existing') {
+      return 'Vorhandenen Artikel verwenden';
+    } else {
+      return 'Neuen Artikel erstellen';
+    }
+  }
+
+  /**
+   * Cancel disambiguation and clear pending action
+   */
+  cancelDisambiguation(): void {
+    this.chatPersistence.setDisambiguation(null);
+    this.chatPersistence.addMessage('Aktion abgebrochen.', 'system');
+  }
+
+  // ========================================
   // DISAMBIGUATION HANDLING
   // ========================================
   selectDisambiguationOption(option: DisambiguationOption): void {
@@ -257,15 +415,28 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
     const pendingAction = disambiguation.pendingAction;
     
+    // Clear disambiguation immediately for better UX
     this.chatPersistence.setDisambiguation(null);
-    this.chatPersistence.addMessage(`Ausgewählt: ${option.displayName}`, 'user');
+    
+    // Add user's choice to chat
+    const choiceText = this.isListSelection(pendingAction) ? 
+      `Liste gewählt: ${option.displayName}` : 
+      `Ausgewählt: ${option.displayName}`;
+    
+    this.chatPersistence.addMessage(choiceText, 'user');
     this.isProcessing = true;
 
+    // Process the choice
     this.aiService.handleDisambiguationChoice(pendingAction, option)
-      .then((result: any) => this.handleAIResult(result))
+      .then((result: AIExecutionResult) => {
+        this.handleAIResult(result);
+      })
       .catch((error: any) => {
         console.error('Disambiguation error:', error);
-        this.chatPersistence.addMessage('Fehler beim Ausführen der Aktion.', 'error');
+        this.chatPersistence.addMessage(
+          '❌ Fehler beim Ausführen der Aktion.\n\n💡 Versuche es erneut oder sage "Hilfe".', 
+          'error'
+        );
       })
       .finally(() => {
         this.isProcessing = false;
@@ -382,6 +553,62 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     utterance.volume = 0.8;
     
     this.synthesis.speak(utterance);
+  }
+
+  // ========================================
+  // QUICK COMMANDS
+  // ========================================
+
+  /**
+   * Add quick commands for common actions
+   */
+  showLists(): void {
+    this.sendQuickMessage('Zeige alle Listen');
+  }
+
+  createNewList(): void {
+    this.currentMessage = 'Erstelle Liste ';
+    // Focus input for user to complete the command
+    setTimeout(() => {
+      const inputElement = document.querySelector('input[matInput]') as HTMLInputElement;
+      if (inputElement) {
+        inputElement.focus();
+        inputElement.setSelectionRange(inputElement.value.length, inputElement.value.length);
+      }
+    }, 100);
+  }
+
+  /**
+   * Enhanced help with context-aware suggestions
+   */
+  showContextualHelp(): void {
+    const hasApiKey = this.aiService.hasApiKey();
+    const summary = this.chatPersistence.getChatSummary();
+    
+    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
+    
+    // Context-aware help based on API key status
+    if (hasApiKey) {
+      helpMessage += '✅ Intelligente Features aktiv\n\n';
+      helpMessage += '📝 Verfügbare Befehle:\n\n';
+      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste wenn nicht angegeben\n\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n  → Erstellt eine neue Einkaufsliste\n\n';
+      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Neue Liste mit erstem Artikel\n\n';
+    } else {
+      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
+      helpMessage += '💡 Für intelligente Features:\n';
+      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
+      helpMessage += '📝 Basis-Befehle:\n\n';
+      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n';
+      helpMessage += '• "Test" - System-Status prüfen\n\n';
+    }
+    
+    helpMessage += `📊 Chat Status: ${summary.messageCount} Nachrichten`;
+    
+    this.chatPersistence.addMessage(helpMessage, 'assistant');
   }
 
   // ========================================

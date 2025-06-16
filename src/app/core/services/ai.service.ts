@@ -1,4 +1,4 @@
-// src/app/core/services/ai.service.ts - Enhanced with Chat API Key Setup
+// src/app/core/services/ai.service.ts - Complete Enhanced Version
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, combineLatest, of } from 'rxjs';
 import { map, take, catchError } from 'rxjs/operators';
@@ -18,18 +18,33 @@ export interface DisambiguationOption {
 }
 
 export interface PendingAction {
-  type: 'add_item' | 'create_list';
+  type: 'add_item' | 'create_list' | 'select_list';
   originalInput: string;
   itemName: string;
   extractedQuantity?: string;
   listName?: string;
   suggestedDepartment?: string;
+  articleToAdd?: {
+    id?: string;
+    name: string;
+    amount?: string;
+    departmentId?: string;
+    icon?: string;
+  };
 }
 
 export interface QuantityExtraction {
   itemName: string;
   quantity?: string;
   unit?: string;
+}
+
+export interface ListSelectionOption {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  itemCount: number;
 }
 
 // AI Response Types
@@ -83,9 +98,43 @@ export class AIService {
     'household-goods': ['toilettenpapier', 'küchenrolle', 'müllbeutel', 'servietten']
   };
 
+  // 🎨 German color mappings for list creation
+  private readonly COLOR_KEYWORDS: { [key: string]: string } = {
+    'rot': '#F44336',
+    'red': '#F44336',
+    'grün': '#4CAF50',
+    'green': '#4CAF50',
+    'blau': '#2196F3',
+    'blue': '#2196F3',
+    'gelb': '#FFEB3B',
+    'yellow': '#FFEB3B',
+    'orange': '#FF9800',
+    'lila': '#9C27B0',
+    'purple': '#9C27B0',
+    'violett': '#9C27B0',
+    'rosa': '#E91E63',
+    'pink': '#E91E63',
+    'schwarz': '#424242',
+    'black': '#424242',
+    'grau': '#9E9E9E',
+    'gray': '#9E9E9E',
+    'grey': '#9E9E9E',
+    'weiß': '#FAFAFA',
+    'weiss': '#FAFAFA',
+    'white': '#FAFAFA',
+    'türkis': '#009688',
+    'turquoise': '#009688',
+    'braun': '#795548',
+    'brown': '#795548'
+  };
+
   constructor(private dataService: DataService) {
     this.logApiKeyStatus();
   }
+
+  // ========================================
+  // API KEY MANAGEMENT
+  // ========================================
 
   /**
    * 🔒 SECURE: Get API key with localStorage priority
@@ -149,7 +198,7 @@ export class AIService {
         
         return {
           success: true,
-          message: '🔑 API Key erfolgreich gespeichert!\n\n✅ Groq API Key konfiguriert\n🎯 Smart Disambiguation aktiviert\n🚀 Alle AI-Features verfügbar\n\n💡 Du kannst jetzt sagen:\n"Füge 2kg Bananen zu Spar hinzu"'
+          message: '🔑 API Key erfolgreich gespeichert!\n\n✅ Groq API Key konfiguriert\n🎯 Smart Disambiguation aktiviert\n🚀 Alle AI-Features verfügbar\n\n💡 Du kannst jetzt sagen:\n"Füge 2kg Bananen hinzu"'
         };
       } else {
         return {
@@ -171,46 +220,93 @@ export class AIService {
    * 💡 Provide helpful guidance when no API key is configured
    */
   private getNoApiKeyGuidance(): string {
-    return '💡 Für intelligente Features:\n\n1️⃣ Groq API Key kostenlos erstellen:\n🔗 https://console.groq.com/keys\n\n2️⃣ Hier eingeben:\n"set api key: gsk_YOUR_KEY_HERE"\n\n✨ Dann verfügbar:\n• Smart Disambiguation\n• Mengen-Erkennung\n• Intelligente Artikel-Vorschläge';
+    return '💡 Für intelligente Features:\n\n1️⃣ Groq API Key kostenlos erstellen:\n🔗 https://console.groq.com/keys\n\n2️⃣ Hier eingeben:\n"set api key: gsk_YOUR_KEY_HERE"\n\n✨ Dann verfügbar:\n• Smart Disambiguation\n• Mengen-Erkennung\n• Intelligente Artikel-Vorschläge\n• Automatische Listen-Auswahl';
   }
 
+  // ========================================
+  // QUANTITY EXTRACTION
+  // ========================================
+
   /**
-   * 🎯 ENHANCED: Extract quantity from German input
+   * 🔍 ENHANCED: Extract quantity with better input preservation and debugging
    */
   private extractQuantity(input: string): QuantityExtraction {
-    // German quantity patterns with units
+    console.log('🔍 QUANTITY EXTRACTION INPUT:', input);
+    
+    // Store original input for debugging
+    const originalInput = input.trim();
+    
+    // Enhanced German quantity patterns with more units
     const quantityPatterns = [
-      // Amount + unit at start: "2kg Bananen", "500ml Milch"
-      /(\d+(?:[.,]\d+)?\s*(?:kg|g|liter|l|ml|stück|stk|pack|packung|dose|dosen|gramm))\s+(.+)/i,
+      // NEW: Item Menge Amount Unit: "Schokolade Menge 2 Stück", "Milch Menge 500ml"
+      { 
+        pattern: /(.+?)\s+menge\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))/i,
+        type: 'item_menge_amount'
+      },
+      // Amount + unit at start: "2kg Bananen", "500ml Milch", "1 Becher Joghurt"
+      { 
+        pattern: /(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)/i,
+        type: 'unit_start'
+      },
       // Amount + x: "2x Bananen", "3 x Äpfel"
-      /(\d+(?:[.,]\d+)?)\s*x\s+(.+)/i,
-      // Amount at end: "Bananen 2kg", "Milch 1 Liter"
-      /(.+?)\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|liter|l|ml|stück|stk|pack|packung|dose|dosen|gramm))$/i,
+      { 
+        pattern: /(\d+(?:[.,]\d+)?)\s*x\s+(.+)/i,
+        type: 'x_notation'
+      },
+      // Amount at end: "Bananen 2kg", "Milch 1 Liter", "Joghurt 1 Becher"
+      { 
+        pattern: /(.+?)\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
+        type: 'unit_end'
+      },
       // Simple number: "2 Bananen", "3 Äpfel"
-      /(\d+(?:[.,]\d+)?)\s+(.+)/i
+      { 
+        pattern: /(\d+(?:[.,]\d+)?)\s+(.+)/i,
+        type: 'number_start'
+      }
     ];
 
     for (let i = 0; i < quantityPatterns.length; i++) {
-      const pattern = quantityPatterns[i];
+      const { pattern, type } = quantityPatterns[i];
       const match = input.match(pattern);
       
       if (match) {
-        if (i === 2) { // Quantity at end pattern
-          return {
-            itemName: match[1].trim(),
-            quantity: match[2].trim()
-          };
-        } else { // Quantity at start patterns
-          return {
-            itemName: match[2].trim(),
-            quantity: match[1].trim()
-          };
+        console.log(`🔍 MATCHED PATTERN ${type}:`, match);
+        
+        let itemName: string;
+        let quantity: string;
+
+        if (type === 'item_menge_amount') {
+          // NEW: "Schokolade Menge 2 Stück" → itemName="Schokolade", quantity="2 Stück"
+          itemName = match[1].trim();
+          quantity = match[2].trim();
+        } else if (type === 'unit_end') {
+          itemName = match[1].trim();
+          quantity = match[2].trim();
+        } else {
+          quantity = match[1].trim();
+          itemName = match[2].trim();
         }
+
+        console.log('🔍 EXTRACTED:', { itemName, quantity, originalInput });
+        
+        return {
+          itemName: itemName,
+          quantity: quantity
+        };
       }
     }
 
-    return { itemName: input.trim() };
+    console.log('🔍 NO QUANTITY PATTERN MATCHED, RETURNING ORIGINAL:', originalInput);
+    
+    // Return original input unchanged if no pattern matches
+    return { 
+      itemName: originalInput 
+    };
   }
+
+  // ========================================
+  // DISAMBIGUATION LOGIC
+  // ========================================
 
   /**
    * 🎯 ENHANCED: Smart disambiguation with fuzzy matching
@@ -294,6 +390,43 @@ export class AIService {
   }
 
   /**
+   * 🎨 Extract color from German input
+   */
+  private extractColor(input: string): { colorName?: string; colorHex?: string; cleanInput: string } {
+    const lowerInput = input.toLowerCase();
+    
+    // Pattern: "in [color]" or "mit [color]" or "[color]"
+    const colorPatterns = [
+      /\s+in\s+(rot|red|grün|green|blau|blue|gelb|yellow|orange|lila|purple|violett|rosa|pink|schwarz|black|grau|gray|grey|weiß|weiss|white|türkis|turquoise|braun|brown)\s*$/i,
+      /\s+mit\s+(rot|red|grün|green|blau|blue|gelb|yellow|orange|lila|purple|violett|rosa|pink|schwarz|black|grau|gray|grey|weiß|weiss|white|türkis|turquoise|braun|brown)\s*$/i,
+      /\s+(rot|red|grün|green|blau|blue|gelb|yellow|orange|lila|purple|violett|rosa|pink|schwarz|black|grau|gray|grey|weiß|weiss|white|türkis|turquoise|braun|brown)\s*$/i
+    ];
+
+    for (const pattern of colorPatterns) {
+      const match = lowerInput.match(pattern);
+      if (match) {
+        const colorName = match[1].toLowerCase();
+        const colorHex = this.COLOR_KEYWORDS[colorName];
+        if (colorHex) {
+          // Remove color from input
+          const cleanInput = input.replace(new RegExp(match[0], 'i'), '').trim();
+          return { 
+            colorName, 
+            colorHex, 
+            cleanInput 
+          };
+        }
+      }
+    }
+
+    return { cleanInput: input };
+  }
+
+  // ========================================
+  // MAIN COMMAND EXECUTION
+  // ========================================
+
+  /**
    * Execute AI command and perform actual data operations
    */
   async executeCommand(input: string): Promise<AIExecutionResult> {
@@ -310,7 +443,7 @@ export class AIService {
         const hasKey = this.hasApiKey();
         return {
           success: true,
-          message: `Hallo! Ich kann dir mit folgenden Aufgaben helfen:\n\n• "Füge 2kg Bananen zu Spar hinzu"\n• "Erstelle Liste ADEG mit Milch"\n• "API Key setup" (für erweiterte Funktionen)\n\n${hasKey ? '🎯 Smart Features aktiviert!' : this.getNoApiKeyGuidance()}`
+          message: this.getEnhancedHelpMessage(hasKey)
         };
       }
       
@@ -321,12 +454,13 @@ export class AIService {
         
         return {
           success: true,
-          message: `✅ AI Service funktioniert!\n\nAPI Key: ${hasKey ? '✅ Konfiguriert' : '❌ Nicht gefunden'}\nQuelle: ${source}\nDataService: ${!!this.dataService ? '✅ Verfügbar' : '❌ Fehler'}\n\n🎯 Enhanced Features:\n• Smart Disambiguation: ${hasKey ? '✅' : '❌'}\n• Quantity Extraction: ${hasKey ? '✅' : '❌'}\n• Fuzzy Matching: ${hasKey ? '✅' : '❌'}\n\n${!hasKey ? this.getNoApiKeyGuidance() : '🚀 Alle Systeme bereit für intelligente Verarbeitung!'}`
+          message: `✅ AI Service funktioniert!\n\nAPI Key: ${hasKey ? '✅ Konfiguriert' : '❌ Nicht gefunden'}\nQuelle: ${source}\nDataService: ${!!this.dataService ? '✅ Verfügbar' : '❌ Fehler'}\n\n🎯 Enhanced Features:\n• Smart Disambiguation: ${hasKey ? '✅' : '❌'}\n• Quantity Extraction: ${hasKey ? '✅' : '❌'}\n• List Selection: ✅\n• Fuzzy Matching: ${hasKey ? '✅' : '❌'}\n\n${!hasKey ? this.getNoApiKeyGuidance() : '🚀 Alle Systeme bereit für intelligente Verarbeitung!'}`
         };
       }
 
       // 🎯 Check if API key is configured for advanced features
       const hasApiKey = this.hasApiKey();
+      console.log('🔑 Has API Key:', hasApiKey);
       
       // For first-time users or commands that require AI features
       if (!hasApiKey && (
@@ -334,11 +468,12 @@ export class AIService {
         input.toLowerCase().includes('erstelle') ||
         input.toLowerCase().includes('hinzu')
       )) {
+        console.log('🔄 Processing with basic command (no API key)');
         // Process with basic functionality but show upgrade path
         const basicResult = await this.processBasicCommand(input);
         
         // Add API key guidance to successful basic operations
-        if (basicResult.success) {
+        if (basicResult.success && !basicResult.needsUserInput) {
           basicResult.message += '\n\n' + this.getNoApiKeyGuidance();
         }
         
@@ -347,8 +482,10 @@ export class AIService {
 
       // 🎯 ENHANCED: Process command with quantity extraction and disambiguation (if API key available)
       if (hasApiKey) {
+        console.log('🎯 Processing with enhanced command (has API key)');
         return await this.processEnhancedCommand(input);
       } else {
+        console.log('🔄 Processing with basic command (fallback)');
         return await this.processBasicCommand(input);
       }
       
@@ -362,115 +499,48 @@ export class AIService {
     }
   }
 
+  // ========================================
+  // BASIC COMMAND PROCESSING
+  // ========================================
+
   /**
-   * 🔧 Process commands with basic functionality (no API key required)
+   * 🔧 ENHANCED: Process commands with color support and input preservation
    */
   private async processBasicCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🤖 PROCESSING BASIC COMMAND:', input);
+    
     const lowerInput = input.toLowerCase();
+    const originalInput = input.trim();
     
-    // Extract basic quantity and item name
-    const quantityExtraction = this.extractQuantity(input);
+    // Extract quantity and item name with debugging
+    const quantityExtraction = this.extractQuantity(originalInput);
+    console.log('🔍 QUANTITY EXTRACTION RESULT:', quantityExtraction);
     
-    if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
-      // Basic add item functionality
-      const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
-      if (addMatch) {
-        const itemName = addMatch[1];
-        const listName = addMatch[2];
-        
-        try {
-          // Create basic article
-          const newArticle = await this.dataService.createArticle({
-            name: quantityExtraction.itemName,
-            amount: quantityExtraction.quantity || '',
-            departmentId: this.suggestDepartment(quantityExtraction.itemName),
-            icon: this.suggestIcon(quantityExtraction.itemName)
-          }).toPromise();
-
-          if (newArticle) {
-            // Add to specified list or current list
-            const targetList = listName ? 
-              await this.findListByName(listName) : 
-              await this.getCurrentList();
-
-            if (targetList) {
-              await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
-              return {
-                success: true,
-                message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-                listId: targetList.id
-              };
-            } else {
-              return {
-                success: false,
-                message: `❌ Liste "${listName || 'aktuelle'}" nicht gefunden.`
-              };
-            }
-          }
-        } catch (error) {
-          return {
-            success: false,
-            message: '❌ Fehler beim Hinzufügen des Artikels.'
-          };
-        }
-      }
+    // Handle specific commands first
+    if (lowerInput.includes('zeige') && lowerInput.includes('liste')) {
+      return await this.handleShowListsCommand();
     }
     
+    // Handle list creation with color support
     if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
-      // Basic create list functionality
-      const createMatch = lowerInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/);
-      if (createMatch) {
-        const listName = createMatch[1];
-        const itemName = createMatch[2];
-        
-        try {
-          const articleIds: string[] = [];
-          const itemStates: any = {};
-          
-          // Create article if specified
-          if (itemName) {
-            const newArticle = await this.dataService.createArticle({
-              name: quantityExtraction.itemName || itemName,
-              amount: quantityExtraction.quantity || '',
-              departmentId: this.suggestDepartment(itemName),
-              icon: this.suggestIcon(itemName)
-            }).toPromise();
-            
-            if (newArticle) {
-              articleIds.push(newArticle.id);
-              itemStates[newArticle.id] = { articleId: newArticle.id, isChecked: false };
-            }
-          }
-          
-          const newList = await this.dataService.createList({
-            name: listName,
-            color: this.suggestListColor(listName),
-            icon: '🛒',
-            articleIds,
-            itemStates
-          }).toPromise();
-          
-          if (newList) {
-            return {
-              success: true,
-              message: `✅ Liste "${listName}" wurde ${itemName ? `mit "${itemName}" ` : ''}erstellt.`,
-              listId: newList.id
-            };
-          }
-        } catch (error) {
-          return {
-            success: false,
-            message: '❌ Fehler beim Erstellen der Liste.'
-          };
-        }
-      }
+      return await this.handleListCreationWithColor(originalInput, quantityExtraction);
     }
     
+    // Handle item addition
+    if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+      return await this.handleItemAdditionWithPreservation(originalInput, quantityExtraction);
+    }
+    
+    // For unrecognized commands, provide helpful feedback
     return {
       success: true,
-      message: `Ich verstehe: "${input}"\n\n🤖 Basis-Funktionen verfügbar\nSage "Hilfe" für verfügbare Befehle.`
+      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Füge [Artikel] zu [Liste] hinzu" - Direkt zur spezifizierten Liste\n⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n• "Erstelle Liste [Name]" - Neue Liste erstellen\n🎨 "Erstelle Liste [Name] in [Farbe]" - Bunte Liste\n• "Zeige Listen" - Alle Listen anzeigen\n• "Hilfe" - Ausführliche Hilfe\n\n📋 Beispiele:\n• "Füge Schokolade Menge 2 Stück hinzu"\n• "Füge 500ml Milch zu Spar hinzu"`
     };
   }
+
+  // ========================================
+  // ENHANCED COMMAND PROCESSING
+  // ========================================
 
   /**
    * 🎯 ENHANCED: Process command with smart disambiguation (requires API key)
@@ -484,6 +554,12 @@ export class AIService {
     const intent = this.parseIntent(input, quantityExtraction.itemName);
     console.log('🎯 Parsed intent:', intent);
 
+    // Check for unrecognized commands first
+    if (intent.listName === 'UNRECOGNIZED_COMMAND') {
+      console.log('🎯 Unrecognized command, falling back to basic processing');
+      return this.processBasicCommand(input);
+    }
+
     // Enhanced action with quantity
     const pendingAction: PendingAction = {
       ...intent,
@@ -491,12 +567,20 @@ export class AIService {
       suggestedDepartment: this.suggestDepartment(quantityExtraction.itemName)
     };
 
-    // Check for disambiguation if adding/creating with items
-    if (intent.type === 'add_item' || intent.type === 'create_list') {
+    // Handle create list commands
+    if (intent.type === 'create_list') {
+      console.log('🎯 Processing create list command');
+      return await this.handleListCreationWithColor(input, quantityExtraction);
+    }
+
+    // Handle add item commands (only if they contain "füge...hinzu")
+    if (intent.type === 'add_item' && intent.listName !== 'UNRECOGNIZED_COMMAND') {
+      console.log('🎯 Processing add item command');
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
 
     // Fallback to basic processing
+    console.log('🎯 Fallback to basic processing');
     return this.processBasicCommand(input);
   }
 
@@ -552,6 +636,13 @@ export class AIService {
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Handling item action with disambiguation:', action);
 
+    // For items that don't contain "füge...hinzu", this shouldn't be called
+    // This is a safety check
+    if (!action.originalInput.toLowerCase().includes('füge') || !action.originalInput.toLowerCase().includes('hinzu')) {
+      console.log('🚫 This is not an add item command, redirecting to basic processing');
+      return this.processBasicCommand(action.originalInput);
+    }
+
     // Get disambiguation options
     const disambiguationOptions = await this.getDisambiguationOptions(action.itemName);
     console.log('🎯 Disambiguation options:', disambiguationOptions);
@@ -581,8 +672,12 @@ export class AIService {
     }
   }
 
+  // ========================================
+  // ACTION EXECUTION
+  // ========================================
+
   /**
-   * 🎯 Execute action with existing article
+   * 🎯 Execute action with existing article - Enhanced with list selection
    */
   private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
     try {
@@ -605,19 +700,23 @@ export class AIService {
 
         return {
           success: true,
-          message: `Liste "${action.listName}" wurde mit "${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} erstellt.`,
+          message: `✅ Liste "${action.listName}" wurde mit "${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} erstellt.`,
           listId: newList?.id
         };
       } else {
-        // Add to current or specified list
-        const targetList = action.listName ? 
-          await this.findListByName(action.listName) : 
-          await this.getCurrentList();
+        // Check if list was specified
+        if (!action.listName) {
+          // No list specified - ask user to choose
+          return await this.requestListSelection(action, article);
+        }
+
+        // List was specified - find and use it
+        const targetList = await this.findListByName(action.listName);
 
         if (!targetList) {
           return {
             success: false,
-            message: `Liste "${action.listName || 'aktuelle'}" nicht gefunden.`
+            message: `❌ Liste "${action.listName}" nicht gefunden.\n\n📝 Verfügbare Listen:\n${await this.getAvailableListsText()}`
           };
         }
 
@@ -625,35 +724,35 @@ export class AIService {
         
         return {
           success: true,
-          message: `"${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+          message: `✅ "${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
           listId: targetList.id
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: 'Fehler beim Ausführen der Aktion.'
+        message: '❌ Fehler beim Ausführen der Aktion.'
       };
     }
   }
 
   /**
-   * 🎯 Execute action with new article
+   * 🎯 Execute action with new article - Enhanced with list selection
    */
   private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
     try {
-      const newArticle = await this.dataService.createArticle({
-        name: action.itemName,
-        amount: action.extractedQuantity || '',
-        departmentId: action.suggestedDepartment || 'miscellaneous',
-        icon: this.suggestIcon(action.itemName)
-      }).toPromise();
-
-      if (!newArticle) {
-        throw new Error('Failed to create article');
-      }
-
       if (action.type === 'create_list') {
+        const newArticle = await this.dataService.createArticle({
+          name: action.itemName,
+          amount: action.extractedQuantity || '',
+          departmentId: action.suggestedDepartment || 'miscellaneous',
+          icon: this.suggestIcon(action.itemName)
+        }).toPromise();
+
+        if (!newArticle) {
+          throw new Error('Failed to create article');
+        }
+
         const newList = await this.dataService.createList({
           name: action.listName!,
           color: this.suggestListColor(action.listName!),
@@ -664,18 +763,41 @@ export class AIService {
 
         return {
           success: true,
-          message: `Liste "${action.listName}" wurde mit "${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} erstellt.`,
+          message: `✅ Liste "${action.listName}" wurde mit "${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} erstellt.`,
           listId: newList?.id
         };
       } else {
-        const targetList = action.listName ? 
-          await this.findListByName(action.listName) : 
-          await this.getCurrentList();
+        // Check if list was specified
+        if (!action.listName) {
+          // No list specified - ask user to choose (but first create the article data)
+          const articleData = {
+            name: action.itemName,
+            amount: action.extractedQuantity || '',
+            departmentId: action.suggestedDepartment || 'miscellaneous',
+            icon: this.suggestIcon(action.itemName)
+          };
+
+          return await this.requestListSelectionForNewArticle(action, articleData);
+        }
+
+        // List was specified - proceed normally
+        const newArticle = await this.dataService.createArticle({
+          name: action.itemName,
+          amount: action.extractedQuantity || '',
+          departmentId: action.suggestedDepartment || 'miscellaneous',
+          icon: this.suggestIcon(action.itemName)
+        }).toPromise();
+
+        if (!newArticle) {
+          throw new Error('Failed to create article');
+        }
+
+        const targetList = await this.findListByName(action.listName);
 
         if (!targetList) {
           return {
             success: false,
-            message: `Liste "${action.listName || 'aktuelle'}" nicht gefunden.`
+            message: `❌ Liste "${action.listName}" nicht gefunden.\n\n📝 Verfügbare Listen:\n${await this.getAvailableListsText()}`
           };
         }
 
@@ -683,20 +805,161 @@ export class AIService {
         
         return {
           success: true,
-          message: `"${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+          message: `✅ "${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
           listId: targetList.id
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: 'Fehler beim Erstellen des neuen Artikels.'
+        message: '❌ Fehler beim Erstellen des neuen Artikels.'
       };
     }
   }
 
+  // ========================================
+  // LIST SELECTION LOGIC
+  // ========================================
+
   /**
-   * 🎯 Handle disambiguation choice from user
+   * 🎯 NEW: Request list selection for existing article
+   */
+  private async requestListSelection(action: PendingAction, article: Article): Promise<AIExecutionResult> {
+    const listOptions = await this.getListSelectionOptions();
+    
+    if (listOptions.length === 0) {
+      return {
+        success: false,
+        message: `❌ Keine Listen gefunden!\n\n💡 Erstelle zuerst eine Liste:\n"Erstelle Liste [Name]"`
+      };
+    }
+
+    // If only one list exists, use it directly
+    if (listOptions.length === 1) {
+      const targetList = await this.findListByName(listOptions[0].name);
+      if (targetList) {
+        await this.dataService.addArticleToList(targetList.id, article.id).toPromise();
+        return {
+          success: true,
+          message: `✅ "${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+          listId: targetList.id
+        };
+      }
+    }
+
+    // Multiple lists - ask user to choose
+    const pendingActionWithArticle: PendingAction = {
+      ...action,
+      type: 'select_list',
+      articleToAdd: {
+        id: article.id,
+        name: article.name,
+        amount: action.extractedQuantity || article.amount,
+        departmentId: article.departmentId,
+        icon: article.icon
+      }
+    };
+
+    return {
+      success: true,
+      message: `🎯 Zu welcher Liste soll "${article.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} hinzugefügt werden?`,
+      needsUserInput: true,
+      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
+      pendingAction: pendingActionWithArticle
+    };
+  }
+
+  /**
+   * 🎯 NEW: Request list selection for new article
+   */
+  private async requestListSelectionForNewArticle(action: PendingAction, articleData: any): Promise<AIExecutionResult> {
+    const listOptions = await this.getListSelectionOptions();
+    
+    if (listOptions.length === 0) {
+      return {
+        success: false,
+        message: `❌ Keine Listen gefunden!\n\n💡 Erstelle zuerst eine Liste:\n"Erstelle Liste [Name]"`
+      };
+    }
+
+    // If only one list exists, create article and add it
+    if (listOptions.length === 1) {
+      const newArticle = await this.dataService.createArticle(articleData).toPromise();
+      if (newArticle) {
+        const targetList = await this.findListByName(listOptions[0].name);
+        if (targetList) {
+          await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
+          return {
+            success: true,
+            message: `✅ "${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+            listId: targetList.id
+          };
+        }
+      }
+    }
+
+    // Multiple lists - ask user to choose
+    const pendingActionWithArticle: PendingAction = {
+      ...action,
+      type: 'select_list',
+      articleToAdd: articleData
+    };
+
+    return {
+      success: true,
+      message: `🎯 Zu welcher Liste soll "${articleData.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} hinzugefügt werden?`,
+      needsUserInput: true,
+      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
+      pendingAction: pendingActionWithArticle
+    };
+  }
+
+  /**
+   * 🎯 NEW: Get available lists as selection options
+   */
+  private async getListSelectionOptions(): Promise<ListSelectionOption[]> {
+    const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+    if (!lists) return [];
+
+    return lists.map(list => ({
+      id: list.id,
+      name: list.name,
+      color: list.color || '#1a9edb', // Default color if undefined
+      icon: list.icon || '🛒', // Default icon if undefined
+      itemCount: list.articleIds?.length || 0
+    }));
+  }
+
+  /**
+   * 🎯 NEW: Convert lists to disambiguation options for UI
+   */
+  private convertListsToDisambiguationOptions(listOptions: ListSelectionOption[]): DisambiguationOption[] {
+    return listOptions.map(list => ({
+      id: `list_${list.id}`,
+      displayName: list.name,
+      type: 'existing' as const,
+      confidence: 1.0,
+      department: `${list.itemCount} ${list.itemCount === 1 ? 'Artikel' : 'Artikel'}`,
+      icon: list.icon
+    }));
+  }
+
+  /**
+   * 🎯 NEW: Get available lists as text
+   */
+  private async getAvailableListsText(): Promise<string> {
+    const listOptions = await this.getListSelectionOptions();
+    return listOptions
+      .map(list => `• ${list.name} (${list.itemCount} ${list.itemCount === 1 ? 'Artikel' : 'Artikel'})`)
+      .join('\n');
+  }
+
+  // ========================================
+  // DISAMBIGUATION HANDLING
+  // ========================================
+
+  /**
+   * 🎯 ENHANCED: Handle disambiguation choice (now includes list selection)
    */
   async handleDisambiguationChoice(
     pendingAction: PendingAction, 
@@ -704,6 +967,12 @@ export class AIService {
   ): Promise<AIExecutionResult> {
     console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
 
+    // Handle list selection
+    if (pendingAction.type === 'select_list') {
+      return await this.handleListSelection(pendingAction, selectedOption);
+    }
+
+    // Handle article disambiguation (existing logic)
     if (selectedOption.type === 'existing' && selectedOption.article) {
       return await this.executeActionWithArticle(pendingAction, selectedOption.article);
     } else {
@@ -711,7 +980,63 @@ export class AIService {
     }
   }
 
-  // Helper methods
+  /**
+   * 🎯 NEW: Handle list selection from disambiguation
+   */
+  private async handleListSelection(pendingAction: PendingAction, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
+    try {
+      // Extract list ID from selected option
+      const listId = selectedOption.id.replace('list_', '');
+      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+      const targetList = lists?.find(list => list.id === listId);
+
+      if (!targetList) {
+        return {
+          success: false,
+          message: '❌ Ausgewählte Liste nicht gefunden.'
+        };
+      }
+
+      const articleData = pendingAction.articleToAdd!;
+
+      // Create article if it doesn't exist yet
+      let articleId = articleData.id;
+      if (!articleId) {
+        const newArticle = await this.dataService.createArticle({
+          name: articleData.name,
+          amount: articleData.amount || '',
+          departmentId: articleData.departmentId || 'miscellaneous',
+          icon: articleData.icon || '📦'
+        }).toPromise();
+        
+        if (!newArticle) {
+          throw new Error('Failed to create article');
+        }
+        articleId = newArticle.id;
+      }
+
+      // Add article to selected list
+      await this.dataService.addArticleToList(targetList.id, articleId).toPromise();
+
+      return {
+        success: true,
+        message: `✅ "${articleData.name}"${articleData.amount ? ` (${articleData.amount})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+        listId: targetList.id
+      };
+
+    } catch (error) {
+      console.error('List selection error:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Hinzufügen zur ausgewählten Liste.'
+      };
+    }
+  }
+
+  // ========================================
+  // HELPER METHODS
+  // ========================================
+
   private async findListByName(listName: string): Promise<ShoppingList | null> {
     const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
     if (!lists) return null;
@@ -732,12 +1057,6 @@ export class AIService {
     );
     
     return match || null;
-  }
-
-  private async getCurrentList(): Promise<ShoppingList | null> {
-    const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-    // Return first list or null - you might want to implement "current list" logic
-    return lists && lists.length > 0 ? lists[0] : null;
   }
 
   private suggestDepartment(articleName: string): string {
@@ -804,20 +1123,318 @@ export class AIService {
     return defaultColors[Math.floor(Math.random() * defaultColors.length)];
   }
 
-  // Legacy methods for compatibility (simplified for now)
-  private buildSystemPrompt(lists: ShoppingList[], articles: Article[]): string {
-    return 'System prompt for Groq API calls';
+  // ========================================
+  // NEW ENHANCED HELPER METHODS
+  // ========================================
+
+  /**
+   * 🎨 Handle list creation with color support
+   */
+  private async handleListCreationWithColor(input: string, quantityExtraction: QuantityExtraction): Promise<AIExecutionResult> {
+    console.log('🎨 HANDLING LIST CREATION WITH COLOR:', input);
+    
+    // Extract color first
+    const colorExtraction = this.extractColor(input);
+    console.log('🎨 COLOR EXTRACTION:', colorExtraction);
+    
+    // Parse list creation from clean input (without color)
+    const cleanInput = colorExtraction.cleanInput.toLowerCase();
+    
+    // Pattern: "erstelle liste [name] mit [item]" or "erstelle liste [name]"
+    const createMatch = cleanInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/);
+    
+    if (!createMatch) {
+      return {
+        success: false,
+        message: '❌ Unverständlicher Liste-Befehl.\n\n💡 Beispiele:\n• "Erstelle Liste Spar"\n• "Erstelle Liste REWE in rot"\n• "Erstelle Liste ADEG mit Milch in blau"'
+      };
+    }
+    
+    const listName = createMatch[1].trim();
+    const itemName = createMatch[2]?.trim();
+    
+    console.log('🎨 PARSED LIST CREATION:', { listName, itemName, color: colorExtraction.colorHex });
+    
+    try {
+      const articleIds: string[] = [];
+      const itemStates: any = {};
+      
+      // Create article if specified
+      if (itemName) {
+        const articleToCreate = {
+          name: quantityExtraction.itemName || itemName,
+          amount: quantityExtraction.quantity || '',
+          departmentId: this.suggestDepartment(itemName),
+          icon: this.suggestIcon(itemName)
+        };
+        
+        console.log('🎨 CREATING ARTICLE:', articleToCreate);
+        
+        const newArticle = await this.dataService.createArticle(articleToCreate).toPromise();
+        
+        if (newArticle) {
+          articleIds.push(newArticle.id);
+          itemStates[newArticle.id] = { articleId: newArticle.id, isChecked: false };
+        }
+      }
+      
+      // Use extracted color or suggest based on name
+      const listColor = colorExtraction.colorHex || this.suggestListColor(listName);
+      
+      const listToCreate = {
+        name: listName,
+        color: listColor,
+        icon: '🛒',
+        articleIds,
+        itemStates
+      };
+      
+      console.log('🎨 CREATING LIST:', listToCreate);
+      
+      const newList = await this.dataService.createList(listToCreate).toPromise();
+      
+      if (newList) {
+        const colorName = colorExtraction.colorName ? ` in ${colorExtraction.colorName}` : '';
+        const itemText = itemName ? ` mit "${quantityExtraction.itemName || itemName}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''}` : '';
+        
+        return {
+          success: true,
+          message: `✅ Liste "${listName}"${colorName} wurde${itemText} erstellt.`,
+          listId: newList.id
+        };
+      }
+    } catch (error) {
+      console.error('🎨 LIST CREATION ERROR:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Erstellen der Liste.'
+      };
+    }
+    
+    return {
+      success: false,
+      message: '❌ Unerwarteter Fehler beim Erstellen der Liste.'
+    };
   }
 
-  private parseAIResponse(responseText: string): AIResponse {
-    return { action: 'HELP', message: 'Response parsed' };
+  /**
+   * 🔍 Handle item addition with input preservation
+   */
+  private async handleItemAdditionWithPreservation(input: string, quantityExtraction: QuantityExtraction): Promise<AIExecutionResult> {
+    console.log('🔍 HANDLING ITEM ADDITION WITH PRESERVATION:', input);
+    console.log('🔍 USING QUANTITY EXTRACTION:', quantityExtraction);
+    
+    const lowerInput = input.toLowerCase();
+    
+    // Parse add patterns
+    const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
+    
+    if (!addMatch) {
+      return {
+        success: false,
+        message: `❌ Unverständlicher Hinzufügen-Befehl: "${input}"\n\n💡 Beispiele:\n• "Füge Bananen hinzu"\n• "Füge 2kg Bananen zu Spar hinzu"`
+      };
+    }
+    
+    const extractedItemFromPattern = addMatch[1].trim();
+    const listName = addMatch[2]?.trim();
+    
+    // IMPORTANT: Use the original item name from quantity extraction, not the pattern match
+    // This preserves exactly what the user typed
+    const finalItemName = quantityExtraction.itemName;
+    
+    console.log('🔍 ITEM ADDITION PARSED:', {
+      input,
+      extractedFromPattern: extractedItemFromPattern,
+      finalItemName,
+      quantity: quantityExtraction.quantity,
+      listName
+    });
+    
+    // If no list specified, ask for list selection
+    if (!listName) {
+      const listOptions = await this.getListSelectionOptions();
+      
+      if (listOptions.length === 0) {
+        return {
+          success: false,
+          message: `❌ Keine Listen gefunden!\n\n💡 Erstelle zuerst eine Liste:\n"Erstelle Liste [Name]"`
+        };
+      }
+
+      // If only one list, use it directly
+      if (listOptions.length === 1) {
+        try {
+          const newArticle = await this.dataService.createArticle({
+            name: finalItemName, // Use preserved name
+            amount: quantityExtraction.quantity || '',
+            departmentId: this.suggestDepartment(finalItemName),
+            icon: this.suggestIcon(finalItemName)
+          }).toPromise();
+
+          if (newArticle) {
+            const targetList = await this.findListByName(listOptions[0].name);
+            if (targetList) {
+              await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
+              return {
+                success: true,
+                message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+                listId: targetList.id
+              };
+            }
+          }
+        } catch (error) {
+          console.error('🔍 SINGLE LIST ADDITION ERROR:', error);
+          return {
+            success: false,
+            message: '❌ Fehler beim Hinzufügen des Artikels.'
+          };
+        }
+      }
+
+      // Multiple lists - ask user to choose
+      const pendingAction: PendingAction = {
+        type: 'select_list',
+        originalInput: input,
+        itemName: finalItemName, // Use preserved name
+        extractedQuantity: quantityExtraction.quantity,
+        articleToAdd: {
+          name: finalItemName, // Use preserved name
+          amount: quantityExtraction.quantity || '',
+          departmentId: this.suggestDepartment(finalItemName),
+          icon: this.suggestIcon(finalItemName)
+        }
+      };
+
+      console.log('🔍 REQUESTING LIST SELECTION WITH PRESERVED NAME:', pendingAction);
+
+      return {
+        success: true,
+        message: `🎯 Zu welcher Liste soll "${finalItemName}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} hinzugefügt werden?`,
+        needsUserInput: true,
+        disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
+        pendingAction: pendingAction
+      };
+    }
+
+    // List was specified - proceed with addition
+    try {
+      const newArticle = await this.dataService.createArticle({
+        name: finalItemName, // Use preserved name
+        amount: quantityExtraction.quantity || '',
+        departmentId: this.suggestDepartment(finalItemName),
+        icon: this.suggestIcon(finalItemName)
+      }).toPromise();
+
+      if (newArticle) {
+        const targetList = await this.findListByName(listName);
+
+        if (targetList) {
+          await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
+          return {
+            success: true,
+            message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+            listId: targetList.id
+          };
+        } else {
+          return {
+            success: false,
+            message: `❌ Liste "${listName}" nicht gefunden.\n\n📝 Verfügbare Listen:\n${await this.getAvailableListsText()}`
+          };
+        }
+      }
+    } catch (error) {
+      console.error('🔍 LIST ADDITION ERROR:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Hinzufügen des Artikels.'
+      };
+    }
+    
+    return {
+      success: false,
+      message: '❌ Unerwarteter Fehler beim Hinzufügen des Artikels.'
+    };
   }
 
-  private async processWithGroq(input: string, lists: ShoppingList[], articles: Article[]): Promise<AIResponse> {
-    return { action: 'HELP', message: 'Groq processing' };
+  /**
+   * 💡 Enhanced help guidance with color examples and quantity patterns
+   */
+  private getEnhancedHelpMessage(hasApiKey: boolean): string {
+    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
+    
+    if (hasApiKey) {
+      helpMessage += '✅ Intelligente Features aktiv\n\n';
+      helpMessage += '📝 Verfügbare Befehle:\n\n';
+      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste\n\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Direkt zur spezifizierten Liste\n\n';
+      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
+      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
+      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n';
+      helpMessage += '• "Füge 500ml Milch zu Spar hinzu"\n';
+      helpMessage += '• "Füge 3x Äpfel hinzu"\n\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
+      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Liste mit erstem Artikel\n\n';
+      helpMessage += '🎨 MIT FARBEN:\n';
+      helpMessage += '• "Erstelle Liste Spar in rot"\n';
+      helpMessage += '• "Erstelle Liste REWE in blau mit Milch"\n';
+      helpMessage += '• Verfügbare Farben: rot, grün, blau, gelb, orange, lila, rosa, schwarz, grau, weiß, türkis, braun\n\n';
+    } else {
+      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
+      helpMessage += '💡 Für intelligente Features:\n';
+      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
+      helpMessage += '📝 Basis-Befehle:\n\n';
+      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      helpMessage += '⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n';
+      helpMessage += '🎨 "Erstelle Liste [Name] in [Farbe]"\n';
+      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n';
+      helpMessage += '• "Test" - System-Status prüfen\n\n';
+    }
+    
+    return helpMessage;
   }
 
-  private async executeAIAction(response: AIResponse): Promise<AIExecutionResult> {
-    return { success: true, message: 'Action executed' };
+  /**
+   * 📋 NEW: Handle show lists command
+   */
+  private async handleShowListsCommand(): Promise<AIExecutionResult> {
+    console.log('📋 HANDLING SHOW LISTS COMMAND');
+    
+    try {
+      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+      
+      if (!lists || lists.length === 0) {
+        return {
+          success: true,
+          message: '📋 Keine Listen gefunden.\n\n💡 Erstelle eine neue Liste:\n"Erstelle Liste [Name]"\n"Erstelle Liste [Name] in [Farbe]"'
+        };
+      }
+      
+      let message = '📋 Deine Listen:\n\n';
+      
+      for (const list of lists) {
+        const itemCount = list.articleIds?.length || 0;
+        const itemText = itemCount === 1 ? 'Artikel' : 'Artikel';
+        message += `• ${list.name} (${itemCount} ${itemText})\n`;
+      }
+      
+      message += '\n💡 Befehle:\n';
+      message += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      message += '• "Erstelle Liste [Name]"';
+      
+      return {
+        success: true,
+        message: message
+      };
+      
+    } catch (error) {
+      console.error('📋 SHOW LISTS ERROR:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Laden der Listen.'
+      };
+    }
   }
 }

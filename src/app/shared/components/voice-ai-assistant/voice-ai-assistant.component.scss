@@ -778,3 +778,403 @@
     }
   }
 }
+
+// ========================================
+// ENHANCED DISAMBIGUATION PANEL
+// ========================================
+.disambiguation-panel {
+  position: absolute;
+  bottom: 150px;
+  left: 16px;
+  right: 16px;
+  z-index: 100;
+  max-height: 60vh;
+  overflow-y: auto;
+
+  .disambiguation-card {
+    background: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    border: 2px solid #2196f3;
+
+    mat-card-header {
+      padding-bottom: 8px;
+      
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 18px;
+        color: #2196f3;
+        
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+      
+      mat-card-subtitle { 
+        font-size: 14px; 
+        color: #666; 
+        margin-top: 4px; 
+      }
+    }
+
+    .disambiguation-info {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      
+      p { 
+        margin: 4px 0; 
+        font-size: 14px; 
+        
+        strong { 
+          color: #333; 
+        } 
+      }
+    }
+
+    .disambiguation-options {
+      display: grid;
+      gap: 12px;
+
+      .disambiguation-option {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        
+        &:hover { 
+          transform: translateY(-2px); 
+        }
+
+        .option-card {
+          border: 2px solid transparent;
+          border-radius: 12px;
+          transition: all 0.2s ease;
+
+          // Existing Item Card (Article Disambiguation)
+          &.existing-item-card {
+            background: white;
+            border-color: #e3f2fd;
+            
+            &:hover { 
+              border-color: #2196f3; 
+              background: #f8fafe; 
+            }
+          }
+
+          // New Item Card (Article Creation)
+          &.new-item-card {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0fff0 100%);
+            border-color: #4caf50;
+            
+            &:hover { 
+              background: linear-gradient(135deg, #dcedc8 0%, #f1f8e9 100%);
+              border-color: #388e3c;
+            }
+          }
+
+          // List Selection Card (NEW)
+          &.list-selection-card {
+            background: linear-gradient(135deg, #f3e5f5 0%, #fce4ec 100%);
+            border-color: #9c27b0;
+            
+            &:hover { 
+              background: linear-gradient(135deg, #e1bee7 0%, #f8bbd9 100%);
+              border-color: #7b1fa2;
+            }
+          }
+
+          mat-card-content { 
+            padding: 16px !important; 
+          }
+
+          .option-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+
+            .option-main {
+              display: flex;
+              align-items: flex-start;
+              gap: 12px;
+              flex: 1;
+
+              .option-icon-container .option-icon {
+                font-size: 32px;
+                width: 48px;
+                height: 48px;
+                background: rgba(33, 150, 243, 0.1);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                
+                // Special styling for list selection icons
+                .list-selection-card & {
+                  background: rgba(156, 39, 176, 0.1);
+                }
+              }
+
+              .option-details {
+                flex: 1;
+                
+                .option-name {
+                  font-size: 16px;
+                  font-weight: 500;
+                  color: #333;
+                  margin-bottom: 6px;
+                }
+                
+                .option-meta {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                  
+                  .department-info, .amount-info, .list-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 13px;
+                    color: #666;
+                    
+                    .small-icon { 
+                      font-size: 16px; 
+                      width: 16px; 
+                      height: 16px; 
+                    }
+                  }
+
+                  // Special styling for list info
+                  .list-info {
+                    color: #9c27b0;
+                    font-weight: 500;
+                  }
+                }
+              }
+            }
+
+            // Confidence Badge (for article disambiguation)
+            .option-confidence {
+              mat-chip {
+                font-size: 12px;
+                font-weight: 600;
+                min-height: 24px;
+              }
+            }
+
+            // List Color Indicator (NEW)
+            .list-color-indicator {
+              display: flex;
+              align-items: center;
+              
+              .color-dot {
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+              }
+            }
+          }
+
+          .option-actions {
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            padding-top: 8px;
+            margin-top: 8px;
+            
+            .action-hint {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-size: 12px;
+              color: #666;
+              font-style: italic;
+              
+              .small-icon { 
+                font-size: 14px; 
+                width: 14px; 
+                height: 14px; 
+              }
+
+              // Special styling for list selection hints
+              .list-selection-card & {
+                color: #9c27b0;
+                font-weight: 500;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Cancel Button Styling
+    .disambiguation-cancel {
+      button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+        }
+        
+        mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+}
+
+// ========================================
+// ENHANCED RESPONSIVENESS
+// ========================================
+@media (max-width: 768px) {
+  .disambiguation-panel {
+    bottom: calc(130px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+    max-height: 50vh;
+
+    .disambiguation-card {
+      .disambiguation-options {
+        gap: 8px;
+
+        .disambiguation-option {
+          .option-card {
+            mat-card-content {
+              padding: 12px !important;
+            }
+
+            .option-header {
+              margin-bottom: 8px;
+
+              .option-main {
+                gap: 8px;
+
+                .option-icon-container .option-icon {
+                  font-size: 24px;
+                  width: 36px;
+                  height: 36px;
+                }
+
+                .option-details {
+                  .option-name {
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                  }
+
+                  .option-meta {
+                    .department-info, .amount-info, .list-info {
+                      font-size: 12px;
+
+                      .small-icon {
+                        font-size: 14px;
+                        width: 14px;
+                        height: 14px;
+                      }
+                    }
+                  }
+                }
+              }
+
+              .option-confidence mat-chip {
+                font-size: 10px;
+                min-height: 20px;
+              }
+
+              .list-color-indicator .color-dot {
+                width: 20px;
+                height: 20px;
+              }
+            }
+
+            .option-actions .action-hint {
+              font-size: 11px;
+
+              .small-icon {
+                font-size: 12px;
+                width: 12px;
+                height: 12px;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ========================================
+// ANIMATION ENHANCEMENTS
+// ========================================
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.disambiguation-panel {
+  animation: slideInFromBottom 0.3s ease-out;
+}
+
+.disambiguation-option {
+  animation: fadeInUp 0.3s ease-out;
+  
+  &:nth-child(1) { animation-delay: 0.1s; }
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.3s; }
+  &:nth-child(4) { animation-delay: 0.4s; }
+}
+
+// ========================================
+// ACCESSIBILITY IMPROVEMENTS
+// ========================================
+@media (prefers-reduced-motion: reduce) {
+  .disambiguation-panel,
+  .disambiguation-option {
+    animation: none;
+  }
+  
+  .disambiguation-option:hover {
+    transform: none;
+  }
+  
+  .disambiguation-cancel button:hover {
+    transform: none;
+  }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+  .disambiguation-panel .disambiguation-card {
+    border: 3px solid #000;
+    
+    .option-card {
+      &.existing-item-card {
+        border-color: #0066cc;
+        background: #f0f8ff;
+      }
+      
+      &.new-item-card {
+        border-color: #006600;
+        background: #f0fff0;
+      }
+      
+      &.list-selection-card {
+        border-color: #660066;
+        background: #faf0ff;
+      }
+    }
+  }
+}
