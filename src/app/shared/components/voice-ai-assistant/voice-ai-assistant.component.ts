@@ -1,5 +1,6 @@
 // src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -56,6 +57,7 @@ interface ChatMessage {
         </button>
         <span>AI Assistent</span>
         <span class="spacer"></span>
+        
         <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
           <mat-icon>clear_all</mat-icon>
         </button>
@@ -66,18 +68,39 @@ interface ChatMessage {
 
       <!-- Chat Messages -->
       <div class="messages-container" #messagesContainer>
-        <!-- Welcome message when empty -->
-        <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
-          <mat-icon class="welcome-icon">psychology</mat-icon>
-          <h3>Hallo! Ich bin dein AI Assistent</h3>
-          <p>Du kannst mir sagen:</p>
+      <!-- Welcome message when empty -->
+      <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
+        <mat-icon class="welcome-icon">psychology</mat-icon>
+        <h3>Hallo! Ich bin dein AI Assistent</h3>
+        
+        <!-- Show different content based on API key status -->
+        <div *ngIf="!aiServicePublic.hasApiKey(); else hasApiKeyContent">
+          <p>🚀 <strong>Für intelligente Features:</strong></p>
+          <ul>
+            <li>"set api key: gsk_YOUR_KEY_HERE"</li>
+            <li>Groq API Key kostenlos: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
+          </ul>
+          
+          <p>📋 <strong>Basis-Funktionen verfügbar:</strong></p>
           <ul>
             <li>"Füge 2kg Bananen zu Spar hinzu"</li>
             <li>"Erstelle neue Liste ADEG"</li>
-            <li>"API Key setup" (für erweiterte Funktionen)</li>
+            <li>"Hilfe" für mehr Befehle</li>
           </ul>
-          <p class="chat-stats">{{ getChatStats() }}</p>
         </div>
+        
+        <ng-template #hasApiKeyContent>
+          <p>✨ <strong>Smart Features aktiviert!</strong></p>
+          <ul>
+            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
+            <li>"Erstelle neue Liste ADEG mit Milch"</li>
+            <li>Smart Disambiguation verfügbar</li>
+            <li>Intelligente Mengen-Erkennung</li>
+          </ul>
+        </ng-template>
+        
+        <p class="chat-stats">{{ getChatStats() }}</p>
+      </div>
 
         <!-- Chat messages from observable -->
         <div *ngFor="let message of (messages$ | async)" 
@@ -251,7 +274,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     private departmentService: DepartmentService,
     private router: Router,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    @Inject(PLATFORM_ID) private platformId: Object  // Add this injection
   ) {
     this.synthesis = window.speechSynthesis;
     
@@ -266,6 +290,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     // 🔧 FIX: Initialize chat if empty
     this.chatPersistence.initializeIfEmpty();
     
+    // 🔧 PWA FIX: Handle viewport height for PWA mode
+    this.setupPWAViewport();
+
     // Auto-scroll when new messages arrive
     this.messages$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       setTimeout(() => this.scrollToBottom(), 100);
@@ -280,12 +307,18 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.stopRecording();
+
+    // Clean up viewport listeners
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('resize', this.setupPWAViewport);
+      window.removeEventListener('orientationchange', this.setupPWAViewport);
+    }
   }
 
   onBack(): void {
     this.router.navigate(['/lists']);
   }
-
+  
   clearChat(): void {
     this.chatPersistence.clearMessages();
     this.chatPersistence.initializeIfEmpty();
@@ -471,6 +504,72 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }
   }
 
+    // 🔧 ADD: PWA viewport height fix
+    private setupPWAViewport(): void {
+      if (isPlatformBrowser(this.platformId)) {
+        // Set CSS custom property for real viewport height
+        const setVH = () => {
+          const vh = window.innerHeight * 0.01;
+          document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+  
+        // Set on load
+        setVH();
+  
+        // Update on resize/orientation change
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', () => {
+          // Delay for orientation change
+          setTimeout(setVH, 100);
+        });
+  
+        // PWA-specific fixes
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+          console.log('🔧 PWA mode detected - applying viewport fixes');
+          
+          // Additional PWA adjustments
+          document.body.style.setProperty('--pwa-bottom-padding', 'calc(75px + env(safe-area-inset-bottom, 0px))');
+          
+          // Force scroll to ensure proper positioning
+          setTimeout(() => {
+            window.scrollTo(0, 0);
+          }, 300);
+        }
+  
+        // Handle keyboard show/hide on mobile
+        this.handleMobileKeyboard();
+      }
+    }
+  
+    // 🔧 ADD: Handle mobile keyboard viewport changes
+    private handleMobileKeyboard(): void {
+      if (isPlatformBrowser(this.platformId)) {
+        let initialViewportHeight = window.innerHeight;
+  
+        const handleViewportChange = () => {
+          const currentHeight = window.innerHeight;
+          const keyboardHeight = initialViewportHeight - currentHeight;
+  
+          if (keyboardHeight > 150) {
+            // Keyboard is open
+            document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+            document.body.classList.add('keyboard-open');
+          } else {
+            // Keyboard is closed
+            document.documentElement.style.setProperty('--keyboard-height', '0px');
+            document.body.classList.remove('keyboard-open');
+          }
+        };
+  
+        window.addEventListener('resize', handleViewportChange);
+  
+        // Update initial height on focus events
+        window.addEventListener('focus', () => {
+          initialViewportHeight = window.innerHeight;
+        }, true);
+      }
+    }
+
   // 🔧 FIX: Additional methods for chat management
   exportChat(): void {
     const chatHistory = this.chatPersistence.exportChatHistory();
@@ -491,7 +590,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   getChatStats(): string {
     const summary = this.chatPersistence.getChatSummary();
-    return `${summary.messageCount} Nachrichten${summary.oldestMessage ? ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}` : ''}`;
+    const hasApiKey = this.aiService.hasApiKey();
+    
+    return `${summary.messageCount} Nachrichten${summary.oldestMessage ? ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}` : ''} • ${hasApiKey ? '🔑 AI Features aktiv' : '⚙️ Settings für AI Features'}`;
   }
 
   // 🎯 Enhanced disambiguation helper methods
@@ -517,6 +618,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     if (percentage >= 70) return `${percentage}% - Sehr ähnlich`;
     if (percentage >= 50) return `${percentage}% - Ähnlich`;
     return `${percentage}% - Entfernt ähnlich`;
+  }
+
+  get aiServicePublic() {
+    return this.aiService;
   }
 
   // TrackBy function for disambiguation options

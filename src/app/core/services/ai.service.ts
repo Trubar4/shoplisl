@@ -1,4 +1,4 @@
-// src/app/core/services/ai.service.ts - Enhanced with Smart Disambiguation
+// src/app/core/services/ai.service.ts - Enhanced with Chat API Key Setup
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, combineLatest, of } from 'rxjs';
 import { map, take, catchError } from 'rxjs/operators';
@@ -131,6 +131,50 @@ export class AIService {
   }
 
   /**
+   * 🔑 Handle API key setup via chat command
+   */
+  private handleApiKeyCommand(input: string): AIExecutionResult {
+    const lowerInput = input.toLowerCase();
+    
+    // Pattern: "set api key: gsk_..." or "api key gsk_..."
+    const keyPattern = /(?:set\s+)?api\s+key[:\s]+([a-zA-Z0-9_-]+)/i;
+    const match = input.match(keyPattern);
+    
+    if (match && match[1]) {
+      const apiKey = match[1].trim();
+      
+      // Validate key format (Groq keys start with 'gsk_')
+      if (apiKey.startsWith('gsk_') && apiKey.length > 20) {
+        this.setApiKey(apiKey);
+        
+        return {
+          success: true,
+          message: '🔑 API Key erfolgreich gespeichert!\n\n✅ Groq API Key konfiguriert\n🎯 Smart Disambiguation aktiviert\n🚀 Alle AI-Features verfügbar\n\n💡 Du kannst jetzt sagen:\n"Füge 2kg Bananen zu Spar hinzu"'
+        };
+      } else {
+        return {
+          success: false,
+          message: '❌ Ungültiger API Key!\n\nGroq API Keys:\n• Beginnen mit "gsk_"\n• Sind länger als 20 Zeichen\n\n📋 Format:\nset api key: gsk_YOUR_KEY_HERE\n\n🔗 Key erstellen:\nhttps://console.groq.com/keys'
+        };
+      }
+    }
+    
+    // No key provided - show instructions
+    const hasKey = this.hasApiKey();
+    return {
+      success: true,
+      message: `🔑 API Key Setup\n\n${hasKey ? '✅ Bereits konfiguriert' : '❌ Nicht gefunden'}\n\n📝 So konfigurierst du deinen API Key:\n\n1️⃣ Schreibe: "set api key: gsk_YOUR_KEY_HERE"\n\n2️⃣ Groq API Key kostenlos erstellen:\n🔗 https://console.groq.com/keys\n\n${hasKey ? '🎯 Alle Features aktiviert!' : '⚠️ Ohne API Key sind nur Basis-Funktionen verfügbar'}`
+    };
+  }
+
+  /**
+   * 💡 Provide helpful guidance when no API key is configured
+   */
+  private getNoApiKeyGuidance(): string {
+    return '💡 Für intelligente Features:\n\n1️⃣ Groq API Key kostenlos erstellen:\n🔗 https://console.groq.com/keys\n\n2️⃣ Hier eingeben:\n"set api key: gsk_YOUR_KEY_HERE"\n\n✨ Dann verfügbar:\n• Smart Disambiguation\n• Mengen-Erkennung\n• Intelligente Artikel-Vorschläge';
+  }
+
+  /**
    * 🎯 ENHANCED: Extract quantity from German input
    */
   private extractQuantity(input: string): QuantityExtraction {
@@ -256,23 +300,17 @@ export class AIService {
     try {
       console.log('🤖 Processing command:', input);
       
-      // Handle simple test commands first
-      if (input.toLowerCase().includes('hilfe')) {
-        return {
-          success: true,
-          message: 'Hallo! Ich kann dir mit folgenden Aufgaben helfen:\n\n• "Füge 2kg Bananen zu Spar hinzu"\n• "Erstelle Liste ADEG mit Milch"\n• "API Key setup" (für erweiterte Funktionen)\n\nNeu: Intelligente Mengen-Erkennung und Smart-Disambiguation!'
-        };
+      // 🔑 Handle API key setup commands FIRST
+      if (input.toLowerCase().includes('api key')) {
+        return this.handleApiKeyCommand(input);
       }
       
-      // Handle API key setup
-      if (input.toLowerCase().includes('api key') || input.toLowerCase().includes('setup')) {
+      // Handle simple test commands
+      if (input.toLowerCase().includes('hilfe')) {
         const hasKey = this.hasApiKey();
-        const source = localStorage.getItem('groq-api-key') ? 'localStorage' : 
-                      environment?.groqApiKey ? 'environment' : 'none';
-        
         return {
           success: true,
-          message: `🔑 API Key Status: ${hasKey ? '✅ Konfiguriert' : '❌ Nicht gefunden'}\n${hasKey ? `Quelle: ${source}` : ''}\n\n${!hasKey ? 'Setup-Anleitung:\n\n1. Öffne Browser-Konsole (F12)\n2. Führe aus:\n   localStorage.setItem("groq-api-key", "dein-key")\n3. Seite neu laden\n\nGroq Account: https://console.groq.com/keys' : 'API Key ist einsatzbereit! 🚀\n\n✨ Neue Features verfügbar:\n• Smart Disambiguation\n• Mengen-Erkennung\n• Fuzzy Matching'}`
+          message: `Hallo! Ich kann dir mit folgenden Aufgaben helfen:\n\n• "Füge 2kg Bananen zu Spar hinzu"\n• "Erstelle Liste ADEG mit Milch"\n• "API Key setup" (für erweiterte Funktionen)\n\n${hasKey ? '🎯 Smart Features aktiviert!' : this.getNoApiKeyGuidance()}`
         };
       }
       
@@ -283,12 +321,36 @@ export class AIService {
         
         return {
           success: true,
-          message: `✅ AI Service funktioniert!\n\nAPI Key: ${hasKey ? '✅ Konfiguriert' : '❌ Nicht gefunden'}\nQuelle: ${source}\nDataService: ${!!this.dataService ? '✅ Verfügbar' : '❌ Fehler'}\n\n🎯 Enhanced Features:\n• Smart Disambiguation: ✅\n• Quantity Extraction: ✅\n• Fuzzy Matching: ✅\n\n${!hasKey ? '💡 Sage "API Key setup" für Anleitung' : '🚀 Alle Systeme bereit für intelligente Verarbeitung!'}`
+          message: `✅ AI Service funktioniert!\n\nAPI Key: ${hasKey ? '✅ Konfiguriert' : '❌ Nicht gefunden'}\nQuelle: ${source}\nDataService: ${!!this.dataService ? '✅ Verfügbar' : '❌ Fehler'}\n\n🎯 Enhanced Features:\n• Smart Disambiguation: ${hasKey ? '✅' : '❌'}\n• Quantity Extraction: ${hasKey ? '✅' : '❌'}\n• Fuzzy Matching: ${hasKey ? '✅' : '❌'}\n\n${!hasKey ? this.getNoApiKeyGuidance() : '🚀 Alle Systeme bereit für intelligente Verarbeitung!'}`
         };
       }
 
-      // 🎯 ENHANCED: Process command with quantity extraction and disambiguation
-      return await this.processEnhancedCommand(input);
+      // 🎯 Check if API key is configured for advanced features
+      const hasApiKey = this.hasApiKey();
+      
+      // For first-time users or commands that require AI features
+      if (!hasApiKey && (
+        input.toLowerCase().includes('füge') || 
+        input.toLowerCase().includes('erstelle') ||
+        input.toLowerCase().includes('hinzu')
+      )) {
+        // Process with basic functionality but show upgrade path
+        const basicResult = await this.processBasicCommand(input);
+        
+        // Add API key guidance to successful basic operations
+        if (basicResult.success) {
+          basicResult.message += '\n\n' + this.getNoApiKeyGuidance();
+        }
+        
+        return basicResult;
+      }
+
+      // 🎯 ENHANCED: Process command with quantity extraction and disambiguation (if API key available)
+      if (hasApiKey) {
+        return await this.processEnhancedCommand(input);
+      } else {
+        return await this.processBasicCommand(input);
+      }
       
     } catch (error) {
       console.error('AI Service error:', error);
@@ -301,7 +363,117 @@ export class AIService {
   }
 
   /**
-   * 🎯 ENHANCED: Process command with smart disambiguation
+   * 🔧 Process commands with basic functionality (no API key required)
+   */
+  private async processBasicCommand(input: string): Promise<AIExecutionResult> {
+    const lowerInput = input.toLowerCase();
+    
+    // Extract basic quantity and item name
+    const quantityExtraction = this.extractQuantity(input);
+    
+    if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+      // Basic add item functionality
+      const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
+      if (addMatch) {
+        const itemName = addMatch[1];
+        const listName = addMatch[2];
+        
+        try {
+          // Create basic article
+          const newArticle = await this.dataService.createArticle({
+            name: quantityExtraction.itemName,
+            amount: quantityExtraction.quantity || '',
+            departmentId: this.suggestDepartment(quantityExtraction.itemName),
+            icon: this.suggestIcon(quantityExtraction.itemName)
+          }).toPromise();
+
+          if (newArticle) {
+            // Add to specified list or current list
+            const targetList = listName ? 
+              await this.findListByName(listName) : 
+              await this.getCurrentList();
+
+            if (targetList) {
+              await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
+              return {
+                success: true,
+                message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+                listId: targetList.id
+              };
+            } else {
+              return {
+                success: false,
+                message: `❌ Liste "${listName || 'aktuelle'}" nicht gefunden.`
+              };
+            }
+          }
+        } catch (error) {
+          return {
+            success: false,
+            message: '❌ Fehler beim Hinzufügen des Artikels.'
+          };
+        }
+      }
+    }
+    
+    if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
+      // Basic create list functionality
+      const createMatch = lowerInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/);
+      if (createMatch) {
+        const listName = createMatch[1];
+        const itemName = createMatch[2];
+        
+        try {
+          const articleIds: string[] = [];
+          const itemStates: any = {};
+          
+          // Create article if specified
+          if (itemName) {
+            const newArticle = await this.dataService.createArticle({
+              name: quantityExtraction.itemName || itemName,
+              amount: quantityExtraction.quantity || '',
+              departmentId: this.suggestDepartment(itemName),
+              icon: this.suggestIcon(itemName)
+            }).toPromise();
+            
+            if (newArticle) {
+              articleIds.push(newArticle.id);
+              itemStates[newArticle.id] = { articleId: newArticle.id, isChecked: false };
+            }
+          }
+          
+          const newList = await this.dataService.createList({
+            name: listName,
+            color: this.suggestListColor(listName),
+            icon: '🛒',
+            articleIds,
+            itemStates
+          }).toPromise();
+          
+          if (newList) {
+            return {
+              success: true,
+              message: `✅ Liste "${listName}" wurde ${itemName ? `mit "${itemName}" ` : ''}erstellt.`,
+              listId: newList.id
+            };
+          }
+        } catch (error) {
+          return {
+            success: false,
+            message: '❌ Fehler beim Erstellen der Liste.'
+          };
+        }
+      }
+    }
+    
+    return {
+      success: true,
+      message: `Ich verstehe: "${input}"\n\n🤖 Basis-Funktionen verfügbar\nSage "Hilfe" für verfügbare Befehle.`
+    };
+  }
+
+  /**
+   * 🎯 ENHANCED: Process command with smart disambiguation (requires API key)
    */
   private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
     // Extract quantity from input
@@ -324,8 +496,8 @@ export class AIService {
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
 
-    // Fallback to rule-based processing
-    return this.processCommandRuleBased(input);
+    // Fallback to basic processing
+    return this.processBasicCommand(input);
   }
 
   /**
@@ -566,29 +738,6 @@ export class AIService {
     const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
     // Return first list or null - you might want to implement "current list" logic
     return lists && lists.length > 0 ? lists[0] : null;
-  }
-
-  private processCommandRuleBased(input: string): AIExecutionResult {
-    const lowerInput = input.toLowerCase();
-    
-    if (lowerInput.includes('füge') || lowerInput.includes('hinzu')) {
-      return {
-        success: true,
-        message: 'Regel-basierte Verarbeitung: "Artikel hinzufügen" erkannt.\n\n🎯 Für intelligente Verarbeitung mit Smart Disambiguation:\n1. Sage "API Key setup" für Anleitung\n2. Nutze erweiterte AI-Funktionen'
-      };
-    }
-    
-    if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
-      return {
-        success: true,
-        message: 'Regel-basierte Verarbeitung: "Liste erstellen" erkannt.\n\n🎯 Für intelligente Verarbeitung sage "API Key setup".'
-      };
-    }
-    
-    return {
-      success: true,
-      message: `Ich verstehe: "${input}"\n\n🤖 Aktuell: Basis-Funktionen verfügbar\n🎯 Für Smart Disambiguation: "API Key setup"\n\nSage "Hilfe" für verfügbare Befehle.`
-    };
   }
 
   private suggestDepartment(articleName: string): string {

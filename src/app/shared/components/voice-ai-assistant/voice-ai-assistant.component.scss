@@ -42,6 +42,17 @@
           &:last-child { border-bottom: none; }
           &:before { content: "💬"; margin-right: 12px; }
         }
+        
+        a {
+          color: #1a9edb;
+          text-decoration: none;
+          font-weight: 500;
+          
+          &:hover {
+            text-decoration: underline;
+            color: #0d8bd9;
+          }
+        }
       }
     }
 
@@ -499,5 +510,117 @@
         bottom: calc(130px + env(safe-area-inset-bottom, 0px));
       }
     }
+  }
+}
+
+/* PWA Detection and Fixes */
+@media all and (display-mode: standalone) {
+  .ai-assistant-container {
+    /* PWA mode detected */
+    
+    .input-area {
+      /* 🔧 PWA Fix: More aggressive bottom positioning */
+      bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+      
+      /* 🔧 PWA Fix: Ensure input stays above everything */
+      z-index: 999 !important;
+      
+      /* 🔧 PWA Fix: Add extra padding for PWA viewport quirks */
+      padding: 12px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px !important;
+    }
+    
+    .messages-container {
+      /* 🔧 PWA Fix: Extra bottom padding to prevent overlap */
+      padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    
+    .disambiguation-panel {
+      /* 🔧 PWA Fix: Position above input area with extra clearance */
+      bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+}
+
+/* 📱 PWA + Mobile combination fix */
+@media all and (display-mode: standalone) and (max-width: 768px) {
+  .ai-assistant-container {
+    .input-area {
+      /* 🔧 PWA Mobile Fix: Even more bottom clearance */
+      bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    
+    .messages-container {
+      /* 🔧 PWA Mobile Fix: More padding for smaller screens */
+      padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    
+    .disambiguation-panel {
+      bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
+}
+
+/* 🔧 Fallback for devices that don't support display-mode */
+@supports not (display-mode: standalone) {
+  /* Use iOS-specific detection as fallback */
+  @media screen and (max-device-width: 480px) and (-webkit-min-device-pixel-ratio: 2) {
+    .ai-assistant-container {
+      .input-area {
+        /* iPhone fallback positioning */
+        bottom: calc(75px + 20px) !important; /* 20px extra for PWA mode */
+      }
+      
+      .messages-container {
+        padding-bottom: calc(170px + 20px) !important;
+      }
+      
+      .disambiguation-panel {
+        bottom: calc(180px + 20px) !important;
+      }
+    }
+  }
+}
+
+/* 🔧 Additional PWA viewport fixes */
+@media all and (display-mode: standalone) {
+  .ai-assistant-container {
+    /* Fix PWA height calculation issues */
+    height: 100vh !important;
+    height: calc(var(--vh, 1vh) * 100) !important; /* Use custom vh if available */
+    
+    /* Prevent content from going under system UI */
+    padding-top: env(safe-area-inset-top, 0px);
+    
+    .input-area {
+      /* Ensure input area background extends to screen edge */
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(15px) !important;
+      
+      /* Add subtle border to help visibility */
+      border-top: 2px solid rgba(26, 158, 219, 0.1) !important;
+      
+      .input-controls {
+        /* Ensure buttons don't get cut off */
+        margin-bottom: env(safe-area-inset-bottom, 0px);
+      }
+    }
+  }
+}
+
+/* 🎯 Debug helper (remove in production) */
+@media all and (display-mode: standalone) {
+  .ai-assistant-container::before {
+    content: 'PWA Mode Active';
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: rgba(26, 158, 219, 0.8);
+    color: white;
+    padding: 4px 8px;
+    font-size: 10px;
+    z-index: 9999;
+    border-radius: 0 0 4px 0;
+    opacity: 0.7;
+    /* Remove this entire ::before block after testing */
   }
 }
