@@ -54,6 +54,7 @@ interface ChatMessage {
   actionData?: any;
 }
 
+
 @Component({
   selector: 'app-voice-ai-assistant',
   standalone: true,
@@ -93,6 +94,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   currentMessage = '';
   isProcessing = false;
   isRecording = false;
+  private isSpeaking = false; // Add this property at the top with other properties
   
   // ========================================
   // SPEECH RECOGNITION & SYNTHESIS
@@ -202,8 +204,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // ========================================
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
-
+  
     const userMessage = this.currentMessage.trim();
+    
+    // 💬 ENHANCED DEBUG: Log the user message with more context
+    console.log('💬 SEND MESSAGE CALLED');
+    console.log('💬 USER MESSAGE:', userMessage);
+    console.log('💬 MESSAGE LENGTH:', userMessage.length);
+    console.log('💬 IS PROCESSING:', this.isProcessing);
+    console.log('💬 CONTAINS FÜGE:', userMessage.toLowerCase().includes('füge'));
+    console.log('💬 CONTAINS HINZU:', userMessage.toLowerCase().includes('hinzu'));
+    console.log('💬 CONTAINS MENGE:', userMessage.toLowerCase().includes('menge'));
     
     // Clear any existing disambiguation
     this.chatPersistence.setDisambiguation(null);
@@ -211,17 +222,24 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.chatPersistence.addMessage(userMessage, 'user');
     this.currentMessage = '';
     this.isProcessing = true;
-
+  
     try {
-      console.log('🔍 Calling AI service with:', userMessage);
+      console.log('💬 CALLING AI SERVICE WITH:', userMessage);
+      const startTime = Date.now();
+      
       const result = await this.aiService.executeCommand(userMessage);
-      console.log('🔍 AI service result:', result);
+      
+      const endTime = Date.now();
+      console.log('💬 AI SERVICE COMPLETED IN:', endTime - startTime, 'ms');
+      console.log('💬 AI SERVICE RESULT:', result);
       
       await this.handleAIResult(result);
     } catch (error) {
-      console.error('AI error:', error);
+      console.error('💬 AI ERROR:', error);
+      console.error('💬 ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace');
+      
       this.chatPersistence.addMessage(
-        '❌ Entschuldigung, ein Fehler ist aufgetreten.\n\n💡 Versuche es mit:\n• "Hilfe" für verfügbare Befehle\n• "Test" für System-Status', 
+        `❌ Entschuldigung, ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}\n\n💡 Versuche es mit:\n• "Hilfe" für verfügbare Befehle\n• "Test" für System-Status`, 
         'error'
       );
     } finally {
@@ -239,26 +257,58 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
+    // 🤖 ENHANCED DEBUG: Log the complete AI result with more detail
+    console.log('🤖 HANDLE AI RESULT CALLED');
+    console.log('🤖 AI RESULT:', result);
+    console.log('🤖 SUCCESS:', result.success);
+    console.log('🤖 MESSAGE:', result.message);
+    console.log('🤖 NEEDS USER INPUT:', result.needsUserInput);
+    console.log('🤖 LIST ID:', result.listId);
+    
+    // 🐛 DEBUG: If there's disambiguation, log the pending action details
+    if (result.needsUserInput && result.pendingAction) {
+      console.log('🤖 PENDING ACTION TYPE:', result.pendingAction.type);
+      console.log('🤖 PENDING ACTION ITEM NAME:', result.pendingAction.itemName);
+      console.log('🤖 PENDING ACTION ORIGINAL INPUT:', result.pendingAction.originalInput);
+      console.log('🤖 PENDING ACTION QUANTITY:', result.pendingAction.extractedQuantity);
+      console.log('🤖 DISAMBIGUATION OPTIONS COUNT:', result.disambiguationOptions?.length);
+      
+      // Log each disambiguation option for debugging
+      result.disambiguationOptions?.forEach((option, index) => {
+        console.log(`🤖 OPTION ${index}:`, {
+          id: option.id,
+          displayName: option.displayName,
+          type: option.type,
+          confidence: option.confidence,
+          articleName: option.article?.name
+        });
+      });
+    }
+  
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
-
+  
     // Handle disambiguation (both article and list selection)
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
+      console.log('🤖 HANDLING DISAMBIGUATION');
       this.handleDisambiguation(result);
     }
-
+  
     // Handle successful actions
     if (result.success && result.listId) {
+      console.log('🤖 HANDLING SUCCESSFUL ACTION');
       this.handleSuccessfulAction(result);
     }
-
+  
     // Handle suggestions
     if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
+      console.log('🤖 HANDLING SUGGESTION');
       this.handleSuggestion(result);
     }
-
+  
     // Provide additional feedback for list-related actions
     if (result.success && result.message.includes('Liste')) {
+      console.log('🤖 ADDING LIST-RELATED FEEDBACK');
       setTimeout(() => {
         this.chatPersistence.addMessage(
           '💡 Weitere Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Zeige Listen" - Alle Listen anzeigen',
@@ -285,10 +335,28 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private handleSuccessfulAction(result: AIExecutionResult): void {
-    this.speak(result.message.split('\n')[0]); // Speak only first line
+    // 🎯 DEBUG: Log when this method is called
+    console.log('🎯 HANDLE SUCCESSFUL ACTION CALLED');
+    console.log('🎯 RESULT MESSAGE:', result.message);
+    console.log('🎯 RESULT SUCCESS:', result.success);
+    console.log('🎯 RESULT LIST ID:', result.listId);
+    console.log('🎯 FULL RESULT OBJECT:', result);
+    
+    // Extract the first line and clean it
+    const messageToSpeak = result.message.split('\n')[0]
+      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
+      .replace(/^\s*/, '') // Remove leading whitespace
+      .trim();
+    
+    console.log('🎯 MESSAGE TO SPEAK:', messageToSpeak);
+    
+    if (messageToSpeak) {
+      this.speak(messageToSpeak);
+    }
     
     // Navigate to list after delay
     setTimeout(() => {
+      console.log('🎯 NAVIGATING TO LIST:', result.listId);
       this.router.navigate(['/lists', result.listId]);
     }, 2000);
   }
@@ -410,31 +478,46 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // DISAMBIGUATION HANDLING
   // ========================================
   selectDisambiguationOption(option: DisambiguationOption): void {
+    console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
+    
     const disambiguation = this.chatPersistence.getDisambiguation();
-    if (!disambiguation) return;
-
+    if (!disambiguation) {
+      console.error('🎯 No disambiguation available!');
+      return;
+    }
+  
     const pendingAction = disambiguation.pendingAction;
+    console.log('🎯 PENDING ACTION:', pendingAction);
     
     // Clear disambiguation immediately for better UX
     this.chatPersistence.setDisambiguation(null);
     
-    // Add user's choice to chat
-    const choiceText = this.isListSelection(pendingAction) ? 
-      `Liste gewählt: ${option.displayName}` : 
-      `Ausgewählt: ${option.displayName}`;
+    // Add user's choice to chat with more specific information
+    let choiceText = '';
+    if (this.isListSelection(pendingAction)) {
+      choiceText = `Liste gewählt: ${option.displayName}`;
+    } else {
+      if (option.type === 'existing') {
+        choiceText = `Vorhandener Artikel: ${option.displayName}`;
+      } else {
+        choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
+      }
+    }
     
+    console.log('🎯 CHOICE TEXT:', choiceText);
     this.chatPersistence.addMessage(choiceText, 'user');
     this.isProcessing = true;
-
-    // Process the choice
+  
+    // Process the choice with enhanced error handling
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
+        console.log('🎯 DISAMBIGUATION RESULT:', result);
         this.handleAIResult(result);
       })
       .catch((error: any) => {
-        console.error('Disambiguation error:', error);
+        console.error('🎯 DISAMBIGUATION ERROR:', error);
         this.chatPersistence.addMessage(
-          '❌ Fehler beim Ausführen der Aktion.\n\n💡 Versuche es erneut oder sage "Hilfe".', 
+          `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
           'error'
         );
       })
@@ -539,21 +622,67 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.isRecording = false;
   }
 
-  // ========================================
-  // TEXT-TO-SPEECH
-  // ========================================
-  private speak(text: string): void {
-    if (!this.synthesis) return;
-    
-    this.synthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
-    
-    this.synthesis.speak(utterance);
+// ========================================
+// TEXT-TO-SPEECH (ENHANCED WITH DEBUGGING)
+// ========================================
+private speak(text: string): void {
+  if (!this.synthesis) return;
+  
+  // 🔊 DEBUG: Log what we're trying to speak
+  console.log('🔊 SPEAK METHOD CALLED');
+  console.log('🔊 ORIGINAL TEXT:', text);
+  console.log('🔊 TEXT LENGTH:', text.length);
+  console.log('🔊 TEXT SPLIT BY NEWLINES:', text.split('\n'));
+  console.log('🔊 FIRST LINE ONLY:', text.split('\n')[0]);
+  console.log('🔊 IS CURRENTLY SPEAKING:', this.isSpeaking);
+  
+  // Prevent multiple speech instances
+  if (this.isSpeaking) {
+    console.log('🔊 ALREADY SPEAKING - IGNORING NEW REQUEST');
+    return;
   }
+  
+  this.synthesis.cancel();
+  this.isSpeaking = true;
+  
+  // Clean the text before speaking
+  const cleanText = text.split('\n')[0]
+    .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
+    .replace(/^\s*/, '') // Remove leading whitespace
+    .trim();
+  
+  console.log('🔊 CLEANED TEXT TO SPEAK:', cleanText);
+  
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = 'de-DE';
+  utterance.rate = 0.9;
+  utterance.volume = 0.8;
+  
+  // Add comprehensive event listeners
+  utterance.onstart = () => {
+    console.log('🔊 SPEECH STARTED:', cleanText);
+  };
+  
+  utterance.onend = () => {
+    console.log('🔊 SPEECH ENDED');
+    this.isSpeaking = false;
+  };
+  
+  utterance.onerror = (event) => {
+    console.error('🔊 SPEECH ERROR:', event);
+    this.isSpeaking = false;
+  };
+  
+  utterance.onpause = () => {
+    console.log('🔊 SPEECH PAUSED');
+  };
+  
+  utterance.onresume = () => {
+    console.log('🔊 SPEECH RESUMED');
+  };
+  
+  this.synthesis.speak(utterance);
+}
 
   // ========================================
   // QUICK COMMANDS

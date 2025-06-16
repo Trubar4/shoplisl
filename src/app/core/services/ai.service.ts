@@ -236,57 +236,64 @@ export class AIService {
     // Store original input for debugging
     const originalInput = input.trim();
     
-    // Enhanced German quantity patterns with more units
+    // First, clean the input by removing command prefixes and suffixes
+    let cleanedInput = originalInput
+      .replace(/^füge\s+/i, '') // Remove "Füge " at start
+      .replace(/\s+zu\s+.+?\s+hinzu$/i, '') // Remove " zu [Liste] hinzu" at end
+      .replace(/\s+hinzu$/i, '') // Remove " hinzu" at end
+      .trim();
+    
+    console.log('🔍 CLEANED INPUT:', cleanedInput);
+    
+    // Enhanced German quantity patterns - now working on cleaned input
     const quantityPatterns = [
-      // NEW: Item Menge Amount Unit: "Schokolade Menge 2 Stück", "Milch Menge 500ml"
+      // Pattern 1: "Artikel Menge Amount Unit" → "Milch Menge 1l"
       { 
-        pattern: /(.+?)\s+menge\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))/i,
-        type: 'item_menge_amount'
+        pattern: /^(.+?)\s+menge\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
+        type: 'item_menge_amount',
+        itemGroup: 1,
+        quantityGroup: 2
       },
-      // Amount + unit at start: "2kg Bananen", "500ml Milch", "1 Becher Joghurt"
+      // Pattern 2: "Amount Unit Artikel" → "2kg Bananen", "500ml Milch"
       { 
-        pattern: /(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)/i,
-        type: 'unit_start'
+        pattern: /^(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)$/i,
+        type: 'unit_start',
+        itemGroup: 2,
+        quantityGroup: 1
       },
-      // Amount + x: "2x Bananen", "3 x Äpfel"
+      // Pattern 3: "Amount x Artikel" → "2x Bananen", "3 x Äpfel"
       { 
-        pattern: /(\d+(?:[.,]\d+)?)\s*x\s+(.+)/i,
-        type: 'x_notation'
+        pattern: /^(\d+(?:[.,]\d+)?)\s*x\s+(.+)$/i,
+        type: 'x_notation',
+        itemGroup: 2,
+        quantityGroup: 1
       },
-      // Amount at end: "Bananen 2kg", "Milch 1 Liter", "Joghurt 1 Becher"
+      // Pattern 4: "Artikel Amount Unit" → "Bananen 2kg", "Milch 1 Liter"
       { 
-        pattern: /(.+?)\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
-        type: 'unit_end'
+        pattern: /^(.+?)\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
+        type: 'unit_end',
+        itemGroup: 1,
+        quantityGroup: 2
       },
-      // Simple number: "2 Bananen", "3 Äpfel"
+      // Pattern 5: "Amount Artikel" → "2 Bananen", "3 Äpfel"
       { 
-        pattern: /(\d+(?:[.,]\d+)?)\s+(.+)/i,
-        type: 'number_start'
+        pattern: /^(\d+(?:[.,]\d+)?)\s+(.+)$/i,
+        type: 'number_start',
+        itemGroup: 2,
+        quantityGroup: 1
       }
     ];
-
+  
     for (let i = 0; i < quantityPatterns.length; i++) {
-      const { pattern, type } = quantityPatterns[i];
-      const match = input.match(pattern);
+      const { pattern, type, itemGroup, quantityGroup } = quantityPatterns[i];
+      const match = cleanedInput.match(pattern);
       
       if (match) {
         console.log(`🔍 MATCHED PATTERN ${type}:`, match);
         
-        let itemName: string;
-        let quantity: string;
-
-        if (type === 'item_menge_amount') {
-          // NEW: "Schokolade Menge 2 Stück" → itemName="Schokolade", quantity="2 Stück"
-          itemName = match[1].trim();
-          quantity = match[2].trim();
-        } else if (type === 'unit_end') {
-          itemName = match[1].trim();
-          quantity = match[2].trim();
-        } else {
-          quantity = match[1].trim();
-          itemName = match[2].trim();
-        }
-
+        const itemName = match[itemGroup].trim();
+        const quantity = match[quantityGroup].trim();
+  
         console.log('🔍 EXTRACTED:', { itemName, quantity, originalInput });
         
         return {
@@ -295,12 +302,12 @@ export class AIService {
         };
       }
     }
-
-    console.log('🔍 NO QUANTITY PATTERN MATCHED, RETURNING ORIGINAL:', originalInput);
+  
+    console.log('🔍 NO QUANTITY PATTERN MATCHED, RETURNING CLEANED INPUT:', cleanedInput);
     
-    // Return original input unchanged if no pattern matches
+    // Return cleaned input if no pattern matches
     return { 
-      itemName: originalInput 
+      itemName: cleanedInput 
     };
   }
 
@@ -312,22 +319,44 @@ export class AIService {
    * 🎯 ENHANCED: Smart disambiguation with fuzzy matching
    */
   private async getDisambiguationOptions(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
+    console.log('🔍 Getting disambiguation options for:', itemName);
+    
     const articles = await this.dataService.getArticles().pipe(take(1)).toPromise();
     const options: DisambiguationOption[] = [];
-
+  
     if (!articles) return options;
-
-    // Find similar existing articles using fuzzy matching
+  
+    // Clean the search term
+    const searchTerm = itemName.toLowerCase().trim();
+    console.log('🔍 Search term:', searchTerm);
+  
+    // Find similar existing articles using multiple matching strategies
     const similarArticles = articles
-      .filter(article => article.id !== excludeId) // Exclude current article if updating
-      .map(article => ({
-        article,
-        similarity: this.calculateSimilarity(itemName.toLowerCase(), article.name.toLowerCase())
-      }))
+      .filter(article => article.id !== excludeId)
+      .map(article => {
+        const articleName = article.name.toLowerCase();
+        
+        // Calculate multiple similarity scores
+        const exactMatch = articleName === searchTerm ? 1.0 : 0;
+        const containsMatch = articleName.includes(searchTerm) || searchTerm.includes(articleName) ? 0.8 : 0;
+        const levenshteinSim = this.calculateSimilarity(searchTerm, articleName);
+        
+        // Use the best similarity score
+        const similarity = Math.max(exactMatch, containsMatch, levenshteinSim);
+        
+        console.log(`🔍 Article "${article.name}" similarity: ${similarity}`);
+        
+        return {
+          article,
+          similarity
+        };
+      })
       .filter(item => item.similarity >= this.MIN_SIMILARITY_THRESHOLD)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 4); // Max 4 existing options
-
+  
+    console.log('🔍 Similar articles found:', similarArticles.length);
+  
     // Add existing articles as options
     for (const item of similarArticles) {
       options.push({
@@ -340,18 +369,19 @@ export class AIService {
         icon: item.article.icon
       });
     }
-
-    // Always add option to create new article
+  
+    // Always add option to create new article with the EXACT name provided
     const suggestedDepartment = this.suggestDepartment(itemName);
     options.push({
       id: 'new_article',
-      displayName: `${itemName} (neu)`,
+      displayName: `"${itemName}" (neu erstellen)`,
       type: 'new',
       confidence: 1.0,
       department: suggestedDepartment,
       icon: this.suggestIcon(itemName)
     });
-
+  
+    console.log('🔍 Final disambiguation options:', options);
     return options;
   }
 
@@ -546,39 +576,44 @@ export class AIService {
    * 🎯 ENHANCED: Process command with smart disambiguation (requires API key)
    */
   private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 PROCESSING ENHANCED COMMAND:', input);
+    
     // Extract quantity from input
     const quantityExtraction = this.extractQuantity(input);
     console.log('🎯 Quantity extraction:', quantityExtraction);
-
-    // Parse command intent
+  
+    // Parse command intent using the clean item name from quantity extraction
     const intent = this.parseIntent(input, quantityExtraction.itemName);
     console.log('🎯 Parsed intent:', intent);
-
+  
     // Check for unrecognized commands first
     if (intent.listName === 'UNRECOGNIZED_COMMAND') {
       console.log('🎯 Unrecognized command, falling back to basic processing');
       return this.processBasicCommand(input);
     }
-
-    // Enhanced action with quantity
+  
+    // Enhanced action with quantity - ensure clean item name is used
     const pendingAction: PendingAction = {
       ...intent,
+      itemName: quantityExtraction.itemName, // Use the clean item name from extraction
       extractedQuantity: quantityExtraction.quantity,
       suggestedDepartment: this.suggestDepartment(quantityExtraction.itemName)
     };
-
+  
+    console.log('🎯 Final pending action:', pendingAction);
+  
     // Handle create list commands
     if (intent.type === 'create_list') {
       console.log('🎯 Processing create list command');
       return await this.handleListCreationWithColor(input, quantityExtraction);
     }
-
+  
     // Handle add item commands (only if they contain "füge...hinzu")
     if (intent.type === 'add_item' && intent.listName !== 'UNRECOGNIZED_COMMAND') {
       console.log('🎯 Processing add item command');
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
-
+  
     // Fallback to basic processing
     console.log('🎯 Fallback to basic processing');
     return this.processBasicCommand(input);
@@ -587,47 +622,64 @@ export class AIService {
   /**
    * 🎯 Parse command intent from input
    */
-  private parseIntent(input: string, itemName: string): Omit<PendingAction, 'extractedQuantity' | 'suggestedDepartment'> {
+  private parseIntent(input: string, cleanItemName: string): Omit<PendingAction, 'extractedQuantity' | 'suggestedDepartment'> {
     const lowerInput = input.toLowerCase();
-
+  
     // Create list patterns: "Erstelle Liste REWE mit Milch"
     const createListMatch = lowerInput.match(/erstelle\s+liste\s+(.+?)\s+mit\s+(.+)/);
     if (createListMatch) {
+      // For create list, extract item from the pattern and clean it
+      const extractedItem = createListMatch[2].replace(/\s+hinzu$/, '').trim();
       return {
         type: 'create_list',
         originalInput: input,
-        itemName: createListMatch[2],
-        listName: createListMatch[1]
+        itemName: this.cleanItemName(extractedItem),
+        listName: createListMatch[1].trim()
       };
     }
-
+  
     // Add to specific list: "Füge Bananen zu Spar hinzu"
     const addToListMatch = lowerInput.match(/füge\s+(.+?)\s+zu\s+(.+?)\s+hinzu/);
     if (addToListMatch) {
+      // For specific list addition, use the already-clean item name from extractQuantity
       return {
         type: 'add_item',
         originalInput: input,
-        itemName: addToListMatch[1],
-        listName: addToListMatch[2]
+        itemName: cleanItemName, // Use the pre-cleaned item name
+        listName: addToListMatch[2].trim()
       };
     }
-
-    // Generic add: "Füge Bananen hinzu"
+  
+    // Generic add: "Füge Bananen hinzu" or "Füge Joghurt Menge 1 Becher hinzu"
     if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
-      const addMatch = lowerInput.match(/füge\s+(.+?)\s+hinzu/);
+      // IMPORTANT: Use the already-extracted and cleaned item name from extractQuantity
+      // Don't re-extract from the pattern as it can include quantity information
       return {
         type: 'add_item',
         originalInput: input,
-        itemName: addMatch ? addMatch[1] : itemName
+        itemName: cleanItemName // Use the pre-cleaned item name
       };
     }
-
+  
     // Default add item
     return {
       type: 'add_item',
       originalInput: input,
-      itemName: itemName
+      itemName: cleanItemName // Use the pre-cleaned item name
     };
+  }
+
+  /**
+   * 🧹 NEW: Clean item name from command artifacts
+   */
+  private cleanItemName(itemName: string): string {
+    return itemName
+      .replace(/^füge\s+/i, '') // Remove "füge " prefix
+      .replace(/\s+menge\s+.+$/i, '') // Remove " menge X Unit" completely
+      .replace(/\s+hinzu$/i, '') // Remove " hinzu" suffix
+      .replace(/\s+zu\s+.+$/i, '') // Remove " zu [list]" suffix
+      .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+      .trim();
   }
 
   /**
@@ -635,41 +687,46 @@ export class AIService {
    */
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Handling item action with disambiguation:', action);
-
+    console.log('🎯 Action item name:', action.itemName);
+    console.log('🎯 Action quantity:', action.extractedQuantity);
+  
     // For items that don't contain "füge...hinzu", this shouldn't be called
-    // This is a safety check
     if (!action.originalInput.toLowerCase().includes('füge') || !action.originalInput.toLowerCase().includes('hinzu')) {
       console.log('🚫 This is not an add item command, redirecting to basic processing');
       return this.processBasicCommand(action.originalInput);
     }
-
+  
+    // Ensure we're working with a clean item name (should already be clean from extractQuantity)
+    const cleanItemName = this.cleanItemName(action.itemName);
+    console.log('🎯 Clean item name (should be same as action.itemName):', cleanItemName);
+  
+    // Update action with clean name (should be no change if extractQuantity worked correctly)
+    action.itemName = cleanItemName;
+  
     // Get disambiguation options
-    const disambiguationOptions = await this.getDisambiguationOptions(action.itemName);
-    console.log('🎯 Disambiguation options:', disambiguationOptions);
-
-    // Check if disambiguation is needed
+    const disambiguationOptions = await this.getDisambiguationOptions(cleanItemName);
+    console.log('🎯 Disambiguation options for item:', cleanItemName);
+    console.log('🎯 Number of disambiguation options:', disambiguationOptions.length);
+  
+    // ALWAYS show disambiguation if there are existing similar items
+    // This ensures user gets to choose and prevents wrong item selection
     const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-    const needsDisambiguation = existingOptions.length > 0 && 
-                               existingOptions[0].confidence >= this.DISAMBIGUATION_THRESHOLD;
-
-    if (needsDisambiguation) {
+    
+    if (existingOptions.length > 0) {
+      console.log('🎯 Found existing options, showing disambiguation');
+      
       return {
         success: true,
-        message: `Ich habe mehrere Möglichkeiten für "${action.itemName}" gefunden:`,
+        message: `🎯 Ich habe ähnliche Artikel für "${cleanItemName}" gefunden. Welchen möchtest du verwenden?`,
         needsUserInput: true,
         disambiguationOptions,
         pendingAction: action
       };
     }
-
-    // No disambiguation needed - proceed directly
-    if (existingOptions.length > 0) {
-      // Use existing article with highest confidence
-      return await this.executeActionWithArticle(action, existingOptions[0].article!);
-    } else {
-      // Create new article
-      return await this.executeActionWithNewArticle(action);
-    }
+  
+    // No existing items found - create new article directly
+    console.log('🎯 No existing options, creating new article');
+    return await this.executeActionWithNewArticle(action);
   }
 
   // ========================================
@@ -740,19 +797,23 @@ export class AIService {
    * 🎯 Execute action with new article - Enhanced with list selection
    */
   private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
+    console.log('🎯 Executing action with new article:', action.itemName);
+    
     try {
       if (action.type === 'create_list') {
         const newArticle = await this.dataService.createArticle({
-          name: action.itemName,
+          name: action.itemName, // Use EXACT name from action
           amount: action.extractedQuantity || '',
           departmentId: action.suggestedDepartment || 'miscellaneous',
           icon: this.suggestIcon(action.itemName)
         }).toPromise();
-
+  
         if (!newArticle) {
           throw new Error('Failed to create article');
         }
-
+  
+        console.log('🎯 Created new article:', newArticle);
+  
         const newList = await this.dataService.createList({
           name: action.listName!,
           color: this.suggestListColor(action.listName!),
@@ -760,7 +821,7 @@ export class AIService {
           articleIds: [newArticle.id],
           itemStates: { [newArticle.id]: { articleId: newArticle.id, isChecked: false } }
         }).toPromise();
-
+  
         return {
           success: true,
           message: `✅ Liste "${action.listName}" wurde mit "${newArticle.name}"${action.extractedQuantity ? ` (${action.extractedQuantity})` : ''} erstellt.`,
@@ -771,36 +832,39 @@ export class AIService {
         if (!action.listName) {
           // No list specified - ask user to choose (but first create the article data)
           const articleData = {
-            name: action.itemName,
+            name: action.itemName, // Use EXACT name
             amount: action.extractedQuantity || '',
             departmentId: action.suggestedDepartment || 'miscellaneous',
             icon: this.suggestIcon(action.itemName)
           };
-
+  
+          console.log('🎯 Requesting list selection for new article:', articleData);
           return await this.requestListSelectionForNewArticle(action, articleData);
         }
-
+  
         // List was specified - proceed normally
         const newArticle = await this.dataService.createArticle({
-          name: action.itemName,
+          name: action.itemName, // Use EXACT name
           amount: action.extractedQuantity || '',
           departmentId: action.suggestedDepartment || 'miscellaneous',
           icon: this.suggestIcon(action.itemName)
         }).toPromise();
-
+  
         if (!newArticle) {
           throw new Error('Failed to create article');
         }
-
+  
+        console.log('🎯 Created new article for list:', newArticle);
+  
         const targetList = await this.findListByName(action.listName);
-
+  
         if (!targetList) {
           return {
             success: false,
             message: `❌ Liste "${action.listName}" nicht gefunden.\n\n📝 Verfügbare Listen:\n${await this.getAvailableListsText()}`
           };
         }
-
+  
         await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
         
         return {
@@ -810,6 +874,7 @@ export class AIService {
         };
       }
     } catch (error) {
+      console.error('🎯 Error creating new article:', error);
       return {
         success: false,
         message: '❌ Fehler beim Erstellen des neuen Artikels.'
