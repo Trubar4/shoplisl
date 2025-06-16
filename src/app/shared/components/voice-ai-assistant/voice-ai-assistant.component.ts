@@ -6,6 +6,8 @@ import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+// Angular Material imports
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,11 +20,12 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 
-// Import services
+// Application services
 import { AIService, AIExecutionResult, DisambiguationOption, PendingAction } from '../../../core/services/ai.service';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
 
+// Interfaces
 interface ChatMessage {
   text: string;
   type: 'user' | 'assistant' | 'error' | 'system';
@@ -48,224 +51,37 @@ interface ChatMessage {
     MatTooltipModule,
     MatChipsModule
   ],
-  template: `
-    <div class="ai-assistant-container">
-      <!-- Header -->
-      <mat-toolbar color="primary" class="ai-header">
-        <button mat-icon-button (click)="onBack()">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        <span>AI Assistent</span>
-        <span class="spacer"></span>
-        
-        <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
-          <mat-icon>clear_all</mat-icon>
-        </button>
-        <button mat-icon-button (click)="exportChat()" matTooltip="Chat exportieren">
-          <mat-icon>download</mat-icon>
-        </button>
-      </mat-toolbar>
-
-      <!-- Chat Messages -->
-      <div class="messages-container" #messagesContainer>
-      <!-- Welcome message when empty -->
-      <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
-        <mat-icon class="welcome-icon">psychology</mat-icon>
-        <h3>Hallo! Ich bin dein AI Assistent</h3>
-        
-        <!-- Show different content based on API key status -->
-        <div *ngIf="!aiServicePublic.hasApiKey(); else hasApiKeyContent">
-          <p>🚀 <strong>Für intelligente Features:</strong></p>
-          <ul>
-            <li>"set api key: gsk_YOUR_KEY_HERE"</li>
-            <li>Groq API Key kostenlos: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
-          </ul>
-          
-          <p>📋 <strong>Basis-Funktionen verfügbar:</strong></p>
-          <ul>
-            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
-            <li>"Erstelle neue Liste ADEG"</li>
-            <li>"Hilfe" für mehr Befehle</li>
-          </ul>
-        </div>
-        
-        <ng-template #hasApiKeyContent>
-          <p>✨ <strong>Smart Features aktiviert!</strong></p>
-          <ul>
-            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
-            <li>"Erstelle neue Liste ADEG mit Milch"</li>
-            <li>Smart Disambiguation verfügbar</li>
-            <li>Intelligente Mengen-Erkennung</li>
-          </ul>
-        </ng-template>
-        
-        <p class="chat-stats">{{ getChatStats() }}</p>
-      </div>
-
-        <!-- Chat messages from observable -->
-        <div *ngFor="let message of (messages$ | async)" 
-             [class]="'message message-' + message.type">
-          <div class="message-content">
-            <div class="message-text">{{ message.text }}</div>
-            <div class="message-time">
-              {{ message.timestamp | date:'HH:mm' }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Processing Indicator -->
-        <div *ngIf="isProcessing" class="message message-assistant">
-          <div class="message-content">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span class="processing-text">Verarbeite...</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Enhanced Disambiguation Panel -->
-      <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-panel">
-        <mat-card class="disambiguation-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon color="primary">help_outline</mat-icon>
-              Smart Disambiguation
-            </mat-card-title>
-            <mat-card-subtitle>{{ disambiguation.message }}</mat-card-subtitle>
-          </mat-card-header>
-          
-          <mat-card-content>
-            <div class="disambiguation-info">
-              <p><strong>Eingabe:</strong> "{{ disambiguation.pendingAction.originalInput }}"</p>
-              <p *ngIf="disambiguation.pendingAction.extractedQuantity">
-                <strong>Erkannte Menge:</strong> {{ disambiguation.pendingAction.extractedQuantity }}
-              </p>
-            </div>
-
-            <div class="disambiguation-options">
-              <div 
-                *ngFor="let option of disambiguation.options; trackBy: trackByOptionId"
-                class="disambiguation-option"
-                [class.new-option]="option.type === 'new'"
-                [class.existing-option]="option.type === 'existing'"
-                (click)="selectDisambiguationOption(option)">
-                
-                <mat-card class="option-card" 
-                          [class.new-item-card]="option.type === 'new'"
-                          [class.existing-item-card]="option.type === 'existing'">
-                  <mat-card-content>
-                    <div class="option-header">
-                      <div class="option-main">
-                        <div class="option-icon-container">
-                          <span class="option-icon">{{ option.icon || '📦' }}</span>
-                        </div>
-                        <div class="option-details">
-                          <div class="option-name">{{ option.displayName }}</div>
-                          <div class="option-meta">
-                            <span class="department-info">
-                              <mat-icon class="small-icon">category</mat-icon>
-                              {{ getDepartmentName(option.department) }}
-                            </span>
-                            <span *ngIf="option.article?.amount" class="amount-info">
-                              <mat-icon class="small-icon">straighten</mat-icon>
-                              {{ option.article.amount }}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div class="option-confidence">
-                        <mat-chip 
-                          [color]="getConfidenceColor(option.confidence)"
-                          [matTooltip]="getConfidenceText(option.confidence)">
-                          {{ Math.round(option.confidence * 100) }}%
-                        </mat-chip>
-                      </div>
-                    </div>
-                    
-                    <div class="option-actions">
-                      <span *ngIf="option.type === 'existing'" class="action-hint">
-                        <mat-icon class="small-icon">update</mat-icon>
-                        Bestehenden Artikel verwenden
-                      </span>
-                      <span *ngIf="option.type === 'new'" class="action-hint">
-                        <mat-icon class="small-icon">add_circle</mat-icon>
-                        Neuen Artikel erstellen
-                      </span>
-                    </div>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Input Area -->
-      <div class="input-area">
-        <!-- Voice Recording Overlay -->
-        <div *ngIf="isRecording" class="recording-overlay">
-          <div class="recording-content">
-            <mat-icon class="recording-icon">mic</mat-icon>
-            <p>Spreche jetzt...</p>
-            <div class="recording-animation">
-              <div class="wave"></div>
-              <div class="wave"></div>
-              <div class="wave"></div>
-            </div>
-            <button mat-button (click)="stopRecording()">Stoppen</button>
-          </div>
-        </div>
-
-        <!-- Text Input -->
-        <div class="input-controls">
-          <mat-form-field appearance="outline" class="message-input">
-            <mat-label>Nachricht eingeben...</mat-label>
-            <input matInput 
-                   [(ngModel)]="currentMessage"
-                   (keyup.enter)="sendMessage()"
-                   placeholder="z.B. Füge 2kg Bananen hinzu"
-                   [disabled]="isProcessing || isRecording">
-          </mat-form-field>
-          
-          <button mat-fab 
-                  color="accent"
-                  (click)="toggleVoiceInput()"
-                  [class.recording]="isRecording"
-                  [disabled]="isProcessing"
-                  matTooltip="Spracherkennung">
-            <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
-          </button>
-          
-          <button mat-fab 
-                  color="primary"
-                  (click)="sendMessage()"
-                  [disabled]="!currentMessage.trim() || isProcessing || isRecording"
-                  matTooltip="Senden">
-            <mat-icon>send</mat-icon>
-          </button>
-        </div>
-
-
-      </div>
-    </div>
-  `,
+  templateUrl: './voice-ai-assistant.component.html',
   styleUrls: ['./voice-ai-assistant.component.scss']
 })
 export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
+  // ========================================
+  // VIEW REFERENCES
+  // ========================================
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   
-  // 🔧 FIX: Use observables for persistence
+  // ========================================
+  // OBSERVABLE DATA STREAMS
+  // ========================================
   messages$: Observable<ChatMessage[]>;
   disambiguation$: Observable<any>;
   
+  // ========================================
+  // COMPONENT STATE
+  // ========================================
   currentMessage = '';
   isProcessing = false;
   isRecording = false;
   
-  // Voice recognition
+  // ========================================
+  // SPEECH RECOGNITION & SYNTHESIS
+  // ========================================
   private recognition: any;
   private synthesis: SpeechSynthesis;
   
+  // ========================================
+  // LIFECYCLE MANAGEMENT
+  // ========================================
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -275,46 +91,63 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    @Inject(PLATFORM_ID) private platformId: Object  // Add this injection
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.synthesis = window.speechSynthesis;
     
-    // 🔧 FIX: Subscribe to persistent chat data
+    // Initialize data streams
     this.messages$ = this.chatPersistence.messages$;
     this.disambiguation$ = this.chatPersistence.disambiguation$;
     
     this.initializeSpeechRecognition();
   }
 
+  // ========================================
+  // LIFECYCLE HOOKS
+  // ========================================
   ngOnInit(): void {
-    // 🔧 FIX: Initialize chat if empty
-    this.chatPersistence.initializeIfEmpty();
-    
-    // 🔧 PWA FIX: Handle viewport height for PWA mode
+    this.initializeChat();
     this.setupPWAViewport();
+    this.setupMessageScrolling();
+    this.logChatStatus();
+  }
 
-    // Auto-scroll when new messages arrive
+  ngOnDestroy(): void {
+    this.cleanup();
+  }
+
+  // ========================================
+  // INITIALIZATION METHODS
+  // ========================================
+  private initializeChat(): void {
+    this.chatPersistence.initializeIfEmpty();
+  }
+
+  private setupMessageScrolling(): void {
     this.messages$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       setTimeout(() => this.scrollToBottom(), 100);
     });
-    
-    // Log chat status for debugging
+  }
+
+  private logChatStatus(): void {
     const summary = this.chatPersistence.getChatSummary();
     console.log('💬 Chat loaded:', summary);
   }
 
-  ngOnDestroy(): void {
+  private cleanup(): void {
     this.destroy$.next();
     this.destroy$.complete();
     this.stopRecording();
 
-    // Clean up viewport listeners
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.setupPWAViewport);
       window.removeEventListener('orientationchange', this.setupPWAViewport);
     }
   }
 
+  // ========================================
+  // NAVIGATION & ACTIONS
+  // ========================================
   onBack(): void {
     this.router.navigate(['/lists']);
   }
@@ -325,12 +158,32 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.snackBar.open('Chat geleert', '', { duration: 1500 });
   }
 
+  exportChat(): void {
+    const chatHistory = this.chatPersistence.exportChatHistory();
+    this.downloadChatFile(chatHistory);
+    this.snackBar.open('Chat exportiert', '', { duration: 1500 });
+  }
+
+  private downloadChatFile(content: string): void {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `shoplisl-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // ========================================
+  // MESSAGE HANDLING
+  // ========================================
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
 
     const userMessage = this.currentMessage.trim();
     
-    // 🔧 FIX: Use persistence service
     this.chatPersistence.addMessage(userMessage, 'user');
     this.currentMessage = '';
     this.isProcessing = true;
@@ -355,25 +208,56 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.sendMessage();
   }
 
-  toggleVoiceInput(): void {
-    if (this.isRecording) {
-      this.stopRecording();
-    } else {
-      this.startVoiceRecording();
+  private async handleAIResult(result: AIExecutionResult): Promise<void> {
+    this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
+
+    if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
+      this.handleDisambiguation(result);
+    }
+
+    if (result.success && result.listId) {
+      this.handleSuccessfulAction(result);
+    }
+
+    if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
+      this.handleSuggestion(result);
     }
   }
 
+  private handleDisambiguation(result: AIExecutionResult): void {
+    this.chatPersistence.setDisambiguation({
+      message: result.message,
+      options: result.disambiguationOptions!,
+      pendingAction: result.pendingAction!
+    });
+  }
+
+  private handleSuccessfulAction(result: AIExecutionResult): void {
+    this.speak(result.message.split('\n')[0]); // Speak only first line
+    
+    // Navigate to list after delay
+    setTimeout(() => {
+      this.router.navigate(['/lists', result.listId]);
+    }, 2000);
+  }
+
+  private handleSuggestion(result: AIExecutionResult): void {
+    this.chatPersistence.addMessage(
+      `Tipp: Sage "Erstelle Liste ${result.suggestedData!.listName}" um sie anzulegen.`, 
+      'system'
+    );
+  }
+
+  // ========================================
+  // DISAMBIGUATION HANDLING
+  // ========================================
   selectDisambiguationOption(option: DisambiguationOption): void {
-    // Get current disambiguation state
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) return;
 
     const pendingAction = disambiguation.pendingAction;
     
-    // Clear disambiguation state
     this.chatPersistence.setDisambiguation(null);
-
-    // Add user choice as message
     this.chatPersistence.addMessage(`Ausgewählt: ${option.displayName}`, 'user');
     this.isProcessing = true;
 
@@ -389,45 +273,74 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       });
   }
 
-  private initializeSpeechRecognition(): void {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-      this.recognition = new SpeechRecognition();
-      this.recognition.continuous = false;
-      this.recognition.interimResults = false;
-      this.recognition.lang = 'de-DE';
-      
-      this.recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        this.currentMessage = transcript;
-        this.isRecording = false;
-        
-        // Automatically send the voice message
-        setTimeout(() => {
-          this.sendMessage();
-        }, 500);
-      };
-
-      this.recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        this.isRecording = false;
-        
-        let errorMessage = 'Spracherkennung fehlgeschlagen.';
-        if (event.error === 'no-speech') {
-          errorMessage = 'Keine Sprache erkannt. Versuche es erneut.';
-        } else if (event.error === 'not-allowed') {
-          errorMessage = 'Mikrofon-Berechtigung erforderlich.';
-        }
-        
-        this.snackBar.open(errorMessage, 'OK', { duration: 3000 });
-      };
-
-      this.recognition.onend = () => {
-        this.isRecording = false;
-      };
+  // ========================================
+  // VOICE INPUT FUNCTIONALITY
+  // ========================================
+  toggleVoiceInput(): void {
+    if (this.isRecording) {
+      this.stopRecording();
     } else {
-      console.warn('Speech recognition not supported');
+      this.startVoiceRecording();
     }
+  }
+
+  private initializeSpeechRecognition(): void {
+    if (!this.isSpeechRecognitionSupported()) {
+      console.warn('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = this.getSpeechRecognitionClass();
+    this.recognition = new SpeechRecognition();
+    this.configureSpeechRecognition();
+  }
+
+  private isSpeechRecognitionSupported(): boolean {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  }
+
+  private getSpeechRecognitionClass(): any {
+    return (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+  }
+
+  private configureSpeechRecognition(): void {
+    this.recognition.continuous = false;
+    this.recognition.interimResults = false;
+    this.recognition.lang = 'de-DE';
+    
+    this.recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      this.currentMessage = transcript;
+      this.isRecording = false;
+      
+      // Automatically send the voice message
+      setTimeout(() => this.sendMessage(), 500);
+    };
+
+    this.recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      this.isRecording = false;
+      this.handleSpeechError(event.error);
+    };
+
+    this.recognition.onend = () => {
+      this.isRecording = false;
+    };
+  }
+
+  private handleSpeechError(error: string): void {
+    let errorMessage = 'Spracherkennung fehlgeschlagen.';
+    
+    switch (error) {
+      case 'no-speech':
+        errorMessage = 'Keine Sprache erkannt. Versuche es erneut.';
+        break;
+      case 'not-allowed':
+        errorMessage = 'Mikrofon-Berechtigung erforderlich.';
+        break;
+    }
+    
+    this.snackBar.open(errorMessage, 'OK', { duration: 3000 });
   }
 
   private startVoiceRecording(): void {
@@ -455,38 +368,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.isRecording = false;
   }
 
-  private async handleAIResult(result: AIExecutionResult): Promise<void> {
-    // 🔧 FIX: Use persistence service for messages
-    this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
-
-    // 🔧 FIX: Handle disambiguation with persistence
-    if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
-      this.chatPersistence.setDisambiguation({
-        message: result.message,
-        options: result.disambiguationOptions,
-        pendingAction: result.pendingAction
-      });
-    }
-
-    if (result.success && result.listId) {
-      // Optional: Speak the response
-      this.speak(result.message.split('\n')[0]); // Speak only first line
-      
-      // Navigate to list after delay
-      setTimeout(() => {
-        this.router.navigate(['/lists', result.listId]);
-      }, 2000);
-    }
-
-    if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
-      this.chatPersistence.addMessage(`Tipp: Sage "Erstelle Liste ${result.suggestedData.listName}" um sie anzulegen.`, 'system');
-    }
-  }
-
+  // ========================================
+  // TEXT-TO-SPEECH
+  // ========================================
   private speak(text: string): void {
     if (!this.synthesis) return;
     
-    // Cancel any ongoing speech
     this.synthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
@@ -497,95 +384,76 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.synthesis.speak(utterance);
   }
 
+  // ========================================
+  // PWA & VIEWPORT HANDLING
+  // ========================================
+  private setupPWAViewport(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.setViewportHeight();
+    this.setupViewportListeners();
+    this.handlePWAMode();
+    this.handleMobileKeyboard();
+  }
+
+  private setViewportHeight(): void {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+
+  private setupViewportListeners(): void {
+    const updateViewport = () => {
+      this.setViewportHeight();
+    };
+
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(updateViewport, 100);
+    });
+  }
+
+  private handlePWAMode(): void {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('🔧 PWA mode detected - applying viewport fixes');
+      
+      document.body.style.setProperty('--pwa-bottom-padding', 'calc(75px + env(safe-area-inset-bottom, 0px))');
+      
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 300);
+    }
+  }
+
+  private handleMobileKeyboard(): void {
+    let initialViewportHeight = window.innerHeight;
+
+    const handleViewportChange = () => {
+      const currentHeight = window.innerHeight;
+      const keyboardHeight = initialViewportHeight - currentHeight;
+
+      if (keyboardHeight > 150) {
+        document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+        document.body.classList.add('keyboard-open');
+      } else {
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+        document.body.classList.remove('keyboard-open');
+      }
+    };
+
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('focus', () => {
+      initialViewportHeight = window.innerHeight;
+    }, true);
+  }
+
+  // ========================================
+  // UTILITY METHODS
+  // ========================================
   private scrollToBottom(): void {
     if (this.messagesContainer) {
       const element = this.messagesContainer.nativeElement;
       element.scrollTop = element.scrollHeight;
     }
-  }
-
-    // 🔧 ADD: PWA viewport height fix
-    private setupPWAViewport(): void {
-      if (isPlatformBrowser(this.platformId)) {
-        // Set CSS custom property for real viewport height
-        const setVH = () => {
-          const vh = window.innerHeight * 0.01;
-          document.documentElement.style.setProperty('--vh', `${vh}px`);
-        };
-  
-        // Set on load
-        setVH();
-  
-        // Update on resize/orientation change
-        window.addEventListener('resize', setVH);
-        window.addEventListener('orientationchange', () => {
-          // Delay for orientation change
-          setTimeout(setVH, 100);
-        });
-  
-        // PWA-specific fixes
-        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-          console.log('🔧 PWA mode detected - applying viewport fixes');
-          
-          // Additional PWA adjustments
-          document.body.style.setProperty('--pwa-bottom-padding', 'calc(75px + env(safe-area-inset-bottom, 0px))');
-          
-          // Force scroll to ensure proper positioning
-          setTimeout(() => {
-            window.scrollTo(0, 0);
-          }, 300);
-        }
-  
-        // Handle keyboard show/hide on mobile
-        this.handleMobileKeyboard();
-      }
-    }
-  
-    // 🔧 ADD: Handle mobile keyboard viewport changes
-    private handleMobileKeyboard(): void {
-      if (isPlatformBrowser(this.platformId)) {
-        let initialViewportHeight = window.innerHeight;
-  
-        const handleViewportChange = () => {
-          const currentHeight = window.innerHeight;
-          const keyboardHeight = initialViewportHeight - currentHeight;
-  
-          if (keyboardHeight > 150) {
-            // Keyboard is open
-            document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
-            document.body.classList.add('keyboard-open');
-          } else {
-            // Keyboard is closed
-            document.documentElement.style.setProperty('--keyboard-height', '0px');
-            document.body.classList.remove('keyboard-open');
-          }
-        };
-  
-        window.addEventListener('resize', handleViewportChange);
-  
-        // Update initial height on focus events
-        window.addEventListener('focus', () => {
-          initialViewportHeight = window.innerHeight;
-        }, true);
-      }
-    }
-
-  // 🔧 FIX: Additional methods for chat management
-  exportChat(): void {
-    const chatHistory = this.chatPersistence.exportChatHistory();
-    
-    // Create downloadable file
-    const blob = new Blob([chatHistory], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `shoplisl-chat-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    this.snackBar.open('Chat exportiert', '', { duration: 1500 });
   }
 
   getChatStats(): string {
@@ -595,7 +463,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     return `${summary.messageCount} Nachrichten${summary.oldestMessage ? ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}` : ''} • ${hasApiKey ? '🔑 AI Features aktiv' : '⚙️ Settings für AI Features'}`;
   }
 
-  // 🎯 Enhanced disambiguation helper methods
+  // ========================================
+  // DISAMBIGUATION HELPER METHODS
+  // ========================================
   getDepartmentName(departmentId?: string): string {
     if (!departmentId) return 'Unbekannt';
     return this.departmentService.getDepartmentName(departmentId, 'german');
@@ -620,15 +490,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     return `${percentage}% - Entfernt ähnlich`;
   }
 
+  // ========================================
+  // TEMPLATE HELPER PROPERTIES & METHODS
+  // ========================================
   get aiServicePublic() {
     return this.aiService;
   }
 
-  // TrackBy function for disambiguation options
   trackByOptionId(index: number, option: DisambiguationOption): string {
     return option.id;
   }
 
-  // Round function for template
+  // Make Math available in template
   Math = Math;
 }

@@ -372,9 +372,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   currentMode: ViewMode = 'shopping';
   
   // Filter states
-  currentShoppingFilter: ShoppingFilter = 'alle';
+  currentShoppingFilter: ShoppingFilter = 'offen';
   currentEditFilter: EditFilter = 'alle';
-  private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('alle');
+  private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('offen');
   private editFilter$ = new BehaviorSubject<EditFilter>('alle');
   
   // FAB state

@@ -1,0 +1,197 @@
+<!-- src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.html -->
+<div class="ai-assistant-container">
+    <!-- Header -->
+    <mat-toolbar color="primary" class="ai-header">
+      <button mat-icon-button (click)="onBack()">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <span>AI Assistent</span>
+      <span class="spacer"></span>
+      
+      <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
+        <mat-icon>clear_all</mat-icon>
+      </button>
+      <button mat-icon-button (click)="exportChat()" matTooltip="Chat exportieren">
+        <mat-icon>download</mat-icon>
+      </button>
+    </mat-toolbar>
+  
+    <!-- Chat Messages -->
+    <div class="messages-container" #messagesContainer>
+      <!-- Welcome message when empty -->
+      <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
+        <mat-icon class="welcome-icon">psychology</mat-icon>
+        <h3>Hallo! Ich bin dein AI Assistent</h3>
+        
+        <!-- Show different content based on API key status -->
+        <div *ngIf="!aiServicePublic.hasApiKey(); else hasApiKeyContent">
+          <p>🚀 <strong>Für intelligente Features:</strong></p>
+          <ul>
+            <li>"set api key: gsk_YOUR_KEY_HERE"</li>
+            <li>Groq API Key kostenlos: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
+          </ul>
+          
+          <p>📋 <strong>Basis-Funktionen verfügbar:</strong></p>
+          <ul>
+            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
+            <li>"Erstelle neue Liste ADEG"</li>
+            <li>"Hilfe" für mehr Befehle</li>
+          </ul>
+        </div>
+        
+        <ng-template #hasApiKeyContent>
+          <p>✨ <strong>Smart Features aktiviert!</strong></p>
+          <ul>
+            <li>"Füge 2kg Bananen zu Spar hinzu"</li>
+            <li>"Erstelle neue Liste ADEG mit Milch"</li>
+            <li>Smart Disambiguation verfügbar</li>
+            <li>Intelligente Mengen-Erkennung</li>
+          </ul>
+        </ng-template>
+        
+        <p class="chat-stats">{{ getChatStats() }}</p>
+      </div>
+  
+      <!-- Chat messages from observable -->
+      <div *ngFor="let message of (messages$ | async)" 
+           [class]="'message message-' + message.type">
+        <div class="message-content">
+          <div class="message-text">{{ message.text }}</div>
+          <div class="message-time">
+            {{ message.timestamp | date:'HH:mm' }}
+          </div>
+        </div>
+      </div>
+  
+      <!-- Processing Indicator -->
+      <div *ngIf="isProcessing" class="message message-assistant">
+        <div class="message-content">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span class="processing-text">Verarbeite...</span>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Enhanced Disambiguation Panel -->
+    <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-panel">
+      <mat-card class="disambiguation-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon color="primary">help_outline</mat-icon>
+            Smart Disambiguation
+          </mat-card-title>
+          <mat-card-subtitle>{{ disambiguation.message }}</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="disambiguation-info">
+            <p><strong>Eingabe:</strong> "{{ disambiguation.pendingAction.originalInput }}"</p>
+            <p *ngIf="disambiguation.pendingAction.extractedQuantity">
+              <strong>Erkannte Menge:</strong> {{ disambiguation.pendingAction.extractedQuantity }}
+            </p>
+          </div>
+  
+          <div class="disambiguation-options">
+            <div 
+              *ngFor="let option of disambiguation.options; trackBy: trackByOptionId"
+              class="disambiguation-option"
+              [class.new-option]="option.type === 'new'"
+              [class.existing-option]="option.type === 'existing'"
+              (click)="selectDisambiguationOption(option)">
+              
+              <mat-card class="option-card" 
+                        [class.new-item-card]="option.type === 'new'"
+                        [class.existing-item-card]="option.type === 'existing'">
+                <mat-card-content>
+                  <div class="option-header">
+                    <div class="option-main">
+                      <div class="option-icon-container">
+                        <span class="option-icon">{{ option.icon || '📦' }}</span>
+                      </div>
+                      <div class="option-details">
+                        <div class="option-name">{{ option.displayName }}</div>
+                        <div class="option-meta">
+                          <span class="department-info">
+                            <mat-icon class="small-icon">category</mat-icon>
+                            {{ getDepartmentName(option.department) }}
+                          </span>
+                          <span *ngIf="option.article?.amount" class="amount-info">
+                            <mat-icon class="small-icon">straighten</mat-icon>
+                            {{ option.article.amount }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="option-confidence">
+                      <mat-chip 
+                        [color]="getConfidenceColor(option.confidence)"
+                        [matTooltip]="getConfidenceText(option.confidence)">
+                        {{ Math.round(option.confidence * 100) }}%
+                      </mat-chip>
+                    </div>
+                  </div>
+                  
+                  <div class="option-actions">
+                    <span *ngIf="option.type === 'existing'" class="action-hint">
+                      <mat-icon class="small-icon">update</mat-icon>
+                      Bestehenden Artikel verwenden
+                    </span>
+                    <span *ngIf="option.type === 'new'" class="action-hint">
+                      <mat-icon class="small-icon">add_circle</mat-icon>
+                      Neuen Artikel erstellen
+                    </span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  
+    <!-- Voice Recording Overlay - Fixed positioning -->
+    <div *ngIf="isRecording" class="recording-overlay">
+      <div class="recording-content">
+        <mat-icon class="recording-icon">mic</mat-icon>
+        <p>Spreche jetzt...</p>
+        <div class="recording-animation">
+          <div class="wave"></div>
+          <div class="wave"></div>
+          <div class="wave"></div>
+        </div>
+        <button mat-button (click)="stopRecording()">Stoppen</button>
+      </div>
+    </div>
+  
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-controls">
+        <mat-form-field appearance="outline" class="message-input">
+          <mat-label>Nachricht eingeben...</mat-label>
+          <input matInput 
+                 [(ngModel)]="currentMessage"
+                 (keyup.enter)="sendMessage()"
+                 placeholder="z.B. Füge 2kg Bananen hinzu"
+                 [disabled]="isProcessing || isRecording">
+        </mat-form-field>
+        
+        <button mat-fab 
+                color="accent"
+                (click)="toggleVoiceInput()"
+                [class.recording]="isRecording"
+                [disabled]="isProcessing"
+                matTooltip="Spracherkennung">
+          <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+        </button>
+        
+        <button mat-fab 
+                color="primary"
+                (click)="sendMessage()"
+                [disabled]="!currentMessage.trim() || isProcessing || isRecording"
+                matTooltip="Senden">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>

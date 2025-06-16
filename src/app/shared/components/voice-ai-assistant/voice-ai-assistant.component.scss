@@ -1,16 +1,27 @@
+// src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.scss
+
 .ai-assistant-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 
+  // ========================================
+  // HEADER SECTION
+  // ========================================
   .ai-header {
     flex-shrink: 0;
     z-index: 10;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    .spacer { flex: 1 1 auto; }
+    
+    .spacer { 
+      flex: 1 1 auto; 
+    }
   }
 
+  // ========================================
+  // MESSAGES SECTION
+  // ========================================
   .messages-container {
     flex: 1;
     overflow-y: auto;
@@ -27,7 +38,13 @@
         color: #1a9edb;
         margin-bottom: 16px;
       }
-      h3 { margin: 16px 0 24px; color: #333; font-weight: 500; }
+      
+      h3 { 
+        margin: 16px 0 24px; 
+        color: #333; 
+        font-weight: 500; 
+      }
+      
       ul {
         text-align: left;
         background: rgba(255, 255, 255, 0.8);
@@ -36,11 +53,19 @@
         margin: 0 auto;
         max-width: 400px;
         list-style: none;
+        
         li {
           padding: 8px 0;
           border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-          &:last-child { border-bottom: none; }
-          &:before { content: "💬"; margin-right: 12px; }
+          
+          &:last-child { 
+            border-bottom: none; 
+          }
+          
+          &:before { 
+            content: "💬"; 
+            margin-right: 12px; 
+          }
         }
         
         a {
@@ -54,6 +79,12 @@
           }
         }
       }
+      
+      .chat-stats {
+        margin-top: 20px;
+        font-size: 14px;
+        opacity: 0.8;
+      }
     }
 
     .message {
@@ -66,36 +97,54 @@
         max-width: 75%;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         
-        .message-text { margin: 0; line-height: 1.4; word-wrap: break-word; }
-        .message-time { font-size: 11px; margin-top: 4px; }
+        .message-text { 
+          margin: 0; 
+          line-height: 1.4; 
+          word-wrap: break-word; 
+        }
+        
+        .message-time { 
+          font-size: 11px; 
+          margin-top: 4px; 
+        }
       }
 
       &.message-user {
         display: flex;
         justify-content: flex-end;
+        
         .message-content {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
           border-radius: 18px 18px 4px 18px;
-          .message-time { opacity: 0.8; text-align: right; }
+          
+          .message-time { 
+            opacity: 0.8; 
+            text-align: right; 
+          }
         }
       }
 
       &.message-assistant {
         display: flex;
         justify-content: flex-start;
+        
         .message-content {
           background: white;
           color: #333;
           border-radius: 18px 18px 18px 4px;
           border: 1px solid rgba(26, 158, 219, 0.2);
-          .message-time { color: #666; }
+          
+          .message-time { 
+            color: #666; 
+          }
           
           mat-spinner {
             display: inline-block;
             vertical-align: middle;
             margin-right: 12px;
           }
+          
           .processing-text {
             vertical-align: middle;
             color: #666;
@@ -107,18 +156,23 @@
       &.message-error {
         display: flex;
         justify-content: flex-start;
+        
         .message-content {
           background: #ffebee;
           color: #c62828;
           border-radius: 18px 18px 18px 4px;
           border: 1px solid #ffcdd2;
-          .message-time { color: #e57373; }
+          
+          .message-time { 
+            color: #e57373; 
+          }
         }
       }
 
       &.message-system {
         display: flex;
         justify-content: center;
+        
         .message-content {
           background: rgba(26, 158, 219, 0.1);
           color: #1a9edb;
@@ -126,12 +180,18 @@
           max-width: 80%;
           text-align: center;
           border: 1px solid rgba(26, 158, 219, 0.3);
-          .message-time { display: none; }
+          
+          .message-time { 
+            display: none; 
+          }
         }
       }
     }
   }
 
+  // ========================================
+  // DISAMBIGUATION PANEL
+  // ========================================
   .disambiguation-panel {
     position: absolute;
     bottom: 150px;
@@ -149,6 +209,7 @@
 
       mat-card-header {
         padding-bottom: 8px;
+        
         mat-card-title {
           display: flex;
           align-items: center;
@@ -156,7 +217,12 @@
           font-size: 18px;
           color: #2196f3;
         }
-        mat-card-subtitle { font-size: 14px; color: #666; margin-top: 4px; }
+        
+        mat-card-subtitle { 
+          font-size: 14px; 
+          color: #666; 
+          margin-top: 4px; 
+        }
       }
 
       .disambiguation-info {
@@ -164,7 +230,15 @@
         padding: 12px;
         border-radius: 8px;
         margin-bottom: 16px;
-        p { margin: 4px 0; font-size: 14px; strong { color: #333; } }
+        
+        p { 
+          margin: 4px 0; 
+          font-size: 14px; 
+          
+          strong { 
+            color: #333; 
+          } 
+        }
       }
 
       .disambiguation-options {
@@ -174,7 +248,10 @@
         .disambiguation-option {
           cursor: pointer;
           transition: transform 0.2s ease;
-          &:hover { transform: translateY(-2px); }
+          
+          &:hover { 
+            transform: translateY(-2px); 
+          }
 
           .option-card {
             border: 2px solid transparent;
@@ -184,19 +261,26 @@
             &.existing-item-card {
               background: white;
               border-color: #e3f2fd;
-              &:hover { border-color: #2196f3; background: #f8fafe; }
+              
+              &:hover { 
+                border-color: #2196f3; 
+                background: #f8fafe; 
+              }
             }
 
             &.new-item-card {
               background: linear-gradient(135deg, #e8f5e8 0%, #f0fff0 100%);
               border-color: #4caf50;
+              
               &:hover { 
                 background: linear-gradient(135deg, #dcedc8 0%, #f1f8e9 100%);
                 border-color: #388e3c;
               }
             }
 
-            mat-card-content { padding: 16px !important; }
+            mat-card-content { 
+              padding: 16px !important; 
+            }
 
             .option-header {
               display: flex;
@@ -223,23 +307,31 @@
 
                 .option-details {
                   flex: 1;
+                  
                   .option-name {
                     font-size: 16px;
                     font-weight: 500;
                     color: #333;
                     margin-bottom: 6px;
                   }
+                  
                   .option-meta {
                     display: flex;
                     flex-direction: column;
                     gap: 4px;
+                    
                     .department-info, .amount-info {
                       display: flex;
                       align-items: center;
                       gap: 6px;
                       font-size: 13px;
                       color: #666;
-                      .small-icon { font-size: 16px; width: 16px; height: 16px; }
+                      
+                      .small-icon { 
+                        font-size: 16px; 
+                        width: 16px; 
+                        height: 16px; 
+                      }
                     }
                   }
                 }
@@ -256,6 +348,7 @@
               border-top: 1px solid rgba(0, 0, 0, 0.1);
               padding-top: 8px;
               margin-top: 8px;
+              
               .action-hint {
                 display: flex;
                 align-items: center;
@@ -263,7 +356,12 @@
                 font-size: 12px;
                 color: #666;
                 font-style: italic;
-                .small-icon { font-size: 14px; width: 14px; height: 14px; }
+                
+                .small-icon { 
+                  font-size: 14px; 
+                  width: 14px; 
+                  height: 14px; 
+                }
               }
             }
           }
@@ -272,20 +370,22 @@
     }
   }
 
+  // ========================================
+  // RECORDING OVERLAY - FIXED CENTERING
+  // ========================================
   .recording-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    /* 🔧 FIX: Don't extend to bottom - account for bottom tabs */
-    bottom: 120px; /* Leave space for bottom tabs + padding */
+    bottom: 0;
     background: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* 🔧 FIX: Higher z-index than bottom tabs (which have 1000) */
-    z-index: 1001;
-  
+    z-index: 2000; // Higher than bottom tabs
+    
+    // Perfect centering
     .recording-content {
       background: white;
       padding: 40px;
@@ -296,9 +396,9 @@
       max-height: 80vh;
       overflow-y: auto;
       
-      /* 🔧 FIX: Ensure content doesn't get too close to bottom */
-      margin-bottom: 20px;
-  
+      // Ensure it doesn't touch edges
+      margin: 20px;
+      
       .recording-icon {
         font-size: 64px;
         color: #f44336;
@@ -334,7 +434,7 @@
       button {
         margin-top: 16px;
         padding: 12px 24px;
-        min-height: 44px; /* Touch target */
+        min-height: 44px;
         font-size: 16px;
         border-radius: 8px;
         cursor: pointer;
@@ -345,39 +445,16 @@
         }
       }
     }
-  
-    /* Desktop specific adjustments */
-    @media (min-width: 769px) {
-      /* Desktop has more space, can use more of viewport */
-      bottom: 80px; /* Account for desktop bottom tabs + extra padding */
-      
-      .recording-content {
-        max-width: 500px; /* Fixed width on desktop */
-        max-height: calc(100vh - 160px); /* Account for header + bottom space */
-        
-        .recording-icon {
-          font-size: 72px; /* Larger on desktop */
-        }
-        
-        p {
-          font-size: 20px; /* Larger text on desktop */
-        }
-      }
-    }
-  
-    /* Mobile adjustments */
+
+    // Mobile optimizations
     @media (max-width: 768px) {
-      bottom: 120px; /* Account for mobile bottom tabs */
-      padding: 16px; /* Add side padding on mobile */
-      
       .recording-content {
         max-width: 95vw;
-        max-height: calc(100vh - 150px);
         padding: 30px 20px;
-        margin-bottom: 10px; /* Less margin on mobile */
+        margin: 16px;
         
         .recording-icon {
-          font-size: 48px; /* Smaller on mobile */
+          font-size: 48px;
           margin-bottom: 16px;
         }
         
@@ -398,68 +475,49 @@
         button {
           padding: 14px 28px;
           font-size: 16px;
-          width: 100%; /* Full width on mobile */
+          width: 100%;
         }
       }
     }
-  
-    /* PWA specific adjustments */
-    @media all and (display-mode: standalone) {
-      /* Account for PWA safe areas */
-      bottom: calc(75px + env(safe-area-inset-bottom, 0px));
-      z-index: 1002; /* Even higher in PWA mode */
-      
+
+    // Accessibility: Reduced motion support
+    @media (prefers-reduced-motion: reduce) {
       .recording-content {
-        max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 160px);
-      }
-      
-      @media (max-width: 768px) {
-        bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+        .recording-icon {
+          animation: none;
+        }
+        
+        .recording-animation .wave {
+          animation: none;
+          height: 20px;
+        }
+        
+        button:hover {
+          transform: none;
+        }
       }
     }
-  
-    /* High contrast mode support */
+
+    // High contrast mode support
     @media (prefers-contrast: high) {
-      background: rgba(0, 0, 0, 0.95); /* Darker background */
+      background: rgba(0, 0, 0, 0.95);
       
       .recording-content {
         border: 2px solid #333;
         
         .recording-icon {
-          color: #d32f2f; /* Darker red for better contrast */
+          color: #d32f2f;
         }
       }
     }
-  
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-      .recording-content {
-        .recording-icon {
-          animation: none; /* Disable pulsing animation */
-        }
-        
-        .recording-animation .wave {
-          animation: none; /* Disable wave animation */
-          height: 20px; /* Static height */
-        }
-        
-        button:hover {
-          transform: none; /* Disable hover transform */
-        }
-      }
-    }
-  }
-  
-  /* Additional z-index fix: Ensure input area doesn't interfere */
-  .input-area {
-    /* Lower z-index than recording overlay */
-    z-index: 50 !important;
   }
 
+  // ========================================
+  // INPUT AREA
+  // ========================================
   .input-area {
     position: fixed;
-    /* 🔧 FIX: Proper positioning to account for bottom tabs and safe areas */
-    bottom: 61px; /* Match desktop bottom tab height */
+    bottom: 61px; // Desktop bottom tab height
     left: 0;
     right: 0;
     background: rgba(255, 255, 255, 0.95);
@@ -468,11 +526,6 @@
     padding: 8px;
     z-index: 50;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-
-    /* 🔧 FIX: Support for PWA safe areas */
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      bottom: calc(61px + env(safe-area-inset-bottom));
-    }
 
     .input-controls {
       display: flex !important;
@@ -491,7 +544,9 @@
           width: 100% !important;
           margin: 0 !important;
           
-          .mat-mdc-form-field-subscript-wrapper { display: none; }
+          .mat-mdc-form-field-subscript-wrapper { 
+            display: none; 
+          }
           
           .mat-mdc-text-field-wrapper {
             height: 56px !important;
@@ -532,7 +587,10 @@
         &.recording {
           background-color: #f44336;
           animation: recordingPulse 1.5s ease-in-out infinite;
-          mat-icon { color: white; }
+          
+          mat-icon { 
+            color: white; 
+          }
         }
 
         &:not(:disabled):hover {
@@ -551,32 +609,54 @@
   }
 }
 
-// Animations
+// ========================================
+// ANIMATIONS
+// ========================================
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
 @keyframes recordingPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: scale(1.1); 
+    opacity: 0.8; 
+  }
 }
 
 @keyframes waveAnimation {
-  0%, 100% { height: 20px; }
-  50% { height: 40px; }
+  0%, 100% { 
+    height: 20px; 
+  }
+  50% { 
+    height: 40px; 
+  }
 }
 
-// Mobile responsive
+// ========================================
+// RESPONSIVE DESIGN
+// ========================================
 @media (max-width: 768px) {
   .ai-assistant-container {
     .messages-container {
-      padding: 12px 12px 140px; /* 🔧 FIX: Increased bottom padding for mobile */
-      .message .message-content { max-width: 85%; }
+      padding: 12px 12px 140px;
+      
+      .message .message-content { 
+        max-width: 85%; 
+      }
     }
 
     .disambiguation-panel {
-      /* 🔧 FIX: Position above input area properly on mobile */
       bottom: calc(130px + env(safe-area-inset-bottom, 0px));
       left: 12px;
       right: 12px;
@@ -585,34 +665,44 @@
 
     .input-area {
       padding: 8px;
-      /* 🔧 FIX: Correct mobile positioning */
-      bottom: 58px; /* Match mobile bottom tab height */
-      
-      /* 🔧 FIX: Mobile safe area support */
-      @supports (padding-bottom: env(safe-area-inset-bottom)) {
-        bottom: calc(58px + env(safe-area-inset-bottom));
-      }
+      bottom: 58px; // Mobile bottom tab height
       
       .input-controls {
         gap: 4px;
+        
         button {
           height: 48px !important;
           width: 48px !important;
           min-height: 48px !important;
           min-width: 48px !important;
-          mat-icon { width: 24px; height: 24px; font-size: 24px; }
+          
+          mat-icon { 
+            width: 24px; 
+            height: 24px; 
+            font-size: 24px; 
+          }
         }
+        
         .message-input {
           height: 48px !important;
+          
           .mat-mdc-form-field {
             height: 48px !important;
-            .mat-mdc-text-field-wrapper { height: 48px !important; }
+            
+            .mat-mdc-text-field-wrapper { 
+              height: 48px !important; 
+            }
+            
             .mat-mdc-form-field-infix {
               min-height: 48px !important;
               border-top: 10px solid transparent !important;
               border-bottom: 10px solid transparent !important;
             }
-            input { height: 28px !important; line-height: 28px !important; }
+            
+            input { 
+              height: 28px !important; 
+              line-height: 28px !important; 
+            }
           }
         }
       }
@@ -620,11 +710,12 @@
   }
 }
 
-/* 🔧 FIX: Additional safe area support for various devices */
+// ========================================
+// PWA & SAFE AREA SUPPORT
+// ========================================
 @supports (bottom: env(safe-area-inset-bottom)) {
   .ai-assistant-container {
     .input-area {
-      /* Ensure input is always above bottom tabs regardless of safe area */
       bottom: calc(61px + env(safe-area-inset-bottom));
       
       @media (max-width: 768px) {
@@ -633,16 +724,10 @@
     }
     
     .messages-container {
-      /* Adjust message container padding to account for larger input area */
       padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
-      
-      @media (max-width: 768px) {
-        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
-      }
     }
     
     .disambiguation-panel {
-      /* Keep disambiguation panel above input area */
       bottom: calc(150px + env(safe-area-inset-bottom, 0px));
       
       @media (max-width: 768px) {
@@ -652,114 +737,44 @@
   }
 }
 
-/* PWA Detection and Fixes */
+// PWA standalone mode
 @media all and (display-mode: standalone) {
   .ai-assistant-container {
-    /* PWA mode detected */
+    height: calc(var(--vh, 1vh) * 100) !important;
+    padding-top: env(safe-area-inset-top, 0px);
     
     .input-area {
-      /* 🔧 PWA Fix: More aggressive bottom positioning */
       bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
-      
-      /* 🔧 PWA Fix: Ensure input stays above everything */
       z-index: 999 !important;
-      
-      /* 🔧 PWA Fix: Add extra padding for PWA viewport quirks */
       padding: 12px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px !important;
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(15px) !important;
+      border-top: 2px solid rgba(26, 158, 219, 0.1) !important;
     }
     
     .messages-container {
-      /* 🔧 PWA Fix: Extra bottom padding to prevent overlap */
       padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
     }
     
     .disambiguation-panel {
-      /* 🔧 PWA Fix: Position above input area with extra clearance */
       bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
     }
   }
-}
 
-/* 📱 PWA + Mobile combination fix */
-@media all and (display-mode: standalone) and (max-width: 768px) {
-  .ai-assistant-container {
-    .input-area {
-      /* 🔧 PWA Mobile Fix: Even more bottom clearance */
-      bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    
-    .messages-container {
-      /* 🔧 PWA Mobile Fix: More padding for smaller screens */
-      padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    
-    .disambiguation-panel {
-      bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
-    }
-  }
-}
-
-/* 🔧 Fallback for devices that don't support display-mode */
-@supports not (display-mode: standalone) {
-  /* Use iOS-specific detection as fallback */
-  @media screen and (max-device-width: 480px) and (-webkit-min-device-pixel-ratio: 2) {
+  // PWA + Mobile combination
+  @media (max-width: 768px) {
     .ai-assistant-container {
       .input-area {
-        /* iPhone fallback positioning */
-        bottom: calc(75px + 20px) !important; /* 20px extra for PWA mode */
+        bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
       }
       
       .messages-container {
-        padding-bottom: calc(170px + 20px) !important;
+        padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
       }
       
       .disambiguation-panel {
-        bottom: calc(180px + 20px) !important;
+        bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
       }
     }
-  }
-}
-
-/* 🔧 Additional PWA viewport fixes */
-@media all and (display-mode: standalone) {
-  .ai-assistant-container {
-    /* Fix PWA height calculation issues */
-    height: 100vh !important;
-    height: calc(var(--vh, 1vh) * 100) !important; /* Use custom vh if available */
-    
-    /* Prevent content from going under system UI */
-    padding-top: env(safe-area-inset-top, 0px);
-    
-    .input-area {
-      /* Ensure input area background extends to screen edge */
-      background: rgba(255, 255, 255, 0.98) !important;
-      backdrop-filter: blur(15px) !important;
-      
-      /* Add subtle border to help visibility */
-      border-top: 2px solid rgba(26, 158, 219, 0.1) !important;
-      
-      .input-controls {
-        /* Ensure buttons don't get cut off */
-        margin-bottom: env(safe-area-inset-bottom, 0px);
-      }
-    }
-  }
-}
-
-/* 🎯 Debug helper (remove in production) */
-@media all and (display-mode: standalone) {
-  .ai-assistant-container::before {
-    content: 'PWA Mode Active';
-    position: fixed;
-    top: 0;
-    left: 0;
-    background: rgba(26, 158, 219, 0.8);
-    color: white;
-    padding: 4px 8px;
-    font-size: 10px;
-    z-index: 9999;
-    border-radius: 0 0 4px 0;
-    opacity: 0.7;
-    /* Remove this entire ::before block after testing */
   }
 }
