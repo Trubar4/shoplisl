@@ -24,27 +24,13 @@ import { MatChipsModule } from '@angular/material/chips';
 import { 
   AIService, 
   AIExecutionResult, 
-  DisambiguationOption
-} from '../../../core/services/ai.service';
+  DisambiguationOption,
+  PendingAction,
+  MultiItemPendingAction,
+  isMultiItemPendingAction
+} from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
-
-// Local type definitions to ensure compatibility
-interface ExtendedPendingAction {
-  type: 'add_item' | 'create_list' | 'select_list';
-  originalInput: string;
-  itemName: string;
-  extractedQuantity?: string;
-  listName?: string;
-  suggestedDepartment?: string;
-  articleToAdd?: {
-    id?: string;
-    name: string;
-    amount?: string;
-    departmentId?: string;
-    icon?: string;
-  };
-}
 
 // Interfaces
 interface ChatMessage {
@@ -375,8 +361,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   /**
    * Check if current disambiguation is for list selection
    */
-  isListSelection(pendingAction: ExtendedPendingAction | null | undefined): boolean {
-    return pendingAction?.type === 'select_list';
+  isListSelection(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): boolean {
+    if (!pendingAction) return false;
+    return pendingAction.type === 'select_list';
   }
 
   /**
@@ -409,25 +396,188 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     return 'Artikel auswählen';
   }
 
-  /**
-   * Get action description for pending action
+    /**
+   * 🎯 TYPE-SAFE: Enhanced disambiguation option selection - SIMPLE FIX
    */
-  getActionDescription(pendingAction: ExtendedPendingAction | null | undefined): string {
-    if (!pendingAction) return 'Unbekannte Aktion';
+    selectDisambiguationOption(option: DisambiguationOption): void {
+      console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
+      
+      const disambiguation = this.chatPersistence.getDisambiguation();
+      if (!disambiguation) {
+        console.error('🎯 No disambiguation available!');
+        return;
+      }
     
-    switch (pendingAction.type) {
+      const pendingAction = disambiguation.pendingAction;
+      console.log('🎯 PENDING ACTION:', pendingAction);
+      
+      // Clear disambiguation immediately for better UX
+      this.chatPersistence.setDisambiguation(null);
+      
+      // Safe choice text generation without type assertions
+      let choiceText = '';
+      
+      if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+        // Handle multi-item action
+        const items = (pendingAction as any).items;
+        const currentIndex = (pendingAction as any).currentItemIndex;
+        
+        if ((pendingAction as any).type === 'select_list') {
+          choiceText = `Liste gewählt: ${option.displayName}`;
+        } else if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
+          const currentItem = items[currentIndex];
+          if (option.type === 'existing') {
+            choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${option.displayName} (vorhandener Artikel)`;
+          } else if (currentItem && currentItem.itemName) {
+            choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${currentItem.itemName} (neu erstellen)`;
+          } else {
+            choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
+          }
+        } else {
+          choiceText = option.type === 'existing' ? 
+            `Vorhandener Artikel: ${option.displayName}` : 
+            `Neuen Artikel erstellen: ${option.displayName}`;
+        }
+      } else {
+        // Handle single action
+        if ((pendingAction as any).type === 'select_list') {
+          choiceText = `Liste gewählt: ${option.displayName}`;
+        } else {
+          if (option.type === 'existing') {
+            choiceText = `Vorhandener Artikel: ${option.displayName}`;
+          } else {
+            choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
+          }
+        }
+      }
+      
+      console.log('🎯 CHOICE TEXT:', choiceText);
+      this.chatPersistence.addMessage(choiceText, 'user');
+      this.isProcessing = true;
+    
+      // Process the choice with enhanced error handling
+      this.aiService.handleDisambiguationChoice(pendingAction, option)
+        .then((result: AIExecutionResult) => {
+          console.log('🎯 DISAMBIGUATION RESULT:', result);
+          this.handleAIResult(result);
+        })
+        .catch((error: any) => {
+          console.error('🎯 DISAMBIGUATION ERROR:', error);
+          this.chatPersistence.addMessage(
+            `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
+            'error'
+          );
+        })
+        .finally(() => {
+          this.isProcessing = false;
+          this.scrollToBottom();
+        });
+    }
+
+    /**
+   * Alternative approach: Handle missing properties gracefully
+   */
+  private getMultiItemInfo(action: any): { isMultiItem: boolean; currentIndex?: number; totalItems?: number; currentItem?: any } {
+    if (!action || typeof action !== 'object') {
+      return { isMultiItem: false };
+    }
+
+    const hasItems = 'items' in action && Array.isArray(action.items);
+    const hasCurrentIndex = 'currentItemIndex' in action && typeof action.currentItemIndex === 'number';
+
+    if (hasItems && hasCurrentIndex) {
+      const items = action.items;
+      const currentIndex = action.currentItemIndex;
+      const currentItem = currentIndex < items.length ? items[currentIndex] : null;
+
+      return {
+        isMultiItem: true,
+        currentIndex,
+        totalItems: items.length,
+        currentItem
+      };
+    }
+
+    return { isMultiItem: false };
+  }
+
+  
+/**
+ * Alternative implementation using the graceful helper
+ */
+getActionDescriptionAlt(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+  if (!pendingAction) return 'Unbekannte Aktion';
+  
+  const multiInfo = this.getMultiItemInfo(pendingAction);
+  
+  if (multiInfo.isMultiItem && multiInfo.currentItem) {
+    return `Artikel ${multiInfo.currentIndex! + 1}/${multiInfo.totalItems}: "${multiInfo.currentItem.itemName}" verarbeiten`;
+  } else {
+    // Handle as single action
+    const action = pendingAction as PendingAction;
+    switch (action.type) {
       case 'add_item':
-        return pendingAction.listName ? 
-          `Hinzufügen zu "${pendingAction.listName}"` : 
+        return action.listName ? 
+          `Hinzufügen zu "${action.listName}"` : 
           'Hinzufügen zur Liste';
       case 'create_list':
-        return `Neue Liste "${pendingAction.listName}" erstellen`;
+        return `Neue Liste "${action.listName}" erstellen`;
       case 'select_list':
         return 'Zur ausgewählten Liste hinzufügen';
       default:
         return 'Unbekannte Aktion';
     }
   }
+}
+
+/**
+ * Safe type guard for MultiItemPendingAction
+ */
+private isMultiItemAction(action: any): action is MultiItemPendingAction {
+  return action && 
+         typeof action === 'object' &&
+         'items' in action &&
+         'currentItemIndex' in action &&
+         'processedItems' in action &&
+         Array.isArray(action.items) &&
+         Array.isArray(action.processedItems) &&
+         typeof action.currentItemIndex === 'number';
+}
+
+/**
+ * Get action description for pending action - SAFE VERSION
+ */
+getActionDescription(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+  if (!pendingAction) return 'Unbekannte Aktion';
+  
+  // Check for multi-item properties and access them directly
+  if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+    const items = (pendingAction as any).items;
+    const currentIndex = (pendingAction as any).currentItemIndex;
+    
+    if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
+      const currentItem = items[currentIndex];
+      if (currentItem && currentItem.itemName) {
+        return `Artikel ${currentIndex + 1}/${items.length}: "${currentItem.itemName}" verarbeiten`;
+      }
+    }
+    return `Mehrere Artikel verarbeiten`;
+  } else {
+    // Handle as single action
+    switch (pendingAction.type) {
+      case 'add_item':
+        return (pendingAction as any).listName ? 
+          `Hinzufügen zu "${(pendingAction as any).listName}"` : 
+          'Hinzufügen zur Liste';
+      case 'create_list':
+        return `Neue Liste "${(pendingAction as any).listName}" erstellen`;
+      case 'select_list':
+        return 'Zur ausgewählten Liste hinzufügen';
+      default:
+        return 'Unbekannte Aktion';
+    }
+  }
+}
 
   /**
    * Get default icon for disambiguation option
@@ -443,28 +593,34 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
    * Get list color for list selection options
    */
   getListColor(option: DisambiguationOption): string {
-    // For list selection, we can extract color from the option or use default
-    // This assumes you store the list color somehow in the option
-    // You might need to modify the AI service to include this information
-    return '#2196f3'; // Default blue, but you can enhance this
+    return '#2196f3'; // Default blue
   }
 
-  /**
-   * Get action hint text for disambiguation options
-   */
-  getActionHint(option: DisambiguationOption, pendingAction: ExtendedPendingAction | null | undefined): string {
-    if (!pendingAction) return 'Unbekannte Aktion';
-    
-    if (this.isListSelection(pendingAction)) {
-      return `Zu "${option.displayName}" hinzufügen`;
+ /**
+ * Get action hint text for disambiguation options - SAFE VERSION
+ */
+ getActionHint(option: DisambiguationOption, pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+  if (!pendingAction) return 'Unbekannte Aktion';
+  
+  const isListSelection = this.isListSelection(pendingAction);
+  
+  if (isListSelection) {
+    // Check for multi-item safely
+    if ('items' in pendingAction) {
+      const items = (pendingAction as any).items;
+      if (Array.isArray(items) && items.length > 1) {
+        return `${items.length} Artikel zu "${option.displayName}" hinzufügen`;
+      }
     }
-
-    if (option.type === 'existing') {
-      return 'Vorhandenen Artikel verwenden';
-    } else {
-      return 'Neuen Artikel erstellen';
-    }
+    return `Zu "${option.displayName}" hinzufügen`;
   }
+
+  if (option.type === 'existing') {
+    return 'Vorhandenen Artikel verwenden';
+  } else {
+    return 'Neuen Artikel erstellen';
+  }
+}
 
   /**
    * Cancel disambiguation and clear pending action
@@ -472,59 +628,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   cancelDisambiguation(): void {
     this.chatPersistence.setDisambiguation(null);
     this.chatPersistence.addMessage('Aktion abgebrochen.', 'system');
-  }
-
-  // ========================================
-  // DISAMBIGUATION HANDLING
-  // ========================================
-  selectDisambiguationOption(option: DisambiguationOption): void {
-    console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
-    
-    const disambiguation = this.chatPersistence.getDisambiguation();
-    if (!disambiguation) {
-      console.error('🎯 No disambiguation available!');
-      return;
-    }
-  
-    const pendingAction = disambiguation.pendingAction;
-    console.log('🎯 PENDING ACTION:', pendingAction);
-    
-    // Clear disambiguation immediately for better UX
-    this.chatPersistence.setDisambiguation(null);
-    
-    // Add user's choice to chat with more specific information
-    let choiceText = '';
-    if (this.isListSelection(pendingAction)) {
-      choiceText = `Liste gewählt: ${option.displayName}`;
-    } else {
-      if (option.type === 'existing') {
-        choiceText = `Vorhandener Artikel: ${option.displayName}`;
-      } else {
-        choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
-      }
-    }
-    
-    console.log('🎯 CHOICE TEXT:', choiceText);
-    this.chatPersistence.addMessage(choiceText, 'user');
-    this.isProcessing = true;
-  
-    // Process the choice with enhanced error handling
-    this.aiService.handleDisambiguationChoice(pendingAction, option)
-      .then((result: AIExecutionResult) => {
-        console.log('🎯 DISAMBIGUATION RESULT:', result);
-        this.handleAIResult(result);
-      })
-      .catch((error: any) => {
-        console.error('🎯 DISAMBIGUATION ERROR:', error);
-        this.chatPersistence.addMessage(
-          `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
-          'error'
-        );
-      })
-      .finally(() => {
-        this.isProcessing = false;
-        this.scrollToBottom();
-      });
   }
 
   // ========================================
@@ -708,7 +811,7 @@ private speak(text: string): void {
   }
 
   /**
-   * Enhanced help with context-aware suggestions
+   * Enhanced help with context-aware suggestions - FIXED
    */
   showContextualHelp(): void {
     const hasApiKey = this.aiService.hasApiKey();
@@ -722,8 +825,21 @@ private speak(text: string): void {
       helpMessage += '📝 Verfügbare Befehle:\n\n';
       helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste wenn nicht angegeben\n\n';
       helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n  → Erstellt eine neue Einkaufsliste\n\n';
-      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Neue Liste mit erstem Artikel\n\n';
+      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
+      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
+      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n';
+      helpMessage += '• "Füge 500ml Milch zu Spar hinzu"\n';
+      helpMessage += '• "Füge 3x Äpfel hinzu"\n\n';
+      helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
+      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
+      helpMessage += '• "Füge 2kg Bananen, Würste, 1L Milch zu Spar hinzu"\n';
+      helpMessage += '• "Füge Bananen Menge 2kg, Würste, Milch Menge 1 Liter hinzu"\n\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
+      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Liste mit erstem Artikel\n\n';
+      helpMessage += '🎨 MIT FARBEN:\n';
+      helpMessage += '• "Erstelle Liste Spar in rot"\n';
+      helpMessage += '• "Erstelle Liste REWE in blau mit Milch"\n';
+      helpMessage += '• Verfügbare Farben: rot, grün, blau, gelb, orange, lila, rosa, schwarz, grau, weiß, türkis, braun\n\n';
     } else {
       helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
       helpMessage += '💡 Für intelligente Features:\n';
@@ -731,7 +847,11 @@ private speak(text: string): void {
       helpMessage += '📝 Basis-Befehle:\n\n';
       helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
       helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      helpMessage += '⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n';
+      helpMessage += '🎯 "Füge Bananen, Würste, Milch hinzu" - Mehrere Artikel\n';
       helpMessage += '• "Erstelle Liste [Name]"\n';
+      helpMessage += '🎨 "Erstelle Liste [Name] in [Farbe]"\n';
+      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n';
       helpMessage += '• "Test" - System-Status prüfen\n\n';
     }
     
@@ -805,6 +925,7 @@ private speak(text: string): void {
   // ========================================
   // UTILITY METHODS
   // ========================================
+  
   private scrollToBottom(): void {
     if (this.messagesContainer) {
       const element = this.messagesContainer.nativeElement;
@@ -820,8 +941,9 @@ private speak(text: string): void {
   }
 
   // ========================================
-  // DISAMBIGUATION HELPER METHODS
+  // DISAMBIGUATION HELPER METHODS (FIXED)
   // ========================================
+
   getDepartmentName(departmentId?: string): string {
     if (!departmentId) return 'Unbekannt';
     return this.departmentService.getDepartmentName(departmentId, 'german');
