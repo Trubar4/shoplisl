@@ -9,7 +9,7 @@
   </mat-toolbar>
 
   <!-- Lists -->
-  <div class="lists-container">
+  <div class="lists-container" #listsContainer>
     <div class="lists-list">
       <div 
         *ngFor="let list of lists$ | async" 
@@ -52,8 +52,6 @@
                [style.background-color]="list.color || '#757575'">
             {{ getItemCountText(list) }}
           </div>
-          
-
           
           <!-- Navigation arrow -->
           <mat-icon class="nav-arrow">chevron_right</mat-icon>
