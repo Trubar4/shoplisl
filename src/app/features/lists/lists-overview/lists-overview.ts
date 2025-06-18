@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -25,7 +25,9 @@ import { DataService } from '../../../core/services/data';
   templateUrl: './lists-overview.html',
   styleUrls: ['./lists-overview.scss']
 })
-export class ListsOverviewComponent implements OnInit {
+export class ListsOverviewComponent implements OnInit, AfterViewInit {
+  @ViewChild('listsContainer', { read: ElementRef }) listsContainer?: ElementRef;
+  
   lists$: Observable<ShoppingList[]>;
   
   // Swipe state management
@@ -50,6 +52,69 @@ export class ListsOverviewComponent implements OnInit {
   ngOnInit(): void {
     // Reset theme color to default blue when in lists overview
     this.resetThemeColor();
+    
+    // Fix viewport height issues on mobile
+    this.fixMobileViewport();
+  }
+
+  ngAfterViewInit(): void {
+    // Ensure scroll container is properly initialized
+    this.initializeScrollContainer();
+  }
+
+  // Fix for mobile viewport height issues
+  private fixMobileViewport(): void {
+    // Set CSS custom property for viewport height that accounts for mobile browsers
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVH();
+    
+    // Re-calculate on resize (when mobile browser UI shows/hides)
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(setVH, 100); // Delay to ensure orientation change is complete
+    });
+  }
+
+  // Initialize scroll container for better mobile performance
+  private initializeScrollContainer(): void {
+    if (this.listsContainer) {
+      const container = this.listsContainer.nativeElement;
+      
+      // Add passive touch listeners for better scroll performance
+      container.addEventListener('touchstart', this.onContainerTouchStart.bind(this), { passive: true });
+      container.addEventListener('touchmove', this.onContainerTouchMove.bind(this), { passive: false });
+      
+      // Ensure container is scrollable
+      container.style.webkitOverflowScrolling = 'touch';
+      container.style.transform = 'translateZ(0)'; // Force hardware acceleration
+    }
+  }
+
+  // Handle container touch events for better scrolling
+  private onContainerTouchStart(event: TouchEvent): void {
+    // Allow normal scrolling when not swiping on items
+    const target = event.target as HTMLElement;
+    if (!target.closest('.list-item-container')) {
+      // Normal scroll behavior
+      return;
+    }
+  }
+
+  private onContainerTouchMove(event: TouchEvent): void {
+    // Only prevent default if we're actively swiping on an item
+    const target = event.target as HTMLElement;
+    const listContainer = target.closest('.list-item-container');
+    
+    if (listContainer) {
+      const listId = listContainer.getAttribute('data-list-id');
+      if (listId && this.swipeStates[listId]?.isSwipeActive) {
+        event.preventDefault(); // Prevent scrolling while swiping
+      }
+    }
   }
 
   // Reset theme color to default blue
@@ -97,7 +162,6 @@ export class ListsOverviewComponent implements OnInit {
   onTouchMove(event: TouchEvent, listId: string): void {
     if (!this.swipeStates[listId]) return;
     
-    event.preventDefault(); // Prevent scrolling while swiping
     const touch = event.touches[0];
     const swipeState = this.swipeStates[listId];
     
@@ -108,6 +172,9 @@ export class ListsOverviewComponent implements OnInit {
     if (deltaX > 10) {
       swipeState.isSwipeActive = true;
       swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
+      
+      // Prevent page scrolling when actively swiping
+      event.preventDefault();
       
       // Update the visual position
       this.updateSwipePosition(listId, swipeState.swipeDistance);
@@ -276,8 +343,6 @@ export class ListsOverviewComponent implements OnInit {
       }
     });
   }
-
-
 
   // === UTILITY METHODS ===
 
