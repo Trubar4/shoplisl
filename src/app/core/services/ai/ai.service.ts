@@ -1,4 +1,4 @@
-// src/app/core/services/ai/ai.service.ts - Main Orchestration
+// src/app/core/services/ai/ai.service.ts - Enhanced with Text Numbers Support
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -156,7 +156,7 @@ export class AIService {
   // ========================================
 
   /**
-   * 🎯 Process command with enhanced features (requires API key)
+   * 🎯 Process command with enhanced features (ENHANCED: Better text number support)
    */
   private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
     console.log('🎯 PROCESSING ENHANCED COMMAND:', input);
@@ -167,20 +167,25 @@ export class AIService {
       return this.processEnhancedCommandWithMultiItems(input);
     }
     
-    // Extract quantity from input for single items
+    // 🎯 ENHANCED: Extract quantity from input with text number support
     const quantityExtraction = this.quantityExtraction.extractQuantity(input);
-    console.log('🎯 Quantity extraction:', quantityExtraction);
+    console.log('🎯 Quantity extraction result:', quantityExtraction);
+    console.log('🎯 - Item name:', quantityExtraction.itemName);
+    console.log('🎯 - Quantity:', quantityExtraction.quantity);
 
-    // Parse command intent using the clean item name from quantity extraction
+    // 🎯 ENHANCED: Parse command intent using the clean item name from quantity extraction
     const intent = this.commandParser.parseIntent(input, quantityExtraction.itemName);
     console.log('🎯 Parsed intent:', intent);
+    console.log('🎯 - Type:', intent.type);
+    console.log('🎯 - Item name:', intent.itemName);
+    console.log('🎯 - List name:', intent.listName);
 
     // Check for unrecognized commands first
     if (intent.itemName === 'UNRECOGNIZED_COMMAND') {
       console.log('🎯 Unrecognized command, providing guidance');
       return {
         success: true,
-        message: `Ich verstehe: "${input}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Füge [Artikel] zu [Liste] hinzu" - Direkt zur spezifizierten Liste\n• "Füge Bananen, Würste, Milch hinzu" - Mehrere Artikel\n• "Erstelle Liste [Name]" - Neue Liste erstellen\n• "Zeige Listen" - Alle Listen anzeigen`
+        message: `Ich verstehe: "${input}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Füge [Artikel] zu [Liste] hinzu" - Direkt zur spezifizierten Liste\n• "Füge Bananen, Würste, Milch hinzu" - Mehrere Artikel\n• "Erstelle Liste [Name]" - Neue Liste erstellen\n• "Zeige Listen" - Alle Listen anzeigen\n\n🔢 Mengen unterstützt:\n• "Füge drei kg Bananen hinzu"\n• "Füge zwei Liter Milch hinzu"`
       };
     }
 
@@ -190,19 +195,24 @@ export class AIService {
       return await this.handleListCreationWithColor(input, quantityExtraction);
     }
 
-    // Handle add item commands
-    if (intent.type === 'add_item' && intent.listName !== 'UNRECOGNIZED_COMMAND') {
+    // 🎯 ENHANCED: Handle add item commands with better debugging
+    if (intent.type === 'add_item' && intent.itemName !== 'UNRECOGNIZED_COMMAND') {
       console.log('🎯 Processing add item command');
+      console.log('🎯 Final item name:', quantityExtraction.itemName);
+      console.log('🎯 Final quantity:', quantityExtraction.quantity);
+      console.log('🎯 Target list:', intent.listName);
       
-      // Enhanced action with quantity
+      // 🎯 ENHANCED: Create enhanced action with proper quantity
       const pendingAction: PendingAction = {
         type: intent.type,
         originalInput: input,
-        itemName: quantityExtraction.itemName,
-        extractedQuantity: quantityExtraction.quantity,
+        itemName: quantityExtraction.itemName, // Use cleaned item name from quantity extraction
+        extractedQuantity: quantityExtraction.quantity, // Use converted quantity (text numbers → digits)
         listName: intent.listName,
         suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
       };
+
+      console.log('🎯 Created pending action:', pendingAction);
 
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
@@ -243,7 +253,8 @@ export class AIService {
     console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', {
       command: multiItemResult.command,
       itemCount: multiItemResult.items.length,
-      listName: multiItemResult.listName
+      listName: multiItemResult.listName,
+      items: multiItemResult.items
     });
 
     // Create multi-item pending action
@@ -267,7 +278,7 @@ export class AIService {
   // ========================================
 
   /**
-   * 🔧 Process commands with basic functionality (no API key required)
+   * 🔧 Process commands with basic functionality (ENHANCED: Better text number support)
    */
   private async processBasicCommand(input: string): Promise<AIExecutionResult> {
     console.log('🤖 PROCESSING BASIC COMMAND:', input);
@@ -275,9 +286,11 @@ export class AIService {
     const lowerInput = input.toLowerCase();
     const originalInput = input.trim();
     
-    // Extract quantity and item name
+    // 🎯 ENHANCED: Extract quantity and item name with text number support
     const quantityExtraction = this.quantityExtraction.extractQuantity(originalInput);
     console.log('🔍 QUANTITY EXTRACTION RESULT:', quantityExtraction);
+    console.log('🔍 - Item name:', quantityExtraction.itemName);
+    console.log('🔍 - Quantity:', quantityExtraction.quantity);
     
     // Handle list creation with color support
     if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
@@ -292,7 +305,7 @@ export class AIService {
     // For unrecognized commands, provide helpful feedback
     return {
       success: true,
-      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Füge [Artikel] zu [Liste] hinzu" - Direkt zur spezifizierten Liste\n⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n• "Erstelle Liste [Name]" - Neue Liste erstellen\n🎨 "Erstelle Liste [Name] in [Farbe]" - Bunte Liste\n• "Zeige Listen" - Alle Listen anzeigen\n• "Hilfe" - Ausführliche Hilfe\n\n📋 Beispiele:\n• "Füge Schokolade Menge 2 Stück hinzu"\n• "Füge 500ml Milch zu Spar hinzu"\n\n${this.aiResponse.getNoApiKeyGuidance()}`
+      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Füge [Artikel] zu [Liste] hinzu" - Direkt zur spezifizierten Liste\n⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n• "Erstelle Liste [Name]" - Neue Liste erstellen\n🎨 "Erstelle Liste [Name] in [Farbe]" - Bunte Liste\n• "Zeige Listen" - Alle Listen anzeigen\n• "Hilfe" - Ausführliche Hilfe\n\n📋 Beispiele:\n• "Füge Schokolade Menge 2 Stück hinzu"\n• "Füge 500ml Milch zu Spar hinzu"\n• "Füge drei kg Bananen hinzu"\n• "Füge zwei Liter Milch zu REWE hinzu"\n\n${this.aiResponse.getNoApiKeyGuidance()}`
     };
   }
 
@@ -395,20 +408,21 @@ export class AIService {
   }
 
   /**
-   * 🎨 Handle list creation with color support
+   * 🎨 Handle list creation with color support (ENHANCED: Better case preservation)
    */
   private async handleListCreationWithColor(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
     console.log('🎨 HANDLING LIST CREATION WITH COLOR:', input);
+    console.log('🎨 Quantity extraction:', quantityExtraction);
     
     // Extract color first
     const colorExtraction = this.commandParser.extractColor(input);
     console.log('🎨 COLOR EXTRACTION:', colorExtraction);
     
-    // Parse list creation from clean input (without color)
-    const cleanInput = colorExtraction.cleanInput.toLowerCase();
+    // 🎯 ENHANCED: Parse list creation from original input to preserve case
+    const cleanInput = colorExtraction.cleanInput;
     
-    // Pattern: "erstelle liste [name] mit [item]" or "erstelle liste [name]"
-    const createMatch = cleanInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/);
+    // Pattern: "erstelle liste [name] mit [item]" or "erstelle liste [name]" - case insensitive match but extract from original
+    const createMatch = cleanInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/i);
     
     if (!createMatch) {
       return {
@@ -441,7 +455,13 @@ export class AIService {
         
         if (newArticle) {
           articleIds.push(newArticle.id);
-          itemStates[newArticle.id] = { articleId: newArticle.id, isChecked: false };
+          // 🎯 ENHANCED: Ensure new articles are active
+          itemStates[newArticle.id] = { 
+            articleId: newArticle.id, 
+            isChecked: false, // false = active
+            amount: quantityExtraction.quantity || '',
+            addedAt: new Date().toISOString()
+          };
         }
       }
       
@@ -487,7 +507,7 @@ export class AIService {
   }
 
   /**
-   * 🎯 Handle item action with smart disambiguation
+   * 🎯 Handle item action with smart disambiguation (ENHANCED: Better error handling)
    */
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Handling item action with disambiguation:', action);
@@ -518,24 +538,27 @@ export class AIService {
   }
 
   /**
-   * 🔍 Handle basic item addition (no API key)
+   * 🔍 Handle basic item addition (ENHANCED: Better debugging and text number support)
    */
   private async handleItemAdditionBasic(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
     console.log('🔍 HANDLING BASIC ITEM ADDITION:', input);
+    console.log('🔍 Quantity extraction:', quantityExtraction);
     
     const lowerInput = input.toLowerCase();
     
-    // Parse add patterns
+    // 🎯 ENHANCED: Parse add patterns from original input to preserve case
     const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
     
     if (!addMatch) {
       return {
         success: false,
-        message: `❌ Unverständlicher Hinzufügen-Befehl: "${input}"\n\n💡 Beispiele:\n• "Füge Bananen hinzu"\n• "Füge 2kg Bananen zu Spar hinzu"`
+        message: `❌ Unverständlicher Hinzufügen-Befehl: "${input}"\n\n💡 Beispiele:\n• "Füge Bananen hinzu"\n• "Füge drei kg Bananen zu Spar hinzu"`
       };
     }
     
-    const listName = addMatch[2]?.trim();
+    // Extract list name from original input to preserve case
+    const originalAddMatch = input.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/i);
+    const listName = originalAddMatch?.[2]?.trim();
     const finalItemName = quantityExtraction.itemName;
     
     console.log('🔍 ITEM ADDITION PARSED:', {
@@ -550,10 +573,12 @@ export class AIService {
       type: listName ? 'add_item' : 'select_list',
       originalInput: input,
       itemName: finalItemName,
-      extractedQuantity: quantityExtraction.quantity,
+      extractedQuantity: quantityExtraction.quantity, // This should now include converted text numbers
       listName: listName,
       suggestedDepartment: this.aiResponse.suggestDepartment(finalItemName)
     };
+
+    console.log('🔍 Created pending action:', pendingAction);
 
     if (!listName) {
       // Ask for list selection
@@ -594,147 +619,233 @@ export class AIService {
   }
 
   // ========================================
-  // ACTION EXECUTION HELPERS
+  // ACTION EXECUTION HELPERS (ENHANCED)
   // ========================================
 
-  /**
-   * 🎯 Execute action with new article
-   */
-  private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Executing action with new article:', action.itemName);
-    
-    try {
-      if (action.type === 'create_list') {
-        const newArticle = await this.dataService.createArticle({
-          name: action.itemName,
-          amount: action.extractedQuantity || '',
-          departmentId: action.suggestedDepartment || 'miscellaneous',
-          icon: this.aiResponse.suggestIcon(action.itemName)
-        }).toPromise();
-
-        if (!newArticle) {
-          throw new Error('Failed to create article');
-        }
-
-        const newList = await this.dataService.createList({
-          name: action.listName!,
-          color: this.aiResponse.suggestListColor(action.listName!),
-          icon: '🛒',
-          articleIds: [newArticle.id],
-          itemStates: { [newArticle.id]: { articleId: newArticle.id, isChecked: false } }
-        }).toPromise();
-
-        return {
-          success: true,
-          message: this.aiResponse.getListCreatedMessage(action.listName!, newArticle.name, action.extractedQuantity),
-          listId: newList?.id
-        };
-      } else {
-        // Handle add item without list specified
-        const listOptions = await this.disambiguation.getListSelectionOptions();
-        
-        if (listOptions.length === 0) {
-          return {
-            success: false,
-            message: this.aiResponse.getNoListsFoundMessage()
-          };
-        }
-
-        if (listOptions.length === 1) {
-          return this.executeActionWithNewArticleToList(action, listOptions[0].name);
-        }
-
-        // Ask for list selection
-        action.type = 'select_list';
-        action.articleToAdd = {
-          name: action.itemName,
-          amount: action.extractedQuantity || '',
-          departmentId: action.suggestedDepartment || 'miscellaneous',
-          icon: this.aiResponse.suggestIcon(action.itemName)
-        };
-
-        return {
-          success: true,
-          message: this.aiResponse.getListSelectionMessage(action.itemName, action.extractedQuantity),
-          needsUserInput: true,
-          disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
-          pendingAction: action
-        };
-      }
-    } catch (error) {
-      console.error('🎯 Error creating new article:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Erstellen des neuen Artikels.'
-      };
-    }
-  }
-
-  /**
-   * 🎯 Execute action with new article to specific list
-   */
-  private async executeActionWithNewArticleToList(action: PendingAction, listName: string): Promise<AIExecutionResult> {
-    try {
-      const newArticle = await this.dataService.createArticle({
+/**
+ * 🎯 Execute action with new article (FIXED: Use updateList instead of addArticleToList)
+ */
+private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
+  console.log('🎯 Executing action with new article:', action.itemName);
+  console.log('🎯 Action details:', action);
+  
+  try {
+    if (action.type === 'create_list') {
+      console.log('🎯 Creating new article for list creation');
+      
+      const articleData = {
         name: action.itemName,
         amount: action.extractedQuantity || '',
-        departmentId: this.aiResponse.suggestDepartment(action.itemName),
+        departmentId: action.suggestedDepartment || 'miscellaneous',
         icon: this.aiResponse.suggestIcon(action.itemName)
-      }).toPromise();
+      };
+      
+      console.log('🎯 Article data:', articleData);
+      
+      const newArticle = await this.dataService.createArticle(articleData).toPromise();
 
-      if (newArticle) {
-        const targetList = await this.findListByName(listName);
+      if (!newArticle) {
+        throw new Error('Failed to create article');
+      }
 
-        if (targetList) {
-          await this.dataService.addArticleToList(targetList.id, newArticle.id).toPromise();
+      console.log('🎯 Created article:', newArticle);
+
+      const listData = {
+        name: action.listName!,
+        color: this.aiResponse.suggestListColor(action.listName!),
+        icon: '🛒',
+        articleIds: [newArticle.id],
+        itemStates: { 
+          [newArticle.id]: { 
+            articleId: newArticle.id, 
+            isChecked: false, // false = active
+            amount: action.extractedQuantity || ''
+          } 
+        }
+      };
+
+      console.log('🎯 List data:', listData);
+
+      const newList = await this.dataService.createList(listData).toPromise();
+
+      console.log('🎯 Created list:', newList);
+
+      return {
+        success: true,
+        message: this.aiResponse.getListCreatedMessage(action.listName!, newArticle.name, action.extractedQuantity),
+        listId: newList?.id
+      };
+    } else {
+      // Handle add item without list specified
+      const listOptions = await this.disambiguation.getListSelectionOptions();
+      
+      if (listOptions.length === 0) {
+        return {
+          success: false,
+          message: this.aiResponse.getNoListsFoundMessage()
+        };
+      }
+
+      if (listOptions.length === 1) {
+        return this.executeActionWithNewArticleToList(action, listOptions[0].name);
+      }
+
+      // Ask for list selection
+      action.type = 'select_list';
+      action.articleToAdd = {
+        name: action.itemName,
+        amount: action.extractedQuantity || '',
+        departmentId: action.suggestedDepartment || 'miscellaneous',
+        icon: this.aiResponse.suggestIcon(action.itemName)
+      };
+
+      return {
+        success: true,
+        message: this.aiResponse.getListSelectionMessage(action.itemName, action.extractedQuantity),
+        needsUserInput: true,
+        disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
+        pendingAction: action
+      };
+    }
+  } catch (error) {
+    console.error('🎯 Error creating new article:', error);
+    return {
+      success: false,
+      message: '❌ Fehler beim Erstellen des neuen Artikels.'
+    };
+  }
+}
+
+/**
+ * 🎯 Execute action with new article to specific list (FIXED: Use updateList instead of addArticleToList)
+ */
+private async executeActionWithNewArticleToList(action: PendingAction, listName: string): Promise<AIExecutionResult> {
+  console.log('🎯 Executing action with new article to list:', listName);
+  console.log('🎯 Action details:', action);
+  
+  try {
+    console.log('🎯 Creating new article...');
+    
+    const articleData = {
+      name: action.itemName,
+      amount: action.extractedQuantity || '',
+      departmentId: this.aiResponse.suggestDepartment(action.itemName),
+      icon: this.aiResponse.suggestIcon(action.itemName)
+    };
+    
+    console.log('🎯 Article data to create:', articleData);
+
+    const newArticle = await this.dataService.createArticle(articleData).toPromise();
+
+    if (newArticle) {
+      console.log('✅ Created article:', newArticle);
+      
+      console.log('🎯 Finding target list...');
+      const targetList = await this.findListByName(listName);
+
+      if (targetList) {
+        console.log('✅ Found target list:', targetList.name);
+        console.log('🎯 Adding article to list using updateList method...');
+        
+        // 🎯 FIXED: Use updateList method instead of addArticleToList
+        const updatedArticleIds = [...targetList.articleIds];
+        if (!updatedArticleIds.includes(newArticle.id)) {
+          updatedArticleIds.push(newArticle.id);
+        }
+
+        // 🎯 CRITICAL: Create item states with explicit active state
+        const updatedItemStates = { ...targetList.itemStates };
+        updatedItemStates[newArticle.id] = {
+          articleId: newArticle.id,
+          isChecked: false, // 🎯 FALSE = ACTIVE/NOT STRIKED OUT
+          amount: action.extractedQuantity || ''
+        };
+
+        console.log(`🎯 Setting article ${newArticle.id} as ACTIVE (isChecked: false)`);
+        console.log('🔍 Item state:', updatedItemStates[newArticle.id]);
+        console.log('🔍 All updated item states:', updatedItemStates);
+
+        // Use existing updateList method
+        const updateResult = await this.dataService.updateList(targetList.id, {
+          articleIds: updatedArticleIds,
+          itemStates: updatedItemStates
+        }).toPromise();
+        
+        if (updateResult) {
+          console.log('✅ Successfully added article to list using updateList');
           return {
             success: true,
             message: this.aiResponse.getItemAddedMessage(newArticle.name, action.extractedQuantity, targetList.name),
             listId: targetList.id
           };
         } else {
+          console.error('❌ updateList returned false');
           return {
             success: false,
-            message: `❌ Liste "${listName}" nicht gefunden.`
+            message: `❌ Fehler beim Hinzufügen von "${newArticle.name}" zur Liste "${targetList.name}".`
           };
         }
+      } else {
+        console.error('❌ Target list not found:', listName);
+        return {
+          success: false,
+          message: `❌ Liste "${listName}" nicht gefunden.`
+        };
       }
-    } catch (error) {
-      console.error('🔍 Error adding to list:', error);
+    } else {
+      console.error('❌ Failed to create article');
       return {
         success: false,
-        message: '❌ Fehler beim Hinzufügen des Artikels.'
+        message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
       };
     }
-    
+  } catch (error) {
+    console.error('🔍 Error adding to list:', error);
     return {
       success: false,
-      message: '❌ Unerwarteter Fehler beim Hinzufügen des Artikels.'
+      message: '❌ Fehler beim Hinzufügen des Artikels.'
     };
   }
+}
 
   /**
-   * 🎯 Find list by name
+   * 🎯 Find list by name (ENHANCED: Better case-insensitive matching)
    */
   private async findListByName(listName: string): Promise<ShoppingList | null> {
     try {
+      console.log('🔍 Finding list by name:', listName);
+      
       const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-      if (!lists) return null;
+      if (!lists) {
+        console.log('🔍 No lists found');
+        return null;
+      }
+      
+      console.log('🔍 Available lists:', lists.map(l => l.name));
       
       const normalizedQuery = listName.toLowerCase().trim();
       
-      // Exact match first
+      // Exact match first (case-insensitive)
       let match = lists.find(list => 
         list.name.toLowerCase() === normalizedQuery
       );
       
-      if (match) return match;
+      if (match) {
+        console.log('🔍 Found exact match:', match.name);
+        return match;
+      }
       
       // Partial match
       match = lists.find(list => 
         list.name.toLowerCase().includes(normalizedQuery) ||
         normalizedQuery.includes(list.name.toLowerCase())
       );
+      
+      if (match) {
+        console.log('🔍 Found partial match:', match.name);
+      } else {
+        console.log('🔍 No match found for:', listName);
+      }
       
       return match || null;
     } catch (error) {

@@ -28,13 +28,17 @@ import { ArticleFormComponent, ArticleFormData } from '../../../shared/component
 export class AddArticleComponent implements OnDestroy {
   isSaving = false;
   private destroy$ = new Subject<void>();
+  prefilledName = '';
 
   constructor(
     private dataService: DataService,
     private router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar
-  ) {}
+    ) {
+      // Read prefilled name from query params
+      this.prefilledName = this.route.snapshot.queryParamMap.get('name') || '';
+    }
 
   ngOnDestroy(): void {
     this.destroy$.next();

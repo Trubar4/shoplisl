@@ -545,29 +545,306 @@ export class DisambiguationService {
   // HELPER METHODS (TEMPORARY - SHOULD BE IN AI-RESPONSE SERVICE)
   // ========================================
 
-  /**
-   * 🎯 Execute action with existing article
-   */
-  private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    // This would be moved to a different service in the final implementation
-    // For now, it's a simplified implementation
-    return {
-      success: true,
-      message: `✅ Artikel "${article.name}" wurde verarbeitet.`
-    };
-  }
+/**
+ * 🎯 Execute action with existing article (FIXED: Actually adds to list)
+ */
+private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
+  console.log('🎯 EXECUTING ACTION WITH EXISTING ARTICLE:', { action, article });
+  
+  try {
+    // Check if target list is specified
+    if (action.listName) {
+      console.log('🎯 Target list specified:', action.listName);
+      
+      // Find the target list
+      const targetList = await this.findListByName(action.listName);
+      
+      if (!targetList) {
+        return {
+          success: false,
+          message: `❌ Liste "${action.listName}" nicht gefunden.`
+        };
+      }
+      
+      console.log('🎯 Found target list:', targetList.name);
+      
+      // Add existing article to the list using updateList method
+      const updatedArticleIds = [...targetList.articleIds];
+      if (!updatedArticleIds.includes(article.id)) {
+        updatedArticleIds.push(article.id);
+      }
 
-  /**
-   * 🎯 Execute action with new article
-   */
-  private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
-    // This would be moved to a different service in the final implementation
-    // For now, it's a simplified implementation
+      // 🎯 CRITICAL: Create item states with explicit active state
+      const updatedItemStates = { ...targetList.itemStates };
+      updatedItemStates[article.id] = {
+        articleId: article.id,
+        isChecked: false, // 🎯 FALSE = ACTIVE/NOT STRIKED OUT
+        amount: action.extractedQuantity || article.amount || ''
+      };
+
+      console.log(`🎯 Setting existing article ${article.id} as ACTIVE (isChecked: false)`);
+      console.log('🔍 Item state:', updatedItemStates[article.id]);
+
+      // Use existing updateList method
+      const updateResult = await this.dataService.updateList(targetList.id, {
+        articleIds: updatedArticleIds,
+        itemStates: updatedItemStates
+      }).toPromise();
+      
+      if (updateResult) {
+        console.log('✅ Successfully added existing article to list');
+        const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+        return {
+          success: true,
+          message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+          listId: targetList.id
+        };
+      } else {
+        console.error('❌ updateList returned false');
+        return {
+          success: false,
+          message: `❌ Fehler beim Hinzufügen von "${article.name}" zur Liste "${targetList.name}".`
+        };
+      }
+      
+    } else {
+      // No target list specified - ask for list selection
+      console.log('🎯 No target list specified, asking for list selection');
+      
+      const listOptions = await this.getListSelectionOptions();
+      
+      if (listOptions.length === 0) {
+        return {
+          success: false,
+          message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
+        };
+      }
+
+      if (listOptions.length === 1) {
+        // Use the only available list directly
+        const singleList = listOptions[0];
+        const targetList = await this.findListByName(singleList.name);
+        
+        if (targetList) {
+          // Add to the single list using updateList
+          const updatedArticleIds = [...targetList.articleIds];
+          if (!updatedArticleIds.includes(article.id)) {
+            updatedArticleIds.push(article.id);
+          }
+
+          const updatedItemStates = { ...targetList.itemStates };
+          updatedItemStates[article.id] = {
+            articleId: article.id,
+            isChecked: false, // Active state
+            amount: action.extractedQuantity || article.amount || ''
+          };
+
+          const updateResult = await this.dataService.updateList(targetList.id, {
+            articleIds: updatedArticleIds,
+            itemStates: updatedItemStates
+          }).toPromise();
+          
+          if (updateResult) {
+            const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+            return {
+              success: true,
+              message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
+              listId: targetList.id
+            };
+          }
+        }
+      }
+
+      // Multiple lists - ask user to choose
+      const listSelectionAction: PendingAction = {
+        type: 'select_list',
+        originalInput: action.originalInput,
+        itemName: article.name,
+        extractedQuantity: action.extractedQuantity,
+        listName: undefined,
+        suggestedDepartment: action.suggestedDepartment,
+        articleToAdd: {
+          id: article.id,
+          name: article.name,
+          amount: action.extractedQuantity || article.amount || '',
+          departmentId: article.departmentId || 'miscellaneous',
+          icon: article.icon || '📦'
+        }
+      };
+
+      const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+      return {
+        success: true,
+        message: `🎯 Zu welcher Liste soll "${article.name}"${quantityText} hinzugefügt werden?`,
+        needsUserInput: true,
+        disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
+        pendingAction: listSelectionAction
+      };
+    }
+    
+  } catch (error) {
+    console.error('🎯 Error executing action with existing article:', error);
     return {
-      success: true,
-      message: `✅ Neuer Artikel "${action.itemName}" wurde erstellt.`
+      success: false,
+      message: `❌ Fehler beim Hinzufügen von "${article.name}".`
     };
   }
+}
+
+/**
+ * 🎯 Execute action with new article (FIXED: Actually creates and adds to list)
+ */
+private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
+  console.log('🎯 EXECUTING ACTION WITH NEW ARTICLE:', action);
+  
+  try {
+    // Create new article
+    const articleData = {
+      name: action.itemName,
+      amount: action.extractedQuantity || '',
+      departmentId: action.suggestedDepartment || 'miscellaneous',
+      icon: this.suggestIcon(action.itemName)
+    };
+    
+    console.log('🎯 Creating new article:', articleData);
+    
+    const newArticle = await this.dataService.createArticle(articleData).toPromise();
+    
+    if (!newArticle) {
+      return {
+        success: false,
+        message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
+      };
+    }
+    
+    console.log('✅ Created new article:', newArticle);
+    
+    // Now add the new article to the list (same logic as existing article)
+    if (action.listName) {
+      console.log('🎯 Target list specified:', action.listName);
+      
+      const targetList = await this.findListByName(action.listName);
+      
+      if (!targetList) {
+        return {
+          success: false,
+          message: `❌ Liste "${action.listName}" nicht gefunden.`
+        };
+      }
+      
+      // Add new article to the list using updateList method
+      const updatedArticleIds = [...targetList.articleIds];
+      if (!updatedArticleIds.includes(newArticle.id)) {
+        updatedArticleIds.push(newArticle.id);
+      }
+
+      const updatedItemStates = { ...targetList.itemStates };
+      updatedItemStates[newArticle.id] = {
+        articleId: newArticle.id,
+        isChecked: false, // Active state
+        amount: action.extractedQuantity || ''
+      };
+
+      const updateResult = await this.dataService.updateList(targetList.id, {
+        articleIds: updatedArticleIds,
+        itemStates: updatedItemStates
+      }).toPromise();
+      
+      if (updateResult) {
+        console.log('✅ Successfully added new article to list');
+        const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+        return {
+          success: true,
+          message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
+          listId: targetList.id
+        };
+      } else {
+        return {
+          success: false,
+          message: `❌ Fehler beim Hinzufügen von "${newArticle.name}" zur Liste "${targetList.name}".`
+        };
+      }
+      
+    } else {
+      // No target list specified - ask for list selection
+      const listOptions = await this.getListSelectionOptions();
+      
+      if (listOptions.length === 0) {
+        return {
+          success: false,
+          message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
+        };
+      }
+
+      if (listOptions.length === 1) {
+        // Use the only available list directly
+        const singleList = listOptions[0];
+        const targetList = await this.findListByName(singleList.name);
+        
+        if (targetList) {
+          const updatedArticleIds = [...targetList.articleIds];
+          if (!updatedArticleIds.includes(newArticle.id)) {
+            updatedArticleIds.push(newArticle.id);
+          }
+
+          const updatedItemStates = { ...targetList.itemStates };
+          updatedItemStates[newArticle.id] = {
+            articleId: newArticle.id,
+            isChecked: false,
+            amount: action.extractedQuantity || ''
+          };
+
+          const updateResult = await this.dataService.updateList(targetList.id, {
+            articleIds: updatedArticleIds,
+            itemStates: updatedItemStates
+          }).toPromise();
+          
+          if (updateResult) {
+            const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+            return {
+              success: true,
+              message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
+              listId: targetList.id
+            };
+          }
+        }
+      }
+
+      // Multiple lists - ask user to choose
+      const listSelectionAction: PendingAction = {
+        type: 'select_list',
+        originalInput: action.originalInput,
+        itemName: newArticle.name,
+        extractedQuantity: action.extractedQuantity,
+        listName: undefined,
+        suggestedDepartment: action.suggestedDepartment,
+        articleToAdd: {
+          id: newArticle.id,
+          name: newArticle.name,
+          amount: action.extractedQuantity || '',
+          departmentId: newArticle.departmentId || 'miscellaneous',
+          icon: newArticle.icon || '📦'
+        }
+      };
+
+      const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+      return {
+        success: true,
+        message: `🎯 Artikel "${newArticle.name}" wurde erstellt.\n\nZu welcher Liste soll er${quantityText} hinzugefügt werden?`,
+        needsUserInput: true,
+        disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
+        pendingAction: listSelectionAction
+      };
+    }
+    
+  } catch (error) {
+    console.error('🎯 Error executing action with new article:', error);
+    return {
+      success: false,
+      message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
+    };
+  }
+}
 
   /**
    * 🎯 Find list by name

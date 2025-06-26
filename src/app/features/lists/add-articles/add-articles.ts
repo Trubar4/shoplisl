@@ -91,14 +91,29 @@ export class AddArticlesToListComponent implements OnInit {
     this.hasChanges = true;
   }
 
+  /**
+   * 🎯 FIXED: Use existing updateList method with proper active state
+   */
   onSave(): void {
+    console.log('🎯 Starting save operation...');
+    
     this.list$.subscribe(list => {
-      if (!list) return;
+      if (!list) {
+        console.error('❌ No list found');
+        return;
+      }
+      
+      console.log('🎯 Current list:', list.name);
+      console.log('🎯 Current articleIds:', list.articleIds);
+      console.log('🎯 Current itemStates:', list.itemStates);
       
       const articleStates = this.articleStatesSubject.value;
       const newArticleIds: string[] = [];
+      const addedArticleIds: string[] = []; // Track newly added articles
       
       this.articlesWithToggle$.subscribe(articles => {
+        console.log('🎯 Processing articles for save...');
+        
         articles.forEach(article => {
           const isInList = articleStates[article.id] !== undefined 
             ? articleStates[article.id] 
@@ -106,22 +121,67 @@ export class AddArticlesToListComponent implements OnInit {
             
           if (isInList) {
             newArticleIds.push(article.id);
+            
+            // Check if this is a newly added article
+            if (!list.articleIds.includes(article.id)) {
+              addedArticleIds.push(article.id);
+              console.log(`🎯 New article detected: ${article.name} (${article.id})`);
+            }
           }
         });
       }).unsubscribe();
       
-    const newItemStates: { [articleId: string]: any } = {};
-    newArticleIds.forEach(articleId => {
-    newItemStates[articleId] = { articleId, isChecked: false };
-    });
+      console.log('🎯 Final articleIds:', newArticleIds);
+      console.log('🎯 Newly added articles:', addedArticleIds);
+      
+      // 🎯 FIXED: Create item states preserving existing states and ensuring new articles are active
+      const newItemStates: { [articleId: string]: any } = {};
+      
+      newArticleIds.forEach(articleId => {
+        if (addedArticleIds.includes(articleId)) {
+          // 🎯 NEW ARTICLES: Explicitly set as ACTIVE (isChecked: false)
+          newItemStates[articleId] = { 
+            articleId, 
+            isChecked: false, // 🎯 FALSE = ACTIVE/NOT STRIKED OUT
+            amount: '' // Default empty amount
+          };
+          console.log(`✅ Set new article ${articleId} as ACTIVE (isChecked: false)`);
+        } else {
+          // 🎯 EXISTING ARTICLES: Preserve existing state or default to active
+          newItemStates[articleId] = list.itemStates[articleId] || { 
+            articleId, 
+            isChecked: false,
+            amount: ''
+          };
+          console.log(`🔄 Preserved existing state for article ${articleId}:`, newItemStates[articleId]);
+        }
+      });
 
-    this.dataService.updateList(this.listId, {
-    articleIds: newArticleIds,
-    itemStates: newItemStates
-    }).subscribe(updatedList => {
-        if (updatedList) {
-          this.snackBar.open('Liste aktualisiert', 'OK', { duration: 2000 });
-          this.router.navigate(['/lists', this.listId]);
+      console.log('🔍 Final item states:', newItemStates);
+
+      // 🎯 FIXED: Use existing updateList method (no permissions issues)
+      this.dataService.updateList(this.listId, {
+        articleIds: newArticleIds,
+        itemStates: newItemStates
+      }).subscribe({
+        next: (updatedList) => {
+          if (updatedList) {
+            const addedCount = addedArticleIds.length;
+            const message = addedCount > 0 
+              ? `Liste aktualisiert - ${addedCount} neue Artikel hinzugefügt` 
+              : 'Liste aktualisiert';
+            
+            console.log(`✅ Successfully updated list: ${message}`);
+            this.snackBar.open(message, 'OK', { duration: 3000 });
+            this.router.navigate(['/lists', this.listId]);
+          } else {
+            console.error('❌ updateList returned null/undefined');
+            this.snackBar.open('Fehler beim Aktualisieren', '', { duration: 3000 });
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error updating list:', error);
+          this.snackBar.open('Fehler beim Aktualisieren der Liste', '', { duration: 3000 });
         }
       });
     }).unsubscribe();

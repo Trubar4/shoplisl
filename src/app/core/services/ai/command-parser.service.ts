@@ -54,20 +54,21 @@ export class CommandParserService {
   ) {}
 
   // ========================================
-  // MAIN COMMAND PARSING
+  // MAIN COMMAND PARSING (FIXED)
   // ========================================
 
   /**
-   * 🎯 Parse command intent from input
+   * 🎯 Parse command intent from input (FIXED: preserves original case)
    */
   parseIntent(input: string, cleanItemName?: string): Omit<PendingAction, 'extractedQuantity' | 'suggestedDepartment'> {
+    const originalInput = input.trim(); // Preserve original
     const lowerInput = input.toLowerCase();
     
     // Handle API key commands
     if (lowerInput.includes('api key')) {
       return {
         type: 'add_item', // Will be handled specially
-        originalInput: input,
+        originalInput: originalInput,
         itemName: 'API_KEY_COMMAND'
       };
     }
@@ -76,7 +77,7 @@ export class CommandParserService {
     if (lowerInput.includes('hilfe') || lowerInput.includes('help')) {
       return {
         type: 'add_item', // Will be handled specially
-        originalInput: input,
+        originalInput: originalInput,
         itemName: 'HELP_COMMAND'
       };
     }
@@ -85,7 +86,7 @@ export class CommandParserService {
     if (lowerInput.includes('test')) {
       return {
         type: 'add_item', // Will be handled specially
-        originalInput: input,
+        originalInput: originalInput,
         itemName: 'TEST_COMMAND'
       };
     }
@@ -94,69 +95,79 @@ export class CommandParserService {
     if (lowerInput.includes('zeige') && lowerInput.includes('liste')) {
       return {
         type: 'add_item', // Will be handled specially
-        originalInput: input,
+        originalInput: originalInput,
         itemName: 'SHOW_LISTS_COMMAND'
       };
     }
 
-    // Create list patterns: "Erstelle Liste REWE mit Milch"
+    // 🎯 FIXED: Create list patterns - extract from original input to preserve case
     const createListMatch = lowerInput.match(/erstelle\s+liste\s+(.+?)\s+mit\s+(.+)/);
     if (createListMatch) {
-      // For create list, extract item from the pattern and clean it
-      const extractedItem = createListMatch[2].replace(/\s+hinzu$/, '').trim();
-      return {
-        type: 'create_list',
-        originalInput: input,
-        itemName: this.cleanItemName(extractedItem),
-        listName: createListMatch[1].trim()
-      };
+      // Extract positions from lowercase match but get content from original input
+      const originalMatch = originalInput.match(/erstelle\s+liste\s+(.+?)\s+mit\s+(.+)/i);
+      if (originalMatch) {
+        const extractedItem = originalMatch[2].replace(/\s+hinzu$/, '').trim();
+        return {
+          type: 'create_list',
+          originalInput: originalInput,
+          itemName: this.cleanItemName(extractedItem),
+          listName: originalMatch[1].trim() // 🎯 FIXED: Extract from original to preserve case
+        };
+      }
     }
 
-    // Create list without items: "Erstelle Liste REWE"
+    // 🎯 FIXED: Create list without items - preserve case
     const createListSimpleMatch = lowerInput.match(/erstelle\s+liste\s+(.+)$/);
     if (createListSimpleMatch && !createListSimpleMatch[1].includes('mit')) {
-      return {
-        type: 'create_list',
-        originalInput: input,
-        itemName: '',
-        listName: createListSimpleMatch[1].trim()
-      };
+      // Extract from original input to preserve case
+      const originalMatch = originalInput.match(/erstelle\s+liste\s+(.+)$/i);
+      if (originalMatch) {
+        return {
+          type: 'create_list',
+          originalInput: originalInput,
+          itemName: '',
+          listName: originalMatch[1].trim() // 🎯 FIXED: Extract from original to preserve case
+        };
+      }
     }
 
-    // Add to specific list: "Füge Bananen zu Spar hinzu"
+    // 🎯 FIXED: Add to specific list - preserve case
     const addToListMatch = lowerInput.match(/füge\s+(.+?)\s+zu\s+(.+?)\s+hinzu/);
     if (addToListMatch) {
-      // For specific list addition, use the already-clean item name from extractQuantity
-      return {
-        type: 'add_item',
-        originalInput: input,
-        itemName: cleanItemName || this.cleanItemName(addToListMatch[1]),
-        listName: addToListMatch[2].trim()
-      };
+      // Extract from original input to preserve case
+      const originalMatch = originalInput.match(/füge\s+(.+?)\s+zu\s+(.+?)\s+hinzu/i);
+      if (originalMatch) {
+        return {
+          type: 'add_item',
+          originalInput: originalInput,
+          itemName: cleanItemName || this.cleanItemName(originalMatch[1]),
+          listName: originalMatch[2].trim() // 🎯 FIXED: Extract from original to preserve case
+        };
+      }
     }
 
     // Generic add: "Füge Bananen hinzu" or "Füge Joghurt Menge 1 Becher hinzu"
     if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
       return {
         type: 'add_item',
-        originalInput: input,
-        itemName: cleanItemName || this.extractItemFromFügeCommand(input)
+        originalInput: originalInput,
+        itemName: cleanItemName || this.extractItemFromFügeCommand(originalInput) // Use original input
       };
     }
 
     // Default: unrecognized command
     return {
       type: 'add_item',
-      originalInput: input,
+      originalInput: originalInput,
       itemName: 'UNRECOGNIZED_COMMAND'
     };
   }
 
   /**
-   * 🎯 Extract item name from "Füge ... hinzu" command
+   * 🎯 Extract item name from "Füge ... hinzu" command (FIXED: use original input)
    */
   private extractItemFromFügeCommand(input: string): string {
-    const match = input.match(/füge\s+(.+?)\s+hinzu/i);
+    const match = input.match(/füge\s+(.+?)\s+hinzu/i); // Case insensitive but preserve original
     if (match) {
       return this.cleanItemName(match[1]);
     }
@@ -177,13 +188,14 @@ export class CommandParserService {
   }
 
   // ========================================
-  // COLOR EXTRACTION
+  // COLOR EXTRACTION (FIXED)
   // ========================================
 
   /**
-   * 🎨 Extract color from German input
+   * 🎨 Extract color from German input (FIXED: preserve original case)
    */
   extractColor(input: string): ColorExtraction {
+    const originalInput = input; // Preserve original
     const lowerInput = input.toLowerCase();
     
     // Pattern: "in [color]" or "mit [color]" or "[color]"
@@ -199,8 +211,8 @@ export class CommandParserService {
         const colorName = match[1].toLowerCase();
         const colorHex = this.COLOR_KEYWORDS[colorName];
         if (colorHex) {
-          // Remove color from input
-          const cleanInput = input.replace(new RegExp(match[0], 'i'), '').trim();
+          // 🎯 FIXED: Remove color from original input to preserve case
+          const cleanInput = originalInput.replace(new RegExp(match[0], 'i'), '').trim();
           return { 
             colorName, 
             colorHex, 
@@ -210,24 +222,25 @@ export class CommandParserService {
       }
     }
 
-    return { cleanInput: input };
+    return { cleanInput: originalInput }; // Return original input
   }
 
   // ========================================
-  // COMMAND CLASSIFICATION
+  // COMMAND CLASSIFICATION (FIXED)
   // ========================================
 
   /**
-   * 🎯 Classify command type and confidence
+   * 🎯 Classify command type and confidence (FIXED: preserve original case)
    */
   classifyCommand(input: string): CommandIntent {
+    const originalInput = input.trim(); // Preserve original
     const lowerInput = input.toLowerCase().trim();
     
     // API Key commands
     if (lowerInput.includes('api key') || lowerInput.includes('set api')) {
       return {
         type: 'api_key',
-        originalInput: input,
+        originalInput: originalInput,
         confidence: 1.0
       };
     }
@@ -236,7 +249,7 @@ export class CommandParserService {
     if (lowerInput.includes('hilfe') || lowerInput.includes('help')) {
       return {
         type: 'help',
-        originalInput: input,
+        originalInput: originalInput,
         confidence: 1.0
       };
     }
@@ -245,7 +258,7 @@ export class CommandParserService {
     if (lowerInput.includes('test')) {
       return {
         type: 'test',
-        originalInput: input,
+        originalInput: originalInput,
         confidence: 1.0
       };
     }
@@ -254,43 +267,51 @@ export class CommandParserService {
     if (lowerInput.includes('zeige') && lowerInput.includes('liste')) {
       return {
         type: 'show_lists',
-        originalInput: input,
+        originalInput: originalInput,
         confidence: 1.0
       };
     }
 
-    // Create list commands
+    // 🎯 FIXED: Create list commands - preserve original case
     if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
       const listMatch = lowerInput.match(/erstelle\s+liste\s+(.+?)(\s+mit\s+(.+))?$/);
       if (listMatch) {
-        return {
-          type: 'create_list',
-          originalInput: input,
-          listName: listMatch[1].trim(),
-          itemName: listMatch[3]?.trim(),
-          confidence: 0.95
-        };
+        // Extract from original input to preserve case
+        const originalMatch = originalInput.match(/erstelle\s+liste\s+(.+?)(\s+mit\s+(.+))?$/i);
+        if (originalMatch) {
+          return {
+            type: 'create_list',
+            originalInput: originalInput,
+            listName: originalMatch[1].trim(), // 🎯 FIXED: From original input
+            itemName: originalMatch[3]?.trim(), // 🎯 FIXED: From original input
+            confidence: 0.95
+          };
+        }
       }
     }
 
-    // Add item commands
+    // 🎯 FIXED: Add item commands - preserve original case
     if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
       const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
       if (addMatch) {
-        return {
-          type: 'add_item',
-          originalInput: input,
-          itemName: addMatch[1].trim(),
-          listName: addMatch[2]?.trim(),
-          confidence: 0.95
-        };
+        // Extract from original input to preserve case
+        const originalMatch = originalInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/i);
+        if (originalMatch) {
+          return {
+            type: 'add_item',
+            originalInput: originalInput,
+            itemName: originalMatch[1].trim(), // 🎯 FIXED: From original input
+            listName: originalMatch[2]?.trim(), // 🎯 FIXED: From original input
+            confidence: 0.95
+          };
+        }
       }
     }
 
     // Unrecognized command
     return {
       type: 'unrecognized',
-      originalInput: input,
+      originalInput: originalInput,
       confidence: 0.0
     };
   }

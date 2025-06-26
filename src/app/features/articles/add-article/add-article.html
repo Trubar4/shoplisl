@@ -11,6 +11,7 @@
   <app-article-form
     [isEditMode]="false"
     [isSubmitting]="isSaving"
+    [prefilledName]="prefilledName"
     (formSubmit)="onSave($event)"
     (formCancel)="onCancel()">
   </app-article-form>

@@ -47,6 +47,7 @@ export interface ArticleFormData {
 })
 export class ArticleFormComponent implements OnInit, OnDestroy {
   @Input() article: Article | null = null; // For edit mode
+  @Input() prefilledName: string = '';
   @Input() isEditMode = false;
   @Input() isSubmitting = false;
   @Input() isDeleting = false;
@@ -90,6 +91,9 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
       if (this.isEditMode) {
         this.containingLists$ = this.dataService.getListsContainingArticle(this.article.id);
       }
+    } else if (this.prefilledName) {
+      // Pre-fill the name for new articles
+      this.formData.name = this.prefilledName;
     }
   }
 

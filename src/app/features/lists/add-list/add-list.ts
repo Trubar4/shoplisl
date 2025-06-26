@@ -106,6 +106,29 @@ export class AddListComponent implements OnInit {
     });
   }
 
+  /**
+   * 🎯 NEW: Capitalize first letter of input
+   */
+  private capitalizeFirstLetter(text: string): string {
+    if (!text || text.length === 0) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  /**
+   * 🎯 NEW: Handle input change to auto-capitalize first letter
+   */
+  onNameInput(event: any): void {
+    const input = event.target.value;
+    if (input && input.length === 1) {
+      // Only capitalize when user types the first character
+      this.list.name = this.capitalizeFirstLetter(input);
+      // Update the input field to reflect the change
+      event.target.value = this.list.name;
+    } else {
+      this.list.name = input;
+    }
+  }
+
   getTitle(): string {
     return this.isEditMode ? 'Liste bearbeiten' : 'Liste hinzufügen';
   }
@@ -128,10 +151,13 @@ export class AddListComponent implements OnInit {
       return;
     }
   
+    // 🎯 ENHANCED: Always capitalize first letter before saving
+    const finalName = this.capitalizeFirstLetter(this.list.name.trim());
+  
     if (this.isEditMode && this.editListId) {
       // Update existing list
       const updates = {
-        name: this.list.name.trim(),
+        name: finalName,
         color: this.list.color,
         icon: this.list.icon
       };
@@ -158,7 +184,7 @@ export class AddListComponent implements OnInit {
     } else {
       // Create new list
       this.dataService.createList({
-        name: this.list.name.trim(),
+        name: finalName,
         color: this.list.color,
         icon: this.list.icon,
         articleIds: [],
@@ -195,8 +221,9 @@ export class AddListComponent implements OnInit {
       return true; // In create mode, always consider as "has changes"
     }
 
+    const currentName = this.capitalizeFirstLetter(this.list.name.trim());
     return (
-      this.list.name.trim() !== this.originalList.name ||
+      currentName !== this.originalList.name ||
       this.list.color !== this.originalList.color ||
       this.list.icon !== this.originalList.icon
     );

@@ -927,11 +927,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onCreateNewArticle(): void {
+    const queryParams: any = { 
+      returnTo: `/lists/${this.listId}?mode=edit`,
+      listId: this.listId
+    };
+    
+    // Pre-fill name if there's a search query
+    if (this.searchQuery.trim()) {
+      queryParams.name = this.searchQuery.trim();
+    }
+    
     this.router.navigate(['/articles/add'], {
-      queryParams: { 
-        returnTo: `/lists/${this.listId}?mode=edit`,
-        listId: this.listId
-      }
+      queryParams
     });
   }
 
