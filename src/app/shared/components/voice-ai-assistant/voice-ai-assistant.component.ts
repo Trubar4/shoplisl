@@ -118,6 +118,20 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.initializeChat();
     this.setupPWAViewport();
     this.setupMessageScrolling();
+    
+    // ENHANCED: Check for restored conversation context
+    setTimeout(() => {
+      const context = this.chatPersistence.getConversationContext();
+      if (context?.waitingForArticles) {
+        console.log('🔄 Restored conversation context for:', context.waitingForArticles.listName);
+        // Show restored conversation state
+        this.chatPersistence.addMessage(
+          `🔄 Unterhaltung wiederhergestellt: Warte auf Artikel für "${context.waitingForArticles.listName}"`, 
+          'system'
+        );
+      }
+    }, 500);
+    
     this.logChatStatus();
   }
 
@@ -129,7 +143,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // INITIALIZATION METHODS
   // ========================================
   private initializeChat(): void {
-    this.chatPersistence.initializeIfEmpty();
+    this.chatPersistence.initializeWithContext();
   }
 
   private setupMessageScrolling(): void {
@@ -205,19 +219,105 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   
     try {
       console.log('💬 CALLING AI SERVICE WITH:', userMessage);
+      
+      // CRITICAL: Check for COMMANDS first, BEFORE conversation context
+      const lowerInput = userMessage.toLowerCase().trim();
+      
+      // 1. Handle system commands (bypass conversation)
+      if (lowerInput.includes('hilfe') || 
+          lowerInput.includes('help') ||
+          lowerInput.includes('test') ||
+          lowerInput.includes('api key') ||
+          lowerInput.includes('zeige liste')) {
+        console.log('💬 System command detected - bypassing conversation');
+        const result = await this.aiService.executeCommand(userMessage);
+        await this.handleAIResult(result);
+        return;
+      }
+      
+      // 2. Handle list creation commands (bypass conversation)
+      if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
+        console.log('💬 List creation command detected - bypassing conversation');
+        // Clear any existing conversation context first
+        this.chatPersistence.clearConversationContext();
+        
+        const result = await this.aiService.executeCommand(userMessage);
+        await this.handleAIResult(result);
+        return;
+      }
+      
+      // 3. Handle explicit "Füge ... hinzu" commands (bypass conversation)
+      if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+        console.log('💬 Explicit add command detected - bypassing conversation');
+        const result = await this.aiService.executeCommand(userMessage);
+        await this.handleAIResult(result);
+        return;
+      }
+      
+      // 4. NOW check for conversation context (only for simple inputs)
+      const isInConversation = this.isInActiveConversation();
+      console.log('💬 In active conversation:', isInConversation);
+      
+      if (isInConversation) {
+        const targetList = this.chatPersistence.getCurrentTargetList();
+        if (targetList) {
+          console.log('💬 Processing in conversation for list:', targetList.listName);
+          
+          // Check for conversation end
+          if (lowerInput === 'nein' || lowerInput === 'fertig' || 
+              lowerInput === 'stop' || lowerInput === 'ende' ||
+              lowerInput === 'nein danke' || lowerInput === 'nicht mehr') {
+            
+            this.chatPersistence.clearConversationContext();
+            this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
+            this.isProcessing = false;
+            return;
+          }
+          
+          // CRITICAL: Process as article for current list (only for simple inputs)
+          const enhancedInput = `Füge ${userMessage} zu ${targetList.listName} hinzu`;
+          console.log('💬 Enhanced input for conversation:', enhancedInput);
+          
+          const result = await this.aiService.executeCommand(enhancedInput);
+          
+          // FORCE conversation context if not present
+          if (result.success && !result.conversationContext) {
+            result.conversationContext = {
+              lastAction: {
+                type: 'article_added',
+                listId: targetList.listId,
+                listName: targetList.listName,
+                articleName: userMessage,
+                timestamp: new Date()
+              },
+              waitingForArticles: {
+                listId: targetList.listId,
+                listName: targetList.listName,
+                prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+              }
+            };
+            result.followUpPrompt = result.followUpPrompt || 
+              `Möchtest du noch weitere Artikel zu "${targetList.listName}" hinzufügen?`;
+          }
+          
+          await this.handleAIResult(result);
+          return;
+        }
+      }
+      
+      // 5. Regular processing (no conversation context)
+      console.log('💬 Regular command processing');
       const startTime = Date.now();
-      
       const result = await this.aiService.executeCommand(userMessage);
-      
       const endTime = Date.now();
+      
       console.log('💬 AI SERVICE COMPLETED IN:', endTime - startTime, 'ms');
       console.log('💬 AI SERVICE RESULT:', result);
       
       await this.handleAIResult(result);
+      
     } catch (error) {
       console.error('💬 AI ERROR:', error);
-      console.error('💬 ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace');
-      
       this.chatPersistence.addMessage(
         `❌ Entschuldigung, ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}\n\n💡 Versuche es mit:\n• "Hilfe" für verfügbare Befehle\n• "Test" für System-Status`, 
         'error'
@@ -235,52 +335,80 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
-    console.log('🤖 HANDLE AI RESULT CALLED');
-    console.log('🤖 AI RESULT:', result);
-    console.log('🤖 HAS FOLLOW-UP PROMPT:', !!result.followUpPrompt);
-    console.log('🤖 CONVERSATION CONTEXT:', result.conversationContext);
-    console.log('🤖 WAITING FOR ARTICLES:', result.conversationContext?.waitingForArticles);
+    console.log('🤖 HANDLE AI RESULT:', result);
     
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
   
-    // Handle disambiguation (both article and list selection)
+    // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
-      console.log('🤖 HANDLING DISAMBIGUATION');
+      console.log('🤖 SHOWING DISAMBIGUATION');
       this.handleDisambiguation(result);
-      return; // Don't process other actions when showing disambiguation
+      return;
     }
   
-    // NEW: Handle follow-up prompts for conversation flow
+    // ENHANCED: Force conversation context for list creation
+    if (result.success && result.listId && result.message.includes('Liste') && result.message.includes('erstellt')) {
+      console.log('🤖 DETECTED LIST CREATION - FORCING CONVERSATION CONTEXT');
+      
+      // Extract list name from message
+      const listNameMatch = result.message.match(/Liste "([^"]+)" wurde erstellt/);
+      const listName = listNameMatch ? listNameMatch[1] : 'Neue Liste';
+      
+      if (!result.conversationContext) {
+        result.conversationContext = {
+          lastAction: {
+            type: 'list_created',
+            listId: result.listId,
+            listName: listName,
+            articleName: '',
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: result.listId,
+            listName: listName,
+            prompt: 'Möchtest du Artikel hinzufügen?'
+          }
+        };
+      }
+      
+      if (!result.followUpPrompt) {
+        result.followUpPrompt = `Möchtest du jetzt Artikel zu "${listName}" hinzufügen?`;
+      }
+      
+      console.log('🤖 FORCED conversation context:', result.conversationContext);
+      console.log('🤖 FORCED follow-up prompt:', result.followUpPrompt);
+    }
+  
+    // CRITICAL: Always update conversation context first
+    if (result.conversationContext) {
+      console.log('🤖 UPDATING CONVERSATION CONTEXT');
+      this.chatPersistence.setConversationContext(result.conversationContext);
+      
+      // Also sync with AI service if needed
+      this.chatPersistence.synchronizeWithAIService(result.conversationContext);
+    }
+  
+    // Handle follow-up prompts BEFORE any other action
     if (result.success && result.followUpPrompt) {
-      console.log('🤖 HANDLING FOLLOW-UP PROMPT');
+      console.log('🤖 ADDING FOLLOW-UP PROMPT:', result.followUpPrompt);
       setTimeout(() => {
         this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
         this.scrollToBottom();
       }, 1000);
     }
   
-    // Handle successful actions (speak and navigate)
+    // Handle successful actions (with better conversation awareness)
     if (result.success && result.listId) {
-      console.log('🤖 HANDLING SUCCESSFUL ACTION');
-      this.handleSuccessfulAction(result);
+      // DELAY to let context update first
+      setTimeout(() => {
+        this.handleSuccessfulAction(result);
+      }, 100);
     }
   
     // Handle suggestions
     if (result.suggestedAction === 'CREATE_LIST' && result.suggestedData) {
-      console.log('🤖 HANDLING SUGGESTION');
       this.handleSuggestion(result);
-    }
-  
-    // Provide additional feedback for list-related actions (only if no follow-up prompt)
-    if (result.success && result.message.includes('Liste') && !result.followUpPrompt) {
-      console.log('🤖 ADDING LIST-RELATED FEEDBACK');
-      setTimeout(() => {
-        this.chatPersistence.addMessage(
-          '💡 Weitere Befehle:\n• "Füge [Artikel] hinzu" - Artikel zur Liste hinzufügen\n• "Zeige Listen" - Alle Listen anzeigen',
-          'system'
-        );
-      }, 1500);
     }
   }
 
@@ -301,33 +429,64 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private handleSuccessfulAction(result: AIExecutionResult): void {
-    console.log('🎯 HANDLE SUCCESSFUL ACTION CALLED');
-    console.log('🎯 HAS FOLLOW-UP PROMPT:', !!result.followUpPrompt);
-    console.log('🎯 CONVERSATION CONTEXT:', result.conversationContext);
+    console.log('🎯 HANDLE SUCCESSFUL ACTION:', result);
     
-    // Extract the first line and clean it for speech
+    // Speak the result
     const messageToSpeak = result.message.split('\n')[0]
-      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
-      .replace(/^\s*/, '') // Remove leading whitespace
+      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '')
       .trim();
-    
-    console.log('🎯 MESSAGE TO SPEAK:', messageToSpeak);
     
     if (messageToSpeak) {
       this.speak(messageToSpeak);
     }
     
-    // FIXED: Only navigate if there's no follow-up prompt AND no active conversation
-    const isInConversation = result.conversationContext?.waitingForArticles;
+    // ULTRA-STRICT: Check every possible conversation indicator
+    const hasFollowUp = !!result.followUpPrompt;
+    const resultHasConversation = !!result.conversationContext?.waitingForArticles;
+    const persistenceHasConversation = this.chatPersistence.isWaitingForArticles();
+    const messageHasConversation = result.message.includes('Möchtest du') || 
+                                  result.message.includes('weitere Artikel') ||
+                                  result.message.includes('hinzufügen?') ||
+                                  result.message.includes('erstellt');
+    const isListCreation = result.message.includes('Liste') && result.message.includes('erstellt');
+    const isArticleAddition = result.message.includes('hinzugefügt');
     
-    if (!result.followUpPrompt && !isInConversation) {
+    // CRITICAL: If it's list creation or article addition, ALWAYS stay for conversation
+    const shouldStayInConversation = hasFollowUp || 
+                                    resultHasConversation || 
+                                    persistenceHasConversation ||
+                                    messageHasConversation ||
+                                    isListCreation ||
+                                    isArticleAddition;
+    
+    console.log('🎯 NAVIGATION DECISION DETAILS:');
+    console.log('🎯 - hasFollowUp:', hasFollowUp);
+    console.log('🎯 - resultHasConversation:', resultHasConversation);
+    console.log('🎯 - persistenceHasConversation:', persistenceHasConversation);
+    console.log('🎯 - messageHasConversation:', messageHasConversation);
+    console.log('🎯 - isListCreation:', isListCreation);
+    console.log('🎯 - isArticleAddition:', isArticleAddition);
+    console.log('🎯 - FINAL shouldStayInConversation:', shouldStayInConversation);
+    
+    // DISABLE navigation entirely for now to test
+    console.log('🎯 NAVIGATION DISABLED - STAYING IN CONVERSATION MODE');
+    
+    // CRITICAL: Always ensure context is set
+    if (result.conversationContext) {
+      this.chatPersistence.setConversationContext(result.conversationContext);
+    }
+    
+    // FOR TESTING: Comment out navigation entirely
+    /*
+    if (!shouldStayInConversation) {
+      console.log('🎯 Navigating to list');
       setTimeout(() => {
-        console.log('🎯 NAVIGATING TO LIST:', result.listId);
         this.router.navigate(['/lists', result.listId]);
       }, 2000);
     } else {
-      console.log('🎯 NOT NAVIGATING - IN CONVERSATION MODE');
+      console.log('🎯 STAYING IN CONVERSATION MODE');
     }
+    */
   }
 
   private handleSuggestion(result: AIExecutionResult): void {
@@ -340,9 +499,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // ========================================
   // CONVERSATION CONTEXT METHODS
   // ========================================
-  
   getConversationStatus(): string {
-    const context = this.aiService.getConversationContext();
+    // Try multiple sources for conversation context
+    let context = this.aiService.getConversationContext();
+    
+    // Fallback to chat persistence if AI service context is empty
+    if (!context.waitingForArticles && !context.lastAction) {
+      const persistenceContext = this.chatPersistence.getConversationContext();
+      if (persistenceContext) {
+        context = persistenceContext;
+      }
+    }
     
     if (context.waitingForArticles) {
       return `Warte auf Artikel für "${context.waitingForArticles.listName}"`;
@@ -361,13 +528,22 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     
     return 'Keine aktive Unterhaltung';
   }
-
+  
   finishAddingArticles(): void {
     const context = this.aiService.getConversationContext();
-    if (context.waitingForArticles) {
+    const persistenceContext = this.chatPersistence.getConversationContext();
+    
+    if (context.waitingForArticles || persistenceContext?.waitingForArticles) {
+      console.log('🗣️ User manually finished adding articles');
+      
+      // Clear both contexts
+      this.chatPersistence.clearConversationContext();
+      
+      // Send "nein" to trigger proper conversation end
       this.sendQuickMessage('nein');
     }
   }
+  
 
   // ========================================
   // ENHANCED DISAMBIGUATION METHODS
@@ -424,66 +600,38 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }
   
     const pendingAction = disambiguation.pendingAction;
-    console.log('🎯 PENDING ACTION:', pendingAction);
     
-    // Clear disambiguation immediately for better UX
+    // Clear disambiguation immediately
     this.chatPersistence.setDisambiguation(null);
     
     // Generate choice text
-    let choiceText = '';
-    
-    if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
-      // Handle multi-item action
-      const items = (pendingAction as any).items;
-      const currentIndex = (pendingAction as any).currentItemIndex;
-      
-      if ((pendingAction as any).type === 'select_list') {
-        choiceText = `Liste gewählt: ${option.displayName}`;
-      } else if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
-        const currentItem = items[currentIndex];
-        if (option.type === 'existing') {
-          choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${option.displayName} (vorhandener Artikel)`;
-        } else if (currentItem && currentItem.itemName) {
-          choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${currentItem.itemName} (neu erstellen)`;
-        } else {
-          choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
-        }
-      } else {
-        choiceText = option.type === 'existing' ? 
-          `Vorhandener Artikel: ${option.displayName}` : 
-          `Neuen Artikel erstellen: ${option.displayName}`;
-      }
-    } else {
-      // Handle single action
-      if ((pendingAction as any).type === 'select_list') {
-        choiceText = `Liste gewählt: ${option.displayName}`;
-      } else {
-        if (option.type === 'existing') {
-          choiceText = `Vorhandener Artikel: ${option.displayName}`;
-        } else {
-          choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
-        }
-      }
-    }
-    
-    console.log('🎯 CHOICE TEXT:', choiceText);
+    const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
     this.isProcessing = true;
   
-    // Process the choice with enhanced error handling
+    // Process with enhanced conversation preservation
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
         console.log('🎯 DISAMBIGUATION RESULT:', result);
-        console.log('🎯 DISAMBIGUATION HAS FOLLOW-UP:', !!result.followUpPrompt);
-        console.log('🎯 DISAMBIGUATION CONVERSATION CONTEXT:', result.conversationContext);
         
-        // IMPORTANT: Use the same handleAIResult method to ensure consistent behavior
+        // CRITICAL: Force conversation context if we were in conversation
+        if (!result.conversationContext && this.isInActiveConversation()) {
+          console.log('🎯 FORCING conversation context preservation');
+          const currentContext = this.chatPersistence.getConversationContext() || 
+                                this.aiService.getConversationContext();
+          if (currentContext.waitingForArticles) {
+            result.conversationContext = currentContext;
+            result.followUpPrompt = result.followUpPrompt || 
+              'Möchtest du noch weitere Artikel hinzufügen?';
+          }
+        }
+        
         this.handleAIResult(result);
       })
       .catch((error: any) => {
         console.error('🎯 DISAMBIGUATION ERROR:', error);
         this.chatPersistence.addMessage(
-          `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
+          `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
         );
       })
@@ -491,6 +639,61 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         this.isProcessing = false;
         this.scrollToBottom();
       });
+  }
+
+  /**
+ * NEW: Generate appropriate choice text for disambiguation
+ */
+  private generateChoiceText(option: DisambiguationOption, pendingAction: any): string {
+    // Handle sequential multi-item disambiguation
+    if (pendingAction.isMultiItemSequential) {
+      const currentIndex = pendingAction.currentItemIndex;
+      const totalItems = pendingAction.allItems.length;
+      
+      if (pendingAction.type === 'select_list') {
+        return `Liste gewählt: ${option.displayName}`;
+      } else {
+        if (option.type === 'existing') {
+          return `Artikel ${currentIndex + 1}/${totalItems}: ${option.displayName} (vorhandener Artikel)`;
+        } else {
+          return `Artikel ${currentIndex + 1}/${totalItems}: ${pendingAction.itemName} (neu erstellen)`;
+        }
+      }
+    }
+    
+    // Handle regular multi-item disambiguation
+    if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+      const items = pendingAction.items;
+      const currentIndex = pendingAction.currentItemIndex;
+      
+      if (pendingAction.type === 'select_list') {
+        return `Liste gewählt: ${option.displayName}`;
+      } else if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
+        const currentItem = items[currentIndex];
+        if (option.type === 'existing') {
+          return `Artikel ${currentIndex + 1}/${items.length}: ${option.displayName} (vorhandener Artikel)`;
+        } else if (currentItem && currentItem.itemName) {
+          return `Artikel ${currentIndex + 1}/${items.length}: ${currentItem.itemName} (neu erstellen)`;
+        } else {
+          return `Neuen Artikel erstellen: ${option.displayName}`;
+        }
+      } else {
+        return option.type === 'existing' ? 
+          `Vorhandener Artikel: ${option.displayName}` : 
+          `Neuen Artikel erstellen: ${option.displayName}`;
+      }
+    } else {
+      // Handle single action
+      if (pendingAction.type === 'select_list') {
+        return `Liste gewählt: ${option.displayName}`;
+      } else {
+        if (option.type === 'existing') {
+          return `Vorhandener Artikel: ${option.displayName}`;
+        } else {
+          return `Neuen Artikel erstellen: ${option.displayName}`;
+        }
+      }
+    }
   }
 
   /**
@@ -756,7 +959,13 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
    * Enhanced help with conversation context awareness
    */
   showContextualHelp(): void {
-    const context = this.aiService.getConversationContext();
+    // Check both AI service and chat persistence for context
+    let context = this.aiService.getConversationContext();
+    const persistenceContext = this.chatPersistence.getConversationContext();
+    
+    if (!context.waitingForArticles && persistenceContext?.waitingForArticles) {
+      context = persistenceContext;
+    }
     
     if (context.waitingForArticles) {
       // Show context-specific help
@@ -765,6 +974,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         `💡 Du kannst einfach sagen:\n` +
         `• "Milch" - Einfacher Artikelname\n` +
         `• "2kg Bananen" - Mit Menge\n` +
+        `• "Brot, Wasser" - Mehrere Artikel gleichzeitig\n` +
         `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
         `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.\n\n` +
         `📋 Normale Befehle funktionieren auch weiterhin.`;
@@ -788,11 +998,13 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       helpMessage += '• "Füge 2kg Bananen hinzu"\n';
       helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
       helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n\n';
+      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
+      helpMessage += '• "Brot, Wasser" (im Unterhaltungsmodus)\n\n';
       helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
       helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
-      helpMessage += '• Nach dem Erstellen einer Liste wirst du gefragt, ob du Artikel hinzufügen möchtest\n';
+      helpMessage += '• Nach dem Erstellen einer Liste oder Hinzufügen von Artikeln wirst du gefragt, ob du weitere Artikel hinzufügen möchtest\n';
       helpMessage += '• Du kannst dann einfach Artikelnamen eingeben ohne "Füge" und "hinzu"\n';
+      helpMessage += '• Auch mehrere Artikel gleichzeitig: "Brot, Milch, Käse"\n';
       helpMessage += '• Sage "Nein" oder "Fertig" um die Unterhaltung zu beenden\n\n';
     } else {
       helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
@@ -898,11 +1110,63 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     
     // Add conversation context if active
     const context = this.aiService.getConversationContext();
-    if (context.waitingForArticles || context.lastAction) {
+    const persistenceContext = this.chatPersistence.getConversationContext();
+    
+    if (context.waitingForArticles || context.lastAction || 
+        persistenceContext?.waitingForArticles || persistenceContext?.lastAction) {
       stats += ` • 🗣️ ${conversationStatus}`;
     }
     
     return stats;
+  }
+
+  private isInActiveConversation(): boolean {
+    // Check multiple sources for active conversation
+    const aiServiceContext = this.aiService.getConversationContext();
+    const persistenceContext = this.chatPersistence.getConversationContext();
+    
+    const hasAiServiceConversation = !!aiServiceContext.waitingForArticles;
+    const hasPersistenceConversation = !!persistenceContext?.waitingForArticles;
+    
+    console.log('🔍 Conversation check:');
+    console.log('🔍 - AI Service waiting:', hasAiServiceConversation);
+    console.log('🔍 - Persistence waiting:', hasPersistenceConversation);
+    
+    return hasAiServiceConversation || hasPersistenceConversation;
+  }
+
+  private debugConversationState(): void {
+    console.log('🔍 CONVERSATION STATE DEBUG:');
+    console.log('🔍 AI Service context:', this.aiService.getConversationContext());
+    console.log('🔍 Chat Persistence context:', this.chatPersistence.getConversationContext());
+    console.log('🔍 AI Service waiting:', this.aiService.getConversationContext().waitingForArticles);
+    console.log('🔍 Persistence waiting:', this.chatPersistence.isWaitingForArticles());
+    console.log('🔍 Is active conversation:', this.isInActiveConversation());
+  }
+
+  testConversationFlow(): void {
+    console.log('🧪 TESTING CONVERSATION FLOW');
+    this.debugConversationState();
+    
+    // Simulate list creation with conversation
+    const testContext = {
+      lastAction: {
+        type: 'list_created' as const,
+        listId: 'test-123',
+        listName: 'Test Liste',
+        articleName: '',
+        timestamp: new Date()
+      },
+      waitingForArticles: {
+        listId: 'test-123',
+        listName: 'Test Liste',
+        prompt: 'Test conversation'
+      }
+    };
+    
+    this.chatPersistence.setConversationContext(testContext);
+    console.log('🧪 Set test context, checking...');
+    this.debugConversationState();
   }
 
   // ========================================
@@ -946,4 +1210,56 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   // Make Math available in template
   Math = Math;
+
+
+  testListCreation(): void {
+    console.log('🧪 TESTING LIST CREATION');
+    this.debugConversationState();
+    
+    // Clear any existing context first
+    this.chatPersistence.clearConversationContext();
+    console.log('🧪 Cleared context');
+    
+    // Test list creation
+    this.sendQuickMessage('Erstelle Liste TestListe');
+  }
+
+  clearAllContext(): void {
+    console.log('🧹 CLEARING ALL CONTEXT');
+    this.chatPersistence.clearConversationContext();
+    this.chatPersistence.clearMessages();
+    this.chatPersistence.initializeIfEmpty();
+    this.debugConversationState();
+  }
+
+  testScenario(scenario: string): void {
+    console.log('🧪 TESTING SCENARIO:', scenario);
+    this.clearAllContext();
+    
+    switch (scenario) {
+      case 'list':
+        this.sendQuickMessage('Erstelle Liste TestListe');
+        break;
+      case 'article':
+        // First create a test context
+        const testContext = {
+          lastAction: {
+            type: 'list_created' as const,
+            listId: 'test-123',
+            listName: 'TestListe',
+            articleName: '',
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: 'test-123',
+            listName: 'TestListe',
+            prompt: 'Test'
+          }
+        };
+        this.chatPersistence.setConversationContext(testContext);
+        this.sendQuickMessage('Milch');
+        break;
+    }
+  }
+
 }

@@ -506,4 +506,25 @@ export class CommandParserService {
     
     return null;
   }
+
+  isConversationEnd(input: string): boolean {
+    const cleanInput = input.toLowerCase().trim();
+    
+    const endKeywords = [
+      'nein', 'nein danke', 'fertig', 'stop', 'beenden', 'ende', 
+      'nicht mehr', 'keine weitere', 'keine weiteren', 'reicht',
+      'das war\'s', 'das wars', 'genug', 'schluss', 'aufhören',
+      'nö', 'ne', 'nope', 'nada', 'nichts mehr'
+    ];
+    
+    const isEnd = endKeywords.some(keyword => {
+      return cleanInput === keyword || 
+            cleanInput.startsWith(keyword + ' ') ||
+            cleanInput.endsWith(' ' + keyword) ||
+            cleanInput.includes(' ' + keyword + ' ');
+    });
+    
+    console.log('🔍 Checking conversation end for:', input, '-> result:', isEnd);
+    return isEnd;
+  }
 }

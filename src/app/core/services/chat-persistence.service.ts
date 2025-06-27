@@ -245,19 +245,42 @@ public conversationContext$ = this.conversationContextSubject.asObservable();
  */
 setConversationContext(context: ConversationContext | null): void {
   console.log('💾 Setting conversation context:', context);
+  
+  // Validate context before setting
+  if (context) {
+    // Ensure timestamp is valid
+    if (context.lastAction?.timestamp && !(context.lastAction.timestamp instanceof Date)) {
+      context.lastAction.timestamp = new Date(context.lastAction.timestamp);
+    }
+    
+    // Validate required fields for waitingForArticles
+    if (context.waitingForArticles && (!context.waitingForArticles.listId || !context.waitingForArticles.listName)) {
+      console.warn('💾 Invalid waitingForArticles context, clearing it');
+      context.waitingForArticles = undefined;
+    }
+  }
+  
   this.conversationContextSubject.next(context);
   
-  // Optionally persist to localStorage for session recovery
-  if (context) {
-    localStorage.setItem('shoplisl-conversation-context', JSON.stringify({
-      ...context,
-      lastAction: context.lastAction ? {
-        ...context.lastAction,
-        timestamp: context.lastAction.timestamp.toISOString()
-      } : undefined
-    }));
-  } else {
-    localStorage.removeItem('shoplisl-conversation-context');
+  // Persist to localStorage with enhanced error handling
+  try {
+    if (context) {
+      const persistableContext = {
+        ...context,
+        lastAction: context.lastAction ? {
+          ...context.lastAction,
+          timestamp: context.lastAction.timestamp.toISOString()
+        } : undefined
+      };
+      
+      localStorage.setItem('shoplisl-conversation-context', JSON.stringify(persistableContext));
+      console.log('💾 Conversation context persisted to localStorage');
+    } else {
+      localStorage.removeItem('shoplisl-conversation-context');
+      console.log('💾 Conversation context cleared from localStorage');
+    }
+  } catch (error) {
+    console.error('💾 Error persisting conversation context:', error);
   }
 }
 
@@ -274,25 +297,48 @@ getConversationContext(): ConversationContext | null {
 private loadConversationContext(): void {
   try {
     const stored = localStorage.getItem('shoplisl-conversation-context');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      
-      // Convert timestamp back to Date
-      if (parsed.lastAction?.timestamp) {
-        parsed.lastAction.timestamp = new Date(parsed.lastAction.timestamp);
-      }
-      
-      // Check if context is still valid (not too old)
-      const maxAge = 30 * 60 * 1000; // 30 minutes
-      if (parsed.lastAction?.timestamp && 
-          Date.now() - parsed.lastAction.timestamp.getTime() < maxAge) {
-        this.conversationContextSubject.next(parsed);
-        console.log('💾 Restored conversation context:', parsed);
+    if (!stored) {
+      console.log('💾 No stored conversation context found');
+      return;
+    }
+    
+    const parsed = JSON.parse(stored);
+    console.log('💾 Raw loaded context:', parsed);
+    
+    // Convert timestamp back to Date
+    if (parsed.lastAction?.timestamp) {
+      parsed.lastAction.timestamp = new Date(parsed.lastAction.timestamp);
+    }
+    
+    // ENHANCED: More generous expiration time for conversation context
+    const maxAge = 60 * 60 * 1000; // 60 minutes (was 30)
+    const isExpired = parsed.lastAction?.timestamp && 
+      Date.now() - parsed.lastAction.timestamp.getTime() > maxAge;
+    
+    if (isExpired) {
+      console.log('💾 Conversation context expired, clearing');
+      localStorage.removeItem('shoplisl-conversation-context');
+      return;
+    }
+    
+    // Validate and clean
+    if (parsed.waitingForArticles) {
+      if (!parsed.waitingForArticles.listId || !parsed.waitingForArticles.listName) {
+        console.log('💾 Invalid waitingForArticles, removing');
+        delete parsed.waitingForArticles;
       } else {
-        console.log('💾 Conversation context expired, clearing');
-        localStorage.removeItem('shoplisl-conversation-context');
+        console.log('💾 Valid conversation context found:', parsed.waitingForArticles);
       }
     }
+    
+    // Set if meaningful
+    if (parsed.lastAction || parsed.waitingForArticles) {
+      this.conversationContextSubject.next(parsed);
+      console.log('💾 Restored conversation context');
+    } else {
+      localStorage.removeItem('shoplisl-conversation-context');
+    }
+    
   } catch (error) {
     console.error('💾 Error loading conversation context:', error);
     localStorage.removeItem('shoplisl-conversation-context');
@@ -304,7 +350,17 @@ private loadConversationContext(): void {
  */
 clearConversationContext(): void {
   console.log('💾 Clearing conversation context');
-  this.setConversationContext(null);
+  
+  // Clear the subject
+  this.conversationContextSubject.next(null);
+  
+  // Clear localStorage
+  try {
+    localStorage.removeItem('shoplisl-conversation-context');
+    console.log('💾 Cleared conversation context from localStorage');
+  } catch (error) {
+    console.error('💾 Error clearing conversation context from localStorage:', error);
+  }
 }
 
 /**
@@ -312,7 +368,17 @@ clearConversationContext(): void {
  */
 isWaitingForArticles(): boolean {
   const context = this.getConversationContext();
-  return !!context?.waitingForArticles;
+  const isWaiting = !!(context?.waitingForArticles?.listId && context?.waitingForArticles?.listName);
+  
+  console.log('💾 isWaitingForArticles check:', {
+    hasContext: !!context,
+    hasWaitingForArticles: !!context?.waitingForArticles,
+    hasListId: !!context?.waitingForArticles?.listId,
+    hasListName: !!context?.waitingForArticles?.listName,
+    result: isWaiting
+  });
+  
+  return isWaiting;
 }
 
 /**
@@ -320,7 +386,16 @@ isWaitingForArticles(): boolean {
  */
 getCurrentTargetList(): { listId: string; listName: string } | null {
   const context = this.getConversationContext();
-  return context?.waitingForArticles || null;
+  const waitingForArticles = context?.waitingForArticles;
+  
+  if (waitingForArticles?.listId && waitingForArticles?.listName) {
+    return {
+      listId: waitingForArticles.listId,
+      listName: waitingForArticles.listName
+    };
+  }
+  
+  return null;
 }
 
 // ========================================
@@ -331,9 +406,12 @@ getCurrentTargetList(): { listId: string; listName: string } | null {
  * Add message with conversation context awareness
  */
 addMessageWithContext(text: string, type: 'user' | 'assistant' | 'error' | 'system', context?: ConversationContext): void {
+  // Add the message first
   this.addMessage(text, type);
   
+  // Update context if provided and valid
   if (context) {
+    console.log('💾 Adding message with new context:', context);
     this.setConversationContext(context);
   }
 }
@@ -358,6 +436,7 @@ getConversationStats(): {
   articlesAdded: number;
   listsCreated: number;
   currentContext: ConversationContext | null;
+  isActive: boolean;
 } {
   const messages = this.messagesSubject.value;
   const context = this.getConversationContext();
@@ -374,17 +453,22 @@ getConversationStats(): {
     if (message.text.includes('Liste') && message.text.includes('erstellt')) {
       listsCreated++;
     }
-    if (message.text.includes('Möchtest du')) {
+    if (message.text.includes('Möchtest du') || message.text.includes('noch weitere')) {
       conversationMessages++;
     }
   });
+  
+  // FIXED: Ensure isActive is always boolean
+  const isActive = this.isWaitingForArticles() || 
+    (context?.lastAction ? (Date.now() - context.lastAction.timestamp.getTime() < 5 * 60 * 1000) : false);
   
   return {
     totalMessages: messages.length,
     conversationMessages,
     articlesAdded,
     listsCreated,
-    currentContext: context
+    currentContext: context,
+    isActive: Boolean(isActive) // Ensure it's always boolean
   };
 }
 
@@ -396,8 +480,32 @@ getConversationStats(): {
  * Enhanced initialization that loads conversation context
  */
 initializeWithContext(): void {
+  console.log('💾 Enhanced initialization with context...');
+  
+  // Load conversation context first
   this.loadConversationContext();
+  
+  const context = this.getConversationContext();
+  console.log('💾 Loaded context:', context);
+  
+  // Initialize chat messages
   this.initializeIfEmpty();
+  
+  // Add context-aware message if needed
+  const messages = this.getMessages();
+  if (messages.length <= 1) {
+    if (context?.waitingForArticles) {
+      console.log('💾 Adding conversation restoration message');
+      const welcomeMessage = `👋 Willkommen zurück!\n\n🗣️ Du warst dabei, Artikel zu "${context.waitingForArticles.listName}" hinzuzufügen.\n\n💡 Du kannst weitermachen oder "Nein" sagen um zu beenden.`;
+      this.addMessage(welcomeMessage, 'system');
+    } else if (context?.lastAction) {
+      const minutes = Math.floor((Date.now() - context.lastAction.timestamp.getTime()) / 60000);
+      if (minutes < 30) { // Only show if recent
+        const welcomeMessage = `👋 Willkommen zurück!\n\n🕒 Vor ${minutes} Minuten: "${context.lastAction.listName}".\n\n💡 Sage "Hilfe" für Befehle.`;
+        this.addMessage(welcomeMessage, 'system');
+      }
+    }
+  }
 }
 
 /**
@@ -407,15 +515,16 @@ private getEnhancedWelcomeMessage(): string {
   const context = this.getConversationContext();
   
   if (context?.waitingForArticles) {
-    return `👋 Willkommen zurück!\n\n🗣️ Du warst dabei, Artikel zu "${context.waitingForArticles.listName}" hinzuzufügen.\n\n💡 Du kannst weitermachen oder einen neuen Befehl eingeben.`;
+    return `👋 Willkommen zurück!\n\n🗣️ Du warst dabei, Artikel zu "${context.waitingForArticles.listName}" hinzuzufügen.\n\n💡 Du kannst weitermachen:\n• "Milch" - Einfacher Artikel\n• "Brot, Käse" - Mehrere Artikel\n• "2kg Bananen" - Mit Menge\n\nOder sage "Nein" um zu beenden.`;
   }
   
   if (context?.lastAction) {
     const minutes = Math.floor((Date.now() - context.lastAction.timestamp.getTime()) / 60000);
-    return `👋 Willkommen zurück!\n\n🕒 Vor ${minutes} Minuten hast du "${context.lastAction.listName}" ${context.lastAction.type === 'list_created' ? 'erstellt' : 'bearbeitet'}.\n\n💡 Was möchtest du als nächstes tun?`;
+    const action = context.lastAction.type === 'list_created' ? 'erstellt' : 'bearbeitet';
+    return `👋 Willkommen zurück!\n\n🕒 Vor ${minutes} Minuten hast du "${context.lastAction.listName}" ${action}.\n\n💡 Was möchtest du als nächstes tun?\n• "Zeige Listen"\n• "Erstelle Liste [Name]"\n• "Füge [Artikel] hinzu"`;
   }
   
-  return '👋 Hallo! Ich bin dein AI Assistent für Einkaufslisten.\n\n💡 Sage "Hilfe" für verfügbare Befehle oder beginne direkt:\n• "Erstelle Liste Spar"\n• "Füge Milch hinzu"';
+  return '👋 Hallo! Ich bin dein AI Assistent für Einkaufslisten.\n\n💡 Sage "Hilfe" für verfügbare Befehle oder beginne direkt:\n• "Erstelle Liste Spar"\n• "Füge Milch hinzu"\n• "Brot, Wasser" (mehrere Artikel)';
 }
 
 // ========================================
@@ -435,6 +544,13 @@ addFollowUpPrompt(prompt: string): void {
  * Handle conversation ending
  */
 handleConversationEnd(): void {
+  console.log('💾 Handling conversation end');
+  
+  const context = this.getConversationContext();
+  if (context?.waitingForArticles) {
+    console.log('💾 Ending active conversation for list:', context.waitingForArticles.listName);
+  }
+  
   this.clearConversationContext();
   this.addMessage('👍 Unterhaltung beendet. Du kannst jederzeit neue Befehle eingeben!', 'system');
 }
@@ -452,9 +568,14 @@ exportConversationWithContext(): string {
   content += `Nachrichten: ${stats.totalMessages}\n`;
   content += `Listen erstellt: ${stats.listsCreated}\n`;
   content += `Artikel hinzugefügt: ${stats.articlesAdded}\n`;
+  content += `Konversationen: ${stats.conversationMessages}\n`;
+  content += `Aktive Unterhaltung: ${stats.isActive ? 'Ja' : 'Nein'}\n`;
   
   if (context?.waitingForArticles) {
     content += `Aktiver Kontext: Warte auf Artikel für "${context.waitingForArticles.listName}"\n`;
+  } else if (context?.lastAction) {
+    const minutes = Math.floor((Date.now() - context.lastAction.timestamp.getTime()) / 60000);
+    content += `Letzter Kontext: "${context.lastAction.listName}" vor ${minutes} Minuten\n`;
   }
   
   content += `\n${'='.repeat(50)}\n\n`;
@@ -468,5 +589,56 @@ exportConversationWithContext(): string {
   });
   
   return content;
+}
+  /**
+   * NEW: Synchronize with AI service context
+   */
+  synchronizeWithAIService(aiServiceContext: ConversationContext): void {
+    const currentContext = this.getConversationContext();
+    
+    // Only update if AI service context is more recent or more complete
+    if (!currentContext || 
+        (aiServiceContext.lastAction && 
+        (!currentContext.lastAction || 
+          aiServiceContext.lastAction.timestamp > currentContext.lastAction.timestamp))) {
+      
+      console.log('💾 Synchronizing with AI service context:', aiServiceContext);
+      this.setConversationContext(aiServiceContext);
+    }
+  }
+
+  /**
+   * NEW: Validate context consistency
+   */
+  validateContextConsistency(): { isValid: boolean; issues: string[] } {
+    const context = this.getConversationContext();
+    const issues: string[] = [];
+    
+    if (!context) {
+      return { isValid: true, issues: [] };
+    }
+    
+    // Check lastAction validity
+    if (context.lastAction) {
+      if (!context.lastAction.timestamp || !(context.lastAction.timestamp instanceof Date)) {
+        issues.push('Invalid lastAction timestamp');
+      }
+      
+      if (!context.lastAction.type || !context.lastAction.listName) {
+        issues.push('Missing required lastAction fields');
+      }
+    }
+    
+    // Check waitingForArticles validity
+    if (context.waitingForArticles) {
+      if (!context.waitingForArticles.listId || !context.waitingForArticles.listName) {
+        issues.push('Missing required waitingForArticles fields');
+      }
+    }
+    
+    return {
+      isValid: issues.length === 0,
+      issues
+    };
   }
 }

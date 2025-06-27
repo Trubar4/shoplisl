@@ -407,19 +407,32 @@ export class AIResponseService {
 /**
  * 🗣️ Get follow-up prompt after list creation
  */
-getListCreatedFollowUpPrompt(listName: string, hasInitialArticle: boolean = false): string {
-  if (hasInitialArticle) {
-    return `\n\n🤔 Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Joghurt"\n• "500ml Milch"\n• "Käse Menge 200g"\n\nOder mit vollständigen Befehlen:\n• "Füge Joghurt hinzu"\n\nSage "Nein" wenn du fertig bist.`;
-  } else {
-    return `\n\n🤔 Möchtest du Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Milch"\n• "2kg Bananen"\n• "Brot Menge 1 Stück"\n\nOder mit vollständigen Befehlen:\n• "Füge Milch hinzu"\n• "Füge 2kg Bananen hinzu"\n\nSage "Nein" wenn du nichts hinzufügen möchtest.`;
-  }
+getListCreatedFollowUpPrompt(listName: string): string {
+  const prompts = [
+    `Möchtest du jetzt Artikel zu "${listName}" hinzufügen?`,
+    `Soll ich dir dabei helfen, "${listName}" mit Artikeln zu füllen?`,
+    `Magst du gleich ein paar Artikel zu "${listName}" hinzufügen?`,
+    `Welche Artikel brauchst du für "${listName}"?`
+  ];
+  
+  return prompts[Math.floor(Math.random() * prompts.length)];
 }
 
-/**
- * 🗣️ Get follow-up prompt after article addition
- */
 getArticleAddedFollowUpPrompt(articleName: string, listName: string): string {
-  return `\n\n🤔 Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Joghurt"\n• "500ml Milch"\n• "Käse Menge 200g"\n\nOder mit vollständigen Befehlen:\n• "Füge Joghurt hinzu"\n\nSage "Nein" oder "Fertig" wenn du fertig bist.`;
+  const prompts = [
+    `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`,
+    `Brauchst du noch etwas anderes für "${listName}"?`,
+    `Soll ich noch mehr Artikel zu "${listName}" hinzufügen?`,
+    `Was brauchst du noch für "${listName}"?`,
+    `Noch weitere Artikel für "${listName}"?`,
+    `Sonst noch etwas für deine "${listName}"-Liste?`
+  ];
+  
+  return prompts[Math.floor(Math.random() * prompts.length)];
+}
+
+getMultipleArticlesAddedFollowUpPrompt(count: number, listName: string): string {
+  return `Perfekt! ${count} Artikel hinzugefügt. Brauchst du noch weitere Artikel für "${listName}"?`;
 }
 
 /**
