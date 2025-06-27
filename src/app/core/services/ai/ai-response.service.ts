@@ -399,4 +399,160 @@ export class AIResponseService {
       return '⚙️ Basis-Features verfügbar:\n• Einfache Befehle ✅\n• Listen erstellen ✅\n• Artikel hinzufügen ✅\n\n💡 Für Premium-Features: API Key einrichten';
     }
   }
+
+  // ========================================
+// CONVERSATIONAL PROMPTS
+// ========================================
+
+/**
+ * 🗣️ Get follow-up prompt after list creation
+ */
+getListCreatedFollowUpPrompt(listName: string, hasInitialArticle: boolean = false): string {
+  if (hasInitialArticle) {
+    return `\n\n🤔 Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Joghurt"\n• "500ml Milch"\n• "Käse Menge 200g"\n\nOder mit vollständigen Befehlen:\n• "Füge Joghurt hinzu"\n\nSage "Nein" wenn du fertig bist.`;
+  } else {
+    return `\n\n🤔 Möchtest du Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Milch"\n• "2kg Bananen"\n• "Brot Menge 1 Stück"\n\nOder mit vollständigen Befehlen:\n• "Füge Milch hinzu"\n• "Füge 2kg Bananen hinzu"\n\nSage "Nein" wenn du nichts hinzufügen möchtest.`;
+  }
+}
+
+/**
+ * 🗣️ Get follow-up prompt after article addition
+ */
+getArticleAddedFollowUpPrompt(articleName: string, listName: string): string {
+  return `\n\n🤔 Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?\n\n💡 Du kannst einfach sagen:\n• "Joghurt"\n• "500ml Milch"\n• "Käse Menge 200g"\n\nOder mit vollständigen Befehlen:\n• "Füge Joghurt hinzu"\n\nSage "Nein" oder "Fertig" wenn du fertig bist.`;
+}
+
+/**
+ * 🗣️ Get context-aware help message
+ */
+getContextualHelpMessage(isWaitingForArticles: boolean, listName?: string): string {
+  if (isWaitingForArticles && listName) {
+    return `🗣️ Du befindest dich gerade in einer Unterhaltung!\n\n` +
+      `📝 Ich warte darauf, dass du Artikel zu "${listName}" hinzufügst.\n\n` +
+      `💡 Du kannst einfach sagen:\n` +
+      `• "Milch" - Einfacher Artikelname\n` +
+      `• "2kg Bananen" - Mit Menge\n` +
+      `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
+      `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.\n\n` +
+      `📋 Normale Befehle funktionieren auch weiterhin.`;
+  }
+  
+  // Return normal help message
+  return this.getEnhancedHelpMessage(true); // Assuming API key is available
+}
+
+/**
+ * 🗣️ Get conversation ended message
+ */
+getConversationEndedMessage(): string {
+  return '👍 Verstanden! Du kannst jederzeit neue Befehle eingeben.\n\n💡 Sage "Hilfe" für verfügbare Befehle oder "Zeige Listen" um deine Listen zu sehen.';
+}
+
+/**
+ * 🗣️ Get simple article pattern examples
+ */
+getSimpleArticlePatterns(): string[] {
+  return [
+    'Milch',
+    '2kg Bananen',
+    'Joghurt Menge 500g',
+    '1L Orangensaft',
+    'Brot Menge 1 Stück',
+    '200g Käse',
+    'Tomaten',
+    '500ml Sahne'
+  ];
+}
+
+/**
+ * 🗣️ Get contextual article added message with continuation prompt
+ */
+getContextualItemAddedMessage(itemName: string, quantity: string | undefined, listName: string): string {
+  const quantityText = quantity ? ` (${quantity})` : '';
+  const baseMessage = `✅ "${itemName}"${quantityText} wurde zu "${listName}" hinzugefügt.`;
+  
+  // Add encouraging continuation message
+  const continuationMessage = `\n\n💡 Du kannst weitere Artikel eingeben oder "Fertig" sagen.`;
+  
+  return baseMessage + continuationMessage;
+}
+
+/**
+ * 🗣️ Get pattern reminder for users
+ */
+getPatternReminder(): string {
+  return `💡 Erinnerung: Du kannst Artikel ganz einfach hinzufügen:\n\n` +
+    `✨ Einfach:\n• "Milch"\n• "Brot"\n• "Äpfel"\n\n` +
+    `⚖️ Mit Menge:\n• "2kg Bananen"\n• "500ml Milch"\n• "Käse Menge 200g"\n\n` +
+    `🛑 Oder sage "Nein" / "Fertig" wenn du fertig bist.`;
+}
+
+/**
+ * 🗣️ Enhanced help with conversation features highlighted
+ */
+getEnhancedHelpMessageWithConversation(hasApiKey: boolean): string {
+  let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
+  
+  if (hasApiKey) {
+    helpMessage += '✅ Intelligente Features aktiv\n\n';
+    helpMessage += '📝 Verfügbare Befehle:\n\n';
+    helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste\n\n';
+    helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Direkt zur spezifizierten Liste\n\n';
+    helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
+    helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
+    helpMessage += '• Nach Listen-Erstellung: Ich frage, ob du Artikel hinzufügen möchtest\n';
+    helpMessage += '• Nach Artikel-Hinzufügung: Ich frage, ob du weitere hinzufügen möchtest\n';
+    helpMessage += '• Du kannst dann einfach Artikelnamen eingeben:\n';
+    helpMessage += '  - "Milch" - Einfacher Name\n';
+    helpMessage += '  - "2kg Bananen" - Mit Menge\n';
+    helpMessage += '  - "Joghurt Menge 500g" - Mit Menge-Syntax\n';
+    helpMessage += '• Sage "Nein" / "Fertig" um die Unterhaltung zu beenden\n\n';
+    helpMessage += '⚖️ MENGEN-SYNTAX:\n';
+    helpMessage += '• "Füge 2kg Bananen hinzu"\n';
+    helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
+    helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
+    helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n\n';
+  } else {
+    helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
+    helpMessage += '💡 Für intelligente Features:\n';
+    helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
+    helpMessage += '📝 Basis-Befehle:\n\n';
+    helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
+    helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+    helpMessage += '• "Erstelle Liste [Name]"\n';
+    helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
+  }
+  
+  return helpMessage;
+}
+
+// ========================================
+// CONVERSATION CONTEXT MESSAGES
+// ========================================
+
+/**
+ * 🗣️ Get message when user tries complex command while in simple mode
+ */
+getComplexCommandInSimpleModeMessage(): string {
+  return '💡 Du kannst auch vollständige Befehle verwenden!\n\nIch verstehe sowohl:\n• "Milch" (einfach)\n• "Füge Milch hinzu" (vollständig)\n\nBeide funktionieren gleich gut.';
+}
+
+/**
+ * 🗣️ Get encouragement message for continued conversation
+ */
+getEncouragementMessage(listName: string, itemCount: number): string {
+  if (itemCount === 1) {
+    return `🎯 Super! "${listName}" hat jetzt 1 Artikel.\n\nWas soll noch dazu?`;
+  } else {
+    return `🎯 Großartig! "${listName}" hat jetzt ${itemCount} Artikel.\n\nSoll noch etwas dazu?`;
+  }
+}
+
+/**
+ * 🗣️ Get suggestion when user seems unsure
+ */
+getUnsureUserSuggestion(listName: string): string {
+  return `🤔 Nicht sicher was du hinzufügen möchtest?\n\n💡 Häufige Artikel:\n• Milch\n• Brot\n• Bananen\n• Joghurt\n• Käse\n\nOder sage "Fertig" wenn "${listName}" vollständig ist.`;
+}
+
 }

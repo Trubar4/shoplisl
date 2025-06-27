@@ -115,3 +115,18 @@ export const DEFAULT_DEPARTMENT_ORDER = [
   'medicine',
   'drugstore'
 ];
+
+export interface ConversationContext {
+  lastAction?: {
+    type: 'list_created' | 'article_added';
+    listId: string;
+    listName: string;
+    articleName?: string;
+    timestamp: Date;
+  };
+  waitingForArticles?: {
+    listId: string;
+    listName: string;
+    prompt: string;
+  };
+}

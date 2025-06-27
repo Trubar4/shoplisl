@@ -1,4 +1,4 @@
-// src/app/core/services/ai/ai.service.ts - Enhanced with Text Numbers Support
+// src/app/core/services/ai/ai.service.ts - Enhanced with Conversation Context
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -16,7 +16,7 @@ import { CommandParserService } from './command-parser.service';
 import { DisambiguationService } from './disambiguation.service';
 import { AIResponseService } from './ai-response.service';
 import { DataService } from '../data';
-import { ShoppingList } from '../../models';
+import { ShoppingList, ConversationContext } from '../../models';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({
@@ -24,6 +24,9 @@ import { environment } from '../../../../environments/environment';
 })
 export class AIService {
   private readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+  // NEW: Conversation context tracking
+  private conversationContext: ConversationContext = {};
 
   constructor(
     private quantityExtraction: QuantityExtractionService,
@@ -33,6 +36,394 @@ export class AIService {
     private dataService: DataService
   ) {
     this.logApiKeyStatus();
+  }
+
+  // ========================================
+  // CONVERSATION CONTEXT MANAGEMENT
+  // ========================================
+
+  /**
+   * Set conversation context after successful actions
+   */
+  private setConversationContext(context: ConversationContext): void {
+    this.conversationContext = { ...context };
+    console.log('🗣️ Conversation context updated:', this.conversationContext);
+  }
+
+  /**
+   * Clear conversation context
+   */
+  private clearConversationContext(): void {
+    this.conversationContext = {};
+    console.log('🗣️ Conversation context cleared');
+  }
+
+  /**
+   * Check if we're waiting for articles to be added
+   */
+  private isWaitingForArticles(): boolean {
+    return !!this.conversationContext.waitingForArticles;
+  }
+
+  /**
+   * Get current conversation context
+   */
+  getConversationContext(): ConversationContext {
+    return { ...this.conversationContext };
+  }
+
+  /**
+   * Check if input is a simple article name (not a full command)
+   */
+  private isSimpleArticleInput(input: string): boolean {
+    const trimmedInput = input.trim().toLowerCase();
+    
+    console.log('🗣️ Checking if simple article input:', trimmedInput);
+    
+    // Not a simple article if it contains command keywords
+    if (trimmedInput.includes('füge') || 
+        trimmedInput.includes('erstelle') || 
+        trimmedInput.includes('hinzu') || 
+        trimmedInput.includes('liste') ||
+        trimmedInput.includes('zeige')) {
+      console.log('🗣️ Contains command keywords - not simple');
+      return false;
+    }
+    
+    // Not simple if it's a negative response
+    if (this.isNegativeResponse(trimmedInput)) {
+      console.log('🗣️ Is negative response - not simple');
+      return false;
+    }
+    
+    // Simple heuristics for article names
+    const isSimple = trimmedInput.length > 0 && 
+           trimmedInput.length < 100 && 
+           !trimmedInput.includes('http') &&
+           !trimmedInput.includes('www.');
+           
+    console.log('🗣️ Is simple article input:', isSimple);
+    return isSimple;
+  }
+
+  /**
+   * Check if input is a negative response
+   */
+  private isNegativeResponse(input: string): boolean {
+    const lowerInput = input.toLowerCase().trim();
+    const negativeWords = ['nein', 'no', 'nicht', 'stop', 'stopp', 'abbrechen', 'fertig', 'genug', 'ende', 'schluss'];
+    
+    // Check for exact matches or if the input starts with these words
+    return negativeWords.some(word => 
+      lowerInput === word || 
+      lowerInput.startsWith(word + ' ') ||
+      lowerInput.startsWith(word + ',') ||
+      lowerInput.startsWith(word + '.')
+    );
+  }
+
+  /**
+   * Handle contextual article addition when waiting for articles
+   */
+  private async handleContextualArticleAddition(input: string): Promise<AIExecutionResult> {
+    if (!this.conversationContext.waitingForArticles) {
+      return {
+        success: false,
+        message: '❌ Fehler: Kein Kontext für Artikel-Hinzufügung.'
+      };
+    }
+  
+    const { listId, listName } = this.conversationContext.waitingForArticles;
+    
+    console.log('🗣️ Handling contextual addition:', input);
+    console.log('🗣️ Target list:', listName, listId);
+    
+    // Check if input contains multiple items (comma-separated)
+    if (input.includes(',')) {
+      console.log('🗣️ Multiple items detected in contextual mode');
+      return await this.handleMultipleItemsInContext(input, listId, listName);
+    }
+    
+    // Handle single item with disambiguation
+    const quantityExtraction = this.quantityExtraction.extractQuantity(input);
+    console.log('🗣️ Single item extraction:', quantityExtraction);
+    
+    // Check for existing articles for disambiguation
+    console.log('🗣️ Checking for disambiguation options for:', quantityExtraction.itemName);
+    
+    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
+    console.log('🗣️ Found disambiguation options:', disambiguationOptions.length);
+    
+    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    
+    if (existingOptions.length > 0) {
+      console.log('🗣️ Found existing options, showing disambiguation');
+      
+      // Create a pending action for disambiguation - FIXED: Use existing type
+      const pendingAction: PendingAction = {
+        type: 'add_item', // CHANGED: Use existing type
+        originalInput: input,
+        itemName: quantityExtraction.itemName,
+        extractedQuantity: quantityExtraction.quantity,
+        listName: listName, // This will help us know which list to add to
+        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
+      };
+      
+      return {
+        success: true,
+        message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
+        needsUserInput: true,
+        disambiguationOptions,
+        pendingAction: pendingAction
+      };
+    }
+    
+    // No existing items found - create new article directly
+    console.log('🗣️ No existing options, creating new article directly');
+    return await this.createArticleInConversationContext(quantityExtraction, listId, listName);
+  }
+
+  private async createArticleInConversationContext(quantityExtraction: any, listId: string, listName: string): Promise<AIExecutionResult> {
+    try {
+      // Create the article
+      const articleData = {
+        name: quantityExtraction.itemName,
+        amount: quantityExtraction.quantity || '',
+        departmentId: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
+        icon: this.aiResponse.suggestIcon(quantityExtraction.itemName)
+      };
+      
+      console.log('🗣️ Creating article in conversation context:', articleData);
+      
+      const newArticle = await this.dataService.createArticle(articleData).toPromise();
+      
+      if (newArticle) {
+        const targetList = await this.findListById(listId);
+        
+        if (targetList) {
+          const updatedArticleIds = [...targetList.articleIds];
+          if (!updatedArticleIds.includes(newArticle.id)) {
+            updatedArticleIds.push(newArticle.id);
+          }
+  
+          const updatedItemStates = { ...targetList.itemStates };
+          updatedItemStates[newArticle.id] = {
+            articleId: newArticle.id,
+            isChecked: false,
+            amount: quantityExtraction.quantity || ''
+          };
+  
+          const updateResult = await this.dataService.updateList(targetList.id, {
+            articleIds: updatedArticleIds,
+            itemStates: updatedItemStates
+          }).toPromise();
+          
+          if (updateResult) {
+            // Update context to keep conversation going
+            this.setConversationContext({
+              lastAction: {
+                type: 'article_added',
+                listId: targetList.id,
+                listName: targetList.name,
+                articleName: newArticle.name,
+                timestamp: new Date()
+              },
+              waitingForArticles: {
+                listId: targetList.id,
+                listName: targetList.name,
+                prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+              }
+            });
+  
+            const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(newArticle.name, targetList.name);
+            
+            return {
+              success: true,
+              message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zu "${targetList.name}" hinzugefügt.`,
+              listId: targetList.id,
+              conversationContext: this.getConversationContext(),
+              followUpPrompt
+            };
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        message: '❌ Fehler beim Hinzufügen des Artikels.'
+      };
+      
+    } catch (error) {
+      console.error('Error creating article in conversation context:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Hinzufügen des Artikels.'
+      };
+    }
+  }
+
+  private async handleMultipleItemsInContext(input: string, listId: string, listName: string): Promise<AIExecutionResult> {
+    console.log('🗣️ Handling multiple items in context with disambiguation:', input);
+    
+    const items = input.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    console.log('🗣️ Split items:', items);
+    
+    if (items.length === 0) {
+      return {
+        success: false,
+        message: '❌ Konnte keine Artikel in der Eingabe erkennen.'
+      };
+    }
+    
+    const targetList = await this.findListById(listId);
+    if (!targetList) {
+      return {
+        success: false,
+        message: '❌ Zielliste nicht gefunden.'
+      };
+    }
+    
+    // FIXED: Better quantity extraction for first item
+    const firstItemText = items[0];
+    const firstQuantityExtraction = this.quantityExtraction.extractQuantity(firstItemText);
+    
+    console.log('🗣️ First item text:', firstItemText);
+    console.log('🗣️ First item extraction:', firstQuantityExtraction);
+    
+    // Use the cleaned item name for disambiguation check
+    const firstItemName = firstQuantityExtraction.itemName;
+    console.log('🗣️ Checking disambiguation for cleaned name:', firstItemName);
+    
+    // Check for existing articles for the first item
+    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(firstItemName);
+    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    
+    if (existingOptions.length > 0) {
+      console.log('🗣️ Found existing options for first item, showing disambiguation');
+      
+      // FIXED: Store remaining items with proper extraction
+      const remainingItems = items.slice(1);
+      console.log('🗣️ Storing remaining items for later processing:', remainingItems);
+      
+      // Create a special pending action for multiple items with disambiguation
+      const pendingAction: any = {
+        type: 'add_item',
+        originalInput: input,
+        itemName: firstItemName, // Use cleaned name
+        extractedQuantity: firstQuantityExtraction.quantity, // Use extracted quantity
+        listName: listName,
+        suggestedDepartment: this.aiResponse.suggestDepartment(firstItemName),
+        // Special fields for multiple items - FIXED
+        isMultipleItems: true,
+        remainingItems: remainingItems, // Store ALL remaining items
+        conversationListId: listId
+      };
+      
+      console.log('🗣️ Created pending action with remaining items:', pendingAction);
+      
+      return {
+        success: true,
+        message: `🎯 Mehrere Artikel erkannt. Zuerst "${firstItemName}":\n\n${this.aiResponse.getDisambiguationMessage(firstItemName)}`,
+        needsUserInput: true,
+        disambiguationOptions,
+        pendingAction: pendingAction
+      };
+    }
+    
+    // No disambiguation needed - process all items directly
+    let addedItems: string[] = [];
+    let updatedArticleIds = [...targetList.articleIds];
+    let updatedItemStates = { ...targetList.itemStates };
+    
+    for (const itemText of items) {
+      try {
+        console.log('🗣️ Processing item directly (no disambiguation):', itemText);
+        
+        const quantityExtraction = this.quantityExtraction.extractQuantity(itemText);
+        console.log('🗣️ Quantity extraction for item:', quantityExtraction);
+        
+        const articleData = {
+          name: quantityExtraction.itemName,
+          amount: quantityExtraction.quantity || '',
+          departmentId: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
+          icon: this.aiResponse.suggestIcon(quantityExtraction.itemName)
+        };
+        
+        console.log('🗣️ Creating article:', articleData);
+        
+        const newArticle = await this.dataService.createArticle(articleData).toPromise();
+        
+        if (newArticle) {
+          if (!updatedArticleIds.includes(newArticle.id)) {
+            updatedArticleIds.push(newArticle.id);
+          }
+          
+          updatedItemStates[newArticle.id] = {
+            articleId: newArticle.id,
+            isChecked: false,
+            amount: quantityExtraction.quantity || ''
+          };
+          
+          addedItems.push(`"${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''}`);
+          console.log('🗣️ Successfully created:', newArticle.name);
+        }
+      } catch (error) {
+        console.error('🗣️ Error creating article:', itemText, error);
+      }
+    }
+    
+    if (addedItems.length > 0) {
+      const updateResult = await this.dataService.updateList(targetList.id, {
+        articleIds: updatedArticleIds,
+        itemStates: updatedItemStates
+      }).toPromise();
+      
+      if (updateResult) {
+        // Update context to keep conversation going
+        this.setConversationContext({
+          lastAction: {
+            type: 'article_added',
+            listId: targetList.id,
+            listName: targetList.name,
+            articleName: `${addedItems.length} Artikel`,
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: targetList.id,
+            listName: targetList.name,
+            prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+          }
+        });
+  
+        const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt('mehrere Artikel', targetList.name);
+        
+        return {
+          success: true,
+          message: `✅ ${addedItems.length} Artikel zu "${targetList.name}" hinzugefügt:\n${addedItems.join(', ')}`,
+          listId: targetList.id,
+          conversationContext: this.getConversationContext(),
+          followUpPrompt
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      message: `❌ Fehler beim Hinzufügen der Artikel.`
+    };
+  }
+
+  /**
+   * Find list by ID
+   */
+  private async findListById(listId: string): Promise<ShoppingList | null> {
+    try {
+      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+      return lists?.find(list => list.id === listId) || null;
+    } catch (error) {
+      console.error('Error finding list by ID:', error);
+      return null;
+    }
   }
 
   // ========================================
@@ -91,23 +482,32 @@ export class AIService {
   }
 
   // ========================================
-  // MAIN COMMAND EXECUTION
+  // MAIN COMMAND EXECUTION (ENHANCED WITH CONVERSATION CONTEXT)
   // ========================================
 
   /**
-   * Execute AI command and perform actual data operations
+   * Execute AI command with conversation context awareness
    */
   async executeCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🗣️ CONVERSATION STATE DEBUG:');
+    console.log('🗣️ - isWaitingForArticles:', this.isWaitingForArticles());
+    console.log('🗣️ - isNegativeResponse:', this.isNegativeResponse(input));
+    console.log('🗣️ - isSimpleArticleInput:', this.isSimpleArticleInput(input));
+    console.log('🗣️ - conversationContext:', this.conversationContext);
+    console.log('🗣️ - input:', input);
+
     try {
       console.log('🤖 Processing command:', input);
+      console.log('🗣️ Current context:', this.conversationContext);
       
       // 🔑 Handle API key setup commands FIRST
       if (input.toLowerCase().includes('api key')) {
         return this.handleApiKeyCommand(input);
       }
       
-      // Handle simple test commands
+      // Handle simple commands that clear context
       if (input.toLowerCase().includes('hilfe') || input.toLowerCase().includes('help')) {
+        this.clearConversationContext();
         const hasKey = this.hasApiKey();
         return {
           success: true,
@@ -122,17 +522,36 @@ export class AIService {
           message: this.aiResponse.getSystemStatusMessage(hasKey)
         };
       }
-
+  
       // Handle show lists command
       if (input.toLowerCase().includes('zeige') && input.toLowerCase().includes('liste')) {
+        this.clearConversationContext();
         return await this.handleShowListsCommand();
       }
-
-      // 🎯 Check if API key is configured for advanced features
+  
+      // NEW: Handle "no" or "nein" when waiting for articles - IMPROVED DETECTION
+      if (this.isWaitingForArticles() && this.isNegativeResponse(input)) {
+        console.log('🗣️ User declined to add more articles');
+        this.clearConversationContext();
+        return {
+          success: true,
+          message: this.aiResponse.getConversationEndedMessage()
+        };
+      }
+  
+      // NEW: Handle context-aware simple article addition - IMPROVED DETECTION  
+      if (this.isWaitingForArticles() && this.isSimpleArticleInput(input)) {
+        console.log('🗣️ Processing simple article in context');
+        return await this.handleContextualArticleAddition(input);
+      }
+  
+      // Clear context for new commands
+      this.clearConversationContext();
+  
+      // Rest of your existing executeCommand logic...
       const hasApiKey = this.hasApiKey();
       console.log('🔑 Has API Key:', hasApiKey);
       
-      // 🎯 ENHANCED: Process command with multi-item support (if API key available)
       if (hasApiKey) {
         console.log('🎯 Processing with enhanced features');
         return await this.processEnhancedCommand(input);
@@ -143,6 +562,7 @@ export class AIService {
       
     } catch (error) {
       console.error('AI Service error:', error);
+      this.clearConversationContext();
       return {
         success: false,
         message: this.aiResponse.getGenericErrorMessage(error instanceof Error ? error.message : undefined),
@@ -320,8 +740,187 @@ export class AIService {
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
+    console.log('🎯 Handling disambiguation choice with conversation context');
+    console.log('🎯 Pending action:', pendingAction);
+    console.log('🎯 Selected option:', selectedOption);
+    console.log('🎯 Current conversation context:', this.conversationContext);
     
+    // PRIORITY: Check if we're in conversation mode first
+    const isInConversation = this.isWaitingForArticles();
+    const conversationListId = this.conversationContext.waitingForArticles?.listId;
+    const conversationListName = this.conversationContext.waitingForArticles?.listName;
+    
+    console.log('🎯 Is in conversation:', isInConversation);
+    console.log('🎯 Conversation list:', conversationListName, conversationListId);
+    
+    // CONVERSATION MODE: Handle disambiguation within conversation context
+    if (isInConversation && conversationListId && conversationListName) {
+      console.log('🎯 Processing disambiguation in CONVERSATION MODE');
+      
+      try {
+        let articleToAdd;
+        
+        if (selectedOption.type === 'existing' && selectedOption.article) {
+          // Use existing article
+          articleToAdd = selectedOption.article;
+          console.log('🎯 Using existing article in conversation:', articleToAdd.name);
+        } else {
+          // Create new article
+          const articleData = {
+            name: pendingAction.itemName,
+            amount: pendingAction.extractedQuantity || '',
+            departmentId: this.aiResponse.suggestDepartment(pendingAction.itemName),
+            icon: this.aiResponse.suggestIcon(pendingAction.itemName)
+          };
+          
+          console.log('🎯 Creating new article in conversation:', articleData);
+          articleToAdd = await this.dataService.createArticle(articleData).toPromise();
+        }
+        
+        if (articleToAdd) {
+          // Add to conversation list
+          const targetList = await this.findListById(conversationListId);
+          
+          if (targetList) {
+            let updatedArticleIds = [...targetList.articleIds];
+            let updatedItemStates = { ...targetList.itemStates };
+            
+            // Add the disambiguated article
+            if (!updatedArticleIds.includes(articleToAdd.id)) {
+              updatedArticleIds.push(articleToAdd.id);
+            }
+    
+            updatedItemStates[articleToAdd.id] = {
+              articleId: articleToAdd.id,
+              isChecked: false,
+              amount: pendingAction.extractedQuantity || ''
+            };
+    
+            let addedItems = [`"${articleToAdd.name}"${pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : ''}`];
+            
+            // NEW: Check if there are remaining items to process
+            const remainingItems = (pendingAction as any).remainingItems;
+            const isMultipleItems = (pendingAction as any).isMultipleItems;
+            
+            console.log('🎯 Checking for remaining items:', remainingItems);
+            console.log('🎯 Is multiple items:', isMultipleItems);
+            
+            if (isMultipleItems && Array.isArray(remainingItems) && remainingItems.length > 0) {
+              console.log('🎯 Processing remaining items:', remainingItems);
+              
+              // Process remaining items
+              for (const itemText of remainingItems) {
+                try {
+                  console.log('🎯 Processing remaining item:', itemText);
+                  
+                  const quantityExtraction = this.quantityExtraction.extractQuantity(itemText);
+                  console.log('🎯 Quantity extraction for remaining item:', quantityExtraction);
+                  
+                  const articleData = {
+                    name: quantityExtraction.itemName,
+                    amount: quantityExtraction.quantity || '',
+                    departmentId: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
+                    icon: this.aiResponse.suggestIcon(quantityExtraction.itemName)
+                  };
+                  
+                  console.log('🎯 Creating remaining article:', articleData);
+                  
+                  const newArticle = await this.dataService.createArticle(articleData).toPromise();
+                  
+                  if (newArticle) {
+                    if (!updatedArticleIds.includes(newArticle.id)) {
+                      updatedArticleIds.push(newArticle.id);
+                    }
+                    
+                    updatedItemStates[newArticle.id] = {
+                      articleId: newArticle.id,
+                      isChecked: false,
+                      amount: quantityExtraction.quantity || ''
+                    };
+                    
+                    addedItems.push(`"${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''}`);
+                    console.log('🎯 Successfully created remaining item:', newArticle.name);
+                  }
+                } catch (error) {
+                  console.error('🎯 Error creating remaining article:', itemText, error);
+                }
+              }
+            }
+    
+            // Update the list with all articles (original + remaining)
+            const updateResult = await this.dataService.updateList(targetList.id, {
+              articleIds: updatedArticleIds,
+              itemStates: updatedItemStates
+            }).toPromise();
+            
+            if (updateResult) {
+              console.log('🎯 Successfully added all articles to conversation list');
+              
+              // CRITICAL: Maintain conversation context to stay in chat
+              this.setConversationContext({
+                lastAction: {
+                  type: 'article_added',
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  articleName: addedItems.length > 1 ? `${addedItems.length} Artikel` : articleToAdd.name,
+                  timestamp: new Date()
+                },
+                waitingForArticles: {
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+                }
+              });
+    
+              // Create appropriate message based on number of items
+              let message: string;
+              if (addedItems.length === 1) {
+                message = `✅ ${addedItems[0]} wurde zu "${targetList.name}" hinzugefügt.`;
+              } else {
+                message = `✅ ${addedItems.length} Artikel zu "${targetList.name}" hinzugefügt:\n${addedItems.join(', ')}`;
+              }
+    
+              const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(
+                addedItems.length > 1 ? 'mehrere Artikel' : articleToAdd.name, 
+                targetList.name
+              );
+              
+              console.log('🎯 Returning conversation result with follow-up');
+              console.log('🎯 Message:', message);
+              console.log('🎯 Added items:', addedItems);
+              
+              return {
+                success: true,
+                message: message,
+                listId: targetList.id,
+                conversationContext: this.getConversationContext(),
+                followUpPrompt // This is CRITICAL to keep conversation going
+              };
+            }
+          }
+        }
+        
+        return {
+          success: false,
+          message: '❌ Fehler beim Hinzufügen des Artikels.'
+        };
+        
+      } catch (error) {
+        console.error('🎯 Error in conversation disambiguation:', error);
+        return {
+          success: false,
+          message: '❌ Fehler beim Verarbeiten der Auswahl.'
+        };
+      }
+    }
+    
+    // NON-CONVERSATION MODE: Use regular disambiguation handling
+    console.log('🎯 Using REGULAR disambiguation handling (not in conversation)');
+    
+    // Clear conversation context since we're doing a regular action
+    this.clearConversationContext();
+    
+    // Use the existing disambiguation service for non-conversation mode
     return this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
   }
 
@@ -408,7 +1007,7 @@ export class AIService {
   }
 
   /**
-   * 🎨 Handle list creation with color support (ENHANCED: Better case preservation)
+   * 🎨 Handle list creation with color support and conversation context
    */
   private async handleListCreationWithColor(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
     console.log('🎨 HANDLING LIST CREATION WITH COLOR:', input);
@@ -418,10 +1017,11 @@ export class AIService {
     const colorExtraction = this.commandParser.extractColor(input);
     console.log('🎨 COLOR EXTRACTION:', colorExtraction);
     
-    // 🎯 ENHANCED: Parse list creation from original input to preserve case
+    // Parse list creation from original input to preserve case
     const cleanInput = colorExtraction.cleanInput;
     
-    // Pattern: "erstelle liste [name] mit [item]" or "erstelle liste [name]" - case insensitive match but extract from original
+    // FIXED: Better pattern matching for list creation
+    // Pattern: "erstelle liste [name]" or "erstelle liste [name] mit [item]"
     const createMatch = cleanInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/i);
     
     if (!createMatch) {
@@ -434,70 +1034,151 @@ export class AIService {
     const listName = createMatch[1].trim();
     const itemName = createMatch[2]?.trim();
     
-    console.log('🎨 PARSED LIST CREATION:', { listName, itemName, color: colorExtraction.colorHex });
+    console.log('🎨 PARSED LIST CREATION:', { 
+      originalInput: input,
+      cleanInput: cleanInput,
+      listName: listName, 
+      itemName: itemName, 
+      color: colorExtraction.colorHex 
+    });
     
-    try {
-      const articleIds: string[] = [];
-      const itemStates: any = {};
+    // CRITICAL FIX: Don't create an article if no explicit item was specified
+    if (!itemName) {
+      console.log('🎨 Creating list WITHOUT initial article');
       
-      // Create article if specified
-      if (itemName) {
+      try {
+        const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
+        
+        const listToCreate = {
+          name: listName,
+          color: listColor,
+          icon: '🛒',
+          articleIds: [], // EMPTY - no initial articles
+          itemStates: {}  // EMPTY - no initial states
+        };
+        
+        console.log('🎨 CREATING LIST:', listToCreate);
+        
+        const newList = await this.dataService.createList(listToCreate).toPromise();
+        
+        if (newList) {
+          // Set conversation context for follow-up
+          this.setConversationContext({
+            lastAction: {
+              type: 'list_created',
+              listId: newList.id,
+              listName: newList.name,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: newList.id,
+              listName: newList.name,
+              prompt: 'Möchtest du Artikel zu dieser Liste hinzufügen?'
+            }
+          });
+  
+          const baseMessage = `✅ Liste "${listName}"${colorExtraction.colorName ? ` in ${colorExtraction.colorName}` : ''} wurde erstellt.`;
+          const followUpPrompt = this.aiResponse.getListCreatedFollowUpPrompt(listName, false);
+          
+          return {
+            success: true,
+            message: baseMessage,
+            listId: newList.id,
+            conversationContext: this.getConversationContext(),
+            followUpPrompt
+          };
+        }
+      } catch (error) {
+        console.error('🎨 LIST CREATION ERROR:', error);
+        return {
+          success: false,
+          message: '❌ Fehler beim Erstellen der Liste.'
+        };
+      }
+    } else {
+      // Create list WITH initial article
+      console.log('🎨 Creating list WITH initial article:', itemName);
+      
+      try {
+        const articleIds: string[] = [];
+        const itemStates: any = {};
+        
+        // Create the initial article using the explicitly specified item name
         const articleToCreate = {
-          name: quantityExtraction.itemName || itemName,
+          name: itemName, // Use the parsed item name, NOT the quantity extraction
           amount: quantityExtraction.quantity || '',
           departmentId: this.aiResponse.suggestDepartment(itemName),
           icon: this.aiResponse.suggestIcon(itemName)
         };
         
-        console.log('🎨 CREATING ARTICLE:', articleToCreate);
+        console.log('🎨 CREATING INITIAL ARTICLE:', articleToCreate);
         
         const newArticle = await this.dataService.createArticle(articleToCreate).toPromise();
         
         if (newArticle) {
           articleIds.push(newArticle.id);
-          // 🎯 ENHANCED: Ensure new articles are active
           itemStates[newArticle.id] = { 
             articleId: newArticle.id, 
-            isChecked: false, // false = active
+            isChecked: false,
             amount: quantityExtraction.quantity || '',
             addedAt: new Date().toISOString()
           };
         }
-      }
-      
-      // Use extracted color or suggest based on name
-      const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
-      
-      const listToCreate = {
-        name: listName,
-        color: listColor,
-        icon: '🛒',
-        articleIds,
-        itemStates
-      };
-      
-      console.log('🎨 CREATING LIST:', listToCreate);
-      
-      const newList = await this.dataService.createList(listToCreate).toPromise();
-      
-      if (newList) {
-        return {
-          success: true,
-          message: this.aiResponse.getListCreatedMessage(
+        
+        const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
+        
+        const listToCreate = {
+          name: listName,
+          color: listColor,
+          icon: '🛒',
+          articleIds,
+          itemStates
+        };
+        
+        console.log('🎨 CREATING LIST WITH ARTICLE:', listToCreate);
+        
+        const newList = await this.dataService.createList(listToCreate).toPromise();
+        
+        if (newList) {
+          // Set conversation context for follow-up
+          this.setConversationContext({
+            lastAction: {
+              type: 'list_created',
+              listId: newList.id,
+              listName: newList.name,
+              articleName: newArticle?.name,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: newList.id,
+              listName: newList.name,
+              prompt: 'Möchtest du weitere Artikel hinzufügen?'
+            }
+          });
+  
+          const baseMessage = this.aiResponse.getListCreatedMessage(
             listName, 
-            quantityExtraction.itemName || itemName, 
+            itemName, 
             quantityExtraction.quantity, 
             colorExtraction.colorName
-          ),
-          listId: newList.id
+          );
+          const followUpPrompt = this.aiResponse.getListCreatedFollowUpPrompt(listName, true);
+          
+          return {
+            success: true,
+            message: baseMessage,
+            listId: newList.id,
+            conversationContext: this.getConversationContext(),
+            followUpPrompt
+          };
+        }
+      } catch (error) {
+        console.error('🎨 LIST CREATION ERROR:', error);
+        return {
+          success: false,
+          message: '❌ Fehler beim Erstellen der Liste.'
         };
       }
-    } catch (error) {
-      console.error('🎨 LIST CREATION ERROR:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Erstellen der Liste.'
-      };
     }
     
     return {
@@ -619,11 +1300,11 @@ export class AIService {
   }
 
   // ========================================
-  // ACTION EXECUTION HELPERS (ENHANCED)
+  // ACTION EXECUTION HELPERS (ENHANCED WITH CONVERSATION CONTEXT)
   // ========================================
 
 /**
- * 🎯 Execute action with new article (FIXED: Use updateList instead of addArticleToList)
+ * 🎯 Execute action with new article (ENHANCED: Use updateList instead of addArticleToList)
  */
 private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
   console.log('🎯 Executing action with new article:', action.itemName);
@@ -670,10 +1351,39 @@ private async executeActionWithNewArticle(action: PendingAction): Promise<AIExec
 
       console.log('🎯 Created list:', newList);
 
+      // NEW: Set conversation context
+      if (newList) {
+        this.setConversationContext({
+          lastAction: {
+            type: 'list_created',
+            listId: newList.id,
+            listName: newList.name,
+            articleName: newArticle.name,
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: newList.id,
+            listName: newList.name,
+            prompt: 'Möchtest du weitere Artikel hinzufügen?'
+          }
+        });
+
+        const baseMessage = this.aiResponse.getListCreatedMessage(action.listName!, newArticle.name, action.extractedQuantity);
+        const followUpPrompt = this.aiResponse.getListCreatedFollowUpPrompt(action.listName!, true);
+
+        return {
+          success: true,
+          message: baseMessage,
+          listId: newList.id,
+          conversationContext: this.getConversationContext(),
+          followUpPrompt
+        };
+      }
+
       return {
         success: true,
         message: this.aiResponse.getListCreatedMessage(action.listName!, newArticle.name, action.extractedQuantity),
-        listId: newList?.id
+        listId: newList ? (newList as any).id : undefined
       };
     } else {
       // Handle add item without list specified
@@ -717,8 +1427,9 @@ private async executeActionWithNewArticle(action: PendingAction): Promise<AIExec
 }
 
 /**
- * 🎯 Execute action with new article to specific list (FIXED: Use updateList instead of addArticleToList)
+ * 🎯 Execute action with new article to specific list with conversation context
  */
+
 private async executeActionWithNewArticleToList(action: PendingAction, listName: string): Promise<AIExecutionResult> {
   console.log('🎯 Executing action with new article to list:', listName);
   console.log('🎯 Action details:', action);
@@ -747,25 +1458,18 @@ private async executeActionWithNewArticleToList(action: PendingAction, listName:
         console.log('✅ Found target list:', targetList.name);
         console.log('🎯 Adding article to list using updateList method...');
         
-        // 🎯 FIXED: Use updateList method instead of addArticleToList
         const updatedArticleIds = [...targetList.articleIds];
         if (!updatedArticleIds.includes(newArticle.id)) {
           updatedArticleIds.push(newArticle.id);
         }
 
-        // 🎯 CRITICAL: Create item states with explicit active state
         const updatedItemStates = { ...targetList.itemStates };
         updatedItemStates[newArticle.id] = {
           articleId: newArticle.id,
-          isChecked: false, // 🎯 FALSE = ACTIVE/NOT STRIKED OUT
+          isChecked: false,
           amount: action.extractedQuantity || ''
         };
 
-        console.log(`🎯 Setting article ${newArticle.id} as ACTIVE (isChecked: false)`);
-        console.log('🔍 Item state:', updatedItemStates[newArticle.id]);
-        console.log('🔍 All updated item states:', updatedItemStates);
-
-        // Use existing updateList method
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
@@ -773,10 +1477,34 @@ private async executeActionWithNewArticleToList(action: PendingAction, listName:
         
         if (updateResult) {
           console.log('✅ Successfully added article to list using updateList');
+          
+          // NEW: Set conversation context for follow-up (even for existing lists)
+          this.setConversationContext({
+            lastAction: {
+              type: 'article_added',
+              listId: targetList.id,
+              listName: targetList.name,
+              articleName: newArticle.name,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: targetList.id,
+              listName: targetList.name,
+              prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+            }
+          });
+
+          const baseMessage = this.aiResponse.getItemAddedMessage(newArticle.name, action.extractedQuantity, targetList.name);
+          
+          // NEW: Add follow-up prompt for existing lists too
+          const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(newArticle.name, targetList.name);
+          
           return {
             success: true,
-            message: this.aiResponse.getItemAddedMessage(newArticle.name, action.extractedQuantity, targetList.name),
-            listId: targetList.id
+            message: baseMessage,
+            listId: targetList.id,
+            conversationContext: this.getConversationContext(),
+            followUpPrompt // NEW: This keeps conversation going for existing lists too
           };
         } else {
           console.error('❌ updateList returned false');

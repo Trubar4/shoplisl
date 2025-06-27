@@ -6,6 +6,7 @@ import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ConversationContext } from '../../../core/models';
 
 // Angular Material imports
 import { MatCardModule } from '@angular/material/card';
@@ -39,7 +40,6 @@ interface ChatMessage {
   timestamp: Date;
   actionData?: any;
 }
-
 
 @Component({
   selector: 'app-voice-ai-assistant',
@@ -80,7 +80,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   currentMessage = '';
   isProcessing = false;
   isRecording = false;
-  private isSpeaking = false; // Add this property at the top with other properties
+  private isSpeaking = false;
   
   // ========================================
   // SPEECH RECOGNITION & SYNTHESIS
@@ -186,21 +186,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // MESSAGE HANDLING
+  // MESSAGE HANDLING WITH CONVERSATION CONTEXT
   // ========================================
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
   
     const userMessage = this.currentMessage.trim();
     
-    // 💬 ENHANCED DEBUG: Log the user message with more context
     console.log('💬 SEND MESSAGE CALLED');
     console.log('💬 USER MESSAGE:', userMessage);
-    console.log('💬 MESSAGE LENGTH:', userMessage.length);
-    console.log('💬 IS PROCESSING:', this.isProcessing);
-    console.log('💬 CONTAINS FÜGE:', userMessage.toLowerCase().includes('füge'));
-    console.log('💬 CONTAINS HINZU:', userMessage.toLowerCase().includes('hinzu'));
-    console.log('💬 CONTAINS MENGE:', userMessage.toLowerCase().includes('menge'));
     
     // Clear any existing disambiguation
     this.chatPersistence.setDisambiguation(null);
@@ -235,42 +229,18 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   sendQuickMessage(message: string): void {
-    // Clear any existing disambiguation when sending quick messages
     this.chatPersistence.setDisambiguation(null);
-    
     this.currentMessage = message;
     this.sendMessage();
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
-    // 🤖 ENHANCED DEBUG: Log the complete AI result with more detail
     console.log('🤖 HANDLE AI RESULT CALLED');
     console.log('🤖 AI RESULT:', result);
-    console.log('🤖 SUCCESS:', result.success);
-    console.log('🤖 MESSAGE:', result.message);
-    console.log('🤖 NEEDS USER INPUT:', result.needsUserInput);
-    console.log('🤖 LIST ID:', result.listId);
+    console.log('🤖 HAS FOLLOW-UP PROMPT:', !!result.followUpPrompt);
+    console.log('🤖 CONVERSATION CONTEXT:', result.conversationContext);
+    console.log('🤖 WAITING FOR ARTICLES:', result.conversationContext?.waitingForArticles);
     
-    // 🐛 DEBUG: If there's disambiguation, log the pending action details
-    if (result.needsUserInput && result.pendingAction) {
-      console.log('🤖 PENDING ACTION TYPE:', result.pendingAction.type);
-      console.log('🤖 PENDING ACTION ITEM NAME:', result.pendingAction.itemName);
-      console.log('🤖 PENDING ACTION ORIGINAL INPUT:', result.pendingAction.originalInput);
-      console.log('🤖 PENDING ACTION QUANTITY:', result.pendingAction.extractedQuantity);
-      console.log('🤖 DISAMBIGUATION OPTIONS COUNT:', result.disambiguationOptions?.length);
-      
-      // Log each disambiguation option for debugging
-      result.disambiguationOptions?.forEach((option, index) => {
-        console.log(`🤖 OPTION ${index}:`, {
-          id: option.id,
-          displayName: option.displayName,
-          type: option.type,
-          confidence: option.confidence,
-          articleName: option.article?.name
-        });
-      });
-    }
-  
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
   
@@ -278,9 +248,19 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
       console.log('🤖 HANDLING DISAMBIGUATION');
       this.handleDisambiguation(result);
+      return; // Don't process other actions when showing disambiguation
     }
   
-    // Handle successful actions
+    // NEW: Handle follow-up prompts for conversation flow
+    if (result.success && result.followUpPrompt) {
+      console.log('🤖 HANDLING FOLLOW-UP PROMPT');
+      setTimeout(() => {
+        this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
+        this.scrollToBottom();
+      }, 1000);
+    }
+  
+    // Handle successful actions (speak and navigate)
     if (result.success && result.listId) {
       console.log('🤖 HANDLING SUCCESSFUL ACTION');
       this.handleSuccessfulAction(result);
@@ -292,8 +272,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       this.handleSuggestion(result);
     }
   
-    // Provide additional feedback for list-related actions
-    if (result.success && result.message.includes('Liste')) {
+    // Provide additional feedback for list-related actions (only if no follow-up prompt)
+    if (result.success && result.message.includes('Liste') && !result.followUpPrompt) {
       console.log('🤖 ADDING LIST-RELATED FEEDBACK');
       setTimeout(() => {
         this.chatPersistence.addMessage(
@@ -321,14 +301,11 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private handleSuccessfulAction(result: AIExecutionResult): void {
-    // 🎯 DEBUG: Log when this method is called
     console.log('🎯 HANDLE SUCCESSFUL ACTION CALLED');
-    console.log('🎯 RESULT MESSAGE:', result.message);
-    console.log('🎯 RESULT SUCCESS:', result.success);
-    console.log('🎯 RESULT LIST ID:', result.listId);
-    console.log('🎯 FULL RESULT OBJECT:', result);
+    console.log('🎯 HAS FOLLOW-UP PROMPT:', !!result.followUpPrompt);
+    console.log('🎯 CONVERSATION CONTEXT:', result.conversationContext);
     
-    // Extract the first line and clean it
+    // Extract the first line and clean it for speech
     const messageToSpeak = result.message.split('\n')[0]
       .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
       .replace(/^\s*/, '') // Remove leading whitespace
@@ -340,11 +317,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       this.speak(messageToSpeak);
     }
     
-    // Navigate to list after delay
-    setTimeout(() => {
-      console.log('🎯 NAVIGATING TO LIST:', result.listId);
-      this.router.navigate(['/lists', result.listId]);
-    }, 2000);
+    // FIXED: Only navigate if there's no follow-up prompt AND no active conversation
+    const isInConversation = result.conversationContext?.waitingForArticles;
+    
+    if (!result.followUpPrompt && !isInConversation) {
+      setTimeout(() => {
+        console.log('🎯 NAVIGATING TO LIST:', result.listId);
+        this.router.navigate(['/lists', result.listId]);
+      }, 2000);
+    } else {
+      console.log('🎯 NOT NAVIGATING - IN CONVERSATION MODE');
+    }
   }
 
   private handleSuggestion(result: AIExecutionResult): void {
@@ -352,6 +335,38 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       `Tipp: Sage "Erstelle Liste ${result.suggestedData!.listName}" um sie anzulegen.`, 
       'system'
     );
+  }
+
+  // ========================================
+  // CONVERSATION CONTEXT METHODS
+  // ========================================
+  
+  getConversationStatus(): string {
+    const context = this.aiService.getConversationContext();
+    
+    if (context.waitingForArticles) {
+      return `Warte auf Artikel für "${context.waitingForArticles.listName}"`;
+    }
+    
+    if (context.lastAction) {
+      const timeSince = Date.now() - context.lastAction.timestamp.getTime();
+      const minutes = Math.floor(timeSince / 60000);
+      
+      if (context.lastAction.type === 'list_created') {
+        return `Liste "${context.lastAction.listName}" vor ${minutes}min erstellt`;
+      } else {
+        return `"${context.lastAction.articleName}" vor ${minutes}min hinzugefügt`;
+      }
+    }
+    
+    return 'Keine aktive Unterhaltung';
+  }
+
+  finishAddingArticles(): void {
+    const context = this.aiService.getConversationContext();
+    if (context.waitingForArticles) {
+      this.sendQuickMessage('nein');
+    }
   }
 
   // ========================================
@@ -396,188 +411,122 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     return 'Artikel auswählen';
   }
 
-    /**
-   * 🎯 TYPE-SAFE: Enhanced disambiguation option selection - SIMPLE FIX
+  /**
+   * Enhanced disambiguation option selection
    */
-    selectDisambiguationOption(option: DisambiguationOption): void {
-      console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
-      
-      const disambiguation = this.chatPersistence.getDisambiguation();
-      if (!disambiguation) {
-        console.error('🎯 No disambiguation available!');
-        return;
-      }
+  selectDisambiguationOption(option: DisambiguationOption): void {
+    console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
     
-      const pendingAction = disambiguation.pendingAction;
-      console.log('🎯 PENDING ACTION:', pendingAction);
+    const disambiguation = this.chatPersistence.getDisambiguation();
+    if (!disambiguation) {
+      console.error('🎯 No disambiguation available!');
+      return;
+    }
+  
+    const pendingAction = disambiguation.pendingAction;
+    console.log('🎯 PENDING ACTION:', pendingAction);
+    
+    // Clear disambiguation immediately for better UX
+    this.chatPersistence.setDisambiguation(null);
+    
+    // Generate choice text
+    let choiceText = '';
+    
+    if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+      // Handle multi-item action
+      const items = (pendingAction as any).items;
+      const currentIndex = (pendingAction as any).currentItemIndex;
       
-      // Clear disambiguation immediately for better UX
-      this.chatPersistence.setDisambiguation(null);
-      
-      // Safe choice text generation without type assertions
-      let choiceText = '';
-      
-      if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
-        // Handle multi-item action
-        const items = (pendingAction as any).items;
-        const currentIndex = (pendingAction as any).currentItemIndex;
-        
-        if ((pendingAction as any).type === 'select_list') {
-          choiceText = `Liste gewählt: ${option.displayName}`;
-        } else if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
-          const currentItem = items[currentIndex];
-          if (option.type === 'existing') {
-            choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${option.displayName} (vorhandener Artikel)`;
-          } else if (currentItem && currentItem.itemName) {
-            choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${currentItem.itemName} (neu erstellen)`;
-          } else {
-            choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
-          }
+      if ((pendingAction as any).type === 'select_list') {
+        choiceText = `Liste gewählt: ${option.displayName}`;
+      } else if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
+        const currentItem = items[currentIndex];
+        if (option.type === 'existing') {
+          choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${option.displayName} (vorhandener Artikel)`;
+        } else if (currentItem && currentItem.itemName) {
+          choiceText = `Artikel ${currentIndex + 1}/${items.length}: ${currentItem.itemName} (neu erstellen)`;
         } else {
-          choiceText = option.type === 'existing' ? 
-            `Vorhandener Artikel: ${option.displayName}` : 
-            `Neuen Artikel erstellen: ${option.displayName}`;
+          choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
         }
       } else {
-        // Handle single action
-        if ((pendingAction as any).type === 'select_list') {
-          choiceText = `Liste gewählt: ${option.displayName}`;
+        choiceText = option.type === 'existing' ? 
+          `Vorhandener Artikel: ${option.displayName}` : 
+          `Neuen Artikel erstellen: ${option.displayName}`;
+      }
+    } else {
+      // Handle single action
+      if ((pendingAction as any).type === 'select_list') {
+        choiceText = `Liste gewählt: ${option.displayName}`;
+      } else {
+        if (option.type === 'existing') {
+          choiceText = `Vorhandener Artikel: ${option.displayName}`;
         } else {
-          if (option.type === 'existing') {
-            choiceText = `Vorhandener Artikel: ${option.displayName}`;
-          } else {
-            choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
-          }
+          choiceText = `Neuen Artikel erstellen: ${option.displayName}`;
         }
       }
-      
-      console.log('🎯 CHOICE TEXT:', choiceText);
-      this.chatPersistence.addMessage(choiceText, 'user');
-      this.isProcessing = true;
-    
-      // Process the choice with enhanced error handling
-      this.aiService.handleDisambiguationChoice(pendingAction, option)
-        .then((result: AIExecutionResult) => {
-          console.log('🎯 DISAMBIGUATION RESULT:', result);
-          this.handleAIResult(result);
-        })
-        .catch((error: any) => {
-          console.error('🎯 DISAMBIGUATION ERROR:', error);
-          this.chatPersistence.addMessage(
-            `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
-            'error'
-          );
-        })
-        .finally(() => {
-          this.isProcessing = false;
-          this.scrollToBottom();
-        });
     }
+    
+    console.log('🎯 CHOICE TEXT:', choiceText);
+    this.chatPersistence.addMessage(choiceText, 'user');
+    this.isProcessing = true;
+  
+    // Process the choice with enhanced error handling
+    this.aiService.handleDisambiguationChoice(pendingAction, option)
+      .then((result: AIExecutionResult) => {
+        console.log('🎯 DISAMBIGUATION RESULT:', result);
+        console.log('🎯 DISAMBIGUATION HAS FOLLOW-UP:', !!result.followUpPrompt);
+        console.log('🎯 DISAMBIGUATION CONVERSATION CONTEXT:', result.conversationContext);
+        
+        // IMPORTANT: Use the same handleAIResult method to ensure consistent behavior
+        this.handleAIResult(result);
+      })
+      .catch((error: any) => {
+        console.error('🎯 DISAMBIGUATION ERROR:', error);
+        this.chatPersistence.addMessage(
+          `❌ Fehler beim Ausführen der Aktion: ${error.message || 'Unbekannter Fehler'}\n\n💡 Versuche es erneut oder sage "Hilfe".`, 
+          'error'
+        );
+      })
+      .finally(() => {
+        this.isProcessing = false;
+        this.scrollToBottom();
+      });
+  }
 
-    /**
-   * Alternative approach: Handle missing properties gracefully
+  /**
+   * Get action description for pending action - SAFE VERSION
    */
-  private getMultiItemInfo(action: any): { isMultiItem: boolean; currentIndex?: number; totalItems?: number; currentItem?: any } {
-    if (!action || typeof action !== 'object') {
-      return { isMultiItem: false };
-    }
-
-    const hasItems = 'items' in action && Array.isArray(action.items);
-    const hasCurrentIndex = 'currentItemIndex' in action && typeof action.currentItemIndex === 'number';
-
-    if (hasItems && hasCurrentIndex) {
-      const items = action.items;
-      const currentIndex = action.currentItemIndex;
-      const currentItem = currentIndex < items.length ? items[currentIndex] : null;
-
-      return {
-        isMultiItem: true,
-        currentIndex,
-        totalItems: items.length,
-        currentItem
-      };
-    }
-
-    return { isMultiItem: false };
-  }
-
-  
-/**
- * Alternative implementation using the graceful helper
- */
-getActionDescriptionAlt(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
-  if (!pendingAction) return 'Unbekannte Aktion';
-  
-  const multiInfo = this.getMultiItemInfo(pendingAction);
-  
-  if (multiInfo.isMultiItem && multiInfo.currentItem) {
-    return `Artikel ${multiInfo.currentIndex! + 1}/${multiInfo.totalItems}: "${multiInfo.currentItem.itemName}" verarbeiten`;
-  } else {
-    // Handle as single action
-    const action = pendingAction as PendingAction;
-    switch (action.type) {
-      case 'add_item':
-        return action.listName ? 
-          `Hinzufügen zu "${action.listName}"` : 
-          'Hinzufügen zur Liste';
-      case 'create_list':
-        return `Neue Liste "${action.listName}" erstellen`;
-      case 'select_list':
-        return 'Zur ausgewählten Liste hinzufügen';
-      default:
-        return 'Unbekannte Aktion';
-    }
-  }
-}
-
-/**
- * Safe type guard for MultiItemPendingAction
- */
-private isMultiItemAction(action: any): action is MultiItemPendingAction {
-  return action && 
-         typeof action === 'object' &&
-         'items' in action &&
-         'currentItemIndex' in action &&
-         'processedItems' in action &&
-         Array.isArray(action.items) &&
-         Array.isArray(action.processedItems) &&
-         typeof action.currentItemIndex === 'number';
-}
-
-/**
- * Get action description for pending action - SAFE VERSION
- */
-getActionDescription(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
-  if (!pendingAction) return 'Unbekannte Aktion';
-  
-  // Check for multi-item properties and access them directly
-  if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
-    const items = (pendingAction as any).items;
-    const currentIndex = (pendingAction as any).currentItemIndex;
+  getActionDescription(pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+    if (!pendingAction) return 'Unbekannte Aktion';
     
-    if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
-      const currentItem = items[currentIndex];
-      if (currentItem && currentItem.itemName) {
-        return `Artikel ${currentIndex + 1}/${items.length}: "${currentItem.itemName}" verarbeiten`;
+    // Check for multi-item properties and access them directly
+    if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+      const items = (pendingAction as any).items;
+      const currentIndex = (pendingAction as any).currentItemIndex;
+      
+      if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
+        const currentItem = items[currentIndex];
+        if (currentItem && currentItem.itemName) {
+          return `Artikel ${currentIndex + 1}/${items.length}: "${currentItem.itemName}" verarbeiten`;
+        }
+      }
+      return `Mehrere Artikel verarbeiten`;
+    } else {
+      // Handle as single action
+      switch (pendingAction.type) {
+        case 'add_item':
+          return (pendingAction as any).listName ? 
+            `Hinzufügen zu "${(pendingAction as any).listName}"` : 
+            'Hinzufügen zur Liste';
+        case 'create_list':
+          return `Neue Liste "${(pendingAction as any).listName}" erstellen`;
+        case 'select_list':
+          return 'Zur ausgewählten Liste hinzufügen';
+        default:
+          return 'Unbekannte Aktion';
       }
     }
-    return `Mehrere Artikel verarbeiten`;
-  } else {
-    // Handle as single action
-    switch (pendingAction.type) {
-      case 'add_item':
-        return (pendingAction as any).listName ? 
-          `Hinzufügen zu "${(pendingAction as any).listName}"` : 
-          'Hinzufügen zur Liste';
-      case 'create_list':
-        return `Neue Liste "${(pendingAction as any).listName}" erstellen`;
-      case 'select_list':
-        return 'Zur ausgewählten Liste hinzufügen';
-      default:
-        return 'Unbekannte Aktion';
-    }
   }
-}
 
   /**
    * Get default icon for disambiguation option
@@ -596,31 +545,31 @@ getActionDescription(pendingAction: PendingAction | MultiItemPendingAction | nul
     return '#2196f3'; // Default blue
   }
 
- /**
- * Get action hint text for disambiguation options - SAFE VERSION
- */
- getActionHint(option: DisambiguationOption, pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
-  if (!pendingAction) return 'Unbekannte Aktion';
-  
-  const isListSelection = this.isListSelection(pendingAction);
-  
-  if (isListSelection) {
-    // Check for multi-item safely
-    if ('items' in pendingAction) {
-      const items = (pendingAction as any).items;
-      if (Array.isArray(items) && items.length > 1) {
-        return `${items.length} Artikel zu "${option.displayName}" hinzufügen`;
+  /**
+   * Get action hint text for disambiguation options - SAFE VERSION
+   */
+  getActionHint(option: DisambiguationOption, pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+    if (!pendingAction) return 'Unbekannte Aktion';
+    
+    const isListSelection = this.isListSelection(pendingAction);
+    
+    if (isListSelection) {
+      // Check for multi-item safely
+      if ('items' in pendingAction) {
+        const items = (pendingAction as any).items;
+        if (Array.isArray(items) && items.length > 1) {
+          return `${items.length} Artikel zu "${option.displayName}" hinzufügen`;
+        }
       }
+      return `Zu "${option.displayName}" hinzufügen`;
     }
-    return `Zu "${option.displayName}" hinzufügen`;
-  }
 
-  if (option.type === 'existing') {
-    return 'Vorhandenen Artikel verwenden';
-  } else {
-    return 'Neuen Artikel erstellen';
+    if (option.type === 'existing') {
+      return 'Vorhandenen Artikel verwenden';
+    } else {
+      return 'Neuen Artikel erstellen';
+    }
   }
-}
 
   /**
    * Cancel disambiguation and clear pending action
@@ -725,75 +674,68 @@ getActionDescription(pendingAction: PendingAction | MultiItemPendingAction | nul
     this.isRecording = false;
   }
 
-// ========================================
-// TEXT-TO-SPEECH (ENHANCED WITH DEBUGGING)
-// ========================================
-private speak(text: string): void {
-  if (!this.synthesis) return;
-  
-  // 🔊 DEBUG: Log what we're trying to speak
-  console.log('🔊 SPEAK METHOD CALLED');
-  console.log('🔊 ORIGINAL TEXT:', text);
-  console.log('🔊 TEXT LENGTH:', text.length);
-  console.log('🔊 TEXT SPLIT BY NEWLINES:', text.split('\n'));
-  console.log('🔊 FIRST LINE ONLY:', text.split('\n')[0]);
-  console.log('🔊 IS CURRENTLY SPEAKING:', this.isSpeaking);
-  
-  // Prevent multiple speech instances
-  if (this.isSpeaking) {
-    console.log('🔊 ALREADY SPEAKING - IGNORING NEW REQUEST');
-    return;
+  // ========================================
+  // TEXT-TO-SPEECH
+  // ========================================
+  private speak(text: string): void {
+    if (!this.synthesis) return;
+    
+    console.log('🔊 SPEAK METHOD CALLED');
+    console.log('🔊 ORIGINAL TEXT:', text);
+    console.log('🔊 IS CURRENTLY SPEAKING:', this.isSpeaking);
+    
+    // Prevent multiple speech instances
+    if (this.isSpeaking) {
+      console.log('🔊 ALREADY SPEAKING - IGNORING NEW REQUEST');
+      return;
+    }
+    
+    this.synthesis.cancel();
+    this.isSpeaking = true;
+    
+    // Clean the text before speaking
+    const cleanText = text.split('\n')[0]
+      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
+      .replace(/^\s*/, '') // Remove leading whitespace
+      .trim();
+    
+    console.log('🔊 CLEANED TEXT TO SPEAK:', cleanText);
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'de-DE';
+    utterance.rate = 0.9;
+    utterance.volume = 0.8;
+    
+    // Add comprehensive event listeners
+    utterance.onstart = () => {
+      console.log('🔊 SPEECH STARTED:', cleanText);
+    };
+    
+    utterance.onend = () => {
+      console.log('🔊 SPEECH ENDED');
+      this.isSpeaking = false;
+    };
+    
+    utterance.onerror = (event) => {
+      console.error('🔊 SPEECH ERROR:', event);
+      this.isSpeaking = false;
+    };
+    
+    utterance.onpause = () => {
+      console.log('🔊 SPEECH PAUSED');
+    };
+    
+    utterance.onresume = () => {
+      console.log('🔊 SPEECH RESUMED');
+    };
+    
+    this.synthesis.speak(utterance);
   }
-  
-  this.synthesis.cancel();
-  this.isSpeaking = true;
-  
-  // Clean the text before speaking
-  const cleanText = text.split('\n')[0]
-    .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '') // Remove emojis
-    .replace(/^\s*/, '') // Remove leading whitespace
-    .trim();
-  
-  console.log('🔊 CLEANED TEXT TO SPEAK:', cleanText);
-  
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = 'de-DE';
-  utterance.rate = 0.9;
-  utterance.volume = 0.8;
-  
-  // Add comprehensive event listeners
-  utterance.onstart = () => {
-    console.log('🔊 SPEECH STARTED:', cleanText);
-  };
-  
-  utterance.onend = () => {
-    console.log('🔊 SPEECH ENDED');
-    this.isSpeaking = false;
-  };
-  
-  utterance.onerror = (event) => {
-    console.error('🔊 SPEECH ERROR:', event);
-    this.isSpeaking = false;
-  };
-  
-  utterance.onpause = () => {
-    console.log('🔊 SPEECH PAUSED');
-  };
-  
-  utterance.onresume = () => {
-    console.log('🔊 SPEECH RESUMED');
-  };
-  
-  this.synthesis.speak(utterance);
-}
 
   // ========================================
-  // QUICK COMMANDS
+  // QUICK COMMANDS & HELP
   // ========================================
 
-  /**
-   * Add quick commands for common actions
-   */
   showLists(): void {
     this.sendQuickMessage('Zeige alle Listen');
   }
@@ -811,15 +753,32 @@ private speak(text: string): void {
   }
 
   /**
-   * Enhanced help with context-aware suggestions - FIXED
+   * Enhanced help with conversation context awareness
    */
   showContextualHelp(): void {
+    const context = this.aiService.getConversationContext();
+    
+    if (context.waitingForArticles) {
+      // Show context-specific help
+      const helpMessage = `🗣️ Du befindest dich gerade in einer Unterhaltung!\n\n` +
+        `📝 Ich warte darauf, dass du Artikel zu "${context.waitingForArticles.listName}" hinzufügst.\n\n` +
+        `💡 Du kannst einfach sagen:\n` +
+        `• "Milch" - Einfacher Artikelname\n` +
+        `• "2kg Bananen" - Mit Menge\n` +
+        `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
+        `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.\n\n` +
+        `📋 Normale Befehle funktionieren auch weiterhin.`;
+      
+      this.chatPersistence.addMessage(helpMessage, 'assistant');
+      return;
+    }
+    
+    // Show normal help
     const hasApiKey = this.aiService.hasApiKey();
     const summary = this.chatPersistence.getChatSummary();
     
     let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
     
-    // Context-aware help based on API key status
     if (hasApiKey) {
       helpMessage += '✅ Intelligente Features aktiv\n\n';
       helpMessage += '📝 Verfügbare Befehle:\n\n';
@@ -827,19 +786,14 @@ private speak(text: string): void {
       helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
       helpMessage += '⚖️ MENGEN-SYNTAX:\n';
       helpMessage += '• "Füge 2kg Bananen hinzu"\n';
-      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n';
-      helpMessage += '• "Füge 500ml Milch zu Spar hinzu"\n';
-      helpMessage += '• "Füge 3x Äpfel hinzu"\n\n';
+      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
       helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
-      helpMessage += '• "Füge 2kg Bananen, Würste, 1L Milch zu Spar hinzu"\n';
-      helpMessage += '• "Füge Bananen Menge 2kg, Würste, Milch Menge 1 Liter hinzu"\n\n';
+      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n\n';
       helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
-      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Liste mit erstem Artikel\n\n';
-      helpMessage += '🎨 MIT FARBEN:\n';
-      helpMessage += '• "Erstelle Liste Spar in rot"\n';
-      helpMessage += '• "Erstelle Liste REWE in blau mit Milch"\n';
-      helpMessage += '• Verfügbare Farben: rot, grün, blau, gelb, orange, lila, rosa, schwarz, grau, weiß, türkis, braun\n\n';
+      helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
+      helpMessage += '• Nach dem Erstellen einer Liste wirst du gefragt, ob du Artikel hinzufügen möchtest\n';
+      helpMessage += '• Du kannst dann einfach Artikelnamen eingeben ohne "Füge" und "hinzu"\n';
+      helpMessage += '• Sage "Nein" oder "Fertig" um die Unterhaltung zu beenden\n\n';
     } else {
       helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
       helpMessage += '💡 Für intelligente Features:\n';
@@ -847,12 +801,8 @@ private speak(text: string): void {
       helpMessage += '📝 Basis-Befehle:\n\n';
       helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
       helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-      helpMessage += '⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n';
-      helpMessage += '🎯 "Füge Bananen, Würste, Milch hinzu" - Mehrere Artikel\n';
       helpMessage += '• "Erstelle Liste [Name]"\n';
-      helpMessage += '🎨 "Erstelle Liste [Name] in [Farbe]"\n';
-      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n';
-      helpMessage += '• "Test" - System-Status prüfen\n\n';
+      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
     }
     
     helpMessage += `📊 Chat Status: ${summary.messageCount} Nachrichten`;
@@ -936,12 +886,27 @@ private speak(text: string): void {
   getChatStats(): string {
     const summary = this.chatPersistence.getChatSummary();
     const hasApiKey = this.aiService.hasApiKey();
+    const conversationStatus = this.getConversationStatus();
     
-    return `${summary.messageCount} Nachrichten${summary.oldestMessage ? ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}` : ''} • ${hasApiKey ? '🔑 AI Features aktiv' : '⚙️ Settings für AI Features'}`;
+    let stats = `${summary.messageCount} Nachrichten`;
+    
+    if (summary.oldestMessage) {
+      stats += ` seit ${summary.oldestMessage.toLocaleDateString('de-DE')}`;
+    }
+    
+    stats += ` • ${hasApiKey ? '🔑 AI Features aktiv' : '⚙️ Settings für AI Features'}`;
+    
+    // Add conversation context if active
+    const context = this.aiService.getConversationContext();
+    if (context.waitingForArticles || context.lastAction) {
+      stats += ` • 🗣️ ${conversationStatus}`;
+    }
+    
+    return stats;
   }
 
   // ========================================
-  // DISAMBIGUATION HELPER METHODS (FIXED)
+  // DISAMBIGUATION HELPER METHODS
   // ========================================
 
   getDepartmentName(departmentId?: string): string {

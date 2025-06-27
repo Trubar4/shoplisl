@@ -1,5 +1,6 @@
 // src/app/core/services/ai/ai-models.ts
 import { Article, ShoppingList } from '../../models';
+import { ConversationContext } from '../../models';
 
 // ========================================
 // CORE AI INTERFACES
@@ -21,13 +22,15 @@ export interface AIResponse {
 export interface AIExecutionResult {
   success: boolean;
   message: string;
-  listId?: string;
+  error?: string;
   needsUserInput?: boolean;
   disambiguationOptions?: DisambiguationOption[];
   pendingAction?: PendingAction | MultiItemPendingAction;
-  error?: string;
+  listId?: string;
   suggestedAction?: string;
   suggestedData?: any;
+  conversationContext?: ConversationContext;
+  followUpPrompt?: string;
 }
 
 // ========================================
