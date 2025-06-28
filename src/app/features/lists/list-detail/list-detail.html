@@ -361,6 +361,8 @@
           <mat-icon>apps</mat-icon>
           <span class="fab-label">Alle</span>
         </button>
+
+
       </div>
     </div>
   
@@ -373,4 +375,39 @@
       matTooltip="Filter">
       <mat-icon [class.rotated]="isFabExpanded">filter_alt</mat-icon>
     </button>
-  </div>
+
+      <!-- Celebration Animation Overlay -->
+      <div 
+      class="celebration-overlay" 
+      *ngIf="showCelebrationAnimation">
+      <div class="celebration-content">
+        <div class="celebration-animation">
+          
+          <!-- Try these GIF paths in order (comment out the ones that don't work) -->
+          
+          <!-- Option 1: Standard assets path -->
+          <img 
+            src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZnaGJhMnhxcDZ1ZWVpZm15bm5ueTkwaGVzaGNtZWtzdTNscno4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2lQCBjuFMLCOvXno4l/giphy.gif" 
+            alt="Celebration!"
+            class="celebration-gif"
+            (error)="onGifError($event)"
+            (load)="onGifLoad($event)">
+                    
+          <!-- Fallback if GIF doesn't load -->
+          <div class="gif-fallback" style="display: none;">
+            <div class="emoji-celebration">🎉 👏 🎊 ✨ 🎈</div>
+            <div class="debug-info" style="font-size: 12px; color: #666; margin-top: 10px;">
+              GIF not found - check console for path details
+            </div>
+          </div>
+        </div>
+        
+        <!-- Celebration Text -->
+        <div class="celebration-text">
+          <h2>🎉 Geschafft! 🎉</h2>
+          <p>Alle Artikel erledigt!</p>
+        </div>
+      </div>
+    </div>
+
+</div>
