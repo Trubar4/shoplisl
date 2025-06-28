@@ -117,7 +117,8 @@ export class EditArticleComponent implements OnInit, OnDestroy {
           next: () => {
             this.isDeleting = false;
             this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
-            this.router.navigate(['/articles']);
+            // ✨ FIXED: Use smart navigation like onBack() instead of always going to /articles
+            this.navigateAfterDelete();
           },
           error: (error) => {
             this.isDeleting = false;
@@ -151,6 +152,21 @@ export class EditArticleComponent implements OnInit, OnDestroy {
     if (returnTo) {
       this.router.navigateByUrl(returnTo);
     } else {
+      this.router.navigate(['/articles']);
+    }
+  }
+
+  /**
+   * ✨ NEW: Smart navigation after deletion
+   * Uses the same logic as onBack() to return to the source page
+   */
+  private navigateAfterDelete(): void {
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo) {
+      console.log('🔄 Navigating back to source:', returnTo);
+      this.router.navigateByUrl(returnTo);
+    } else {
+      console.log('🔄 No returnTo parameter, going to articles overview');
       this.router.navigate(['/articles']);
     }
   }

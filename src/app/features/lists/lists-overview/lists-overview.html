@@ -41,16 +41,26 @@
           <!-- List Content -->
           <div class="list-content">
             <div class="list-name">{{ list.name }}</div>
-            <div class="list-info" *ngIf="list.articleIds.length > 0">
-              {{ list.articleIds.length }} Artikel{{ list.articleIds.length !== 1 ? '' : '' }}
+            <div class="list-info" *ngIf="getListInfoText(list)">
+              {{ getListInfoText(list) }}
             </div>
           </div>
           
-          <!-- Item count badge -->
+          <!-- Item count badge with check mark for completed lists -->
           <div class="item-count" 
-               *ngIf="getItemCountText(list)"
-               [style.background-color]="list.color || '#757575'">
-            {{ getItemCountText(list) }}
+               *ngIf="shouldShowBadge(list)"
+               [style.background-color]="list.color || '#757575'"
+               [class.completed]="getBadgeContent(list).isCompleted">
+            
+            <!-- Check icon for completed lists -->
+            <mat-icon *ngIf="getBadgeContent(list).isCompleted" class="check-icon">
+              check
+            </mat-icon>
+            
+            <!-- Active count for lists with pending items -->
+            <span *ngIf="!getBadgeContent(list).isCompleted">
+              {{ getBadgeContent(list).text }}
+            </span>
           </div>
           
           <!-- Navigation arrow -->

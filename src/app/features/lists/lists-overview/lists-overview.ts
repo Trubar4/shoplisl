@@ -346,9 +346,50 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
 
   // === UTILITY METHODS ===
 
-  getItemCountText(list: ShoppingList): string {
-    const count = list.articleIds.length;
-    return count > 0 ? count.toString() : '';
+  /**
+   * Count active (non-checked) articles in a list
+   */
+  getActiveItemCount(list: ShoppingList): number {
+    return list.articleIds.filter(articleId => {
+      const itemState = list.itemStates[articleId];
+      return !itemState || !itemState.isChecked; // active if not checked
+    }).length;
+  }
+
+  /**
+   * Get display text for list info: "X/Y" format
+   */
+  getListInfoText(list: ShoppingList): string {
+    const activeCount = this.getActiveItemCount(list);
+    const totalCount = list.articleIds.length;
+    
+    if (totalCount === 0) return '';
+    return `${activeCount}/${totalCount} Artikel`;
+  }
+
+  /**
+   * Get badge content - either active count or check icon
+   */
+  getBadgeContent(list: ShoppingList): { text: string; isCompleted: boolean } {
+    const activeCount = this.getActiveItemCount(list);
+    const totalCount = list.articleIds.length;
+    
+    if (totalCount === 0) {
+      return { text: '', isCompleted: false };
+    }
+    
+    if (activeCount === 0) {
+      return { text: '', isCompleted: true }; // Show check icon
+    }
+    
+    return { text: activeCount.toString(), isCompleted: false };
+  }
+
+  /**
+   * Check if badge should be shown
+   */
+  shouldShowBadge(list: ShoppingList): boolean {
+    return list.articleIds.length > 0;
   }
 
   getListColorClass(list: ShoppingList): string {

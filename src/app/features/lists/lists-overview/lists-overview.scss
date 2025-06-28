@@ -130,38 +130,31 @@
     }
     
     .item-count {
-      min-width: 28px;
-      height: 28px;
-      border-radius: 14px;
+      // Existing styles remain the same...
+      min-width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      font-weight: 500;
-      color: white;
-      margin-right: 12px;
-      flex-shrink: 0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-      
-      // Fallback colors for backward compatibility
-      &.count-purple {
-        background-color: #9c27b0;
+      margin-left: 8px;
+    
+      // Styles for completed lists with check icon
+      &.completed {
+        .check-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          line-height: 1;
+        }
       }
-      
-      &.count-red {
-        background-color: #f44336;
-      }
-      
-      &.count-green {
-        background-color: #4caf50;
-      }
-      
-      &.count-blue {
-        background-color: #2196f3;
-      }
-      
-      &.count-default {
-        background-color: #757575;
+    
+      // Ensure text content is centered
+      span {
+        line-height: 1;
       }
     }
     
