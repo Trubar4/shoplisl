@@ -1,576 +1,331 @@
-<!-- src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.html -->
-<div class="ai-assistant-container">
-  <!-- Header -->
-  <mat-toolbar color="primary" class="ai-header">
-    <button mat-icon-button (click)="onBack()">
+<!-- voice-ai-assistant.component.html - Complete template with recipe features and skip functionality -->
+
+<div class="voice-ai-assistant">
+  <!-- Header with navigation and stats -->
+  <mat-toolbar color="primary" class="app-toolbar">
+    <button mat-icon-button (click)="onBack()" matTooltip="Zurück zu Listen">
       <mat-icon>arrow_back</mat-icon>
     </button>
-    <span>AI Assistent</span>
+    
+    <span class="toolbar-title">
+      <mat-icon>smart_toy</mat-icon>
+      AI Assistent
+    </span>
+    
     <span class="spacer"></span>
+    
+    <!-- Stats display -->
+    <span class="chat-stats">{{ getChatStats() }}</span>
+    
+    <!-- Toolbar actions -->
     <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
-      <mat-icon>delete</mat-icon>
+      <mat-icon>delete_sweep</mat-icon>
     </button>
+    
     <button mat-icon-button (click)="exportChat()" matTooltip="Chat exportieren">
       <mat-icon>download</mat-icon>
     </button>
   </mat-toolbar>
 
-  <!-- Chat Messages -->
-  <div class="messages-container" #messagesContainer>
-    <!-- Welcome Message -->
-    <div *ngIf="(messages$ | async)?.length === 0" class="welcome-message">
-      <mat-icon class="welcome-icon">psychology</mat-icon>
-      <h3>Hallo! Ich bin dein AI Assistent</h3>
-      
-      <div *ngIf="!aiServicePublic.hasApiKey(); else hasApiKeyContent">
-        <p>🚀 <strong>Für intelligente Features:</strong></p>
-        <ul>
-          <li>"set api key: gsk_YOUR_KEY_HERE"</li>
-          <li>Groq API Key: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
-        </ul>
-        <p>📋 <strong>Basis-Funktionen verfügbar:</strong></p>
-        <ul>
-          <li>"Füge 2kg Bananen zu Spar hinzu"</li>
-          <li>"Erstelle neue Liste ADEG"</li>
-          <li>"Hilfe" für mehr Befehle</li>
-        </ul>
-      </div>
-      
-      <ng-template #hasApiKeyContent>
-        <p>✨ <strong>Smart Features aktiviert!</strong></p>
-        <ul>
-          <li>"Füge 2kg Bananen zu Spar hinzu"</li>
-          <li>"Erstelle neue Liste ADEG mit Milch"</li>
-          <li>"und Brot" - Fortsetzung nach Artikel-Hinzufügung</li>
-          <li>Smart Disambiguation & Mengen-Erkennung</li>
-        </ul>
-      </ng-template>
-      
-      <p class="chat-stats">{{ getChatStats() }}</p>
-    </div>
-
-    <!-- Messages -->
-    <div *ngFor="let message of (messages$ | async)" [class]="'message message-' + message.type">
-      <div class="message-content">
-        <div class="message-text">{{ message.text }}</div>
-        <div class="message-time">{{ message.timestamp | date:'HH:mm' }}</div>
-      </div>
-    </div>
-
-    <!-- Processing Indicator -->
-    <div *ngIf="isProcessing" class="message message-assistant">
-      <div class="message-content">
-        <mat-spinner diameter="20"></mat-spinner>
-        <span class="processing-text">Verarbeite...</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Disambiguation Panel -->
-  <div class="disambiguation-panel" *ngIf="disambiguation$ | async as disambiguation">
-    <mat-card class="disambiguation-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon [style.color]="getDisambiguationHeaderColor(disambiguation)">
-            {{ getDisambiguationHeaderIcon(disambiguation) }}
-          </mat-icon>
-          {{ getDisambiguationHeaderTitle(disambiguation) }}
-        </mat-card-title>
-        <mat-card-subtitle>{{ disambiguation.message }}</mat-card-subtitle>
-      </mat-card-header>
-
-      <!-- Options Grid -->
-      <div class="disambiguation-options">
-        <div class="disambiguation-option" *ngFor="let option of disambiguation.options; trackBy: trackByOptionId" (click)="selectDisambiguationOption(option)">
-          <mat-card class="option-card" [ngClass]="{
-            'existing-item-card': option.type === 'existing' && !isListSelection(disambiguation.pendingAction),
-            'new-item-card': option.type === 'new',
-            'list-selection-card': isListSelection(disambiguation.pendingAction)
-          }">
-            <mat-card-content>
-              <div class="option-header">
-                <div class="option-main">
-                  <div class="option-icon">{{ option.icon || getDefaultIcon(option) }}</div>
-                  <div class="option-details">
-                    <div class="option-name">{{ option.displayName }}</div>
-                    <div class="option-meta">
-                      <div *ngIf="!isListSelection(disambiguation.pendingAction)" class="department-info">
-                        <span class="small-icon">🏪</span>{{ getDepartmentName(option.department) }}
-                      </div>
-                      <div *ngIf="isListSelection(disambiguation.pendingAction)" class="list-info">
-                        <span class="small-icon">📊</span>{{ option.department }}
-                      </div>
-                      <div *ngIf="option.article?.amount" class="amount-info">
-                        <span class="small-icon">⚖️</span>{{ option.article.amount }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div *ngIf="!isListSelection(disambiguation.pendingAction)" class="option-confidence">
-                  <mat-chip [color]="getConfidenceColor(option.confidence)">{{ getConfidenceText(option.confidence) }}</mat-chip>
-                </div>
-                <div *ngIf="isListSelection(disambiguation.pendingAction)" class="list-color-indicator">
-                  <div class="color-dot" [style.background-color]="getListColor(option)"></div>
-                </div>
-              </div>
-              <div class="option-actions">
-                <div class="action-hint">
-                  <span class="small-icon">👆</span>{{ getActionHint(option, disambiguation.pendingAction) }}
-                </div>
-              </div>
-            </mat-card-content>
-          </mat-card>
+  <!-- Main chat container -->
+  <div class="chat-container">
+    
+    <!-- Messages display area -->
+    <div class="messages-container" #messagesContainer>
+      <div *ngFor="let message of messages$ | async; trackBy: trackByOptionId" 
+           class="message" 
+           [ngClass]="'message-' + message.type">
+        
+        <div class="message-content" [innerHTML]="message.text"></div>
+        
+        <div class="message-timestamp">
+          {{ message.timestamp.toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'}) }}
         </div>
       </div>
-
-      <!-- Cancel Action -->
-      <button mat-stroked-button color="warn" (click)="cancelDisambiguation()" class="cancel-btn">
-        <mat-icon>cancel</mat-icon>Abbrechen
-      </button>
-    </mat-card>
-  </div>
-
-  <!-- Voice Recording Overlay -->
-  <div *ngIf="isRecording" class="recording-overlay">
-    <div class="recording-content">
-      <mat-icon class="recording-icon">mic</mat-icon>
-      <p>Spreche jetzt...</p>
-      <div class="recording-animation">
-        <div class="wave"></div>
-        <div class="wave"></div>
-        <div class="wave"></div>
+      
+      <!-- Processing indicator -->
+      <div *ngIf="isProcessing" class="message message-system">
+        <div class="processing-indicator">
+          <div class="processing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span>Verarbeite...</span>
+        </div>
       </div>
-      <button mat-button (click)="stopRecording()">Stoppen</button>
     </div>
-  </div>
 
-  <!-- Input Area -->
-  <div class="input-area">
-    <!-- Conversation Status -->
-    <div *ngIf="isInActiveConversation()" class="conversation-status">
-      <mat-card class="status-card">
+    <!-- Disambiguation Interface with Skip Support -->
+    <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-container">
+      <mat-card class="disambiguation-card">
+        <mat-card-header>
+          <mat-icon 
+            [style.color]="getDisambiguationHeaderColor(disambiguation)"
+            mat-card-avatar>
+            {{ getDisambiguationHeaderIcon(disambiguation) }}
+          </mat-icon>
+          <mat-card-title>{{ getDisambiguationHeaderTitle(disambiguation) }}</mat-card-title>
+          <mat-card-subtitle>{{ getActionDescription(disambiguation.pendingAction) }}</mat-card-subtitle>
+        </mat-card-header>
+        
         <mat-card-content>
-          <div class="status-content">
-            <mat-icon class="status-icon">chat</mat-icon>
-            <div class="status-text">
-              <div class="status-title">Aktive Unterhaltung</div>
-              <div class="status-subtitle">{{ getConversationStatus() }}</div>
+          <div class="disambiguation-message">
+            {{ disambiguation.message }}
+          </div>
+          
+          <div class="disambiguation-options">
+            <div *ngFor="let option of disambiguation.options; trackBy: trackByOptionId" 
+                 class="disambiguation-option"
+                 [class.skip-option]="option.type === 'skip'"
+                 (click)="selectDisambiguationOption(option)">
+              
+              <div class="option-main">
+                <div class="option-icon">
+                  {{ getDefaultIcon(option) }}
+                </div>
+                
+                <div class="option-details">
+                  <div class="option-name">{{ option.displayName }}</div>
+                  <div class="option-department" *ngIf="option.department">
+                    {{ getDepartmentName(option.department) }}
+                  </div>
+                  <div class="option-confidence" *ngIf="option.confidence && option.type !== 'skip'">
+                    {{ getConfidenceText(option.confidence) }}
+                  </div>
+                  <div class="skip-reason" *ngIf="option.type === 'skip'">
+                    Bereits zu Hause vorhanden
+                  </div>
+                </div>
+                
+                <div class="option-action">
+                  <span class="action-hint">{{ getActionHint(option, disambiguation.pendingAction) }}</span>
+                  <mat-icon>{{ option.type === 'skip' ? 'skip_next' : 'chevron_right' }}</mat-icon>
+                </div>
+              </div>
             </div>
-            <button mat-button color="warn" (click)="finishAddingArticles()" class="end-conversation-btn">
-              <mat-icon>stop</mat-icon>Beenden
+          </div>
+          
+          <div class="disambiguation-actions">
+            <button mat-button (click)="cancelDisambiguation()" color="warn">
+              <mat-icon>cancel</mat-icon>
+              Abbrechen
             </button>
           </div>
         </mat-card-content>
       </mat-card>
     </div>
 
-    <!-- Input Controls -->
-    <div class="input-controls">
-      <mat-form-field appearance="outline" class="message-input">
-        <mat-label>{{ getInputPlaceholder() }}</mat-label>
-        <input matInput 
-               [(ngModel)]="currentMessage"
-               (keyup.enter)="sendMessage()"
-               (input)="onTextInput()"
-               [placeholder]="getInputPlaceholder()"
-               [disabled]="isProcessing || isRecording">
-        <mat-hint *ngIf="isInActiveConversation()" class="conversation-hint">
-          💡 Tipp: "Milch", "2kg Bananen", "und Brot" oder "weiters Käse"
-        </mat-hint>
-      </mat-form-field>
+    <!-- Input area with recipe features -->
+    <div class="input-area">
       
-      <button mat-fab color="accent" (click)="toggleVoiceInput()" [class.recording]="isRecording" 
-              [disabled]="isProcessing" [matTooltip]="getVoiceTooltip()">
-        <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
-      </button>
-      
-      <button mat-fab color="primary" (click)="sendMessage()" 
-              [disabled]="!currentMessage.trim() || isProcessing || isRecording" 
-              [matTooltip]="getSendTooltip()">
-        <mat-icon>{{ isInActiveConversation() ? 'add_shopping_cart' : 'send' }}</mat-icon>
-      </button>
-    </div>
+      <!-- Conversation status -->
+      <div class="conversation-status" *ngIf="isInActiveConversation()">
+        <mat-chip-listbox>
+          <mat-chip-option selected class="conversation-chip">
+            <mat-icon>forum</mat-icon>
+            {{ getConversationStatus() }}
+          </mat-chip-option>
+        </mat-chip-listbox>
+        
+        <button mat-button 
+                (click)="finishAddingArticles()" 
+                color="primary" 
+                class="finish-conversation">
+          <mat-icon>check</mat-icon>
+          Fertig
+        </button>
+      </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions" [ngClass]="{'conversation-mode': isInActiveConversation()}">
-      <ng-container *ngIf="!isInActiveConversation(); else conversationActions">
-        <button mat-stroked-button (click)="showContextualHelp()">
-          <mat-icon>help</mat-icon>Hilfe
-        </button>
-        <button mat-stroked-button (click)="showLists()">
-          <mat-icon>list</mat-icon>Listen
-        </button>
-        <button mat-stroked-button (click)="createNewList()">
-          <mat-icon>add</mat-icon>Neue Liste
-        </button>
-      </ng-container>
+      <!-- RECIPE FEATURES - Minimal Integration -->
       
-      <ng-template #conversationActions>
-        <button mat-stroked-button (click)="sendQuickMessage('Milch')" class="conversation-btn">
-          🥛 Milch
-        </button>
-        <button mat-stroked-button (click)="sendQuickMessage('Brot')" class="conversation-btn">
-          🍞 Brot
-        </button>
-        <button mat-stroked-button (click)="sendQuickMessage('2kg Bananen')" class="conversation-btn">
-          🍌 2kg Bananen
-        </button>
-        <button mat-stroked-button (click)="sendQuickMessage('und Käse')" class="conversation-btn">
-          ➕ und Käse
-        </button>
-      </ng-template>
+      <!-- Recipe Quick Actions -->
+      <div class="recipe-quick-actions" *ngIf="!isInActiveConversation() && aiService.hasApiKey()">
+        <div class="quick-buttons">
+          <button mat-stroked-button (click)="showRecipeHelp()" matTooltip="Zeige ausführliche Rezept-Hilfe">
+            🍳 Rezept-Hilfe
+          </button>
+          <button mat-stroked-button (click)="showRecipeExample()" matTooltip="Beispiel-Rezept in Eingabefeld laden">
+            📝 Beispiel
+          </button>
+          <button mat-stroked-button (click)="testRecipeFeature()" matTooltip="Teste Rezept-Feature">
+            🧪 Test
+          </button>
+        </div>
+      </div>
+
+      <!-- Recipe Status Hint -->
+      <div class="recipe-hint" *ngIf="currentMessage.toLowerCase().startsWith('rezept') && aiService.hasApiKey()">
+        🍳 Rezept erkannt - Zutaten werden automatisch verarbeitet
+      </div>
+
+      <!-- Main input form -->
+      <form (ngSubmit)="sendMessage()" class="input-form">
+        <mat-form-field appearance="outline" class="message-input">
+          <mat-label>{{ getInputPlaceholder() }}</mat-label>
+            <textarea 
+            matInput 
+            [(ngModel)]="currentMessage"
+            name="message"
+            (keydown.enter)="onEnterKey($event)"
+            (input)="onTextInput()"
+            [disabled]="isProcessing"
+            rows="2"
+            placeholder="Deine Nachricht oder Befehl..."
+            cdkTextareaAutosize
+            cdkAutosizeMinRows="1"
+            cdkAutosizeMaxRows="8">
+          </textarea>
+          
+          <!-- Input hints -->
+          <mat-hint *ngIf="!isInActiveConversation() && currentMessage.length === 0">
+            💡 Für Rezepte: "Rezept:" + Zutatenliste kopieren
+          </mat-hint>
+          
+          <mat-hint *ngIf="isInActiveConversation() && currentMessage.length === 0">
+            Einfach Artikelnamen eingeben oder "Nein" für Ende
+          </mat-hint>
+        </mat-form-field>
+
+        <!-- Input action buttons -->
+        <div class="input-actions">
+          <button 
+            mat-icon-button 
+            type="button"
+            (click)="toggleVoiceInput()"
+            [class.recording]="isRecording"
+            [disabled]="isProcessing"
+            [matTooltip]="getVoiceTooltip()"
+            color="accent">
+            <mat-icon>{{ isRecording ? 'stop' : 'mic' }}</mat-icon>
+          </button>
+          
+          <button 
+            mat-raised-button 
+            type="submit"
+            [disabled]="!currentMessage.trim() || isProcessing"
+            [matTooltip]="getSendTooltip()"
+            color="primary">
+            <mat-icon>send</mat-icon>
+            Senden
+          </button>
+        </div>
+      </form>
+
+      <!-- Recipe Processing Status -->
+      <div class="processing-status" *ngIf="isProcessing && currentMessage.toLowerCase().includes('rezept')">
+        <div class="simple-spinner">⟳</div>
+        🍳 Verarbeite Rezept-Zutaten...
+      </div>
+
+      <!-- Quick actions for normal mode -->
+      <div class="quick-actions" *ngIf="!isInActiveConversation()">
+        <div class="quick-action-section">
+          <h4>🚀 Schnellaktionen</h4>
+          <div class="quick-buttons">
+            <button mat-stroked-button (click)="showLists()" matTooltip="Alle Listen anzeigen">
+              <mat-icon>list</mat-icon>
+              Listen
+            </button>
+            <button mat-stroked-button (click)="createNewList()" matTooltip="Neue Liste erstellen">
+              <mat-icon>add</mat-icon>
+              Liste
+            </button>
+            <button mat-stroked-button (click)="showContextualHelp()" matTooltip="Hilfe anzeigen">
+              <mat-icon>help</mat-icon>
+              Hilfe
+            </button>
+          </div>
+        </div>
+
+        <!-- Continuation actions (only if continuation is possible) -->
+        <div class="continuation-section" *ngIf="canUseContinuation()">
+          <h4>🔄 Fortsetzung</h4>
+          <div class="continuation-info">
+            {{ getConversationStatus() }}
+          </div>
+          <div class="quick-buttons">
+            <button mat-stroked-button 
+                    (click)="quickContinuation('und')" 
+                    matTooltip="Beispiel: 'und Milch'">
+              und ...
+            </button>
+            <button mat-stroked-button 
+                    (click)="quickContinuation('weiters')" 
+                    matTooltip="Österreichisch: 'weiters Brot'">
+              weiters ...
+            </button>
+          </div>
+        </div>
+
+        <!-- Example commands -->
+        <div class="examples-section">
+          <h4>💡 Beispiele</h4>
+          <div class="example-commands">
+            <button mat-button 
+                    (click)="sendQuickMessage('Füge Milch hinzu')"
+                    class="example-button">
+              "Füge Milch hinzu"
+            </button>
+            <button mat-button 
+                    (click)="sendQuickMessage('Erstelle Liste Spar')"
+                    class="example-button">
+              "Erstelle Liste Spar"
+            </button>
+            <button mat-button 
+                    (click)="sendQuickMessage('Füge Bananen, Brot, Milch hinzu')"
+                    class="example-button">
+              "Füge Bananen, Brot, Milch hinzu"
+            </button>
+            <button mat-button 
+                    *ngIf="aiService.hasApiKey()"
+                    (click)="sendQuickMessage('Rezept: 500g Mehl\\n2 Eier\\n250ml Milch')"
+                    class="example-button recipe-example">
+              🍳 "Rezept: 500g Mehl..."
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversation mode quick actions -->
+      <div class="conversation-actions" *ngIf="isInActiveConversation()">
+        <div class="conversation-examples">
+          <h4>💬 In Unterhaltung</h4>
+          <div class="example-commands">
+            <button mat-button (click)="sendQuickMessage('Milch')" class="example-button">
+              "Milch"
+            </button>
+            <button mat-button (click)="sendQuickMessage('2kg Bananen')" class="example-button">
+              "2kg Bananen"  
+            </button>
+            <button mat-button (click)="sendQuickMessage('Brot, Käse, Wurst')" class="example-button">
+              "Brot, Käse, Wurst"
+            </button>
+            <button mat-button 
+                    *ngIf="aiService.hasApiKey()"
+                    (click)="sendQuickMessage('Rezept: 200g Butter\\n300g Zucker\\n4 Eier')" 
+                    class="example-button recipe-example">
+              🍳 "Rezept: 200g Butter..."
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
+
+  <!-- Debug section (only in development) -->
+  <div class="debug-section" *ngIf="false">
+    <details>
+      <summary>🔍 Debug Information</summary>
+      <div class="debug-info">
+        <button mat-button (click)="debugConversationState()">Debug State</button>
+        <button mat-button (click)="testConversationScenario('clear')">Clear Context</button>
+        <button mat-button (click)="testListCreation()">Test List Creation</button>
+        <button mat-button (click)="testContinuation()">Test Continuation</button>
+        <button mat-button (click)="clearAllContext()">Clear All</button>
+      </div>
+    </details>
+  </div>
+
 </div>
-
-<style>
-/* Streamlined Styles */
-.ai-assistant-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  max-width: 100vw;
-  overflow: hidden;
-}
-
-.spacer { flex: 1; }
-
-.messages-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  scroll-behavior: smooth;
-}
-
-.welcome-message {
-  text-align: center;
-  padding: 24px;
-  color: #666;
-}
-
-.welcome-icon {
-  font-size: 48px;
-  color: #2196f3;
-  margin-bottom: 16px;
-}
-
-.welcome-message ul {
-  text-align: left;
-  display: inline-block;
-  margin: 8px 0;
-}
-
-.chat-stats {
-  font-size: 12px;
-  color: #999;
-  margin-top: 16px;
-}
-
-.message {
-  margin-bottom: 12px;
-  display: flex;
-}
-
-.message-user { justify-content: flex-end; }
-.message-assistant, .message-system { justify-content: flex-start; }
-.message-error { justify-content: flex-start; }
-
-.message-content {
-  max-width: 80%;
-  padding: 12px 16px;
-  border-radius: 16px;
-  position: relative;
-}
-
-.message-user .message-content {
-  background: #2196f3;
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.message-assistant .message-content,
-.message-system .message-content {
-  background: #f5f5f5;
-  color: #333;
-  border-bottom-left-radius: 4px;
-}
-
-.message-error .message-content {
-  background: #ffebee;
-  color: #c62828;
-  border: 1px solid #ffcdd2;
-}
-
-.message-text {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.message-time {
-  font-size: 10px;
-  opacity: 0.7;
-  margin-top: 4px;
-  text-align: right;
-}
-
-.processing-text {
-  margin-left: 8px;
-  font-style: italic;
-}
-
-.disambiguation-panel {
-  margin: 16px;
-  z-index: 10;
-}
-
-.disambiguation-card {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.disambiguation-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-  margin: 16px 0;
-}
-
-.option-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
-}
-
-.option-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.existing-item-card { border-color: #4caf50; }
-.new-item-card { border-color: #2196f3; }
-.list-selection-card { border-color: #ff9800; }
-
-.option-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.option-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.option-icon {
-  font-size: 24px;
-  width: 32px;
-  text-align: center;
-}
-
-.option-name {
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.option-meta {
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.small-icon {
-  font-size: 10px;
-  margin-right: 4px;
-}
-
-.option-confidence mat-chip {
-  font-size: 10px;
-  height: 20px;
-  line-height: 20px;
-}
-
-.color-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-.action-hint {
-  font-size: 11px;
-  color: #999;
-  text-align: center;
-}
-
-.cancel-btn {
-  width: 100%;
-  margin-top: 16px;
-}
-
-.recording-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.recording-content {
-  text-align: center;
-  color: white;
-}
-
-.recording-icon {
-  font-size: 64px;
-  color: #f44336;
-  animation: pulse 1.5s ease-in-out infinite alternate;
-}
-
-.recording-animation {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  margin: 16px 0;
-}
-
-.wave {
-  width: 4px;
-  height: 20px;
-  background: #2196f3;
-  animation: wave 0.6s ease-in-out infinite alternate;
-}
-
-.wave:nth-child(2) { animation-delay: 0.2s; }
-.wave:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes pulse {
-  from { transform: scale(1); }
-  to { transform: scale(1.1); }
-}
-
-@keyframes wave {
-  from { height: 10px; }
-  to { height: 30px; }
-}
-
-.input-area {
-  padding: 16px;
-  border-top: 1px solid #e0e0e0;
-  background: white;
-}
-
-.conversation-status {
-  margin-bottom: 16px;
-}
-
-.status-card {
-  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
-  border-left: 4px solid #2196f3;
-}
-
-.status-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.status-icon {
-  color: #2196f3;
-  font-size: 24px;
-}
-
-.status-text {
-  flex: 1;
-}
-
-.status-title {
-  font-weight: 500;
-  color: #1976d2;
-}
-
-.status-subtitle {
-  font-size: 12px;
-  color: #666;
-  margin-top: 2px;
-}
-
-.end-conversation-btn {
-  min-width: auto;
-  padding: 0 12px;
-}
-
-.input-controls {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.message-input {
-  flex: 1;
-}
-
-.conversation-hint {
-  color: #2196f3;
-  font-size: 11px;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.quick-actions button {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-}
-
-.conversation-btn {
-  border-color: #4caf50 !important;
-  color: #4caf50 !important;
-}
-
-.conversation-btn:hover {
-  background-color: #e8f5e8 !important;
-}
-
-/* Mobile Optimizations */
-@media (max-width: 480px) {
-  .disambiguation-options {
-    grid-template-columns: 1fr;
-  }
-  
-  .option-main {
-    gap: 8px;
-  }
-  
-  .quick-actions button {
-    font-size: 11px;
-    padding: 6px 8px;
-  }
-  
-  .message-content {
-    max-width: 90%;
-  }
-}
-
-/* PWA Optimizations */
-@media (display-mode: standalone) {
-  .ai-assistant-container {
-    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-}
-</style>

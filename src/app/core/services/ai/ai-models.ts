@@ -40,11 +40,12 @@ export interface AIExecutionResult {
 export interface DisambiguationOption {
   id: string;
   displayName: string;
-  type: 'new' | 'existing';
+  type: 'existing' | 'new' | 'skip';
   article?: Article;
   confidence: number;
   department?: string;
   icon?: string;
+  skipReason?: string;
 }
 
 export interface PendingAction {
@@ -76,6 +77,9 @@ export interface QuantityExtraction {
 export interface QuantityExtractionResult extends QuantityExtraction {
   unit?: string;
 }
+
+export type SkipReason = 'already_have' | 'not_needed' | 'user_choice';
+
 
 // ========================================
 // MULTI-ITEM PARSING INTERFACES
@@ -269,4 +273,18 @@ export class DisambiguationError extends AIServiceError {
   constructor(message: string, details?: any) {
     super(message, 'DISAMBIGUATION_ERROR', details);
   }
+}
+
+// Enhanced processed item for skip support (ADD this new interface)
+export interface ProcessedItemWithSkip {
+  item?: {
+    itemName: string;
+    quantity?: string;
+  };
+  article?: Article;
+  articleId?: string;
+  skipped?: boolean;
+  reason?: SkipReason;
+  originalText?: string;
+  disambiguationResolved?: boolean;
 }

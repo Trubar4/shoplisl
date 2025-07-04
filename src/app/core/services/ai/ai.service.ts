@@ -1,4 +1,4 @@
-// src/app/core/services/ai/ai.service.ts - Enhanced with Conversation Context & Continuation Keywords
+// src/app/core/services/ai/ai.service.ts - Complete with Recipe Features
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -36,6 +36,38 @@ export class AIService {
     private dataService: DataService
   ) {
     this.logApiKeyStatus();
+  }
+
+  // ========================================
+  // PUBLIC ACCESSOR METHODS
+  // ========================================
+
+  /**
+   * Public access to disambiguation service
+   */
+  public async getDisambiguationOptions(itemName: string): Promise<DisambiguationOption[]> {
+    return this.disambiguation.getDisambiguationOptions(itemName);
+  }
+
+  /**
+   * Public access to department suggestion
+   */
+  public suggestDepartment(itemName: string): string {
+    return this.aiResponse.suggestDepartment(itemName);
+  }
+
+  /**
+   * Public access to icon suggestion
+   */
+  public suggestIcon(itemName: string): string {
+    return this.aiResponse.suggestIcon(itemName);
+  }
+
+  /**
+   * Public access to quantity extraction
+   */
+  public extractQuantity(input: string): any {
+    return this.quantityExtraction.extractQuantity(input);
   }
 
   // ========================================
@@ -111,6 +143,215 @@ export class AIService {
       lowerInput.startsWith(word + ',') ||
       lowerInput.startsWith(word + '.')
     );
+  }
+
+  // ========================================
+  // RECIPE PROCESSING METHODS
+  // ========================================
+
+  /**
+   * Detect if input is a recipe command
+   */
+  private isRecipeCommand(input: string): boolean {
+    const lowerInput = input.toLowerCase().trim();
+    
+    // Check for recipe keywords at the start
+    const recipeKeywords = [
+      'rezept:', 'rezept ', 'zutaten:', 'zutaten ',
+      'ingredienzien:', 'ingredienzien ', 'ingredients:',
+      'einkaufsliste aus rezept'
+    ];
+    
+    return recipeKeywords.some(keyword => lowerInput.startsWith(keyword));
+  }
+
+  /**
+   * Extract recipe ingredients after keyword
+   */
+  private extractRecipeContent(input: string): string {
+    const lowerInput = input.toLowerCase();
+    
+    // Find where the actual recipe content starts
+    const keywords = ['rezept:', 'rezept ', 'zutaten:', 'zutaten ', 'ingredienzien:', 'ingredienzien ', 'ingredients:'];
+    
+    for (const keyword of keywords) {
+      const index = lowerInput.indexOf(keyword);
+      if (index !== -1) {
+        return input.substring(index + keyword.length).trim();
+      }
+    }
+    
+    return input.trim();
+  }
+
+  /**
+   * Clean and standardize messy recipe text using Grok
+   */
+  private async standardizeRecipeIngredients(rawRecipeText: string, targetList?: string): Promise<string> {
+    console.log('🍳 Standardizing recipe ingredients:', rawRecipeText.substring(0, 100));
+    
+    const cleanedText = this.cleanRawRecipeText(rawRecipeText);
+    
+    const prompt = `Du bist ein Experte für deutsche Rezepte. Analysiere diese Zutatenliste und konvertiere sie zu Einkaufsliste-Befehlen.
+
+EINGABE (kann unordentlich sein):
+${cleanedText}
+
+REGELN:
+1. Ignoriere Überschriften wie "Für den Teig:", "Zubereitung:", "Portionen:" etc.
+2. Ignoriere Zubereitungsschritte und Anweisungen
+3. Extrahiere nur echte Zutaten mit Mengen
+4. Konvertiere zu Format: "Füge [Artikel] [Menge] hinzu"
+5. Verwende deutsche Maßeinheiten (g, kg, ml, l, EL, TL, Prise, Stück)
+6. Vereinfache komplexe Beschreibungen zu Grundzutaten
+
+BEISPIELE:
+"500 g Weizenmehl Type 405" → "Füge Mehl 500g hinzu"
+"2 mittelgroße Eier" → "Füge Eier 2 Stück hinzu"
+"1 Prise Salz" → "Füge Salz 1 Prise hinzu"
+"250ml Vollmilch 3,5%" → "Füge Milch 250ml hinzu"
+"2 EL Olivenöl extra virgin" → "Füge Olivenöl 2 EL hinzu"
+"1 kleine Zwiebel, gewürfelt" → "Füge Zwiebel 1 Stück hinzu"
+
+AUSGABE:
+Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.
+Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
+
+    try {
+      const response = await this.callGroqAPI(prompt);
+      console.log('🍳 Grok standardization result:', response);
+      return response.trim();
+    } catch (error) {
+      console.error('🍳 Error standardizing recipe:', error);
+      throw new Error('Fehler beim Verarbeiten des Rezepts');
+    }
+  }
+
+  /**
+   * Clean raw recipe text before sending to Grok
+   */
+  private cleanRawRecipeText(rawText: string): string {
+    return rawText
+      // Remove excessive whitespace
+      .replace(/\s+/g, ' ')
+      // Remove common symbols that interfere
+      .replace(/[•◦▪▫]/g, '') // bullet points
+      .replace(/[-–—]{2,}/g, '') // multiple dashes
+      .replace(/[*]{2,}/g, '') // multiple asterisks
+      // Normalize line breaks
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      // Remove excessive line breaks but keep structure
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  /**
+   * Call Groq API
+   */
+  private async callGroqAPI(prompt: string): Promise<string> {
+    const apiKey = this.getSecureApiKey();
+    
+    if (!apiKey) {
+      throw new Error('Groq API Key ist erforderlich für Rezept-Features');
+    }
+
+    const response = await fetch(this.GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-70b-versatile',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1, // Low temperature for consistent formatting
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API Fehler: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  /**
+   * Process recipe command and convert to shopping list items
+   */
+  private async processRecipeCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🍳 Processing recipe command:', input.substring(0, 50));
+    
+    try {
+      // Extract recipe content after keyword
+      const recipeContent = this.extractRecipeContent(input);
+      
+      if (!recipeContent || recipeContent.length < 10) {
+        return {
+          success: false,
+          message: '❌ Keine Zutatenliste gefunden.\n\n💡 Beispiel:\n"Rezept: 500g Mehl\\n2 Eier\\n250ml Milch"'
+        };
+      }
+      
+      // Check if we have an API key
+      if (!this.hasApiKey()) {
+        return {
+          success: false,
+          message: '🔑 Groq API Key erforderlich für Rezept-Features.\n\nSage: "set api key: gsk_YOUR_KEY"'
+        };
+      }
+      
+      // Standardize ingredients using Grok
+      const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
+      
+      if (!standardizedCommands) {
+        return {
+          success: false,
+          message: '❌ Keine Zutaten im Rezept erkannt.\n\nBitte überprüfe das Format.'
+        };
+      }
+      
+      // Split into individual commands
+      const commands = standardizedCommands
+        .split('\n')
+        .map(cmd => cmd.trim())
+        .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+      
+      if (commands.length === 0) {
+        return {
+          success: false,
+          message: '❌ Keine gültigen Zutaten gefunden.\n\nBitte versuche es mit einem anderen Format.'
+        };
+      }
+      
+      console.log('🍳 Extracted commands:', commands);
+      
+      // Combine all commands into multi-item format
+      const multiItemCommand = commands.join(', ')
+        .replace(/Füge /g, '')
+        .replace(/ hinzu/g, '');
+      
+      const finalCommand = `Füge ${multiItemCommand} hinzu`;
+      
+      console.log('🍳 Final multi-item command:', finalCommand);
+      
+      // Process through existing multi-item system
+      return await this.processEnhancedCommandWithMultiItems(finalCommand);
+      
+    } catch (error) {
+      console.error('🍳 Recipe processing error:', error);
+      return {
+        success: false,
+        message: `❌ Fehler beim Verarbeiten des Rezepts: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}\n\n💡 Versuche es mit einer einfacheren Zutatenliste.`
+      };
+    }
   }
 
   // ========================================
@@ -303,6 +544,18 @@ export class AIService {
     if (existingOptions.length > 0) {
       console.log('🗣️ Found existing options, showing disambiguation');
       
+      // 🍳 ADD SKIP OPTION for contextual addition
+      const enhancedOptions = [
+        ...disambiguationOptions,
+        {
+          id: 'skip_item',
+          displayName: `"${quantityExtraction.itemName}" überspringen`,
+          type: 'skip' as const,
+          confidence: 1.0,
+          icon: '⏭️'
+        }
+      ];
+      
       // Create a pending action for disambiguation
       const pendingAction: PendingAction = {
         type: 'add_item',
@@ -317,7 +570,7 @@ export class AIService {
         success: true,
         message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
         needsUserInput: true,
-        disambiguationOptions,
+        disambiguationOptions: enhancedOptions,
         pendingAction: pendingAction
       };
     }
@@ -432,7 +685,7 @@ export class AIService {
   }
 
   /**
-   * Process multiple items sequentially with disambiguation for each
+   * Process multiple items sequentially with disambiguation
    */
   private async processMultipleItemsSequentially(
     items: string[], 
@@ -458,6 +711,18 @@ export class AIService {
     if (existingOptions.length > 0) {
       console.log('🗣️ Found existing options for item', currentIndex + 1, ', showing disambiguation');
       
+      // 🍳 ADD SKIP OPTION for multi-item processing
+      const enhancedOptions = [
+        ...disambiguationOptions,
+        {
+          id: 'skip_item',
+          displayName: `"${quantityExtraction.itemName}" überspringen`,
+          type: 'skip' as const,
+          confidence: 1.0,
+          icon: '⏭️'
+        }
+      ];
+      
       // Create pending action for current item with remaining items info
       const pendingAction: any = {
         type: 'add_item',
@@ -478,7 +743,7 @@ export class AIService {
         success: true,
         message: `🎯 Artikel ${currentIndex + 1}/${items.length}: "${quantityExtraction.itemName}"\n\n${this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName)}`,
         needsUserInput: true,
-        disambiguationOptions,
+        disambiguationOptions: enhancedOptions,
         pendingAction: pendingAction
       };
     }
@@ -676,12 +941,19 @@ export class AIService {
     console.log('🗣️ - isNegativeResponse:', this.isNegativeResponse(input));
     console.log('🗣️ - isSimpleArticleInput:', this.isSimpleArticleInput(input));
     console.log('🗣️ - isContinuationKeyword:', this.isContinuationKeyword(input));
+    console.log('🗣️ - isRecipeCommand:', this.isRecipeCommand(input));
     console.log('🗣️ - conversationContext:', this.conversationContext);
     console.log('🗣️ - input:', input);
 
     try {
       console.log('🤖 Processing command:', input);
       console.log('🗣️ Current context:', this.conversationContext);
+      
+      // NEW: Check for recipe commands FIRST
+      if (this.isRecipeCommand(input)) {
+        console.log('🍳 Recipe command detected');
+        return await this.processRecipeCommand(input);
+      }
       
       // NEW: Check for continuation keywords FIRST
       if (this.isContinuationKeyword(input)) {
@@ -794,7 +1066,7 @@ export class AIService {
       console.log('🎯 Unrecognized command, providing guidance');
       return {
         success: true,
-        message: `Ich verstehe: "${input}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Füge Bananen, Würste, Milch hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante`
+        message: `Ich verstehe: "${input}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Füge Bananen, Würste, Milch hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n• "Rezept: [Zutatenliste]"\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante`
       };
     }
 
@@ -914,7 +1186,7 @@ export class AIService {
     // For unrecognized commands, provide helpful feedback
     return {
       success: true,
-      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante\n\n${this.aiResponse.getNoApiKeyGuidance()}`
+      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n• "Rezept: [Zutatenliste]" (mit API Key)\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante\n\n${this.aiResponse.getNoApiKeyGuidance()}`
     };
   }
 
@@ -925,41 +1197,254 @@ export class AIService {
   /**
    * Handle disambiguation choice (supports both single and multi-item)
    */
-  // ADD THIS TO YOUR EXISTING ai.service.ts
-
-// Find your existing handleDisambiguationChoice method and REPLACE it with this:
-async handleDisambiguationChoice(
-  pendingAction: PendingAction | MultiItemPendingAction,
-  selectedOption: DisambiguationOption
-): Promise<AIExecutionResult> {
-  console.log('🎯 Handling disambiguation choice with conversation context');
-  console.log('🎯 Pending action:', pendingAction);
-  console.log('🎯 Selected option:', selectedOption);
-  console.log('🎯 Current conversation context:', this.conversationContext);
-  
-  // Handle sequential multi-item disambiguation (for "und Brot, Gurken, Mais")
-  if ((pendingAction as any).isMultiItemSequential) {
-    return await this.handleSequentialMultiItemDisambiguation(pendingAction as any, selectedOption);
+  async handleDisambiguationChoice(
+    pendingAction: PendingAction | MultiItemPendingAction,
+    selectedOption: DisambiguationOption
+  ): Promise<AIExecutionResult> {
+    console.log('🎯 Handling disambiguation choice with conversation context');
+    console.log('🎯 Pending action:', pendingAction);
+    console.log('🎯 Selected option:', selectedOption);
+    console.log('🎯 Current conversation context:', this.conversationContext);
+    
+    // Handle SKIP option specially
+    if (selectedOption.type === 'skip') {
+      return await this.handleSkipOption(pendingAction, selectedOption);
+    }
+    
+    // Handle sequential multi-item disambiguation (for "und Brot, Gurken, Mais")
+    if ((pendingAction as any).isMultiItemSequential) {
+      return await this.handleSequentialMultiItemDisambiguation(pendingAction as any, selectedOption);
+    }
+    
+    // Check if we're in conversation mode
+    const isInConversation = this.isWaitingForArticles();
+    const conversationListId = this.conversationContext.waitingForArticles?.listId;
+    const conversationListName = this.conversationContext.waitingForArticles?.listName;
+    
+    console.log('🎯 Is in conversation:', isInConversation);
+    console.log('🎯 Conversation list:', conversationListName, conversationListId);
+    
+    // CONVERSATION MODE: Handle disambiguation within conversation context
+    if (isInConversation && conversationListId && conversationListName) {
+      console.log('🎯 Processing disambiguation in CONVERSATION MODE');
+      
+      try {
+        let articleToAdd;
+        
+        if (selectedOption.type === 'existing' && selectedOption.article) {
+          articleToAdd = selectedOption.article;
+          console.log('🎯 Using existing article in conversation:', articleToAdd.name);
+        } else {
+          const articleData = {
+            name: pendingAction.itemName,
+            amount: pendingAction.extractedQuantity || '',
+            departmentId: this.aiResponse.suggestDepartment(pendingAction.itemName),
+            icon: this.aiResponse.suggestIcon(pendingAction.itemName)
+          };
+          
+          console.log('🎯 Creating new article in conversation:', articleData);
+          articleToAdd = await this.dataService.createArticle(articleData).toPromise();
+        }
+        
+        if (articleToAdd) {
+          const targetList = await this.findListById(conversationListId);
+          
+          if (targetList) {
+            let updatedArticleIds = [...targetList.articleIds];
+            let updatedItemStates = { ...targetList.itemStates };
+            
+            if (!updatedArticleIds.includes(articleToAdd.id)) {
+              updatedArticleIds.push(articleToAdd.id);
+            }
+    
+            updatedItemStates[articleToAdd.id] = {
+              articleId: articleToAdd.id,
+              isChecked: false,
+              amount: pendingAction.extractedQuantity || ''
+            };
+    
+            const updateResult = await this.dataService.updateList(targetList.id, {
+              articleIds: updatedArticleIds,
+              itemStates: updatedItemStates
+            }).toPromise();
+            
+            if (updateResult) {
+              // CRITICAL: Maintain conversation context
+              this.setConversationContext({
+                lastAction: {
+                  type: 'article_added',
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  articleName: articleToAdd.name,
+                  timestamp: new Date()
+                },
+                waitingForArticles: {
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+                }
+              });
+    
+              const message = `✅ "${articleToAdd.name}" wurde zu "${targetList.name}" hinzugefügt.`;
+              const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(articleToAdd.name, targetList.name);
+              
+              return {
+                success: true,
+                message: message,
+                listId: targetList.id,
+                conversationContext: this.getConversationContext(),
+                followUpPrompt
+              };
+            }
+          }
+        }
+        
+        return {
+          success: false,
+          message: '❌ Fehler beim Hinzufügen des Artikels.'
+        };
+        
+      } catch (error: any) {
+        console.error('🎯 Error in conversation disambiguation:', error);
+        return {
+          success: false,
+          message: '❌ Fehler beim Verarbeiten der Auswahl.'
+        };
+      }
+    }
+    
+    // NON-CONVERSATION MODE: Use regular disambiguation handling
+    console.log('🎯 Using REGULAR disambiguation handling with conversation setup');
+    
+    const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
+    
+    // CRITICAL FIX: Set conversation context after successful article addition
+    if (result.success && result.listId && result.message.includes('hinzugefügt')) {
+      const messageMatch = result.message.match(/"([^"]+)" wurde zu "([^"]+)" hinzugefügt/);
+      const articleName = messageMatch ? messageMatch[1] : pendingAction.itemName;
+      const listName = messageMatch ? messageMatch[2] : (pendingAction.listName || 'Unknown');
+      
+      this.setConversationContext({
+        lastAction: {
+          type: 'article_added',
+          listId: result.listId,
+          listName: listName,
+          articleName: articleName,
+          timestamp: new Date()
+        },
+        waitingForArticles: {
+          listId: result.listId,
+          listName: listName,
+          prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+        }
+      });
+      
+      result.conversationContext = this.getConversationContext();
+      result.followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
+    }
+    
+    return result;
   }
-  
-  // Check if we're in conversation mode
-  const isInConversation = this.isWaitingForArticles();
-  const conversationListId = this.conversationContext.waitingForArticles?.listId;
-  const conversationListName = this.conversationContext.waitingForArticles?.listName;
-  
-  console.log('🎯 Is in conversation:', isInConversation);
-  console.log('🎯 Conversation list:', conversationListName, conversationListId);
-  
-  // CONVERSATION MODE: Handle disambiguation within conversation context
-  if (isInConversation && conversationListId && conversationListName) {
-    console.log('🎯 Processing disambiguation in CONVERSATION MODE');
+
+  // ADD this new method to handle skip options:
+  private async handleSkipOption(pendingAction: any, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
+    console.log('⏭️ Handling skip option for:', pendingAction.itemName);
+    
+    // Handle different types of pending actions for skip
+    if (pendingAction.isMultiItemSequential) {
+      return await this.handleSkipInSequentialMultiItem(pendingAction);
+    } else if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+      return await this.handleSkipInMultiItem(pendingAction);
+    } else {
+      // Single item skip - just show completion message and maintain conversation
+      const context = this.getConversationContext();
+      return {
+        success: true,
+        message: `⏭️ "${pendingAction.itemName}" übersprungen (bereits vorhanden).\n\nDu kannst weitere Artikel hinzufügen.`,
+        conversationContext: context.waitingForArticles ? context : undefined,
+        followUpPrompt: context.waitingForArticles ? 'Möchtest du noch weitere Artikel hinzufügen?' : undefined
+      };
+    }
+  }
+
+  private async handleSkipInSequentialMultiItem(pendingAction: any): Promise<AIExecutionResult> {
+    const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
+    
+    // Add skipped item to processed items
+    const updatedProcessedItems = [...processedItems, {
+      originalText: allItems[currentItemIndex],
+      skipped: true,
+      reason: 'already_have'
+    }];
+    
+    // Continue with next item
+    try {
+      const targetList = await this.findListById(conversationListId);
+      if (!targetList) {
+        return {
+          success: false,
+          message: '❌ Zielliste nicht gefunden.'
+        };
+      }
+      
+      return await this.processMultipleItemsSequentially(
+        allItems, 
+        targetList, 
+        currentItemIndex + 1, 
+        updatedProcessedItems
+      );
+    } catch (error) {
+      console.error('⏭️ Error handling skip in sequential processing:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Fortsetzen der Verarbeitung.'
+      };
+    }
+  }
+
+  private async handleSkipInMultiItem(pendingAction: any): Promise<AIExecutionResult> {
+    // Mark current item as skipped and continue
+    pendingAction.processedItems = pendingAction.processedItems || [];
+    pendingAction.processedItems.push({
+      item: { itemName: pendingAction.itemName },
+      skipped: true,
+      reason: 'already_have'
+    });
+    
+    // Move to next item
+    pendingAction.currentItemIndex++;
+    
+    // Continue processing through AI service multi-item flow
+    try {
+      return await this.disambiguation.processMultiItemSequentially(pendingAction);
+    } catch (error) {
+      console.error('⏭️ Error handling skip in multi-item:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Fortsetzen der Verarbeitung.'
+      };
+    }
+  }
+
+  // ADD this new method to handle sequential multi-item disambiguation:
+  private async handleSequentialMultiItemDisambiguation(pendingAction: any, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
+    console.log('🗣️ Handling sequential multi-item disambiguation');
+    
+    const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
+    const targetList = await this.findListById(conversationListId);
+    
+    if (!targetList) {
+      return {
+        success: false,
+        message: '❌ Zielliste nicht gefunden.'
+      };
+    }
     
     try {
       let articleToAdd;
       
       if (selectedOption.type === 'existing' && selectedOption.article) {
         articleToAdd = selectedOption.article;
-        console.log('🎯 Using existing article in conversation:', articleToAdd.name);
       } else {
         const articleData = {
           name: pendingAction.itemName,
@@ -968,169 +1453,38 @@ async handleDisambiguationChoice(
           icon: this.aiResponse.suggestIcon(pendingAction.itemName)
         };
         
-        console.log('🎯 Creating new article in conversation:', articleData);
         articleToAdd = await this.dataService.createArticle(articleData).toPromise();
       }
       
       if (articleToAdd) {
-        const targetList = await this.findListById(conversationListId);
+        const updatedProcessedItems = [...processedItems, {
+          article: articleToAdd,
+          quantity: pendingAction.extractedQuantity,
+          originalText: allItems[currentItemIndex]
+        }];
         
-        if (targetList) {
-          let updatedArticleIds = [...targetList.articleIds];
-          let updatedItemStates = { ...targetList.itemStates };
-          
-          if (!updatedArticleIds.includes(articleToAdd.id)) {
-            updatedArticleIds.push(articleToAdd.id);
-          }
-  
-          updatedItemStates[articleToAdd.id] = {
-            articleId: articleToAdd.id,
-            isChecked: false,
-            amount: pendingAction.extractedQuantity || ''
-          };
-  
-          const updateResult = await this.dataService.updateList(targetList.id, {
-            articleIds: updatedArticleIds,
-            itemStates: updatedItemStates
-          }).toPromise();
-          
-          if (updateResult) {
-            // CRITICAL: Maintain conversation context
-            this.setConversationContext({
-              lastAction: {
-                type: 'article_added',
-                listId: targetList.id,
-                listName: targetList.name,
-                articleName: articleToAdd.name,
-                timestamp: new Date()
-              },
-              waitingForArticles: {
-                listId: targetList.id,
-                listName: targetList.name,
-                prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-              }
-            });
-  
-            const message = `✅ "${articleToAdd.name}" wurde zu "${targetList.name}" hinzugefügt.`;
-            const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(articleToAdd.name, targetList.name);
-            
-            return {
-              success: true,
-              message: message,
-              listId: targetList.id,
-              conversationContext: this.getConversationContext(),
-              followUpPrompt
-            };
-          }
-        }
+        // Continue with next item
+        return await this.processMultipleItemsSequentially(
+          allItems, 
+          targetList, 
+          currentItemIndex + 1, 
+          updatedProcessedItems
+        );
       }
       
       return {
         success: false,
-        message: '❌ Fehler beim Hinzufügen des Artikels.'
+        message: '❌ Fehler beim Erstellen des Artikels.'
       };
       
     } catch (error: any) {
-      console.error('🎯 Error in conversation disambiguation:', error);
+      console.error('🗣️ Error in sequential disambiguation:', error);
       return {
         success: false,
         message: '❌ Fehler beim Verarbeiten der Auswahl.'
       };
     }
   }
-  
-  // NON-CONVERSATION MODE: Use regular disambiguation handling
-  console.log('🎯 Using REGULAR disambiguation handling with conversation setup');
-  
-  const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
-  
-  // CRITICAL FIX: Set conversation context after successful article addition
-  if (result.success && result.listId && result.message.includes('hinzugefügt')) {
-    const messageMatch = result.message.match(/"([^"]+)" wurde zu "([^"]+)" hinzugefügt/);
-    const articleName = messageMatch ? messageMatch[1] : pendingAction.itemName;
-    const listName = messageMatch ? messageMatch[2] : (pendingAction.listName || 'Unknown');
-    
-    this.setConversationContext({
-      lastAction: {
-        type: 'article_added',
-        listId: result.listId,
-        listName: listName,
-        articleName: articleName,
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: result.listId,
-        listName: listName,
-        prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-      }
-    });
-    
-    result.conversationContext = this.getConversationContext();
-    result.followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
-  }
-  
-  return result;
-}
-
-// ADD this new method to handle sequential multi-item disambiguation:
-private async handleSequentialMultiItemDisambiguation(pendingAction: any, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
-  console.log('🗣️ Handling sequential multi-item disambiguation');
-  
-  const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
-  const targetList = await this.findListById(conversationListId);
-  
-  if (!targetList) {
-    return {
-      success: false,
-      message: '❌ Zielliste nicht gefunden.'
-    };
-  }
-  
-  try {
-    let articleToAdd;
-    
-    if (selectedOption.type === 'existing' && selectedOption.article) {
-      articleToAdd = selectedOption.article;
-    } else {
-      const articleData = {
-        name: pendingAction.itemName,
-        amount: pendingAction.extractedQuantity || '',
-        departmentId: this.aiResponse.suggestDepartment(pendingAction.itemName),
-        icon: this.aiResponse.suggestIcon(pendingAction.itemName)
-      };
-      
-      articleToAdd = await this.dataService.createArticle(articleData).toPromise();
-    }
-    
-    if (articleToAdd) {
-      const updatedProcessedItems = [...processedItems, {
-        article: articleToAdd,
-        quantity: pendingAction.extractedQuantity,
-        originalText: allItems[currentItemIndex]
-      }];
-      
-      // Continue with next item
-      return await this.processMultipleItemsSequentially(
-        allItems, 
-        targetList, 
-        currentItemIndex + 1, 
-        updatedProcessedItems
-      );
-    }
-    
-    return {
-      success: false,
-      message: '❌ Fehler beim Erstellen des Artikels.'
-    };
-    
-  } catch (error: any) {
-    console.error('🗣️ Error in sequential disambiguation:', error);
-    return {
-      success: false,
-      message: '❌ Fehler beim Verarbeiten der Auswahl.'
-    };
-  }
-}
 
   // ========================================
   // SPECIFIC COMMAND HANDLERS
@@ -1199,6 +1553,7 @@ private async handleSequentialMultiItemDisambiguation(pendingAction: any, select
       message += '\n💡 Befehle:\n';
       message += '• "Füge [Artikel] zu [Liste] hinzu"\n';
       message += '• "Erstelle Liste [Name]"\n';
+      message += '• "Rezept: [Zutatenliste]" (mit API Key)\n';
       message += '• "und [Artikel]" - Fortsetzung nach Artikel-Hinzufügung';
       
       return {
@@ -1391,7 +1746,7 @@ private async handleSequentialMultiItemDisambiguation(pendingAction: any, select
   }
 
   /**
-   * Handle item action with smart disambiguation
+   * Enhanced item action with smart disambiguation and skip support
    */
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Handling item action with disambiguation:', action);
@@ -1407,11 +1762,29 @@ private async handleSequentialMultiItemDisambiguation(pendingAction: any, select
     if (existingOptions.length > 0) {
       console.log('🎯 Found existing options, showing disambiguation');
       
+      // 🍳 ADD SKIP OPTION for recipe processing or multi-item commands
+      const isFromRecipe = action.originalInput.toLowerCase().includes('rezept') || 
+                          action.originalInput.includes(',') ||
+                          (action as any).isMultiItemSequential;
+      
+      let enhancedOptions = [...disambiguationOptions];
+      
+      if (isFromRecipe) {
+        enhancedOptions.push({
+          id: 'skip_item',
+          displayName: `"${action.itemName}" überspringen`,
+          type: 'skip' as const,
+          confidence: 1.0,
+          icon: '⏭️'
+        });
+        console.log('🍳 Added skip option for recipe/multi-item processing');
+      }
+      
       return {
         success: true,
         message: this.aiResponse.getDisambiguationMessage(action.itemName),
         needsUserInput: true,
-        disambiguationOptions,
+        disambiguationOptions: enhancedOptions,
         pendingAction: action
       };
     }

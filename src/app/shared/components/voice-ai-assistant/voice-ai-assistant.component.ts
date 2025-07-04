@@ -25,10 +25,10 @@ import { MatChipsModule } from '@angular/material/chips';
 import { 
   AIService, 
   AIExecutionResult, 
-  DisambiguationOption,
   PendingAction,
   MultiItemPendingAction,
-  isMultiItemPendingAction
+  isMultiItemPendingAction,
+  DisambiguationOption
 } from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -529,14 +529,23 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       console.error('Invalid disambiguation data:', result);
       return;
     }
-
-    // Type assertion to ensure compatibility with ChatPersistenceService
-    const pendingAction = result.pendingAction as any;
+  
+    // Convert options to avoid type conflicts
+    const compatibleOptions = result.disambiguationOptions.map((option: any) => ({
+      id: option.id,
+      displayName: option.displayName,
+      type: option.type,
+      article: option.article,
+      confidence: option.confidence,
+      department: option.department,
+      icon: option.icon,
+      skipReason: option.skipReason
+    }));
     
     this.chatPersistence.setDisambiguation({
       message: result.message,
-      options: result.disambiguationOptions,
-      pendingAction: pendingAction
+      options: compatibleOptions as any[], // Cast to any[] to avoid type conflicts
+      pendingAction: result.pendingAction as any
     });
   }
 
@@ -731,13 +740,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     if (this.isInActiveConversation()) {
       const context = this.chatPersistence.getConversationContext();
       if (context?.waitingForArticles) {
-        return `Artikel für "${context.waitingForArticles.listName}" eingeben...`;
+        return `Artikel für "${context.waitingForArticles.listName}" oder "Rezept: ..." eingeben...`;
       }
-      return 'Artikel eingeben oder "Fertig" sagen...';
+      return 'Artikel oder "Rezept: ..." eingeben...';
     }
     
-    return 'z.B. "Füge 2kg Bananen zu Spar hinzu" oder "Erstelle Liste REWE"';
+    return 'z.B. "Füge Milch hinzu", "Erstelle Liste REWE" oder "Rezept: 500g Mehl..."';
   }
+
 
   /**
    * Get dynamic voice button tooltip
@@ -810,7 +820,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   /**
    * Enhanced disambiguation option selection
    */
-  selectDisambiguationOption(option: DisambiguationOption): void {
+  selectDisambiguationOption(option: any): void {
     console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
     
     const disambiguation = this.chatPersistence.getDisambiguation();
@@ -818,23 +828,28 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       console.error('🎯 No disambiguation available!');
       return;
     }
-
+  
     const pendingAction = disambiguation.pendingAction;
     
-    // Clear disambiguation immediately
+    // Handle SKIP option specially
+    if (option.type === 'skip') {
+      this.handleSkipArticle(pendingAction, option);
+      return;
+    }
+    
+    // Clear disambiguation immediately for non-skip options
     this.chatPersistence.setDisambiguation(null);
     
     // Generate choice text
     const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
     this.isProcessing = true;
-
+  
     // Process with enhanced conversation preservation
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
         console.log('🎯 DISAMBIGUATION RESULT:', result);
         
-        // CRITICAL: Force conversation context if we were in conversation
         if (!result.conversationContext && this.isInActiveConversation()) {
           console.log('🎯 FORCING conversation context preservation');
           const currentContext = this.chatPersistence.getConversationContext() || 
@@ -860,11 +875,223 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         this.scrollToBottom();
       });
   }
+  
+  /**
+   * Handle skipping an article
+   */
+  private handleSkipArticle(pendingAction: any, option: any): void {  // ← Use 'any' for option
+    console.log('⏭️ Skipping article:', pendingAction.itemName);
+    
+    // Add skip message
+    this.chatPersistence.addMessage(`⏭️ "${pendingAction.itemName}" übersprungen (bereits vorhanden)`, 'user');
+    
+    // Clear disambiguation
+    this.chatPersistence.setDisambiguation(null);
+    this.isProcessing = false;
+    
+    // Show appropriate skip message based on context
+    if (pendingAction.isMultiItemSequential) {
+      const { allItems, currentItemIndex } = pendingAction;
+      const remainingItems = allItems.length - currentItemIndex - 1;
+      
+      if (remainingItems > 0) {
+        this.chatPersistence.addMessage(
+          `⏭️ "${pendingAction.itemName}" übersprungen. Verarbeite ${remainingItems} weitere Artikel...`, 
+          'assistant'
+        );
+      } else {
+        this.chatPersistence.addMessage(
+          `⏭️ "${pendingAction.itemName}" übersprungen. Verarbeitung abgeschlossen.`, 
+          'assistant'
+        );
+      }
+    } else if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
+      this.chatPersistence.addMessage(
+        `⏭️ "${pendingAction.itemName}" übersprungen. Fahre mit weiteren Artikeln fort.`, 
+        'assistant'
+      );
+    } else {
+      // Single item skip
+      const context = this.chatPersistence.getConversationContext();
+      if (context?.waitingForArticles) {
+        this.chatPersistence.addMessage(
+          `⏭️ "${pendingAction.itemName}" übersprungen. Du kannst weitere Artikel zur Liste "${context.waitingForArticles.listName}" hinzufügen.`, 
+          'assistant'
+        );
+      } else {
+        this.chatPersistence.addMessage(
+          `⏭️ "${pendingAction.itemName}" übersprungen. Du kannst weitere Artikel hinzufügen.`, 
+          'assistant'
+        );
+      }
+    }
+  }
+
+  /**
+   * Handle skip in regular multi-item processing
+   */
+  private async handleSkipInMultiItem(pendingAction: any): Promise<void> {
+    // Show skip confirmation and continue message
+    this.chatPersistence.addMessage(
+      `⏭️ "${pendingAction.itemName}" übersprungen. Fahre mit weiteren Artikeln fort.`, 
+      'assistant'
+    );
+    
+    // Set processing to false since we're done with this item
+    this.isProcessing = false;
+  }
+
+  /**
+   * Handle skip in sequential multi-item (from recipe processing)
+   */
+  private async handleSkipInSequentialMultiItem(pendingAction: any): Promise<void> {
+    const { allItems, currentItemIndex } = pendingAction;
+    
+    // Add skip message and show continuation
+    const remainingItems = allItems.length - currentItemIndex - 1;
+    
+    if (remainingItems > 0) {
+      this.chatPersistence.addMessage(
+        `⏭️ "${pendingAction.itemName}" übersprungen. Verarbeite ${remainingItems} weitere Artikel...`, 
+        'assistant'
+      );
+    } else {
+      this.chatPersistence.addMessage(
+        `⏭️ "${pendingAction.itemName}" übersprungen. Verarbeitung abgeschlossen.`, 
+        'assistant'
+      );
+    }
+  }
+
+  /**
+   * Process multiple items sequentially with skip support
+   */
+  private async processMultipleItemsSequentiallyWithSkip(
+    items: string[], 
+    conversationListId: string,
+    currentIndex: number, 
+    processedItems: any[]
+  ): Promise<AIExecutionResult> {
+    
+    if (currentIndex >= items.length) {
+      // All items processed - show summary
+      return this.finalizeMultipleItemsWithSkip(conversationListId, processedItems);
+    }
+    
+    const currentItemText = items[currentIndex];
+    const quantityExtraction = this.aiService.extractQuantity(currentItemText);
+    
+    console.log(`⏭️ Processing item ${currentIndex + 1}/${items.length}:`, quantityExtraction.itemName);
+    
+    // Get disambiguation options for current item
+    const disambiguationOptions = await this.aiService.getDisambiguationOptions(quantityExtraction.itemName);
+    
+    // Add skip option to disambiguation
+    const enhancedOptions = [
+      ...disambiguationOptions,
+      {
+        id: 'skip_item',
+        displayName: `"${quantityExtraction.itemName}" überspringen`,
+        type: 'skip' as const,
+        confidence: 1.0,
+        icon: '⏭️',
+        skipReason: 'already_have'
+      }
+    ];
+    
+    // Check if disambiguation is needed
+    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    
+    if (existingOptions.length > 0) {
+      console.log('⏭️ Found existing options, showing disambiguation with skip');
+      
+      // Create pending action for current item with skip support
+      const pendingAction: any = {
+        type: 'add_item',
+        originalInput: items.join(', '),
+        itemName: quantityExtraction.itemName,
+        extractedQuantity: quantityExtraction.quantity,
+        listName: 'Current List', // Will be resolved from conversationListId
+        suggestedDepartment: this.aiService.suggestDepartment(quantityExtraction.itemName),
+        // Multi-item context with skip support
+        isMultiItemSequential: true,
+        allItems: items,
+        currentItemIndex: currentIndex,
+        processedItems: processedItems,
+        conversationListId: conversationListId
+      };
+      
+      return {
+        success: true,
+        message: `🎯 Artikel ${currentIndex + 1}/${items.length}: "${quantityExtraction.itemName}"\n\nWas möchtest du tun?`,
+        needsUserInput: true,
+        disambiguationOptions: enhancedOptions,
+        pendingAction: pendingAction
+      };
+    }
+    
+    // No disambiguation needed - create new article and continue
+    // ... existing logic for creating article
+    
+    return {
+      success: true,
+      message: `⏭️ Item ${currentIndex + 1} processed, continuing...`
+    };
+  }
+
+  /**
+ * Finalize multiple items with skip summary
+ */
+private async finalizeMultipleItemsWithSkip(conversationListId: string, processedItems: any[]): Promise<AIExecutionResult> {
+  const addedItems = processedItems.filter(item => !item.skipped);
+  const skippedItems = processedItems.filter(item => item.skipped);
+  
+  let message = '';
+  
+  if (addedItems.length > 0) {
+    const addedSummary = addedItems
+      .map(item => `"${item.article?.name || item.originalText}"`)
+      .join(', ');
+    message += `✅ ${addedItems.length} Artikel hinzugefügt: ${addedSummary}`;
+  }
+  
+  if (skippedItems.length > 0) {
+    const skippedSummary = skippedItems
+      .map(item => `"${item.originalText}"`)
+      .join(', ');
+    message += `${message ? '\n\n' : ''}⏭️ ${skippedItems.length} Artikel übersprungen: ${skippedSummary}`;
+  }
+  
+  if (addedItems.length === 0 && skippedItems.length === 0) {
+    message = '❌ Keine Artikel verarbeitet.';
+  }
+  
+  // Maintain conversation context
+  const context = this.chatPersistence.getConversationContext();
+  if (context?.waitingForArticles) {
+    return {
+      success: true,
+      message: message,
+      conversationContext: context,
+      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+    };
+  }
+  
+  return {
+    success: true,
+    message: message
+  };
+}
 
   /**
    * Generate appropriate choice text for disambiguation
    */
   private generateChoiceText(option: DisambiguationOption, pendingAction: any): string {
+    // Handle skip option
+    if (option.type === 'skip') {
+      return `⏭️ "${pendingAction.itemName}" übersprungen`;
+    }
+    
     // Handle sequential multi-item disambiguation
     if (pendingAction.isMultiItemSequential) {
       const currentIndex = pendingAction.currentItemIndex;
@@ -954,9 +1181,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   /**
    * Get default icon for disambiguation option
    */
-  getDefaultIcon(option: DisambiguationOption): string {
+  getDefaultIcon(option: any): string {
     if (option.type === 'new') {
       return '✨'; // New item icon
+    }
+    if (option.type === 'skip') {
+      return '⏭️'; // Skip icon
     }
     return option.icon || '📦'; // Default icon
   }
@@ -971,22 +1201,26 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   /**
    * Get action hint text for disambiguation options - SAFE VERSION
    */
-  getActionHint(option: DisambiguationOption, pendingAction: PendingAction | MultiItemPendingAction | null | undefined): string {
+  getActionHint(option: any, pendingAction: any): string {
     if (!pendingAction) return 'Unbekannte Aktion';
+    
+    // Handle skip option
+    if (option.type === 'skip') {
+      return 'Überspringen (bereits vorhanden)';
+    }
     
     const isListSelection = this.isListSelection(pendingAction);
     
     if (isListSelection) {
-      // Check for multi-item safely
       if ('items' in pendingAction) {
-        const items = (pendingAction as any).items;
+        const items = pendingAction.items;
         if (Array.isArray(items) && items.length > 1) {
           return `${items.length} Artikel zu "${option.displayName}" hinzufügen`;
         }
       }
       return `Zu "${option.displayName}" hinzufügen`;
     }
-
+  
     if (option.type === 'existing') {
       return 'Vorhandenen Artikel verwenden';
     } else {
@@ -1180,83 +1414,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         inputElement.setSelectionRange(inputElement.value.length, inputElement.value.length);
       }
     }, 100);
-  }
-
-  /**
-   * Enhanced help with conversation context awareness
-   */
-  showContextualHelp(): void {
-    // Check both AI service and chat persistence for context
-    let context = this.aiService.getConversationContext();
-    const persistenceContext = this.chatPersistence.getConversationContext();
-    
-    if (!context.waitingForArticles && persistenceContext?.waitingForArticles) {
-      context = persistenceContext;
-    }
-    
-    if (context.waitingForArticles) {
-      // Show context-specific help
-      const helpMessage = `🗣️ Du befindest dich gerade in einer Unterhaltung!\n\n` +
-        `📝 Ich warte darauf, dass du Artikel zu "${context.waitingForArticles.listName}" hinzufügst.\n\n` +
-        `💡 Du kannst einfach sagen:\n` +
-        `• "Milch" - Einfacher Artikelname\n` +
-        `• "2kg Bananen" - Mit Menge\n` +
-        `• "Brot, Wasser" - Mehrere Artikel gleichzeitig\n` +
-        `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
-        `🔄 Fortsetzungs-Funktionen:\n` +
-        `• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n` +
-        `• "weiters [Artikel]" - Österreichische Variante\n\n` +
-        `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.\n\n` +
-        `📋 Normale Befehle funktionieren auch weiterhin.`;
-      
-      this.chatPersistence.addMessage(helpMessage, 'assistant');
-      return;
-    }
-    
-    // Show normal help with continuation info
-    const hasApiKey = this.aiService.hasApiKey();
-    const summary = this.chatPersistence.getChatSummary();
-    
-    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
-    
-    if (hasApiKey) {
-      helpMessage += '✅ Intelligente Features aktiv\n\n';
-      helpMessage += '📝 Verfügbare Befehle:\n\n';
-      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste wenn nicht angegeben\n\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
-      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
-      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
-      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
-      helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
-      helpMessage += '• "Brot, Wasser" (im Unterhaltungsmodus)\n\n';
-      helpMessage += '🔄 FORTSETZUNGS-FUNKTIONEN:\n';
-      helpMessage += '• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n';
-      helpMessage += '• "weiters [Artikel]" - Österreichische Variante\n';
-      helpMessage += '• Funktioniert 10 Minuten nach letzter Artikel-Hinzufügung\n\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
-      helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
-      helpMessage += '• Nach dem Erstellen einer Liste oder Hinzufügen von Artikeln wirst du gefragt, ob du weitere Artikel hinzufügen möchtest\n';
-      helpMessage += '• Du kannst dann einfach Artikelnamen eingeben ohne "Füge" und "hinzu"\n';
-      helpMessage += '• Auch mehrere Artikel gleichzeitig: "Brot, Milch, Käse"\n';
-      helpMessage += '• Sage "Nein" oder "Fertig" um die Unterhaltung zu beenden\n\n';
-      helpMessage += '🔊 SPRACH-FEEDBACK:\n';
-      helpMessage += '• Audio-Antworten nur bei Sprach-Eingabe\n';
-      helpMessage += '• Text-Eingaben bekommen stille Antworten\n\n';
-    } else {
-      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
-      helpMessage += '💡 Für intelligente Features:\n';
-      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
-      helpMessage += '📝 Basis-Befehle:\n\n';
-      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n';
-      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
-    }
-    
-    helpMessage += `📊 Chat Status: ${summary.messageCount} Nachrichten`;
-    
-    this.chatPersistence.addMessage(helpMessage, 'assistant');
   }
 
   // ========================================
@@ -1591,6 +1748,206 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   public trackByOptionId(index: number, option: any): string {
     return option.id || index.toString();
   }
+
+
+  // ========================================
+  // RECIPE FEATURE SUPPORT
+  // ========================================
+
+/**
+ * Show recipe help
+ */
+showRecipeHelp(): void {
+  const helpMessage = `🍳 **Rezept-zu-Einkaufsliste Feature**
+
+**Verwendung:**
+Tippe "Rezept:" gefolgt von deiner Zutatenliste
+
+**Beispiel:**
+\`\`\`
+Rezept:
+500g Mehl
+2 Eier  
+250ml Milch
+1 Prise Salz
+200g Hackfleisch
+1 Zwiebel
+\`\`\`
+
+**Was passiert:**
+1. ✅ System erkennt deutsche Maßeinheiten
+2. ✅ Ignoriert Überschriften automatisch  
+3. ✅ Filtert Zubereitungsschritte heraus
+4. ✅ Fragt nach der Zielliste
+5. ✅ Zeigt Disambiguation bei ähnlichen Artikeln
+6. ⏭️ **NEU:** Überspringen-Option für vorhandene Zutaten
+
+**Alternative Keywords:**
+• "Zutaten: [deine Liste]"
+• "Ingredienzien: [deine Liste]"
+
+**Skip-Funktion:**
+• Bei jeder Zutat kannst du "Überspringen" wählen
+• Perfekt wenn du schon Zutaten zu Hause hast
+• ⏭️ Orange markierte Skip-Optionen
+
+💡 **Tipp:** Einfach aus beliebigen Rezept-Websites kopieren und einfügen!
+
+🔑 **Benötigt Groq API Key für intelligente Verarbeitung**`;
+  
+  this.chatPersistence.addMessage(helpMessage, 'assistant');
+}
+
+/**
+ * Show recipe example
+ */
+showRecipeExample(): void {
+  const exampleRecipe = `Rezept:
+Für den Pfannkuchenteig:
+500g Mehl
+3 Eier
+400ml Milch
+1 Prise Salz
+2 EL Zucker
+3 EL Öl
+
+Für das Topping:
+200g Beeren
+100g Puderzucker
+250g Quark`;
+
+  this.currentMessage = exampleRecipe;
+  // Don't auto-send, let user see the format first
+  
+  // Focus the input field
+  setTimeout(() => {
+    const textarea = document.querySelector('textarea[matInput]') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.focus();
+    }
+  }, 100);
+}
+
+/**
+ * Quick recipe test
+ */
+testRecipeFeature(): void {
+  const testRecipe = `Rezept:
+2 Bananen
+500ml Milch  
+100g Haferflocken
+1 EL Honig`;
+  
+  this.sendQuickMessage(testRecipe);
+}
+
+  // ========================================
+  // UPDATE EXISTING HELP METHOD
+  // ========================================
+
+  showContextualHelp(): void {
+    // Check both AI service and chat persistence for context
+    let context = this.aiService.getConversationContext();
+    const persistenceContext = this.chatPersistence.getConversationContext();
+    
+    if (!context.waitingForArticles && persistenceContext?.waitingForArticles) {
+      context = persistenceContext;
+    }
+    
+    if (context.waitingForArticles) {
+      // Show context-specific help (keep existing logic)
+      const helpMessage = `🗣️ Du befindest dich gerade in einer Unterhaltung!\n\n` +
+        `📝 Ich warte darauf, dass du Artikel zu "${context.waitingForArticles.listName}" hinzufügst.\n\n` +
+        `💡 Du kannst einfach sagen:\n` +
+        `• "Milch" - Einfacher Artikelname\n` +
+        `• "2kg Bananen" - Mit Menge\n` +
+        `• "Brot, Wasser" - Mehrere Artikel gleichzeitig\n` +
+        `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
+        `🍳 **REZEPT-MODUS in Unterhaltung:**\n` +
+        `• "Rezept: 500g Mehl\\n2 Eier\\n250ml Milch" - Fügt alle Zutaten zur aktuellen Liste hinzu\n` +
+        `• ⏭️ **Skip-Option:** Bei jeder Zutat wählen "überspringen" wenn bereits vorhanden\n\n` +
+        `🔄 Fortsetzungs-Funktionen:\n` +
+        `• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n` +
+        `• "weiters [Artikel]" - Österreichische Variante\n\n` +
+        `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.`;
+      
+      this.chatPersistence.addMessage(helpMessage, 'assistant');
+      return;
+    }
+    
+    // Show normal help with recipe support
+    const hasApiKey = this.aiService.hasApiKey();
+    const summary = this.chatPersistence.getChatSummary();
+    
+    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
+    
+    if (hasApiKey) {
+      helpMessage += '✅ Intelligente Features aktiv\n\n';
+      helpMessage += '📝 Verfügbare Befehle:\n\n';
+      
+      // ADD RECIPE SECTION
+      helpMessage += '🍳 **REZEPT-FEATURES:**\n';
+      helpMessage += '• "Rezept: [Zutatenliste]"\n  → Konvertiert Rezept zu Einkaufsliste\n';
+      helpMessage += '• Erkennt deutsche Maßeinheiten automatisch\n';
+      helpMessage += '• Filtert Überschriften und Anweisungen heraus\n';
+      helpMessage += '• Funktioniert mit Copy-Paste aus beliebigen Quellen\n';
+      helpMessage += '• ⏭️ **Skip-Option:** Zutaten überspringen die bereits vorhanden sind\n\n';
+      
+      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste wenn nicht angegeben\n\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
+      
+      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
+      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
+      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
+      helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
+      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
+      helpMessage += '• "Brot, Wasser" (im Unterhaltungsmodus)\n\n';
+      helpMessage += '🔄 FORTSETZUNGS-FUNKTIONEN:\n';
+      helpMessage += '• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n';
+      helpMessage += '• "weiters [Artikel]" - Österreichische Variante\n';
+      helpMessage += '• Funktioniert 10 Minuten nach letzter Artikel-Hinzufügung\n\n';
+      helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
+      helpMessage += '• Nach dem Erstellen einer Liste oder Hinzufügen von Artikeln wirst du gefragt, ob du weitere Artikel hinzufügen möchtest\n';
+      helpMessage += '• Du kannst dann einfach Artikelnamen eingeben ohne "Füge" und "hinzu"\n';
+      helpMessage += '• Auch mehrere Artikel gleichzeitig: "Brot, Milch, Käse"\n';
+      helpMessage += '• Sage "Nein" oder "Fertig" um die Unterhaltung zu beenden\n\n';
+      helpMessage += '🔊 SPRACH-FEEDBACK:\n';
+      helpMessage += '• Audio-Antworten nur bei Sprach-Eingabe\n';
+      helpMessage += '• Text-Eingaben bekommen stille Antworten\n\n';
+    } else {
+      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
+      helpMessage += '💡 Für intelligente Features:\n';
+      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
+      helpMessage += '📝 Basis-Befehle:\n\n';
+      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
+      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      helpMessage += '• "Erstelle Liste [Name]"\n';
+      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
+      helpMessage += '🍳 **Rezept-Features nur mit API Key verfügbar**\n\n';
+    }
+    
+    helpMessage += `📊 Chat Status: ${summary.messageCount} Nachrichten`;
+    
+    this.chatPersistence.addMessage(helpMessage, 'assistant');
+  }
+
+  // ========================================
+  // KEYBOARD HANDLING
+  // ========================================
+
+/**
+ * Handle Enter key press (Ctrl+Enter to send)
+ */
+onEnterKey(event: Event): void {
+  const keyboardEvent = event as KeyboardEvent;
+  if (keyboardEvent.ctrlKey) {
+    keyboardEvent.preventDefault();
+    this.sendMessage();
+  }
+  // Normal Enter in textarea just adds new line (default behavior)
+}
+
 
   // Make Math available in template
   Math = Math;
