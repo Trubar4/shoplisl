@@ -383,10 +383,12 @@
   display: flex;
   gap: 12px;
   align-items: flex-end;
+  width: 100%; /* Ensure full width usage */
 }
 
 .message-input {
-  flex: 1;
+  flex: 1; /* Take all available space */
+  min-width: 0; /* Allow shrinking */
   
   .mat-mdc-form-field-wrapper {
     background: #fafafa;
@@ -401,8 +403,9 @@
 .input-actions {
   display: flex;
   gap: 8px;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row; /* CHANGED: Horizontal instead of column */
+  align-items: center; /* CHANGED: Center alignment */
+  flex-shrink: 0; /* Don't shrink the buttons */
   
   button {
     transition: all 0.3s ease;
@@ -419,18 +422,18 @@
   }
 }
 
-/* ========================================
-   QUICK ACTIONS & EXAMPLES
-   ======================================== */
-
+/* UPDATED: Quick actions - remove unwanted headlines */
 .quick-actions {
   margin-top: 16px;
+  
+  /* Remove margin from first element since we removed the headline */
+  .quick-buttons:first-child {
+    margin-bottom: 16px;
+  }
 }
 
 .quick-action-section,
-.continuation-section,
-.examples-section,
-.conversation-actions {
+.examples-section {
   margin-bottom: 16px;
   
   h4 {
@@ -441,6 +444,14 @@
   }
 }
 
+.continuation-section {
+  margin-bottom: 16px;
+}
+
+.conversation-actions {
+  margin-top: 16px;
+}
+
 .continuation-info {
   font-size: 12px;
   color: #757575;
@@ -448,6 +459,12 @@
   padding: 6px 8px;
   background: rgba(33, 150, 243, 0.1);
   border-radius: 4px;
+}
+
+.conversation-examples .example-commands {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .quick-buttons {
@@ -561,85 +578,43 @@
    RESPONSIVE DESIGN
    ======================================== */
 
-@media (max-width: 768px) {
-  .voice-ai-assistant {
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
-  }
-  
-  .messages-container {
-    padding: 12px;
-  }
-  
-  .input-area {
-    padding: 12px;
-  }
-  
-  .input-form {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .input-actions {
-    flex-direction: row;
-    justify-content: center;
-    width: 100%;
-  }
-  
-  .message-content {
-    max-width: 90%;
-  }
-  
-  .quick-buttons {
-    button {
-      min-width: 70px;
-      font-size: 12px;
+   @media (max-width: 768px) {
+    .input-form {
+      gap: 8px;
     }
-  }
-  
-  .recipe-quick-actions .quick-buttons {
-    button {
-      min-width: 80px;
+    
+    .input-actions {
+      flex-direction: row; /* Keep horizontal even on mobile */
+      justify-content: center;
+      flex-shrink: 0;
     }
-  }
-  
-  .example-button {
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-  
-  .chat-stats {
-    display: none;
-  }
-}
+    
+    .message-input {
+      min-width: 0;
+    }
+    
+    .quick-buttons {
+      button {
+        min-width: 70px;
+        font-size: 12px;
+      }
+    }
 
-@media (max-width: 480px) {
-  .app-toolbar {
-    .toolbar-title {
-      font-size: 16px;
+    .input-area {
+      padding-bottom: 80px !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .input-form {
+      gap: 6px;
+    }
+    
+    .input-actions button {
+      min-width: auto;
     }
   }
   
-  .disambiguation-option {
-    padding: 8px;
-  }
-  
-  .option-main {
-    gap: 8px;
-  }
-  
-  .option-icon {
-    font-size: 20px;
-    width: 32px;
-  }
-  
-  .conversation-status {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-    text-align: center;
-  }
-}
 
 /* ========================================
    DARK MODE SUPPORT
@@ -670,6 +645,7 @@
   }
   
   .input-area {
+    padding-bottom: 100px !important;
     background: #1e1e1e;
     border-color: #333;
   }

@@ -110,11 +110,16 @@ export class ChatPersistenceService {
    * Add welcome message if chat is empty
    */
   initializeIfEmpty(): void {
-    const messages = this.getMessages();
-    if (messages.length === 0) {
-      this.addMessage('Willkommen! Sage mir, was ich für dich tun kann.', 'system');
+    const currentMessages = this.messagesSubject.getValue();
+    if (currentMessages.length === 0) {
+      this.addMessage(
+        '👋 <strong>Willkommen beim ShopLisl AI Assistent!</strong><br><br>' +
+        'Sage "Hilfe" für verfügbare Befehle.',
+        'assistant'
+      );
     }
   }
+  
 
   /**
    * Save messages to localStorage

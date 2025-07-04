@@ -1,4 +1,4 @@
-<!-- voice-ai-assistant.component.html - Complete template with recipe features and skip functionality -->
+<!-- voice-ai-assistant.component.html - Clean Layout Version -->
 
 <div class="voice-ai-assistant">
   <!-- Header with navigation and stats -->
@@ -116,7 +116,7 @@
       </mat-card>
     </div>
 
-    <!-- Input area with recipe features -->
+    <!-- Input area - CLEAN LAYOUT -->
     <div class="input-area">
       
       <!-- Conversation status -->
@@ -137,33 +137,16 @@
         </button>
       </div>
 
-      <!-- RECIPE FEATURES - Minimal Integration -->
-      
-      <!-- Recipe Quick Actions -->
-      <div class="recipe-quick-actions" *ngIf="!isInActiveConversation() && aiService.hasApiKey()">
-        <div class="quick-buttons">
-          <button mat-stroked-button (click)="showRecipeHelp()" matTooltip="Zeige ausführliche Rezept-Hilfe">
-            🍳 Rezept-Hilfe
-          </button>
-          <button mat-stroked-button (click)="showRecipeExample()" matTooltip="Beispiel-Rezept in Eingabefeld laden">
-            📝 Beispiel
-          </button>
-          <button mat-stroked-button (click)="testRecipeFeature()" matTooltip="Teste Rezept-Feature">
-            🧪 Test
-          </button>
-        </div>
-      </div>
-
       <!-- Recipe Status Hint -->
       <div class="recipe-hint" *ngIf="currentMessage.toLowerCase().startsWith('rezept') && aiService.hasApiKey()">
         🍳 Rezept erkannt - Zutaten werden automatisch verarbeitet
       </div>
 
-      <!-- Main input form -->
+      <!-- FIXED: Main input form with proper layout -->
       <form (ngSubmit)="sendMessage()" class="input-form">
         <mat-form-field appearance="outline" class="message-input">
           <mat-label>{{ getInputPlaceholder() }}</mat-label>
-            <textarea 
+          <textarea 
             matInput 
             [(ngModel)]="currentMessage"
             name="message"
@@ -177,14 +160,7 @@
             cdkAutosizeMaxRows="8">
           </textarea>
           
-          <!-- Input hints -->
-          <mat-hint *ngIf="!isInActiveConversation() && currentMessage.length === 0">
-            💡 Für Rezepte: "Rezept:" + Zutatenliste kopieren
-          </mat-hint>
-          
-          <mat-hint *ngIf="isInActiveConversation() && currentMessage.length === 0">
-            Einfach Artikelnamen eingeben oder "Nein" für Ende
-          </mat-hint>
+          <!-- REMOVED: All mat-hint elements as requested -->
         </mat-form-field>
 
         <!-- Input action buttons -->
@@ -218,29 +194,21 @@
         🍳 Verarbeite Rezept-Zutaten...
       </div>
 
-      <!-- Quick actions for normal mode -->
-      <div class="quick-actions" *ngIf="!isInActiveConversation()">
-        <div class="quick-action-section">
-          <h4>🚀 Schnellaktionen</h4>
-          <div class="quick-buttons">
-            <button mat-stroked-button (click)="showLists()" matTooltip="Alle Listen anzeigen">
-              <mat-icon>list</mat-icon>
-              Listen
-            </button>
-            <button mat-stroked-button (click)="createNewList()" matTooltip="Neue Liste erstellen">
-              <mat-icon>add</mat-icon>
-              Liste
-            </button>
-            <button mat-stroked-button (click)="showContextualHelp()" matTooltip="Hilfe anzeigen">
-              <mat-icon>help</mat-icon>
-              Hilfe
-            </button>
-          </div>
+      <!-- CLEANED: Quick actions - removed headlines and unwanted content -->
+	    <div class="quick-actions" *ngIf="!isInActiveConversation()">
+        <div class="quick-buttons">
+          <button mat-stroked-button (click)="showContextualHelp()" matTooltip="Hilfe anzeigen">
+            <mat-icon>help</mat-icon>
+            Hilfe
+          </button>
+		  <button mat-stroked-button (click)="showRecipeHelp()" matTooltip="Rezept-Hilfe">
+            <mat-icon>list</mat-icon>
+            Listen
+          </button>
         </div>
 
         <!-- Continuation actions (only if continuation is possible) -->
         <div class="continuation-section" *ngIf="canUseContinuation()">
-          <h4>🔄 Fortsetzung</h4>
           <div class="continuation-info">
             {{ getConversationStatus() }}
           </div>
@@ -258,39 +226,12 @@
           </div>
         </div>
 
-        <!-- Example commands -->
-        <div class="examples-section">
-          <h4>💡 Beispiele</h4>
-          <div class="example-commands">
-            <button mat-button 
-                    (click)="sendQuickMessage('Füge Milch hinzu')"
-                    class="example-button">
-              "Füge Milch hinzu"
-            </button>
-            <button mat-button 
-                    (click)="sendQuickMessage('Erstelle Liste Spar')"
-                    class="example-button">
-              "Erstelle Liste Spar"
-            </button>
-            <button mat-button 
-                    (click)="sendQuickMessage('Füge Bananen, Brot, Milch hinzu')"
-                    class="example-button">
-              "Füge Bananen, Brot, Milch hinzu"
-            </button>
-            <button mat-button 
-                    *ngIf="aiService.hasApiKey()"
-                    (click)="sendQuickMessage('Rezept: 500g Mehl\\n2 Eier\\n250ml Milch')"
-                    class="example-button recipe-example">
-              🍳 "Rezept: 500g Mehl..."
-            </button>
-          </div>
-        </div>
+        <!-- REMOVED: Examples section and "Füge Milch hinzu" as requested -->
       </div>
 
       <!-- Conversation mode quick actions -->
       <div class="conversation-actions" *ngIf="isInActiveConversation()">
         <div class="conversation-examples">
-          <h4>💬 In Unterhaltung</h4>
           <div class="example-commands">
             <button mat-button (click)="sendQuickMessage('Milch')" class="example-button">
               "Milch"
@@ -312,20 +253,6 @@
       </div>
 
     </div>
-  </div>
-
-  <!-- Debug section (only in development) -->
-  <div class="debug-section" *ngIf="false">
-    <details>
-      <summary>🔍 Debug Information</summary>
-      <div class="debug-info">
-        <button mat-button (click)="debugConversationState()">Debug State</button>
-        <button mat-button (click)="testConversationScenario('clear')">Clear Context</button>
-        <button mat-button (click)="testListCreation()">Test List Creation</button>
-        <button mat-button (click)="testContinuation()">Test Continuation</button>
-        <button mat-button (click)="clearAllContext()">Clear All</button>
-      </div>
-    </details>
   </div>
 
 </div>

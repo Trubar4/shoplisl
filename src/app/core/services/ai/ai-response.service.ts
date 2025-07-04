@@ -136,45 +136,31 @@ export class AIResponseService {
   /**
    * 💡 Enhanced help guidance with color examples and quantity patterns
    */
-  getEnhancedHelpMessage(hasApiKey: boolean): string {
-    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
-    
+  public getEnhancedHelpMessage(hasApiKey: boolean): string {
     if (hasApiKey) {
-      helpMessage += '✅ Intelligente Features aktiv\n\n';
-      helpMessage += '📝 Verfügbare Befehle:\n\n';
-      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste\n\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Direkt zur spezifizierten Liste\n\n';
-      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
-      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
-      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n';
-      helpMessage += '• "Füge 500ml Milch zu Spar hinzu"\n';
-      helpMessage += '• "Füge 3x Äpfel hinzu"\n\n';
-      helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
-      helpMessage += '• "Füge 2kg Bananen, Würste, 1L Milch zu Spar hinzu"\n';
-      helpMessage += '• "Füge Bananen Menge 2kg, Würste, Milch Menge 1 Liter hinzu"\n\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
-      helpMessage += '• "Erstelle Liste [Name] mit [Artikel]"\n  → Liste mit erstem Artikel\n\n';
-      helpMessage += '🎨 MIT FARBEN:\n';
-      helpMessage += '• "Erstelle Liste Spar in rot"\n';
-      helpMessage += '• "Erstelle Liste REWE in blau mit Milch"\n';
-      helpMessage += '• Verfügbare Farben: rot, grün, blau, gelb, orange, lila, rosa, schwarz, grau, weiß, türkis, braun\n\n';
+      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+        '✅ <strong>Verfügbare Befehle:</strong><br>' +
+        '• "Füge [Artikel] hinzu"<br>' +
+        '• "Erstelle Liste [Name]"<br>' +
+        '• "Rezept: [Zutatenliste]"<br>' +
+        '• "und [Artikel]" - Fortsetzung<br>' +
+        '• "Zeige Listen"<br><br>' +
+        '<strong>🔄 Beispiele:</strong><br>' +
+        '• "Füge Milch hinzu"<br>' +
+        '• "Erstelle Liste Spar"<br>' +
+        '• "Rezept: 500g Mehl, 2 Eier"';
     } else {
-      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
-      helpMessage += '💡 Für intelligente Features:\n';
-      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
-      helpMessage += '📝 Basis-Befehle:\n\n';
-      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-      helpMessage += '⚖️ "Füge [Artikel] Menge [Anzahl] [Einheit] hinzu"\n';
-      helpMessage += '🎯 "Füge Bananen, Würste, Milch hinzu" - Mehrere Artikel\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n';
-      helpMessage += '🎨 "Erstelle Liste [Name] in [Farbe]"\n';
-      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n';
-      helpMessage += '• "Test" - System-Status prüfen\n\n';
+      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+        '⚙️ <strong>Basis-Funktionen:</strong><br>' +
+        '• "Füge [Artikel] hinzu"<br>' +
+        '• "Erstelle Liste [Name]"<br>' +
+        '• "Zeige Listen"<br><br>' +
+        '💡 <strong>Für erweiterte Features:</strong><br>' +
+        '"set api key: gsk_YOUR_KEY"<br><br>' +
+        '<strong>🔄 Beispiele:</strong><br>' +
+        '• "Füge Milch hinzu"<br>' +
+        '• "Erstelle Liste Spar"';
     }
-    
-    return helpMessage;
   }
 
   /**
@@ -215,8 +201,16 @@ export class AIResponseService {
   /**
    * 🔑 Get API key setup instructions
    */
-  getApiKeyInstructions(hasKey: boolean): string {
-    return `🔑 API Key Setup\n\n${hasKey ? '✅ Bereits konfiguriert' : '❌ Nicht gefunden'}\n\n📝 So konfigurierst du deinen API Key:\n\n1️⃣ Schreibe: "set api key: gsk_YOUR_KEY_HERE"\n\n2️⃣ Groq API Key kostenlos erstellen:\n🔗 https://console.groq.com/keys\n\n${hasKey ? '🎯 Alle Features aktiviert!' : '⚠️ Ohne API Key sind nur Basis-Funktionen verfügbar'}`;
+  public getApiKeyInstructions(hasKey: boolean): string {
+    if (hasKey) {
+      return '🔑 <strong>API Key Status:</strong> ✅ Konfiguriert<br><br>' +
+        'Erweiterte Features sind verfügbar!';
+    } else {
+      return '🔑 <strong>API Key nicht gesetzt</strong><br><br>' +
+        'Für Rezept-Features und erweiterte Funktionen:<br>' +
+        '"set api key: gsk_YOUR_GROQ_KEY"<br><br>' +
+        '💡 Groq API Key kostenlos auf groq.com';
+    }
   }
 
   // ========================================
@@ -226,10 +220,11 @@ export class AIResponseService {
   /**
    * ❌ Get generic error message
    */
-  getGenericErrorMessage(error?: string): string {
-    return `❌ Ein Fehler ist aufgetreten${error ? `: ${error}` : '.'}\n\n💡 Versuche es mit:\n• "Hilfe" für verfügbare Befehle\n• "Test" für System-Status`;
+  public getGenericErrorMessage(details?: string): string {
+    return `❌ <strong>Fehler aufgetreten</strong><br><br>` +
+      `${details ? `Details: ${details}<br><br>` : ''}` +
+      `💡 Versuche es mit "Hilfe" für verfügbare Befehle`;
   }
-
   /**
    * ❌ Get parsing error message
    */
@@ -255,8 +250,10 @@ export class AIResponseService {
   /**
    * ❌ Get no lists found message
    */
-  getNoListsFoundMessage(): string {
-    return '❌ Keine Listen gefunden!\n\n💡 Erstelle zuerst eine Liste:\n• "Erstelle Liste [Name]"\n• "Erstelle Liste [Name] in [Farbe]"';
+  public getNoListsFoundMessage(): string {
+    return '📋 <strong>Keine Listen vorhanden</strong><br><br>' +
+      '💡 Erstelle deine erste Liste:<br>' +
+      '"Erstelle Liste [Name]"';
   }
 
   // ========================================
@@ -500,44 +497,7 @@ getPatternReminder(): string {
     `🛑 Oder sage "Nein" / "Fertig" wenn du fertig bist.`;
 }
 
-/**
- * 🗣️ Enhanced help with conversation features highlighted
- */
-getEnhancedHelpMessageWithConversation(hasApiKey: boolean): string {
-  let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
-  
-  if (hasApiKey) {
-    helpMessage += '✅ Intelligente Features aktiv\n\n';
-    helpMessage += '📝 Verfügbare Befehle:\n\n';
-    helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste\n\n';
-    helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Direkt zur spezifizierten Liste\n\n';
-    helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
-    helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
-    helpMessage += '• Nach Listen-Erstellung: Ich frage, ob du Artikel hinzufügen möchtest\n';
-    helpMessage += '• Nach Artikel-Hinzufügung: Ich frage, ob du weitere hinzufügen möchtest\n';
-    helpMessage += '• Du kannst dann einfach Artikelnamen eingeben:\n';
-    helpMessage += '  - "Milch" - Einfacher Name\n';
-    helpMessage += '  - "2kg Bananen" - Mit Menge\n';
-    helpMessage += '  - "Joghurt Menge 500g" - Mit Menge-Syntax\n';
-    helpMessage += '• Sage "Nein" / "Fertig" um die Unterhaltung zu beenden\n\n';
-    helpMessage += '⚖️ MENGEN-SYNTAX:\n';
-    helpMessage += '• "Füge 2kg Bananen hinzu"\n';
-    helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
-    helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-    helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n\n';
-  } else {
-    helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
-    helpMessage += '💡 Für intelligente Features:\n';
-    helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
-    helpMessage += '📝 Basis-Befehle:\n\n';
-    helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
-    helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-    helpMessage += '• "Erstelle Liste [Name]"\n';
-    helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
-  }
-  
-  return helpMessage;
-}
+
 
 // ========================================
 // CONVERSATION CONTEXT MESSAGES

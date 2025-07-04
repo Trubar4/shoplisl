@@ -32,7 +32,7 @@ export class AIService {
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: DisambiguationService,
-    private aiResponse: AIResponseService,
+    public aiResponse: AIResponseService,
     private dataService: DataService
   ) {
     this.logApiKeyStatus();
@@ -249,38 +249,137 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
   /**
    * Call Groq API
    */
-  private async callGroqAPI(prompt: string): Promise<string> {
-    const apiKey = this.getSecureApiKey();
+    private async callGroqAPI(prompt: string): Promise<string> {
+      const apiKey = this.getSecureApiKey();
+      
+      if (!apiKey) {
+        throw new Error('Groq API Key ist erforderlich für erweiterte Rezept-Features');
+      }
     
-    if (!apiKey) {
-      throw new Error('Groq API Key ist erforderlich für Rezept-Features');
+      console.log('🍳 Calling Groq API...');
+    
+      try {
+        const response = await fetch(this.GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-70b-versatile',
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 2000
+          })
+        });
+    
+        console.log('🍳 Groq API response status:', response.status);
+    
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('🍳 Groq API error response:', errorText);
+          throw new Error(`Groq API Fehler: ${response.status} - ${errorText}`);
+        }
+    
+        const data = await response.json();
+        const result = data.choices[0]?.message?.content || '';
+        
+        console.log('🍳 Groq API result:', result);
+        return result;
+        
+      } catch (error) {
+        console.error('🍳 Groq API call failed:', error);
+        throw error;
+      }
     }
+  /**
+   * NEW: Check if text is a recipe header to ignore
+   */
+  private isRecipeHeader(text: string): boolean {
+    const lowerText = text.toLowerCase().trim();
+    const headers = [
+      'zutaten', 'ingredients', 'für den teig', 'für die füllung',
+      'portionen', 'zubereitung', 'anleitung', 'schritte'
+    ];
+    
+    return headers.some(header => 
+      lowerText === header || 
+      lowerText.startsWith(header + ':') ||
+      lowerText.endsWith(':')
+    );
+  }
 
-    const response = await fetch(this.GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1, // Low temperature for consistent formatting
-        max_tokens: 2000
-      })
-    });
 
-    if (!response.ok) {
-      throw new Error(`Groq API Fehler: ${response.status}`);
+  /**
+ * NEW: Simple recipe processing without AI (fallback)
+ */
+  private async processSimpleRecipe(recipeContent: string): Promise<AIExecutionResult> {
+    console.log('🍳 Processing simple recipe without AI:', recipeContent);
+    
+    // Clean up the content and split by common separators
+    const items = recipeContent
+      .split(/[,\n;]/) // Split by comma, newline, or semicolon
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+      .filter(item => !this.isRecipeHeader(item)) // Remove headers like "Zutaten:"
+      .slice(0, 20); // Limit to 20 items for safety
+    
+    console.log('🍳 Extracted items:', items);
+    
+    if (items.length === 0) {
+      return {
+        success: false,
+        message: '❌ Keine Zutaten gefunden.<br><br>💡 Beispiel: "Rezept: Milch, Brot, 2kg Bananen"'
+      };
     }
+    // Convert to multi-item command
+    const itemList = items.join(', ');
+    const finalCommand = `Füge ${itemList} hinzu`;
+    
+    console.log('🍳 Final simple recipe command:', finalCommand);
+    
+    // Process through existing multi-item system
+    return await this.processEnhancedCommandWithMultiItems(finalCommand);
+  }
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || '';
+  /**
+   * NEW: Process standardized recipe from Groq AI
+   */
+  private async processStandardizedRecipe(standardizedCommands: string): Promise<AIExecutionResult> {
+    console.log('🍳 Processing standardized recipe:', standardizedCommands);
+    
+    // Split into individual commands
+    const commands = standardizedCommands
+      .split('\n')
+      .map(cmd => cmd.trim())
+      .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+    
+    if (commands.length === 0) {
+      console.log('🍳 No valid commands from Groq - trying simple processing');
+      return {
+        success: false,
+        message: '❌ Keine gültigen Zutaten gefunden.<br><br>💡 Versuche es mit: "Füge Milch, Gurken hinzu"'
+      };
+    }
+    
+    console.log('🍳 Extracted commands:', commands);
+    
+    // Combine all commands into multi-item format
+    const multiItemCommand = commands.join(', ')
+      .replace(/Füge /g, '')
+      .replace(/ hinzu/g, '');
+    
+    const finalCommand = `Füge ${multiItemCommand} hinzu`;
+    
+    console.log('🍳 Final standardized command:', finalCommand);
+    
+    // Process through existing multi-item system
+    return await this.processEnhancedCommandWithMultiItems(finalCommand);
   }
 
   /**
@@ -292,66 +391,101 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     try {
       // Extract recipe content after keyword
       const recipeContent = this.extractRecipeContent(input);
+      console.log('🍳 Extracted recipe content:', recipeContent);
       
-      if (!recipeContent || recipeContent.length < 10) {
+      if (!recipeContent || recipeContent.length < 3) {
         return {
           success: false,
-          message: '❌ Keine Zutatenliste gefunden.\n\n💡 Beispiel:\n"Rezept: 500g Mehl\\n2 Eier\\n250ml Milch"'
+          message: '❌ Keine Zutatenliste gefunden.<br><br>💡 Beispiel:<br>"Rezept: Milch, Brot, 2kg Bananen"'
         };
       }
       
-      // Check if we have an API key
-      if (!this.hasApiKey()) {
-        return {
-          success: false,
-          message: '🔑 Groq API Key erforderlich für Rezept-Features.\n\nSage: "set api key: gsk_YOUR_KEY"'
-        };
+      // SIMPLE FALLBACK: For basic ingredients like "Milch, Gurken"
+      // Skip AI processing and use direct parsing
+      if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
+        console.log('🍳 Using simple processing (no AI needed)');
+        
+        // Clean and split ingredients
+        const items = recipeContent
+          .split(/[,\n;]/)
+          .map(item => item.trim())
+          .filter(item => item.length > 0)
+          .filter(item => !item.toLowerCase().includes('zutaten'))
+          .slice(0, 15);
+        
+        if (items.length === 0) {
+          return {
+            success: false,
+            message: '❌ Keine Zutaten erkannt.<br><br>💡 Beispiel: "Rezept: Milch, Brot, Käse"'
+          };
+        }
+        
+        // Convert to multi-item command
+        const finalCommand = `Füge ${items.join(', ')} hinzu`;
+        console.log('🍳 Simple recipe command:', finalCommand);
+        
+        return await this.processEnhancedCommandWithMultiItems(finalCommand);
       }
       
-      // Standardize ingredients using Grok
-      const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
-      
-      if (!standardizedCommands) {
-        return {
-          success: false,
-          message: '❌ Keine Zutaten im Rezept erkannt.\n\nBitte überprüfe das Format.'
-        };
+      // AI processing for complex recipes
+      console.log('🍳 Using AI processing');
+      try {
+        const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
+        
+        if (!standardizedCommands || standardizedCommands.trim().length < 10) {
+          throw new Error('AI returned empty result');
+        }
+        
+        // Process AI result
+        const commands = standardizedCommands
+          .split('\n')
+          .map(cmd => cmd.trim())
+          .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+        
+        if (commands.length === 0) {
+          throw new Error('No valid commands from AI');
+        }
+        
+        const multiItemCommand = commands.join(', ')
+          .replace(/Füge /g, '')
+          .replace(/ hinzu/g, '');
+        
+        const finalCommand = `Füge ${multiItemCommand} hinzu`;
+        console.log('🍳 AI recipe command:', finalCommand);
+        
+        return await this.processEnhancedCommandWithMultiItems(finalCommand);
+        
+      } catch (aiError) {
+        console.error('🍳 AI processing failed, using simple fallback:', aiError);
+        
+        // Fallback to simple processing
+        const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
+        const finalCommand = `Füge ${items.join(', ')} hinzu`;
+        
+        return await this.processEnhancedCommandWithMultiItems(finalCommand);
       }
-      
-      // Split into individual commands
-      const commands = standardizedCommands
-        .split('\n')
-        .map(cmd => cmd.trim())
-        .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
-      
-      if (commands.length === 0) {
-        return {
-          success: false,
-          message: '❌ Keine gültigen Zutaten gefunden.\n\nBitte versuche es mit einem anderen Format.'
-        };
-      }
-      
-      console.log('🍳 Extracted commands:', commands);
-      
-      // Combine all commands into multi-item format
-      const multiItemCommand = commands.join(', ')
-        .replace(/Füge /g, '')
-        .replace(/ hinzu/g, '');
-      
-      const finalCommand = `Füge ${multiItemCommand} hinzu`;
-      
-      console.log('🍳 Final multi-item command:', finalCommand);
-      
-      // Process through existing multi-item system
-      return await this.processEnhancedCommandWithMultiItems(finalCommand);
       
     } catch (error) {
       console.error('🍳 Recipe processing error:', error);
       return {
         success: false,
-        message: `❌ Fehler beim Verarbeiten des Rezepts: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}\n\n💡 Versuche es mit einer einfacheren Zutatenliste.`
+        message: `❌ Rezept-Verarbeitung fehlgeschlagen.<br><br>💡 Versuche stattdessen:<br>"Füge Milch, Gurken hinzu"`
       };
     }
+  }
+
+  /**
+   * NEW: Check if ingredient list is simple enough to skip AI processing
+   */
+  private isSimpleIngredientList(content: string): boolean {
+    const lowerContent = content.toLowerCase();
+    
+    // Simple if it's just comma-separated items without quantities or complex descriptions
+    const hasComplexTerms = /\d+\s*(g|kg|ml|l|el|tl|gramm|liter|prise)|für\s+den|zubereitung|portionen/i.test(content);
+    const isShortList = content.split(/[,\n]/).length <= 5;
+    const isSimpleWords = !/[()[\]{}]/.test(content) && content.length < 100;
+    
+    return !hasComplexTerms && isShortList && isSimpleWords;
   }
 
   // ========================================
@@ -966,7 +1100,7 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
         return this.handleApiKeyCommand(input);
       }
       
-      // Handle simple commands that clear context
+      // Handle help commands with clean responses
       if (input.toLowerCase().includes('hilfe') || input.toLowerCase().includes('help')) {
         this.clearConversationContext();
         const hasKey = this.hasApiKey();
@@ -975,7 +1109,8 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           message: this.aiResponse.getEnhancedHelpMessage(hasKey)
         };
       }
-      
+          
+      // Handle test with existing functionality (keep as-is)
       if (input.toLowerCase().includes('test')) {
         const hasKey = this.hasApiKey();
         return {
@@ -1065,8 +1200,8 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     if (intent.itemName === 'UNRECOGNIZED_COMMAND') {
       console.log('🎯 Unrecognized command, providing guidance');
       return {
-        success: true,
-        message: `Ich verstehe: "${input}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Füge Bananen, Würste, Milch hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n• "Rezept: [Zutatenliste]"\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante`
+        success: false,
+        message: `❌ Unbekannter Befehl: "${input}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle`
       };
     }
 
@@ -1169,9 +1304,6 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     
     // Extract quantity and item name with text number support
     const quantityExtraction = this.quantityExtraction.extractQuantity(originalInput);
-    console.log('🔍 QUANTITY EXTRACTION RESULT:', quantityExtraction);
-    console.log('🔍 - Item name:', quantityExtraction.itemName);
-    console.log('🔍 - Quantity:', quantityExtraction.quantity);
     
     // Handle list creation with color support
     if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
@@ -1183,11 +1315,38 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
       return await this.handleItemAdditionBasic(originalInput, quantityExtraction);
     }
     
-    // For unrecognized commands, provide helpful feedback
+    // Clean unrecognized command response
     return {
-      success: true,
-      message: `Ich verstehe: "${originalInput}"\n\n🤖 Das ist kein bekannter Befehl.\n\n💡 Verfügbare Befehle:\n• "Füge [Artikel] hinzu"\n• "Füge [Artikel] zu [Liste] hinzu"\n• "Erstelle Liste [Name]"\n• "Zeige Listen"\n• "Rezept: [Zutatenliste]" (mit API Key)\n\n🔄 Fortsetzung:\n• "und [Artikel]" - Nach Artikel-Hinzufügung\n• "weiters [Artikel]" - Österreichische Variante\n\n${this.aiResponse.getNoApiKeyGuidance()}`
+      success: false,
+      message: `❌ Unbekannter Befehl: "${originalInput}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle${!this.hasApiKey() ? '<br>🔑 Groq API Key nicht gesetzt' : ''}`
     };
+  }
+
+  private getEnhancedHelpMessage(hasApiKey: boolean): string {
+    if (hasApiKey) {
+      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+        '✅ <strong>Verfügbare Befehle:</strong><br>' +
+        '• "Füge [Artikel] hinzu"<br>' +
+        '• "Erstelle Liste [Name]"<br>' +
+        '• "Rezept: [Zutatenliste]"<br>' +
+        '• "und [Artikel]" - Fortsetzung<br>' +
+        '• "Zeige Listen"<br><br>' +
+        '<strong>🔄 Beispiele:</strong><br>' +
+        '• "Füge Milch hinzu"<br>' +
+        '• "Erstelle Liste Spar"<br>' +
+        '• "Rezept: 500g Mehl, 2 Eier"';
+    } else {
+      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+        '⚙️ <strong>Basis-Funktionen:</strong><br>' +
+        '• "Füge [Artikel] hinzu"<br>' +
+        '• "Erstelle Liste [Name]"<br>' +
+        '• "Zeige Listen"<br><br>' +
+        '💡 <strong>Für erweiterte Features:</strong><br>' +
+        '"set api key: gsk_YOUR_KEY"<br><br>' +
+        '<strong>🔄 Beispiele:</strong><br>' +
+        '• "Füge Milch hinzu"<br>' +
+        '• "Erstelle Liste Spar"';
+    }
   }
 
   // ========================================

@@ -740,14 +740,13 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     if (this.isInActiveConversation()) {
       const context = this.chatPersistence.getConversationContext();
       if (context?.waitingForArticles) {
-        return `Artikel für "${context.waitingForArticles.listName}" oder "Rezept: ..." eingeben...`;
+        return `Artikel für "${context.waitingForArticles.listName}"`;
       }
-      return 'Artikel oder "Rezept: ..." eingeben...';
+      return 'Artikel eingeben';
     }
     
-    return 'z.B. "Füge Milch hinzu", "Erstelle Liste REWE" oder "Rezept: 500g Mehl..."';
+    return 'z.B. "Füge Milch hinzu" oder "Hilfe"';
   }
-
 
   /**
    * Get dynamic voice button tooltip
@@ -1758,45 +1757,16 @@ private async finalizeMultipleItemsWithSkip(conversationListId: string, processe
  * Show recipe help
  */
 showRecipeHelp(): void {
-  const helpMessage = `🍳 **Rezept-zu-Einkaufsliste Feature**
-
-**Verwendung:**
-Tippe "Rezept:" gefolgt von deiner Zutatenliste
-
-**Beispiel:**
-\`\`\`
-Rezept:
-500g Mehl
-2 Eier  
-250ml Milch
-1 Prise Salz
-200g Hackfleisch
-1 Zwiebel
-\`\`\`
-
-**Was passiert:**
-1. ✅ System erkennt deutsche Maßeinheiten
-2. ✅ Ignoriert Überschriften automatisch  
-3. ✅ Filtert Zubereitungsschritte heraus
-4. ✅ Fragt nach der Zielliste
-5. ✅ Zeigt Disambiguation bei ähnlichen Artikeln
-6. ⏭️ **NEU:** Überspringen-Option für vorhandene Zutaten
-
-**Alternative Keywords:**
-• "Zutaten: [deine Liste]"
-• "Ingredienzien: [deine Liste]"
-
-**Skip-Funktion:**
-• Bei jeder Zutat kannst du "Überspringen" wählen
-• Perfekt wenn du schon Zutaten zu Hause hast
-• ⏭️ Orange markierte Skip-Optionen
-
-💡 **Tipp:** Einfach aus beliebigen Rezept-Websites kopieren und einfügen!
-
-🔑 **Benötigt Groq API Key für intelligente Verarbeitung**`;
+  const helpMessage = '🍳 <strong>Rezept-Feature</strong><br><br>' +
+    '• "Rezept: 500g Mehl, 2 Eier, 250ml Milch"<br>' +
+    '• Erkennt deutsche Maßeinheiten automatisch<br>' +
+    '• Filtert Überschriften und Anweisungen heraus<br>' +
+    '• ⏭️ Skip-Option für vorhandene Zutaten<br>' +
+    '• Funktioniert mit Copy-Paste aus Rezept-Websites';
   
   this.chatPersistence.addMessage(helpMessage, 'assistant');
 }
+
 
 /**
  * Show recipe example
@@ -1846,89 +1816,8 @@ testRecipeFeature(): void {
   // ========================================
 
   showContextualHelp(): void {
-    // Check both AI service and chat persistence for context
-    let context = this.aiService.getConversationContext();
-    const persistenceContext = this.chatPersistence.getConversationContext();
-    
-    if (!context.waitingForArticles && persistenceContext?.waitingForArticles) {
-      context = persistenceContext;
-    }
-    
-    if (context.waitingForArticles) {
-      // Show context-specific help (keep existing logic)
-      const helpMessage = `🗣️ Du befindest dich gerade in einer Unterhaltung!\n\n` +
-        `📝 Ich warte darauf, dass du Artikel zu "${context.waitingForArticles.listName}" hinzufügst.\n\n` +
-        `💡 Du kannst einfach sagen:\n` +
-        `• "Milch" - Einfacher Artikelname\n` +
-        `• "2kg Bananen" - Mit Menge\n` +
-        `• "Brot, Wasser" - Mehrere Artikel gleichzeitig\n` +
-        `• "Joghurt Menge 500g" - Mit Menge-Syntax\n\n` +
-        `🍳 **REZEPT-MODUS in Unterhaltung:**\n` +
-        `• "Rezept: 500g Mehl\\n2 Eier\\n250ml Milch" - Fügt alle Zutaten zur aktuellen Liste hinzu\n` +
-        `• ⏭️ **Skip-Option:** Bei jeder Zutat wählen "überspringen" wenn bereits vorhanden\n\n` +
-        `🔄 Fortsetzungs-Funktionen:\n` +
-        `• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n` +
-        `• "weiters [Artikel]" - Österreichische Variante\n\n` +
-        `🛑 Oder sage "Nein" / "Fertig" um die Unterhaltung zu beenden.`;
-      
-      this.chatPersistence.addMessage(helpMessage, 'assistant');
-      return;
-    }
-    
-    // Show normal help with recipe support
     const hasApiKey = this.aiService.hasApiKey();
-    const summary = this.chatPersistence.getChatSummary();
-    
-    let helpMessage = '🤖 Shoplisl AI Assistant\n\n';
-    
-    if (hasApiKey) {
-      helpMessage += '✅ Intelligente Features aktiv\n\n';
-      helpMessage += '📝 Verfügbare Befehle:\n\n';
-      
-      // ADD RECIPE SECTION
-      helpMessage += '🍳 **REZEPT-FEATURES:**\n';
-      helpMessage += '• "Rezept: [Zutatenliste]"\n  → Konvertiert Rezept zu Einkaufsliste\n';
-      helpMessage += '• Erkennt deutsche Maßeinheiten automatisch\n';
-      helpMessage += '• Filtert Überschriften und Anweisungen heraus\n';
-      helpMessage += '• Funktioniert mit Copy-Paste aus beliebigen Quellen\n';
-      helpMessage += '• ⏭️ **Skip-Option:** Zutaten überspringen die bereits vorhanden sind\n\n';
-      
-      helpMessage += '• "Füge [Artikel] hinzu"\n  → Fragt nach der Liste wenn nicht angegeben\n\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n  → Fügt direkt zur spezifizierten Liste hinzu\n\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n  → Neue Einkaufsliste\n\n';
-      
-      helpMessage += '⚖️ MENGEN-SYNTAX:\n';
-      helpMessage += '• "Füge 2kg Bananen hinzu"\n';
-      helpMessage += '• "Füge Schokolade Menge 2 Stück hinzu"\n\n';
-      helpMessage += '🎯 MEHRERE ARTIKEL GLEICHZEITIG:\n';
-      helpMessage += '• "Füge Bananen, Würste, Milch hinzu"\n';
-      helpMessage += '• "Brot, Wasser" (im Unterhaltungsmodus)\n\n';
-      helpMessage += '🔄 FORTSETZUNGS-FUNKTIONEN:\n';
-      helpMessage += '• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n';
-      helpMessage += '• "weiters [Artikel]" - Österreichische Variante\n';
-      helpMessage += '• Funktioniert 10 Minuten nach letzter Artikel-Hinzufügung\n\n';
-      helpMessage += '🗣️ UNTERHALTUNGS-MODUS:\n';
-      helpMessage += '• Nach dem Erstellen einer Liste oder Hinzufügen von Artikeln wirst du gefragt, ob du weitere Artikel hinzufügen möchtest\n';
-      helpMessage += '• Du kannst dann einfach Artikelnamen eingeben ohne "Füge" und "hinzu"\n';
-      helpMessage += '• Auch mehrere Artikel gleichzeitig: "Brot, Milch, Käse"\n';
-      helpMessage += '• Sage "Nein" oder "Fertig" um die Unterhaltung zu beenden\n\n';
-      helpMessage += '🔊 SPRACH-FEEDBACK:\n';
-      helpMessage += '• Audio-Antworten nur bei Sprach-Eingabe\n';
-      helpMessage += '• Text-Eingaben bekommen stille Antworten\n\n';
-    } else {
-      helpMessage += '⚙️ Basis-Funktionen verfügbar\n\n';
-      helpMessage += '💡 Für intelligente Features:\n';
-      helpMessage += '"set api key: gsk_YOUR_KEY_HERE"\n\n';
-      helpMessage += '📝 Basis-Befehle:\n\n';
-      helpMessage += '• "Füge [Artikel] hinzu" - Fragt nach Liste\n';
-      helpMessage += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-      helpMessage += '• "Erstelle Liste [Name]"\n';
-      helpMessage += '• "Zeige Listen" - Alle Listen anzeigen\n\n';
-      helpMessage += '🍳 **Rezept-Features nur mit API Key verfügbar**\n\n';
-    }
-    
-    helpMessage += `📊 Chat Status: ${summary.messageCount} Nachrichten`;
-    
+    const helpMessage = this.aiService.aiResponse.getEnhancedHelpMessage(hasApiKey);
     this.chatPersistence.addMessage(helpMessage, 'assistant');
   }
 
@@ -1946,6 +1835,46 @@ onEnterKey(event: Event): void {
     this.sendMessage();
   }
   // Normal Enter in textarea just adds new line (default behavior)
+}
+
+/**
+ * Debug recipe processing
+ */
+debugRecipeProcessing(): void {
+  console.log('🔍 RECIPE DEBUG INFO:');
+  console.log('🔍 - Has API Key:', this.aiService.hasApiKey());
+  
+  const testInput = "Rezept: Milch, Gurken";
+  console.log('🔍 - Test Input:', testInput);
+  
+  // Test if recipe is detected
+  const isRecipe = testInput.toLowerCase().startsWith('rezept:');
+  console.log('🔍 - Is Recipe Detected:', isRecipe);
+  
+  // Test content extraction
+  const content = testInput.substring(7).trim(); // Remove "Rezept:"
+  console.log('🔍 - Extracted Content:', content);
+  
+  // Test simple parsing
+  const items = content.split(',').map(item => item.trim());
+  console.log('🔍 - Parsed Items:', items);
+  
+  this.chatPersistence.addMessage(
+    `🔍 <strong>Recipe Debug:</strong><br>` +
+    `• API Key: ${this.aiService.hasApiKey() ? '✅ Verfügbar' : '❌ Nicht gesetzt'}<br>` +
+    `• Test: "${testInput}"<br>` +
+    `• Content: "${content}"<br>` +
+    `• Items: ${items.join(', ')}<br><br>` +
+    `💡 ${this.aiService.hasApiKey() ? 'Sollte AI-Processing verwenden' : 'Wird Simple Processing verwenden'}`,
+    'system'
+  );
+}
+
+/**
+ * Test simple recipe processing (bypass AI)
+ */
+testSimpleRecipe(): void {
+  this.sendQuickMessage('Füge Milch, Gurken hinzu');
 }
 
 
