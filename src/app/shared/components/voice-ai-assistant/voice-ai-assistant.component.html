@@ -63,7 +63,12 @@
             {{ getDisambiguationHeaderIcon(disambiguation) }}
           </mat-icon>
           <mat-card-title>{{ getDisambiguationHeaderTitle(disambiguation) }}</mat-card-title>
-          <mat-card-subtitle>{{ getActionDescription(disambiguation.pendingAction) }}</mat-card-subtitle>
+          <mat-card-subtitle>
+            {{ getActionDescription(disambiguation.pendingAction) }}
+            <span *ngIf="isRecipeProcessing(disambiguation.pendingAction)" class="recipe-badge">
+              🍳 Rezept
+            </span>
+          </mat-card-subtitle>
         </mat-card-header>
         
         <mat-card-content>
@@ -71,47 +76,485 @@
             {{ disambiguation.message }}
           </div>
           
+    
+          
           <div class="disambiguation-options">
+            
+            <!-- PROMINENT SKIP OPTION FIRST (Orange Button) -->
             <div *ngFor="let option of disambiguation.options; trackBy: trackByOptionId" 
                  class="disambiguation-option"
                  [class.skip-option]="option.type === 'skip'"
+                 [class.prominent-skip]="option.type === 'skip'"
+                 [style.order]="option.type === 'skip' ? -1 : 0"
                  (click)="selectDisambiguationOption(option)">
               
               <div class="option-main">
-                <div class="option-icon">
-                  {{ getDefaultIcon(option) }}
+                <!-- Orange Skip Icon -->
+                <div class="option-icon" [class.skip-icon]="option.type === 'skip'">
+                  <span *ngIf="option.type === 'skip'" class="skip-emoji">⏭️</span>
+                  <span *ngIf="option.type !== 'skip'">{{ getDefaultIcon(option) }}</span>
                 </div>
                 
                 <div class="option-details">
-                  <div class="option-name">{{ option.displayName }}</div>
-                  <div class="option-department" *ngIf="option.department">
+                  <div class="option-name" [class.skip-name]="option.type === 'skip'">
+                    {{ option.displayName }}
+                  </div>
+                  <div class="option-department" *ngIf="option.department && option.type !== 'skip'">
                     {{ getDepartmentName(option.department) }}
                   </div>
                   <div class="option-confidence" *ngIf="option.confidence && option.type !== 'skip'">
                     {{ getConfidenceText(option.confidence) }}
                   </div>
+                  <!-- Skip Reason in German -->
                   <div class="skip-reason" *ngIf="option.type === 'skip'">
-                    Bereits zu Hause vorhanden
+                    {{ option.skipReason || 'Bereits zu Hause vorhanden' }}
                   </div>
                 </div>
                 
                 <div class="option-action">
-                  <span class="action-hint">{{ getActionHint(option, disambiguation.pendingAction) }}</span>
+                  <span class="action-hint" [class.skip-hint]="option.type === 'skip'">
+                    {{ option.type === 'skip' ? 'Überspringen' : getActionHint(option, disambiguation.pendingAction) }}
+                  </span>
                   <mat-icon>{{ option.type === 'skip' ? 'skip_next' : 'chevron_right' }}</mat-icon>
                 </div>
               </div>
             </div>
           </div>
           
+          <!-- Recipe progress indicator -->
+          <div *ngIf="isSequentialRecipeProcessing(disambiguation.pendingAction)" class="recipe-progress">
+            <div class="progress-info">
+              <span class="current-item">
+                Zutat {{ getCurrentItemIndex(disambiguation.pendingAction) + 1 }} 
+                von {{ getTotalItems(disambiguation.pendingAction) }}
+              </span>
+              <div class="progress-bar">
+                <div class="progress-fill" 
+                     [style.width.%]="getProgressPercentage(disambiguation.pendingAction)">
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="disambiguation-actions">
-            <button mat-button (click)="cancelDisambiguation()" color="warn">
-              <mat-icon>cancel</mat-icon>
-              Abbrechen
-            </button>
+            <div class="action-buttons-row">
+              <button mat-button (click)="cancelDisambiguation()" color="warn">
+                <mat-icon>cancel</mat-icon>
+                Abbrechen
+              </button>
+              
+              <!-- Skip All option for recipes with many items -->
+              <button *ngIf="canSkipAll(disambiguation.pendingAction)" 
+                      mat-button 
+                      (click)="skipAllRemaining(disambiguation.pendingAction)"
+                      class="skip-all-button">
+                <mat-icon>skip_next</mat-icon>
+                Alle überspringen
+              </button>
+            </div>
           </div>
         </mat-card-content>
       </mat-card>
     </div>
+    
+    <style>
+    /* UPDATED FIXES for Skip Button Styling */
+    
+    .disambiguation-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    
+    .disambiguation-option {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #fafafa;
+      
+      &:hover {
+        background: #f0f0f0;
+        border-color: #2196f3;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+      }
+      
+      /* UPDATED: Light grey skip button styling instead of orange */
+      &.skip-option {
+        border: 2px solid #bdbdbd !important;
+        background: #f5f5f5 !important;
+        margin-bottom: 16px !important;
+        
+        &:hover {
+          background: #eeeeee !important;
+          border-color: #9e9e9e !important;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(158, 158, 158, 0.3) !important;
+        }
+        
+        /* Make skip options appear first */
+        &.prominent-skip {
+          order: -10 !important;
+        }
+      }
+      
+      .option-main {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 16px;
+        
+        .option-icon {
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: #e3f2fd;
+          font-size: 20px;
+          flex-shrink: 0;
+          
+          /* UPDATED: Clean skip icon without background */
+          &.skip-icon {
+            background: transparent !important;
+            border: 2px solid #757575 !important;
+            color: #424242 !important;
+            
+            .skip-emoji {
+              font-size: 24px !important;
+            }
+          }
+        }
+        
+        .option-details {
+          flex: 1;
+          min-width: 0;
+          
+          .option-name {
+            font-weight: 600;
+            font-size: 1em;
+            color: #333;
+            margin-bottom: 4px;
+            line-height: 1.2;
+            
+            /* UPDATED: Standard black text for skip */
+            &.skip-name {
+              color: #424242 !important;
+              font-weight: 600 !important;
+              font-size: 1em !important;
+            }
+          }
+          
+          .skip-reason {
+            font-size: 0.9em;
+            color: #757575 !important;
+            font-weight: 400;
+            margin-top: 4px;
+          }
+        }
+        
+        .option-action {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #666;
+          
+          .action-hint {
+            font-size: 0.85em;
+            text-align: right;
+            
+            /* UPDATED: Grey skip hint instead of orange */
+            &.skip-hint {
+              color: #757575 !important;
+              font-weight: 500 !important;
+              font-size: 0.9em !important;
+            }
+          }
+          
+          mat-icon {
+            color: #999;
+            
+            /* Grey icon for skip instead of orange */
+            .skip-option & {
+              color: #757575 !important;
+              font-size: 24px !important;
+            }
+          }
+        }
+      }
+    }
+    
+    /* UPDATED: Horizontal button layout */
+    .disambiguation-actions {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+      
+      .action-buttons-row {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-start;
+        align-items: center;
+      }
+    }
+    
+    /* UPDATED: Light grey skip all button */
+    .skip-all-button {
+      background: #e0e0e0 !important;
+      color: #424242 !important;
+      border: 1px solid #bdbdbd !important;
+      border-radius: 8px !important;
+      font-weight: 500 !important;
+      
+      &:hover {
+        background: #d5d5d5 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(117, 117, 117, 0.3);
+      }
+    }
+    
+    /* Pulse animation for skip icon */
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+    
+    /* REMOVED: Recipe help styling since we removed the element */
+    
+    /* Recipe badge */
+    .recipe-badge {
+      background: linear-gradient(45deg, #ff9800, #f57c00);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.7em;
+      font-weight: 600;
+      margin-left: 8px;
+      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+    }
+    
+    /* Progress bar styling */
+    .recipe-progress {
+      margin: 20px 0 16px 0;
+      padding: 16px;
+      background: linear-gradient(135deg, #f1f8e9, #e8f5e8);
+      border-radius: 10px;
+      border-left: 5px solid #4caf50;
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+      
+      .progress-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        
+        .current-item {
+          font-weight: 600;
+          color: #2e7d32;
+          min-width: 140px;
+          font-size: 0.95em;
+        }
+        
+        .progress-bar {
+          flex: 1;
+          height: 10px;
+          background: #e8f5e8;
+          border-radius: 5px;
+          overflow: hidden;
+          box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+          
+          .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #66bb6a, #81c784);
+            border-radius: 5px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+        }
+      }
+    }
+    
+    /* UPDATED: Better contrast for conversation status */
+    .conversation-status {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: #2e7d32 !important; /* Darker green for better contrast */
+      border-radius: 8px;
+      
+      .conversation-chip {
+        background: #2e7d32 !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border: none !important;
+        
+        mat-icon {
+          color: white !important;
+        }
+      }
+      
+      .finish-conversation {
+        background: #4caf50 !important;
+        color: white !important;
+        font-weight: 500 !important;
+        margin-left: 12px;
+        
+        &:hover {
+          background: #388e3c !important;
+        }
+      }
+    }
+    
+    /* UPDATED: Input area spacing to avoid tab bar overlap */
+    .input-area {
+      margin-bottom: 80px !important; /* Add more space for tab bar */
+      padding: 16px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      
+      .input-form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        margin-bottom: 16px;
+        
+        .message-input {
+          flex: 1;
+        }
+        
+        .input-actions {
+          display: flex;
+          gap: 8px;
+        }
+      }
+      
+      .quick-actions {
+        .quick-buttons {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+      }
+    }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .disambiguation-option {
+        padding: 14px;
+        
+        &.skip-option {
+          padding: 16px;
+        }
+        
+        .option-main {
+          gap: 12px;
+          
+          .option-icon {
+            width: 44px;
+            height: 44px;
+            
+            &.skip-icon {
+              .skip-emoji {
+                font-size: 20px !important;
+              }
+            }
+          }
+          
+          .option-details {
+            .option-name.skip-name {
+              font-size: 0.95em !important;
+            }
+            
+            .skip-reason {
+              font-size: 0.85em;
+            }
+          }
+        }
+      }
+      
+      .disambiguation-actions {
+        .action-buttons-row {
+          flex-direction: column;
+          gap: 8px;
+          
+          button {
+            width: 100%;
+          }
+        }
+      }
+      
+      /* UPDATED: More space on mobile for tab bar */
+      .input-area {
+        margin-bottom: 100px !important;
+      }
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .disambiguation-option {
+        background: #3d3d3d;
+        border-color: #555;
+        color: #ffffff;
+        
+        &:hover {
+          background: #484848;
+          border-color: #2196f3;
+        }
+        
+        &.skip-option {
+          background: #424242 !important;
+          border-color: #757575 !important;
+          
+          &:hover {
+            background: #4a4a4a !important;
+          }
+        }
+        
+        .option-main {
+          .option-details {
+            .option-name {
+              color: #ffffff;
+              
+              &.skip-name {
+                color: #e0e0e0 !important;
+              }
+            }
+            
+            .skip-reason {
+              color: #bdbdbd !important;
+            }
+          }
+        }
+      }
+      
+      .conversation-status {
+        background: #1b5e20 !important;
+        
+        .conversation-chip {
+          background: #1b5e20 !important;
+        }
+      }
+      
+      .skip-all-button {
+        background: #424242 !important;
+        color: #e0e0e0 !important;
+        border-color: #757575 !important;
+        
+        &:hover {
+          background: #484848 !important;
+        }
+      }
+    }
+    </style>
+    
+
 
     <!-- Input area - CLEAN LAYOUT -->
     <div class="input-area">

@@ -388,6 +388,13 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
   private async processRecipeCommand(input: string): Promise<AIExecutionResult> {
     console.log('🍳 Processing recipe command:', input.substring(0, 50));
     
+    // CRITICAL: Preserve existing conversation context for list selection
+    const existingContext = this.getConversationContext();
+    const targetListName = existingContext.waitingForArticles?.listName;
+    
+    console.log('🍳 Existing context:', existingContext);
+    console.log('🍳 Target list from context:', targetListName);
+    
     try {
       // Extract recipe content after keyword
       const recipeContent = this.extractRecipeContent(input);
@@ -400,68 +407,113 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
         };
       }
       
-      // SIMPLE FALLBACK: For basic ingredients like "Milch, Gurken"
-      // Skip AI processing and use direct parsing
-      if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
-        console.log('🍳 Using simple processing (no AI needed)');
-        
-        // Clean and split ingredients
-        const items = recipeContent
-          .split(/[,\n;]/)
-          .map(item => item.trim())
-          .filter(item => item.length > 0)
-          .filter(item => !item.toLowerCase().includes('zutaten'))
-          .slice(0, 15);
-        
-        if (items.length === 0) {
-          return {
-            success: false,
-            message: '❌ Keine Zutaten erkannt.<br><br>💡 Beispiel: "Rezept: Milch, Brot, Käse"'
-          };
-        }
-        
-        // Convert to multi-item command
-        const finalCommand = `Füge ${items.join(', ')} hinzu`;
-        console.log('🍳 Simple recipe command:', finalCommand);
-        
-        return await this.processEnhancedCommandWithMultiItems(finalCommand);
-      }
+      // CRITICAL FIX: If we have a target list, use it in the command
+      let finalCommand: string;
       
-      // AI processing for complex recipes
-      console.log('🍳 Using AI processing');
-      try {
-        const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
+      if (targetListName) {
+        console.log(`🍳 Using target list from context: ${targetListName}`);
         
-        if (!standardizedCommands || standardizedCommands.trim().length < 10) {
-          throw new Error('AI returned empty result');
+        if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
+          console.log('🍳 Using simple processing with target list');
+          
+          const items = recipeContent
+            .split(/[,\n;]/)
+            .map(item => item.trim())
+            .filter(item => item.length > 0)
+            .filter(item => !item.toLowerCase().includes('zutaten'))
+            .slice(0, 15);
+          
+          if (items.length === 0) {
+            return {
+              success: false,
+              message: '❌ Keine Zutaten erkannt.<br><br>💡 Beispiel: "Rezept: Milch, Brot, Käse"'
+            };
+          }
+          
+          // FIXED: Include target list in command
+          finalCommand = `Füge ${items.join(', ')} zu ${targetListName} hinzu`;
+          console.log('🍳 Simple recipe command with target list:', finalCommand);
+          
+          return await this.processEnhancedCommandWithMultiItems(finalCommand);
         }
         
-        // Process AI result
-        const commands = standardizedCommands
-          .split('\n')
-          .map(cmd => cmd.trim())
-          .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+        // AI processing with target list
+        console.log('🍳 Using AI processing with target list');
+        try {
+          const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent, targetListName);
+          
+          if (!standardizedCommands || standardizedCommands.trim().length < 10) {
+            throw new Error('AI returned empty result');
+          }
+          
+          const commands = standardizedCommands
+            .split('\n')
+            .map(cmd => cmd.trim())
+            .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+          
+          if (commands.length === 0) {
+            throw new Error('No valid commands from AI');
+          }
+          
+          // FIXED: Ensure all commands target the correct list
+          const enhancedCommands = commands.map(cmd => {
+            if (!cmd.includes(' zu ') && !cmd.includes(targetListName)) {
+              return cmd.replace(' hinzu', ` zu ${targetListName} hinzu`);
+            }
+            return cmd;
+          });
+          
+          const multiItemCommand = enhancedCommands.join(', ')
+            .replace(/Füge /g, '')
+            .replace(/ hinzu/g, '');
+          
+          finalCommand = `Füge ${multiItemCommand} hinzu`;
+          console.log('🍳 AI recipe command with target list:', finalCommand);
+          
+          return await this.processEnhancedCommandWithMultiItems(finalCommand);
+          
+        } catch (aiError) {
+          console.error('🍳 AI processing failed, using simple fallback with target list:', aiError);
+          
+          const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
+          finalCommand = `Füge ${items.join(', ')} zu ${targetListName} hinzu`;
+          
+          return await this.processEnhancedCommandWithMultiItems(finalCommand);
+        }
+      } else {
+        // No target list - ask user to select or continue with multi-item processing
+        console.log('🍳 No target list in context - will need list selection');
         
-        if (commands.length === 0) {
-          throw new Error('No valid commands from AI');
+        if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
+          const items = recipeContent
+            .split(/[,\n;]/)
+            .map(item => item.trim())
+            .filter(item => item.length > 0)
+            .filter(item => !item.toLowerCase().includes('zutaten'))
+            .slice(0, 15);
+          
+          finalCommand = `Füge ${items.join(', ')} hinzu`;
+        } else {
+          try {
+            const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
+            const commands = standardizedCommands
+              .split('\n')
+              .map(cmd => cmd.trim())
+              .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+            
+            const multiItemCommand = commands.join(', ')
+              .replace(/Füge /g, '')
+              .replace(/ hinzu/g, '');
+            
+            finalCommand = `Füge ${multiItemCommand} hinzu`;
+          } catch (aiError) {
+            console.error('🍳 AI processing failed, using simple fallback:', aiError);
+            const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
+            finalCommand = `Füge ${items.join(', ')} hinzu`;
+          }
         }
         
-        const multiItemCommand = commands.join(', ')
-          .replace(/Füge /g, '')
-          .replace(/ hinzu/g, '');
-        
-        const finalCommand = `Füge ${multiItemCommand} hinzu`;
-        console.log('🍳 AI recipe command:', finalCommand);
-        
-        return await this.processEnhancedCommandWithMultiItems(finalCommand);
-        
-      } catch (aiError) {
-        console.error('🍳 AI processing failed, using simple fallback:', aiError);
-        
-        // Fallback to simple processing
-        const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
-        const finalCommand = `Füge ${items.join(', ')} hinzu`;
-        
+        console.log('🍳 Recipe command without target list:', finalCommand);
         return await this.processEnhancedCommandWithMultiItems(finalCommand);
       }
       
@@ -829,7 +881,7 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
   ): Promise<AIExecutionResult> {
     
     if (currentIndex >= items.length) {
-      // All items processed - update list and return success
+      // All items processed - update list and return success with PROPER conversation context
       return await this.finalizeMultipleItemsAddition(targetList, processedItems);
     }
     
@@ -843,9 +895,9 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
     
     if (existingOptions.length > 0) {
-      console.log('🗣️ Found existing options for item', currentIndex + 1, ', showing disambiguation');
+      console.log('🗣️ Found existing options for item', currentIndex + 1, ', showing disambiguation with skip');
       
-      // 🍳 ADD SKIP OPTION for multi-item processing
+      // ENHANCED: Add skip option with better context for recipes
       const enhancedOptions = [
         ...disambiguationOptions,
         {
@@ -853,7 +905,8 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           displayName: `"${quantityExtraction.itemName}" überspringen`,
           type: 'skip' as const,
           confidence: 1.0,
-          icon: '⏭️'
+          icon: '⏭️',
+          skipReason: 'Bereits zu Hause vorhanden oder nicht benötigt'
         }
       ];
       
@@ -870,12 +923,13 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
         allItems: items,
         currentItemIndex: currentIndex,
         processedItems: processedItems,
-        conversationListId: targetList.id
+        conversationListId: targetList.id,
+        isFromRecipe: true // ADDED: Flag to indicate this came from recipe processing
       };
       
       return {
         success: true,
-        message: `🎯 Artikel ${currentIndex + 1}/${items.length}: "${quantityExtraction.itemName}"\n\n${this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName)}`,
+        message: `🍳 Zutat ${currentIndex + 1}/${items.length}: "${quantityExtraction.itemName}"\n\n${this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName)}\n\n⏭️ Du kannst Zutaten überspringen, die du bereits hast.`,
         needsUserInput: true,
         disambiguationOptions: enhancedOptions,
         pendingAction: pendingAction
@@ -910,6 +964,13 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     } catch (error: any) {
       console.error('🗣️ Error creating article for item', currentIndex + 1, ':', error);
       
+      // Add failed item to processed items for reporting
+      processedItems.push({
+        originalText: currentItemText,
+        failed: true,
+        error: error.message
+      });
+      
       // Continue with next item even if one fails
       return await this.processMultipleItemsSequentially(items, targetList, currentIndex + 1, processedItems);
     }
@@ -919,7 +980,11 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
    * Finalize multiple items addition to list
    */
   private async finalizeMultipleItemsAddition(targetList: any, processedItems: any[]): Promise<AIExecutionResult> {
-    if (processedItems.length === 0) {
+    const successfulItems = processedItems.filter(item => !item.skipped && !item.failed);
+    const skippedItems = processedItems.filter(item => item.skipped);
+    const failedItems = processedItems.filter(item => item.failed);
+    
+    if (successfulItems.length === 0 && skippedItems.length === 0) {
       return {
         success: false,
         message: '❌ Keine Artikel konnten hinzugefügt werden.'
@@ -930,8 +995,8 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
       let updatedArticleIds = [...targetList.articleIds];
       let updatedItemStates = { ...targetList.itemStates };
       
-      // Add all processed items to the list
-      for (const item of processedItems) {
+      // Add all successful items to the list
+      for (const item of successfulItems) {
         if (!updatedArticleIds.includes(item.article.id)) {
           updatedArticleIds.push(item.article.id);
         }
@@ -955,7 +1020,7 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
             type: 'article_added',
             listId: targetList.id,
             listName: targetList.name,
-            articleName: `${processedItems.length} Artikel`,
+            articleName: `${successfulItems.length} Artikel`,
             timestamp: new Date()
           },
           waitingForArticles: {
@@ -964,16 +1029,36 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
             prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
           }
         });
-
-        const addedItems = processedItems.map(item => 
-          `"${item.article.name}"${item.quantity ? ` (${item.quantity})` : ''}`
-        );
+  
+        // ENHANCED: Build comprehensive summary message
+        let message = '';
         
-        const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt('mehrere Artikel', targetList.name);
+        if (successfulItems.length > 0) {
+          const addedItems = successfulItems.map(item => 
+            `"${item.article.name}"${item.quantity ? ` (${item.quantity})` : ''}`
+          );
+          message += `✅ ${successfulItems.length} Artikel zu "${targetList.name}" hinzugefügt:\n${addedItems.join(', ')}`;
+        }
+        
+        if (skippedItems.length > 0) {
+          const skippedSummary = skippedItems.map(item => 
+            `"${item.originalText}"`
+          );
+          message += `${message ? '\n\n' : ''}⏭️ ${skippedItems.length} Artikel übersprungen:\n${skippedSummary.join(', ')}`;
+        }
+        
+        if (failedItems.length > 0) {
+          const failedSummary = failedItems.map(item => 
+            `"${item.originalText}"`
+          );
+          message += `${message ? '\n\n' : ''}❌ ${failedItems.length} Artikel fehlgeschlagen:\n${failedSummary.join(', ')}`;
+        }
+        
+        const followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
         
         return {
           success: true,
-          message: `✅ ${processedItems.length} Artikel zu "${targetList.name}" hinzugefügt:\n${addedItems.join(', ')}`,
+          message: message,
           listId: targetList.id,
           conversationContext: this.getConversationContext(),
           followUpPrompt
@@ -1515,13 +1600,28 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     } else if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
       return await this.handleSkipInMultiItem(pendingAction);
     } else {
-      // Single item skip - just show completion message and maintain conversation
+      // Single item skip - maintain conversation context
       const context = this.getConversationContext();
+      let message = `⏭️ "${pendingAction.itemName}" übersprungen`;
+      
+      if (selectedOption.skipReason) {
+        message += ` (${selectedOption.skipReason})`;
+      }
+      
+      if (context?.waitingForArticles) {
+        message += `.\n\nDu kannst weitere Artikel zu "${context.waitingForArticles.listName}" hinzufügen.`;
+        
+        return {
+          success: true,
+          message: message,
+          conversationContext: context,
+          followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+        };
+      }
+      
       return {
         success: true,
-        message: `⏭️ "${pendingAction.itemName}" übersprungen (bereits vorhanden).\n\nDu kannst weitere Artikel hinzufügen.`,
-        conversationContext: context.waitingForArticles ? context : undefined,
-        followUpPrompt: context.waitingForArticles ? 'Möchtest du noch weitere Artikel hinzufügen?' : undefined
+        message: message + '.\n\nDu kannst weitere Artikel hinzufügen.'
       };
     }
   }
