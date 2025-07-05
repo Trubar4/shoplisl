@@ -14,9 +14,6 @@
     
     <span class="spacer"></span>
     
-    <!-- Stats display -->
-    <span class="chat-stats">{{ getChatStats() }}</span>
-    
     <!-- Toolbar actions -->
     <button mat-icon-button (click)="clearChat()" matTooltip="Chat leeren">
       <mat-icon>delete_sweep</mat-icon>
@@ -142,7 +139,7 @@
         🍳 Rezept erkannt - Zutaten werden automatisch verarbeitet
       </div>
 
-      <!-- FIXED: Main input form with proper layout -->
+      <!-- UPDATED: Main input form with voice button only -->
       <form (ngSubmit)="sendMessage()" class="input-form">
         <mat-form-field appearance="outline" class="message-input">
           <mat-label>{{ getInputPlaceholder() }}</mat-label>
@@ -159,11 +156,9 @@
             cdkAutosizeMinRows="1"
             cdkAutosizeMaxRows="8">
           </textarea>
-          
-          <!-- REMOVED: All mat-hint elements as requested -->
         </mat-form-field>
 
-        <!-- Input action buttons -->
+        <!-- Voice input button only -->
         <div class="input-actions">
           <button 
             mat-icon-button 
@@ -175,16 +170,6 @@
             color="accent">
             <mat-icon>{{ isRecording ? 'stop' : 'mic' }}</mat-icon>
           </button>
-          
-          <button 
-            mat-raised-button 
-            type="submit"
-            [disabled]="!currentMessage.trim() || isProcessing"
-            [matTooltip]="getSendTooltip()"
-            color="primary">
-            <mat-icon>send</mat-icon>
-            Senden
-          </button>
         </div>
       </form>
 
@@ -194,16 +179,25 @@
         🍳 Verarbeite Rezept-Zutaten...
       </div>
 
-      <!-- CLEANED: Quick actions - removed headlines and unwanted content -->
-	    <div class="quick-actions" *ngIf="!isInActiveConversation()">
+      <!-- UPDATED: Quick actions with Send button included horizontally -->
+      <div class="quick-actions" *ngIf="!isInActiveConversation()">
         <div class="quick-buttons">
+          <button 
+            mat-raised-button 
+            (click)="sendMessage()"
+            [disabled]="!currentMessage.trim() || isProcessing"
+            [matTooltip]="getSendTooltip()"
+            color="primary">
+            <mat-icon>send</mat-icon>
+            Senden
+          </button>
           <button mat-stroked-button (click)="showContextualHelp()" matTooltip="Hilfe anzeigen">
             <mat-icon>help</mat-icon>
             Hilfe
           </button>
-		  <button mat-stroked-button (click)="showRecipeHelp()" matTooltip="Rezept-Hilfe">
-            <mat-icon>list</mat-icon>
-            Listen
+          <button mat-stroked-button (click)="showRecipeHelp()" matTooltip="Rezept-Hilfe">
+            <mat-icon>restaurant</mat-icon>
+            Rezept-Beispiel
           </button>
         </div>
 
