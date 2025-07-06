@@ -1,4 +1,4 @@
-// src/app/core/services/ai/ai.service.ts - Complete with Recipe Features
+// src/app/core/services/ai/ai.service.ts - FIXED VERSION
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -24,8 +24,6 @@ import { environment } from '../../../../environments/environment';
 })
 export class AIService {
   private readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
-  // ENHANCED: Conversation context tracking with continuation support
   private conversationContext: ConversationContext = {};
 
   constructor(
@@ -36,51 +34,264 @@ export class AIService {
     private dataService: DataService
   ) {
     this.logApiKeyStatus();
+    this.ensureRequiredMethods();
   }
 
   // ========================================
-  // PUBLIC ACCESSOR METHODS
+  // ENSURE REQUIRED METHODS - FIXED
   // ========================================
 
-  /**
-   * Public access to disambiguation service
-   */
-  public async getDisambiguationOptions(itemName: string): Promise<DisambiguationOption[]> {
-    return this.disambiguation.getDisambiguationOptions(itemName);
+  private ensureRequiredMethods(): void {
+    // Ensure quantityExtraction has required methods
+    if (!this.quantityExtraction.hasMultipleItems) {
+      this.quantityExtraction.hasMultipleItems = (input: string) => {
+        return input.includes(',') && input.split(',').length > 1;
+      };
+    }
+
+    if (!this.quantityExtraction.parseMultipleItems) {
+      this.quantityExtraction.parseMultipleItems = (input: string) => {
+        const items = input.split(',').map(item => {
+          const extraction = this.quantityExtraction.extractQuantity(item.trim());
+          return {
+            itemName: extraction.itemName,
+            quantity: extraction.quantity,
+            originalText: item.trim(),
+            confidence: 'high' as const
+          };
+        });
+        
+        return {
+          command: 'add_items' as const,
+          items: items,
+          originalInput: input,
+          parseErrors: []
+        };
+      };
+    }
+    
+    // Ensure commandParser has required methods
+    if (!this.commandParser.parseIntent) {
+      this.commandParser.parseIntent = (input: string, cleanItemName?: string) => {
+        const lowerInput = input.toLowerCase();
+        const itemName = cleanItemName || '';
+        
+        if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
+          const listMatch = input.match(/erstelle\s+liste\s+(.+?)(?:\s+mit|$)/i);
+          return {
+            type: 'create_list' as const,
+            listName: listMatch?.[1]?.trim(),
+            itemName: itemName,
+            originalInput: input,
+            confidence: 0.9
+          };
+        }
+        
+        if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+          const listMatch = input.match(/zu\s+(.+?)\s+hinzu/i);
+          return {
+            type: 'add_item' as const,
+            listName: listMatch?.[1]?.trim(),
+            itemName: itemName,
+            originalInput: input,
+            confidence: 0.8
+          };
+        }
+        
+        return {
+          type: 'add_item' as const,
+          listName: undefined,
+          itemName: itemName || input,
+          originalInput: input,
+          confidence: 0.3
+        };
+      };
+    }
+    
+    if (!this.commandParser.extractColor) {
+      this.commandParser.extractColor = (input: string) => {
+        const colorMatch = input.match(/in\s+(rot|blau|grün|gelb|orange|lila|schwarz|weiß)/i);
+        const colorMap: any = {
+          'rot': '#f44336',
+          'blau': '#2196f3',
+          'grün': '#4caf50',
+          'gelb': '#ffeb3b',
+          'orange': '#ff9800',
+          'lila': '#9c27b0',
+          'schwarz': '#424242',
+          'weiß': '#ffffff'
+        };
+        
+        if (colorMatch) {
+          return {
+            colorName: colorMatch[1],
+            colorHex: colorMap[colorMatch[1].toLowerCase()],
+            cleanInput: input.replace(colorMatch[0], '').trim()
+          };
+        }
+        
+        return {
+          cleanInput: input
+        };
+      };
+    }
+
+    // Ensure aiResponse has required methods
+    this.ensureAIResponseMethods();
   }
 
-  /**
-   * Public access to department suggestion
-   */
-  public suggestDepartment(itemName: string): string {
-    return this.aiResponse.suggestDepartment(itemName);
-  }
+  private ensureAIResponseMethods(): void {
+    if (!this.aiResponse.getDisambiguationMessage) {
+      this.aiResponse.getDisambiguationMessage = (itemName: string) => {
+        return `Für "${itemName}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?`;
+      };
+    }
+    
+    if (!this.aiResponse.getNoListsFoundMessage) {
+      this.aiResponse.getNoListsFoundMessage = () => {
+        return '❌ Keine Listen gefunden! Erstelle zuerst eine Liste mit "Erstelle Liste [Name]"';
+      };
+    }
+    
+    if (!this.aiResponse.getListSelectionMessage) {
+      this.aiResponse.getListSelectionMessage = (itemName: string, quantity?: string) => {
+        const quantityText = quantity ? ` (${quantity})` : '';
+        return `Zu welcher Liste soll "${itemName}${quantityText}" hinzugefügt werden?`;
+      };
+    }
+    
+    if (!this.aiResponse.getEnhancedHelpMessage) {
+      this.aiResponse.getEnhancedHelpMessage = (hasApiKey: boolean) => {
+        if (hasApiKey) {
+          return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+            '✅ <strong>Verfügbare Befehle:</strong><br>' +
+            '• "Füge [Artikel] hinzu"<br>' +
+            '• "Erstelle Liste [Name]"<br>' +
+            '• "Rezept: [Zutatenliste]"<br>' +
+            '• "und [Artikel]" - Fortsetzung<br>' +
+            '• "Zeige Listen"<br><br>' +
+            '<strong>🔄 Beispiele:</strong><br>' +
+            '• "Füge Milch hinzu"<br>' +
+            '• "Erstelle Liste Spar"<br>' +
+            '• "Rezept: 500g Mehl, 2 Eier"';
+        } else {
+          return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
+            '⚙️ <strong>Basis-Funktionen:</strong><br>' +
+            '• "Füge [Artikel] hinzu"<br>' +
+            '• "Erstelle Liste [Name]"<br>' +
+            '• "Zeige Listen"<br><br>' +
+            '💡 <strong>Für erweiterte Features:</strong><br>' +
+            '"set api key: gsk_YOUR_KEY"<br><br>' +
+            '<strong>🔄 Beispiele:</strong><br>' +
+            '• "Füge Milch hinzu"<br>' +
+            '• "Erstelle Liste Spar"';
+        }
+      };
+    }
 
-  /**
-   * Public access to icon suggestion
-   */
-  public suggestIcon(itemName: string): string {
-    return this.aiResponse.suggestIcon(itemName);
-  }
+    if (!this.aiResponse.getSystemStatusMessage) {
+      this.aiResponse.getSystemStatusMessage = (hasApiKey: boolean) => {
+        return `🔧 <strong>System Status:</strong><br><br>` +
+          `• API Key: ${hasApiKey ? '✅ Konfiguriert' : '❌ Nicht gesetzt'}<br>` +
+          `• Enhanced Features: ${hasApiKey ? '✅ Verfügbar' : '❌ Deaktiviert'}<br>` +
+          `• Recipe Processing: ${hasApiKey ? '✅ Verfügbar' : '❌ Deaktiviert'}`;
+      };
+    }
 
-  /**
-   * Public access to quantity extraction
-   */
-  public extractQuantity(input: string): any {
-    return this.quantityExtraction.extractQuantity(input);
+    if (!this.aiResponse.getApiKeySuccessMessage) {
+      this.aiResponse.getApiKeySuccessMessage = () => {
+        return '✅ <strong>API Key erfolgreich gespeichert!</strong><br><br>' +
+          '🎯 <strong>Erweiterte Features aktiviert:</strong><br>' +
+          '• Intelligente Rezept-Verarbeitung<br>' +
+          '• Verbesserte Artikel-Erkennung<br>' +
+          '• Automatische Mengen-Extraktion<br><br>' +
+          '💡 Teste jetzt: "Rezept: 500g Mehl, 2 Eier, 250ml Milch"';
+      };
+    }
+
+    if (!this.aiResponse.getApiKeyErrorMessage) {
+      this.aiResponse.getApiKeyErrorMessage = () => {
+        return '❌ <strong>Ungültiger API Key!</strong><br><br>' +
+          '💡 <strong>Gültiges Format:</strong><br>' +
+          '• Muss mit "gsk_" beginnen<br>' +
+          '• Mindestens 20 Zeichen lang<br><br>' +
+          '🔗 Hole dir einen kostenlosen Key von: https://console.groq.com';
+      };
+    }
+
+    if (!this.aiResponse.getApiKeyInstructions) {
+      this.aiResponse.getApiKeyInstructions = (hasKey: boolean) => {
+        if (hasKey) {
+          return '🔑 <strong>API Key Status: Konfiguriert</strong><br><br>' +
+            '✅ Erweiterte Features sind verfügbar<br><br>' +
+            '💡 <strong>Neuen Key setzen:</strong><br>' +
+            '"set api key: gsk_YOUR_NEW_KEY"';
+        } else {
+          return '🔑 <strong>Groq API Key Setup</strong><br><br>' +
+            '💡 <strong>Key setzen:</strong><br>' +
+            '"set api key: gsk_YOUR_KEY"<br><br>' +
+            '🔗 <strong>Kostenlosen Key holen:</strong><br>' +
+            'https://console.groq.com<br><br>' +
+            '🎯 <strong>Aktiviert:</strong><br>' +
+            '• Intelligente Rezept-Verarbeitung<br>' +
+            '• Verbesserte Multi-Item Erkennung';
+        }
+      };
+    }
+
+    if (!this.aiResponse.getArticleAddedFollowUpPrompt) {
+      this.aiResponse.getArticleAddedFollowUpPrompt = (articleName: string, listName: string) => {
+        return `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`;
+      };
+    }
+
+    if (!this.aiResponse.suggestListColor) {
+      this.aiResponse.suggestListColor = (listName: string) => {
+        const colors = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#d32f2f', '#00796b'];
+        return colors[Math.floor(Math.random() * colors.length)];
+      };
+    }
+
+    if (!this.aiResponse.suggestDepartment) {
+      this.aiResponse.suggestDepartment = (itemName: string) => {
+        const lowerName = itemName.toLowerCase();
+        if (lowerName.includes('milch') || lowerName.includes('käse') || lowerName.includes('joghurt')) {
+          return 'dairy';
+        }
+        if (lowerName.includes('brot') || lowerName.includes('nudeln') || lowerName.includes('reis')) {
+          return 'bread_cereals';
+        }
+        if (lowerName.includes('fleisch') || lowerName.includes('wurst')) {
+          return 'meat_fish';
+        }
+        return 'miscellaneous';
+      };
+    }
+
+    if (!this.aiResponse.suggestIcon) {
+      this.aiResponse.suggestIcon = (itemName: string) => {
+        const lowerName = itemName.toLowerCase();
+        if (lowerName.includes('milch')) return '🥛';
+        if (lowerName.includes('brot')) return '🍞';
+        if (lowerName.includes('ei')) return '🥚';
+        if (lowerName.includes('fleisch')) return '🥩';
+        if (lowerName.includes('käse')) return '🧀';
+        return '📦';
+      };
+    }
   }
 
   // ========================================
-  // CONVERSATION CONTEXT MANAGEMENT
+  // CONTEXT MANAGEMENT - FIXED
   // ========================================
 
   setConversationContext(context: ConversationContext): void {
     console.log('🤖 AI Service setting conversation context:', context);
-    this.conversationContext = context;
+    this.conversationContext = { ...context };
   }
   
   getConversationContext(): ConversationContext {
-    return this.conversationContext || {};
+    return { ...this.conversationContext };
   }
   
   clearConversationContext(): void {
@@ -88,74 +299,619 @@ export class AIService {
     this.conversationContext = {};
   }
 
-  /**
-   * Check if we're waiting for articles to be added
-   */
-  private isWaitingForArticles(): boolean {
-    return !!this.conversationContext.waitingForArticles;
-  }
+  // ========================================
+  // ENHANCED COMMAND EXECUTION - FIXED
+  // ========================================
 
-  /**
-   * Check if input is a simple article name (not a full command)
-   */
-  private isSimpleArticleInput(input: string): boolean {
-    const trimmedInput = input.trim().toLowerCase();
-    
-    console.log('🗣️ Checking if simple article input:', trimmedInput);
-    
-    // Not a simple article if it contains command keywords
-    if (trimmedInput.includes('füge') || 
-        trimmedInput.includes('erstelle') || 
-        trimmedInput.includes('hinzu') || 
-        trimmedInput.includes('liste') ||
-        trimmedInput.includes('zeige')) {
-      console.log('🗣️ Contains command keywords - not simple');
-      return false;
-    }
-    
-    // Not simple if it's a negative response
-    if (this.isNegativeResponse(trimmedInput)) {
-      console.log('🗣️ Is negative response - not simple');
-      return false;
-    }
-    
-    // Simple heuristics for article names
-    const isSimple = trimmedInput.length > 0 && 
-           trimmedInput.length < 100 && 
-           !trimmedInput.includes('http') &&
-           !trimmedInput.includes('www.');
-           
-    console.log('🗣️ Is simple article input:', isSimple);
-    return isSimple;
-  }
+  async executeCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🗣️ EXECUTING COMMAND:', input);
+    console.log('🗣️ Current context:', this.conversationContext);
 
-  /**
-   * Check if input is a negative response
-   */
-  private isNegativeResponse(input: string): boolean {
-    const lowerInput = input.toLowerCase().trim();
-    const negativeWords = ['nein', 'no', 'nicht', 'stop', 'stopp', 'abbrechen', 'fertig', 'genug', 'ende', 'schluss'];
-    
-    // Check for exact matches or if the input starts with these words
-    return negativeWords.some(word => 
-      lowerInput === word || 
-      lowerInput.startsWith(word + ' ') ||
-      lowerInput.startsWith(word + ',') ||
-      lowerInput.startsWith(word + '.')
-    );
+    try {
+      // FIXED: Recipe command detection and processing
+      if (this.isRecipeCommand(input)) {
+        console.log('🍳 Recipe command detected');
+        return await this.processRecipeCommand(input);
+      }
+      
+      // FIXED: Continuation keywords
+      if (this.isContinuationKeyword(input)) {
+        console.log('🗣️ Continuation keyword detected');
+        return await this.handleContinuationCommand(input);
+      }
+      
+      // Handle help/system commands
+      if (input.toLowerCase().includes('api key')) {
+        return this.handleApiKeyCommand(input);
+      }
+      
+      if (input.toLowerCase().includes('hilfe') || input.toLowerCase().includes('help')) {
+        this.clearConversationContext();
+        return {
+          success: true,
+          message: this.aiResponse.getEnhancedHelpMessage(this.hasApiKey())
+        };
+      }
+          
+      if (input.toLowerCase().includes('test')) {
+        return {
+          success: true,
+          message: this.aiResponse.getSystemStatusMessage(this.hasApiKey())
+        };
+      }
+  
+      if (input.toLowerCase().includes('zeige') && input.toLowerCase().includes('liste')) {
+        this.clearConversationContext();
+        return await this.handleShowListsCommand();
+      }
+  
+      // FIXED: Handle negative responses in conversation
+      if (this.isWaitingForArticles() && this.isNegativeResponse(input)) {
+        console.log('🗣️ User declined to add more articles');
+        this.clearConversationContext();
+        return {
+          success: true,
+          message: '👍 Fertig! Du kannst jederzeit neue Befehle eingeben.'
+        };
+      }
+  
+      // FIXED: Handle contextual article addition
+      if (this.isWaitingForArticles() && this.isSimpleArticleInput(input)) {
+        console.log('🗣️ Processing simple article in context');
+        return await this.handleContextualArticleAddition(input);
+      }
+  
+      // Process new commands
+      this.clearConversationContext();
+      
+      const hasApiKey = this.hasApiKey();
+      
+      if (hasApiKey) {
+        return await this.processEnhancedCommand(input);
+      } else {
+        return await this.processBasicCommand(input);
+      }
+      
+    } catch (error) {
+      console.error('AI Service error:', error);
+      this.clearConversationContext();
+      return {
+        success: false,
+        message: `❌ Ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   // ========================================
-  // RECIPE PROCESSING METHODS
+  // CONTINUATION COMMAND HANDLING - FIXED IMPLEMENTATION
+  // ========================================
+
+  private async handleContinuationCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🔄 HANDLING CONTINUATION COMMAND:', input);
+    
+    // Check context for last action
+    const aiContext = this.getConversationContext();
+    let lastAction = aiContext.lastAction;
+    
+    if (lastAction && lastAction.listId) {
+      const timeSince = Date.now() - lastAction.timestamp.getTime();
+      const maxAge = 10 * 60 * 1000; // 10 minutes
+      
+      if (timeSince < maxAge) {
+        const lowerInput = input.toLowerCase().trim();
+        let itemsText = input;
+        
+        // Extract items after continuation keywords
+        const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch'];
+        for (const keyword of continuationKeywords) {
+          if (lowerInput.startsWith(keyword + ' ')) {
+            itemsText = input.substring(keyword.length + 1).trim();
+            break;
+          } else if (lowerInput === keyword) {
+            // FIXED: Set proper conversation context
+            const restoredContext: ConversationContext = {
+              lastAction: lastAction,
+              waitingForArticles: {
+                listId: lastAction.listId,
+                listName: lastAction.listName,
+                prompt: 'Continuation mode activated'
+              }
+            };
+            
+            this.setConversationContext(restoredContext);
+            
+            return {
+              success: true,
+              message: `Was möchtest du noch zu "${lastAction.listName}" hinzufügen?`,
+              conversationContext: restoredContext
+            };
+          }
+        }
+        
+        if (itemsText.trim()) {
+          // FIXED: Set conversation context before processing
+          const activatedContext: ConversationContext = {
+            lastAction: lastAction,
+            waitingForArticles: {
+              listId: lastAction.listId,
+              listName: lastAction.listName,
+              prompt: 'Continuation mode'
+            }
+          };
+          
+          this.setConversationContext(activatedContext);
+          
+          // Process the items with target list context
+          const enhancedInput = `Füge ${itemsText} zu ${lastAction.listName} hinzu`;
+          console.log('🔄 Processing enhanced continuation command:', enhancedInput);
+          
+          return await this.processEnhancedCommand(enhancedInput);
+        }
+      }
+    }
+    
+    return {
+      success: false,
+      message: '💡 Keine kürzliche Liste gefunden zum Fortsetzen.\n\nVerwende Fortsetzungs-Wörter wie "und" oder "weiters" nur nach dem Hinzufügen von Artikeln zu einer Liste.'
+    };
+  }
+
+  // ========================================
+  // RECIPE PROCESSING - FIXED
+  // ========================================
+
+  private async processRecipeCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🍳 Processing recipe command:', input.substring(0, 50));
+    
+    // CRITICAL: Preserve existing conversation context
+    const existingContext = this.getConversationContext();
+    const targetListName = existingContext.waitingForArticles?.listName;
+    const targetListId = existingContext.waitingForArticles?.listId;
+    
+    console.log('🍳 Existing context:', { targetListName, targetListId });
+    
+    try {
+      const recipeContent = this.extractRecipeContent(input);
+      console.log('🍳 Extracted recipe content:', recipeContent);
+      
+      if (!recipeContent || recipeContent.length < 3) {
+        return {
+          success: false,
+          message: '❌ Keine Zutatenliste gefunden.<br><br>💡 Beispiel:<br>"Rezept: Milch, Brot, 2kg Bananen"'
+        };
+      }
+      
+      // FIXED: Process recipe with proper multi-item handling
+      let finalCommand: string;
+      
+      if (targetListName && targetListId) {
+        console.log(`🍳 Using target list from context: ${targetListName}`);
+        
+        // FIXED: Always try Groq first, then fallback
+        if (this.hasApiKey()) {
+          console.log('🍳 Using Groq API for advanced recipe processing');
+          try {
+            const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent, targetListName);
+            
+            if (!standardizedCommands || standardizedCommands.trim().length < 10) {
+              throw new Error('AI returned empty result');
+            }
+            
+            const commands = standardizedCommands
+              .split('\n')
+              .map(cmd => cmd.trim())
+              .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+            
+            if (commands.length === 0) {
+              throw new Error('No valid commands from AI');
+            }
+            
+            const enhancedCommands = commands.map(cmd => {
+              if (!cmd.includes(' zu ') && !cmd.includes(targetListName)) {
+                return cmd.replace(' hinzu', ` zu ${targetListName} hinzu`);
+              }
+              return cmd;
+            });
+            
+            const multiItemCommand = enhancedCommands.join(', ')
+              .replace(/Füge /g, '')
+              .replace(/ hinzu/g, '');
+            
+            finalCommand = `Füge ${multiItemCommand} hinzu`;
+            console.log('🍳 Groq processed recipe successfully:', finalCommand);
+            
+          } catch (aiError) {
+            console.error('🍳 Groq processing failed, using enhanced fallback:', aiError);
+            finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} zu ${targetListName} hinzu`;
+          }
+        } else {
+          console.log('🍳 No API key - using enhanced local parsing');
+          finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} zu ${targetListName} hinzu`;
+        }
+      } else {
+        // No target list - process normally
+        console.log('🍳 No target list in context');
+        
+        if (this.hasApiKey()) {
+          console.log('🍳 Using Groq API for recipe processing');
+          try {
+            const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
+            const commands = standardizedCommands
+              .split('\n')
+              .map(cmd => cmd.trim())
+              .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
+            
+            const multiItemCommand = commands.join(', ')
+              .replace(/Füge /g, '')
+              .replace(/ hinzu/g, '');
+            
+            finalCommand = `Füge ${multiItemCommand} hinzu`;
+            console.log('🍳 Groq processed recipe successfully:', finalCommand);
+          } catch (aiError) {
+            console.error('🍳 Groq processing failed:', aiError);
+            finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
+          }
+        } else {
+          console.log('🍳 No API key - using enhanced local parsing');
+          finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
+        }
+      }
+      
+      console.log('🍳 Final recipe command:', finalCommand);
+      return await this.processEnhancedCommandWithMultiItems(finalCommand);
+      
+    } catch (error) {
+      console.error('🍳 Recipe processing error:', error);
+      return {
+        success: false,
+        message: `❌ Rezept-Verarbeitung fehlgeschlagen.<br><br>💡 Versuche stattdessen:<br>"Füge Milch, Gurken hinzu"`
+      };
+    }
+  }
+
+  // ========================================
+  // RECIPE PARSING HELPER - NEW
   // ========================================
 
   /**
-   * Detect if input is a recipe command
+   * FIXED: Advanced recipe parsing for all formats
+   * Handles: newlines, bullet points, sections, symbols
    */
+  private parseAdvancedRecipe(recipeContent: string): string[] {
+    console.log('🍳 Advanced parsing recipe:', recipeContent.substring(0, 100));
+    
+    const ingredients: string[] = [];
+    const lines = recipeContent.split(/\r?\n/);
+    
+    for (let line of lines) {
+      // Clean line from various symbols and prefixes
+      let cleaned = line
+        .replace(/^[-•◦▪▫*>]+\s*/, '') // Remove bullet points
+        .replace(/^[\d\.\)]+\s*/, '')   // Remove numbered lists  
+        .replace(/^>\s*/, '')           // Remove >
+        .replace(/^\*+\s*/, '')         // Remove asterisks
+        .replace(/\*+$/, '')            // Remove trailing asterisks
+        .replace(/^-+\s*/, '')          // Remove dashes
+        .replace(/\s*-+$/, '')          // Remove trailing dashes
+        .replace(/^•+\s*/, '')          // Remove bullets
+        .replace(/•+$/, '')             // Remove trailing bullets
+        .trim();
+      
+      // Skip section headers and empty lines
+      if (!cleaned || 
+          cleaned.length < 3 ||
+          cleaned.toLowerCase().includes('für den') ||
+          cleaned.toLowerCase().includes('für die') ||
+          cleaned.toLowerCase().includes('zum würzen') ||
+          cleaned.toLowerCase().includes('zubereitung') ||
+          cleaned.toLowerCase().includes('portionen') ||
+          /^-{3,}/.test(cleaned)) {
+        continue;
+      }
+      
+      // Check if line contains quantity (number + optional unit)
+      const hasQuantity = /\d+/.test(cleaned) && 
+        (cleaned.includes('g') || cleaned.includes('ml') || cleaned.includes('l') || 
+         cleaned.includes('el') || cleaned.includes('tl') || cleaned.includes('prise') ||
+         cleaned.includes('stück') || cleaned.includes('dose') || cleaned.includes('pack') ||
+         /^\d+\s+[a-zA-ZäöüÄÖÜß]/.test(cleaned)); // "2 Eier"
+      
+      if (hasQuantity) {
+        ingredients.push(cleaned);
+      }
+    }
+    
+    console.log('🍳 Advanced parsed ingredients:', ingredients);
+    
+    // Fallback to simple parsing if advanced fails
+    if (ingredients.length === 0) {
+      return this.parseSimpleIngredients(recipeContent);
+    }
+    
+    return ingredients.slice(0, 15); // Limit to 15 items
+  }
+
+  /**
+   * FIXED: Parse simple ingredients from space-separated text
+   * "500g Mehl 2 Eier 250ml Milch" → ["500g Mehl", "2 Eier", "250ml Milch"]
+   */
+  private parseSimpleIngredients(recipeContent: string): string[] {
+    console.log('🍳 Parsing simple ingredients:', recipeContent);
+    
+    // First try comma/newline/semicolon separation
+    if (recipeContent.includes(',') || recipeContent.includes('\n') || recipeContent.includes(';')) {
+      const items = recipeContent
+        .split(/[,\n;]/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
+        .slice(0, 15);
+      
+      if (items.length > 1) {
+        console.log('🍳 Found comma/newline separated items:', items);
+        return items;
+      }
+    }
+    
+    // Parse space-separated ingredients with quantities
+    const ingredients: string[] = [];
+    const words = recipeContent.trim().split(/\s+/);
+    let currentIngredient = '';
+    
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      
+      // Check if word starts with a number or contains common units
+      const hasQuantity = /^\d+/.test(word) || 
+                         /\d+(g|kg|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|dose|flasche)$/i.test(word);
+      
+      if (hasQuantity && currentIngredient) {
+        // Start of new ingredient - save previous one
+        ingredients.push(currentIngredient.trim());
+        currentIngredient = word;
+      } else {
+        // Continue current ingredient
+        currentIngredient += (currentIngredient ? ' ' : '') + word;
+      }
+    }
+    
+    // Add the last ingredient
+    if (currentIngredient) {
+      ingredients.push(currentIngredient.trim());
+    }
+    
+    // Filter out empty and invalid items
+    const validIngredients = ingredients
+      .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
+      .slice(0, 15);
+    
+    console.log('🍳 Parsed ingredients:', validIngredients);
+    
+    // Fallback: if parsing failed, return original as single item
+    if (validIngredients.length === 0) {
+      return [recipeContent.trim()];
+    }
+    
+    return validIngredients;
+  }
+
+  // ========================================
+  // MULTI-ITEM PROCESSING - FIXED
+  // ========================================
+
+  private async processEnhancedCommandWithMultiItems(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS:', input);
+    
+    const multiItemResult = this.quantityExtraction.parseMultipleItems(input);
+    
+    if (multiItemResult.command === 'unrecognized' || multiItemResult.items.length === 0) {
+      console.log('🎯 No multi-items found, using single item processing');
+      return this.processEnhancedCommand(input);
+    }
+
+    console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', {
+      command: multiItemResult.command,
+      itemCount: multiItemResult.items.length,
+      listName: multiItemResult.listName,
+      items: multiItemResult.items
+    });
+
+    // CRITICAL FIX: Preserve conversation context for target list
+    const existingContext = this.getConversationContext();
+    let targetListName = multiItemResult.listName;
+    let targetListId = null;
+
+    // If no list specified but we have conversation context, use it
+    if (!targetListName && existingContext.waitingForArticles) {
+      targetListName = existingContext.waitingForArticles.listName;
+      targetListId = existingContext.waitingForArticles.listId;
+      console.log('🎯 Using target list from context:', targetListName);
+    }
+
+    const multiAction: MultiItemPendingAction = {
+      type: multiItemResult.command === 'create_list_with_items' ? 'create_list_with_multiple_items' : 'add_multiple_items',
+      originalInput: input,
+      itemName: multiItemResult.items[0]?.itemName || '',
+      extractedQuantity: multiItemResult.items[0]?.quantity || '',
+      items: multiItemResult.items,
+      listName: targetListName,
+      currentItemIndex: 0,
+      processedItems: [],
+      suggestedDepartment: this.aiResponse.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
+      conversationListId: targetListId || undefined
+    };
+
+    console.log('🎯 Starting multi-item processing with context:', multiAction);
+    return this.disambiguation.processMultiItemSequentially(multiAction);
+  }
+
+  // ========================================
+  // ENHANCED COMMAND PROCESSING - FIXED
+  // ========================================
+
+  private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 PROCESSING ENHANCED COMMAND:', input);
+    
+    // Check for comma-separated items first
+    if (this.quantityExtraction.hasMultipleItems(input)) {
+      console.log('🎯 Detected comma-separated items, using multi-item processing');
+      return this.processEnhancedCommandWithMultiItems(input);
+    }
+    
+    // Extract quantity from input
+    const quantityExtraction = this.quantityExtraction.extractQuantity(input);
+    console.log('🎯 Quantity extraction result:', quantityExtraction);
+
+    // Parse command intent
+    const intent = this.commandParser.parseIntent(input, quantityExtraction.itemName);
+    console.log('🎯 Parsed intent:', intent);
+
+    // Check for unrecognized commands
+    if (intent.itemName === 'UNRECOGNIZED_COMMAND' || 
+        (intent as any).confidence !== undefined && (intent as any).confidence < 0.5) {
+      console.log('🎯 Unrecognized or low confidence command, providing guidance');
+      return {
+        success: false,
+        message: `❌ Unbekannter Befehl: "${input}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle`
+      };
+    }
+
+    // Handle create list commands
+    if (intent.type === 'create_list') {
+      console.log('🎯 Processing create list command');
+      return await this.handleListCreationWithColor(input, quantityExtraction);
+    }
+
+    // Handle add item commands
+    if (intent.type === 'add_item') {
+      console.log('🎯 Processing add item command');
+      
+      const pendingAction: PendingAction = {
+        type: intent.type,
+        originalInput: input,
+        itemName: quantityExtraction.itemName,
+        extractedQuantity: quantityExtraction.quantity,
+        listName: intent.listName,
+        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
+      };
+
+      return await this.handleItemActionWithDisambiguation(pendingAction);
+    }
+
+    // Fallback to basic processing
+    return this.processBasicCommand(input);
+  }
+
+  private async processBasicCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🤖 PROCESSING BASIC COMMAND:', input);
+    
+    const lowerInput = input.toLowerCase();
+    const originalInput = input.trim();
+    
+    // Extract quantity and item name
+    const quantityExtraction = this.quantityExtraction.extractQuantity(originalInput);
+    
+    // Handle list creation
+    if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
+      return await this.handleListCreationWithColor(originalInput, quantityExtraction);
+    }
+    
+    // Handle item addition
+    if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+      return await this.handleItemAdditionBasic(originalInput, quantityExtraction);
+    }
+    
+    // Unrecognized command response
+    return {
+      success: false,
+      message: `❌ Unbekannter Befehl: "${originalInput}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle${!this.hasApiKey() ? '<br>🔑 Groq API Key nicht gesetzt' : ''}`
+    };
+  }
+
+  // ========================================
+  // CONTEXTUAL PROCESSING - FIXED
+  // ========================================
+
+  private async handleContextualArticleAddition(input: string): Promise<AIExecutionResult> {
+    if (!this.conversationContext.waitingForArticles) {
+      return {
+        success: false,
+        message: '❌ Fehler: Kein Kontext für Artikel-Hinzufügung.'
+      };
+    }
+  
+    const { listId, listName } = this.conversationContext.waitingForArticles;
+    
+    console.log('🗣️ Handling contextual addition:', input);
+    console.log('🗣️ Target list:', listName, listId);
+    
+    // FIXED: Check for multiple items with proper context preservation
+    if (input.includes(',')) {
+      console.log('🗣️ Multiple items detected in contextual mode');
+      const enhancedInput = `Füge ${input} zu ${listName} hinzu`;
+      
+      // CRITICAL: Preserve context before processing
+      const contextToPreserve = { ...this.conversationContext };
+      const result = await this.processEnhancedCommandWithMultiItems(enhancedInput);
+      
+      // CRITICAL: Restore context if it was lost
+      if (result.success && !result.conversationContext) {
+        console.log('🗣️ Preserving conversation context after disambiguation');
+        result.conversationContext = contextToPreserve;
+        result.followUpPrompt = `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`;
+      }
+      
+      return result;
+    }
+    
+    // Handle single item
+    const quantityExtraction = this.quantityExtraction.extractQuantity(input);
+    console.log('🗣️ Single item extraction:', quantityExtraction);
+    
+    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
+    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    
+    if (existingOptions.length > 0) {
+      // Show disambiguation with skip option
+      const enhancedOptions = [
+        ...disambiguationOptions,
+        {
+          id: 'skip_item',
+          displayName: `"${quantityExtraction.itemName}" überspringen`,
+          type: 'skip' as const,
+          confidence: 1.0,
+          icon: '⏭️'
+        }
+      ];
+      
+      const pendingAction: PendingAction = {
+        type: 'add_item',
+        originalInput: input,
+        itemName: quantityExtraction.itemName,
+        extractedQuantity: quantityExtraction.quantity,
+        listName: listName,
+        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
+      };
+      
+      return {
+        success: true,
+        message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
+        needsUserInput: true,
+        disambiguationOptions: enhancedOptions,
+        pendingAction: pendingAction
+      };
+    }
+    
+    // No disambiguation needed - create article directly
+    return await this.createArticleInConversationContext(quantityExtraction, listId, listName);
+  }
+
+  // ========================================
+  // HELPER METHODS - FIXED
+  // ========================================
+
   private isRecipeCommand(input: string): boolean {
     const lowerInput = input.toLowerCase().trim();
-    
-    // Check for recipe keywords at the start
     const recipeKeywords = [
       'rezept:', 'rezept ', 'zutaten:', 'zutaten ',
       'ingredienzien:', 'ingredienzien ', 'ingredients:',
@@ -165,13 +921,8 @@ export class AIService {
     return recipeKeywords.some(keyword => lowerInput.startsWith(keyword));
   }
 
-  /**
-   * Extract recipe ingredients after keyword
-   */
   private extractRecipeContent(input: string): string {
     const lowerInput = input.toLowerCase();
-    
-    // Find where the actual recipe content starts
     const keywords = ['rezept:', 'rezept ', 'zutaten:', 'zutaten ', 'ingredienzien:', 'ingredienzien ', 'ingredients:'];
     
     for (const keyword of keywords) {
@@ -184,9 +935,145 @@ export class AIService {
     return input.trim();
   }
 
-  /**
-   * Clean and standardize messy recipe text using Grok
-   */
+  private isContinuationKeyword(input: string): boolean {
+    const lowerInput = input.toLowerCase().trim();
+    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch', 'dann', 'danach'];
+    
+    return continuationKeywords.some(keyword => 
+      lowerInput.startsWith(keyword + ' ') || 
+      lowerInput === keyword
+    );
+  }
+
+  private isWaitingForArticles(): boolean {
+    return !!this.conversationContext.waitingForArticles;
+  }
+
+  private isSimpleArticleInput(input: string): boolean {
+    const trimmedInput = input.trim().toLowerCase();
+    
+    if (trimmedInput.includes('füge') || 
+        trimmedInput.includes('erstelle') || 
+        trimmedInput.includes('hinzu') || 
+        trimmedInput.includes('liste') ||
+        trimmedInput.includes('zeige')) {
+      return false;
+    }
+    
+    if (this.isNegativeResponse(trimmedInput)) {
+      return false;
+    }
+    
+    return trimmedInput.length > 0 && 
+           trimmedInput.length < 100 && 
+           !trimmedInput.includes('http') &&
+           !trimmedInput.includes('www.');
+  }
+
+  private isNegativeResponse(input: string): boolean {
+    const lowerInput = input.toLowerCase().trim();
+    const negativeWords = ['nein', 'no', 'nicht', 'stop', 'stopp', 'abbrechen', 'fertig', 'genug', 'ende', 'schluss'];
+    
+    return negativeWords.some(word => 
+      lowerInput === word || 
+      lowerInput.startsWith(word + ' ') ||
+      lowerInput.startsWith(word + ',') ||
+      lowerInput.startsWith(word + '.')
+    );
+  }
+
+  // ========================================
+  // API KEY MANAGEMENT
+  // ========================================
+
+  private getSecureApiKey(): string {
+    const localStorageKey = localStorage.getItem('groq-api-key');
+    const environmentKey = environment?.groqApiKey;
+    const key = localStorageKey || environmentKey || '';
+    console.log('🔑 API Key source:', localStorageKey ? 'localStorage' : environmentKey ? 'environment' : 'none');
+    return key;
+  }
+
+  setApiKey(apiKey: string): void {
+    if (apiKey && apiKey.trim()) {
+      localStorage.setItem('groq-api-key', apiKey.trim());
+      console.log('🔑 API key saved to localStorage');
+      this.logApiKeyStatus();
+    }
+  }
+
+  hasApiKey(): boolean {
+    const key = this.getSecureApiKey();
+    console.log('🔑 Checking API key:', key ? `Found ${key.length} chars` : 'Not found');
+    return !!key && key.length > 20;
+  }
+
+  getApiKeyStatus(): ApiKeyStatus {
+    const finalKey = this.getSecureApiKey();
+    const hasKey = !!finalKey;
+    const source = localStorage.getItem('groq-api-key') ? 'localStorage' : 
+                  environment?.groqApiKey ? 'environment' : 'none';
+    
+    return {
+      configured: hasKey,
+      source: source as 'localStorage' | 'environment' | 'none',
+      length: hasKey ? finalKey.length : 0
+    };
+  }
+
+  private logApiKeyStatus(): void {
+    const status = this.getApiKeyStatus();
+    console.log('🔑 API Key Status:', status);
+  }
+
+  // ========================================
+  // DISAMBIGUATION HANDLING - FIXED
+  // ========================================
+
+  async handleDisambiguationChoice(
+    pendingAction: PendingAction | MultiItemPendingAction,
+    selectedOption: DisambiguationOption
+  ): Promise<AIExecutionResult> {
+    console.log('🎯 Handling disambiguation choice with conversation context');
+    console.log('🎯 Pending action:', pendingAction);
+    console.log('🎯 Selected option:', selectedOption);
+    
+    // FIXED: Preserve conversation context during regular disambiguation
+    const existingContext = this.getConversationContext();
+    const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
+    
+    // CRITICAL: Restore and enhance context after successful addition
+    if (result.success && result.listId && result.message.includes('hinzugefügt')) {
+      const messageMatch = result.message.match(/"([^"]+)" wurde (?:erstellt und )?zur Liste "([^"]+)" hinzugefügt/);
+      const articleName = messageMatch ? messageMatch[1] : pendingAction.itemName;
+      const listName = messageMatch ? messageMatch[2] : (pendingAction.listName || 'Unbekannt');
+      
+      this.setConversationContext({
+        lastAction: {
+          type: 'article_added',
+          listId: result.listId,
+          listName: listName,
+          articleName: articleName,
+          timestamp: new Date()
+        },
+        waitingForArticles: {
+          listId: result.listId,
+          listName: listName,
+          prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+        }
+      });
+      
+      result.conversationContext = this.getConversationContext();
+      result.followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
+    }
+    
+    return result;
+  }
+
+  // ========================================
+  // ADDITIONAL IMPLEMENTATIONS
+  // ========================================
+
   private async standardizeRecipeIngredients(rawRecipeText: string, targetList?: string): Promise<string> {
     console.log('🍳 Standardizing recipe ingredients:', rawRecipeText.substring(0, 100));
     
@@ -210,565 +1097,144 @@ BEISPIELE:
 "2 mittelgroße Eier" → "Füge Eier 2 Stück hinzu"
 "1 Prise Salz" → "Füge Salz 1 Prise hinzu"
 "250ml Vollmilch 3,5%" → "Füge Milch 250ml hinzu"
-"2 EL Olivenöl extra virgin" → "Füge Olivenöl 2 EL hinzu"
-"1 kleine Zwiebel, gewürfelt" → "Füge Zwiebel 1 Stück hinzu"
 
 AUSGABE:
-Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.
-Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
+Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.`;
 
     try {
       const response = await this.callGroqAPI(prompt);
-      console.log('🍳 Grok standardization result:', response);
+      console.log('🍳 Groq standardization result:', response);
       return response.trim();
     } catch (error) {
       console.error('🍳 Error standardizing recipe:', error);
-      throw new Error('Fehler beim Verarbeiten des Rezepts');
+      // Fallback to simple processing
+      return rawRecipeText.split(',').map(item => `Füge ${item.trim()} hinzu`).join('\n');
     }
   }
 
-  /**
-   * Clean raw recipe text before sending to Grok
-   */
   private cleanRawRecipeText(rawText: string): string {
     return rawText
-      // Remove excessive whitespace
       .replace(/\s+/g, ' ')
-      // Remove common symbols that interfere
-      .replace(/[•◦▪▫]/g, '') // bullet points
-      .replace(/[-–—]{2,}/g, '') // multiple dashes
-      .replace(/[*]{2,}/g, '') // multiple asterisks
-      // Normalize line breaks
+      .replace(/[•◦▪▫]/g, '')
+      .replace(/[-–—]{2,}/g, '')
+      .replace(/[*]{2,}/g, '')
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
-      // Remove excessive line breaks but keep structure
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
 
-  /**
-   * Call Groq API
-   */
-    private async callGroqAPI(prompt: string): Promise<string> {
-      const apiKey = this.getSecureApiKey();
-      
-      if (!apiKey) {
-        throw new Error('Groq API Key ist erforderlich für erweiterte Rezept-Features');
-      }
+  private async callGroqAPI(prompt: string): Promise<string> {
+    const apiKey = this.getSecureApiKey();
     
-      console.log('🍳 Calling Groq API...');
-    
-      try {
-        const response = await fetch(this.GROQ_API_URL, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.1-70b-versatile',
-            messages: [
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 2000
-          })
-        });
-    
-        console.log('🍳 Groq API response status:', response.status);
-    
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('🍳 Groq API error response:', errorText);
-          throw new Error(`Groq API Fehler: ${response.status} - ${errorText}`);
-        }
-    
-        const data = await response.json();
-        const result = data.choices[0]?.message?.content || '';
-        
-        console.log('🍳 Groq API result:', result);
-        return result;
-        
-      } catch (error) {
-        console.error('🍳 Groq API call failed:', error);
-        throw error;
-      }
+    if (!apiKey) {
+      throw new Error('Groq API Key ist erforderlich für erweiterte Rezept-Features');
     }
-  /**
-   * NEW: Check if text is a recipe header to ignore
-   */
-  private isRecipeHeader(text: string): boolean {
-    const lowerText = text.toLowerCase().trim();
-    const headers = [
-      'zutaten', 'ingredients', 'für den teig', 'für die füllung',
-      'portionen', 'zubereitung', 'anleitung', 'schritte'
-    ];
-    
-    return headers.some(header => 
-      lowerText === header || 
-      lowerText.startsWith(header + ':') ||
-      lowerText.endsWith(':')
-    );
-  }
 
-
-  /**
- * NEW: Simple recipe processing without AI (fallback)
- */
-  private async processSimpleRecipe(recipeContent: string): Promise<AIExecutionResult> {
-    console.log('🍳 Processing simple recipe without AI:', recipeContent);
-    
-    // Clean up the content and split by common separators
-    const items = recipeContent
-      .split(/[,\n;]/) // Split by comma, newline, or semicolon
-      .map(item => item.trim())
-      .filter(item => item.length > 0)
-      .filter(item => !this.isRecipeHeader(item)) // Remove headers like "Zutaten:"
-      .slice(0, 20); // Limit to 20 items for safety
-    
-    console.log('🍳 Extracted items:', items);
-    
-    if (items.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Zutaten gefunden.<br><br>💡 Beispiel: "Rezept: Milch, Brot, 2kg Bananen"'
-      };
-    }
-    // Convert to multi-item command
-    const itemList = items.join(', ');
-    const finalCommand = `Füge ${itemList} hinzu`;
-    
-    console.log('🍳 Final simple recipe command:', finalCommand);
-    
-    // Process through existing multi-item system
-    return await this.processEnhancedCommandWithMultiItems(finalCommand);
-  }
-
-  /**
-   * NEW: Process standardized recipe from Groq AI
-   */
-  private async processStandardizedRecipe(standardizedCommands: string): Promise<AIExecutionResult> {
-    console.log('🍳 Processing standardized recipe:', standardizedCommands);
-    
-    // Split into individual commands
-    const commands = standardizedCommands
-      .split('\n')
-      .map(cmd => cmd.trim())
-      .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
-    
-    if (commands.length === 0) {
-      console.log('🍳 No valid commands from Groq - trying simple processing');
-      return {
-        success: false,
-        message: '❌ Keine gültigen Zutaten gefunden.<br><br>💡 Versuche es mit: "Füge Milch, Gurken hinzu"'
-      };
-    }
-    
-    console.log('🍳 Extracted commands:', commands);
-    
-    // Combine all commands into multi-item format
-    const multiItemCommand = commands.join(', ')
-      .replace(/Füge /g, '')
-      .replace(/ hinzu/g, '');
-    
-    const finalCommand = `Füge ${multiItemCommand} hinzu`;
-    
-    console.log('🍳 Final standardized command:', finalCommand);
-    
-    // Process through existing multi-item system
-    return await this.processEnhancedCommandWithMultiItems(finalCommand);
-  }
-
-  /**
-   * Process recipe command and convert to shopping list items
-   */
-  private async processRecipeCommand(input: string): Promise<AIExecutionResult> {
-    console.log('🍳 Processing recipe command:', input.substring(0, 50));
-    
-    // CRITICAL: Preserve existing conversation context for list selection
-    const existingContext = this.getConversationContext();
-    const targetListName = existingContext.waitingForArticles?.listName;
-    
-    console.log('🍳 Existing context:', existingContext);
-    console.log('🍳 Target list from context:', targetListName);
-    
     try {
-      // Extract recipe content after keyword
-      const recipeContent = this.extractRecipeContent(input);
-      console.log('🍳 Extracted recipe content:', recipeContent);
-      
-      if (!recipeContent || recipeContent.length < 3) {
-        return {
-          success: false,
-          message: '❌ Keine Zutatenliste gefunden.<br><br>💡 Beispiel:<br>"Rezept: Milch, Brot, 2kg Bananen"'
-        };
-      }
-      
-      // CRITICAL FIX: If we have a target list, use it in the command
-      let finalCommand: string;
-      
-      if (targetListName) {
-        console.log(`🍳 Using target list from context: ${targetListName}`);
-        
-        if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
-          console.log('🍳 Using simple processing with target list');
-          
-          const items = recipeContent
-            .split(/[,\n;]/)
-            .map(item => item.trim())
-            .filter(item => item.length > 0)
-            .filter(item => !item.toLowerCase().includes('zutaten'))
-            .slice(0, 15);
-          
-          if (items.length === 0) {
-            return {
-              success: false,
-              message: '❌ Keine Zutaten erkannt.<br><br>💡 Beispiel: "Rezept: Milch, Brot, Käse"'
-            };
-          }
-          
-          // FIXED: Include target list in command
-          finalCommand = `Füge ${items.join(', ')} zu ${targetListName} hinzu`;
-          console.log('🍳 Simple recipe command with target list:', finalCommand);
-          
-          return await this.processEnhancedCommandWithMultiItems(finalCommand);
-        }
-        
-        // AI processing with target list
-        console.log('🍳 Using AI processing with target list');
-        try {
-          const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent, targetListName);
-          
-          if (!standardizedCommands || standardizedCommands.trim().length < 10) {
-            throw new Error('AI returned empty result');
-          }
-          
-          const commands = standardizedCommands
-            .split('\n')
-            .map(cmd => cmd.trim())
-            .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
-          
-          if (commands.length === 0) {
-            throw new Error('No valid commands from AI');
-          }
-          
-          // FIXED: Ensure all commands target the correct list
-          const enhancedCommands = commands.map(cmd => {
-            if (!cmd.includes(' zu ') && !cmd.includes(targetListName)) {
-              return cmd.replace(' hinzu', ` zu ${targetListName} hinzu`);
+      const response = await fetch(this.GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-70b-versatile',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
             }
-            return cmd;
-          });
-          
-          const multiItemCommand = enhancedCommands.join(', ')
-            .replace(/Füge /g, '')
-            .replace(/ hinzu/g, '');
-          
-          finalCommand = `Füge ${multiItemCommand} hinzu`;
-          console.log('🍳 AI recipe command with target list:', finalCommand);
-          
-          return await this.processEnhancedCommandWithMultiItems(finalCommand);
-          
-        } catch (aiError) {
-          console.error('🍳 AI processing failed, using simple fallback with target list:', aiError);
-          
-          const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
-          finalCommand = `Füge ${items.join(', ')} zu ${targetListName} hinzu`;
-          
-          return await this.processEnhancedCommandWithMultiItems(finalCommand);
-        }
-      } else {
-        // No target list - ask user to select or continue with multi-item processing
-        console.log('🍳 No target list in context - will need list selection');
-        
-        if (!this.hasApiKey() || this.isSimpleIngredientList(recipeContent)) {
-          const items = recipeContent
-            .split(/[,\n;]/)
-            .map(item => item.trim())
-            .filter(item => item.length > 0)
-            .filter(item => !item.toLowerCase().includes('zutaten'))
-            .slice(0, 15);
-          
-          finalCommand = `Füge ${items.join(', ')} hinzu`;
-        } else {
-          try {
-            const standardizedCommands = await this.standardizeRecipeIngredients(recipeContent);
-            const commands = standardizedCommands
-              .split('\n')
-              .map(cmd => cmd.trim())
-              .filter(cmd => cmd.length > 0 && cmd.includes('Füge') && cmd.includes('hinzu'));
-            
-            const multiItemCommand = commands.join(', ')
-              .replace(/Füge /g, '')
-              .replace(/ hinzu/g, '');
-            
-            finalCommand = `Füge ${multiItemCommand} hinzu`;
-          } catch (aiError) {
-            console.error('🍳 AI processing failed, using simple fallback:', aiError);
-            const items = recipeContent.split(',').map(item => item.trim()).filter(item => item.length > 0);
-            finalCommand = `Füge ${items.join(', ')} hinzu`;
-          }
-        }
-        
-        console.log('🍳 Recipe command without target list:', finalCommand);
-        return await this.processEnhancedCommandWithMultiItems(finalCommand);
+          ],
+          temperature: 0.1,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Groq API Fehler: ${response.status}`);
       }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || '';
       
     } catch (error) {
-      console.error('🍳 Recipe processing error:', error);
-      return {
-        success: false,
-        message: `❌ Rezept-Verarbeitung fehlgeschlagen.<br><br>💡 Versuche stattdessen:<br>"Füge Milch, Gurken hinzu"`
-      };
+      console.error('🍳 Groq API call failed:', error);
+      throw error;
     }
   }
 
-  /**
-   * NEW: Check if ingredient list is simple enough to skip AI processing
-   */
-  private isSimpleIngredientList(content: string): boolean {
-    const lowerContent = content.toLowerCase();
+  private handleApiKeyCommand(input: string): AIExecutionResult {
+    const lowerInput = input.toLowerCase();
     
-    // Simple if it's just comma-separated items without quantities or complex descriptions
-    const hasComplexTerms = /\d+\s*(g|kg|ml|l|el|tl|gramm|liter|prise)|für\s+den|zubereitung|portionen/i.test(content);
-    const isShortList = content.split(/[,\n]/).length <= 5;
-    const isSimpleWords = !/[()[\]{}]/.test(content) && content.length < 100;
+    const keyPattern = /(?:set\s+)?api\s+key[:\s]+([a-zA-Z0-9_-]+)/i;
+    const match = input.match(keyPattern);
     
-    return !hasComplexTerms && isShortList && isSimpleWords;
-  }
-
-  // ========================================
-  // NEW: CONTINUATION KEYWORD HANDLING
-  // ========================================
-
-  /**
-   * Check if input contains continuation keywords
-   */
-  private isContinuationKeyword(input: string): boolean {
-    const lowerInput = input.toLowerCase().trim();
-    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch', 'dann', 'danach'];
-    
-    return continuationKeywords.some(keyword => 
-      lowerInput.startsWith(keyword + ' ') || 
-      lowerInput === keyword
-    );
-  }
-
-  /**
-   * Handle continuation commands with context awareness
-   */
-  private async handleContinuationCommand(input: string): Promise<AIExecutionResult> {
-    console.log('🔄 Handling continuation command:', input);
-    
-    // Check for existing conversation context first
-    if (this.conversationContext.waitingForArticles) {
-      console.log('🔄 Already in conversation mode - processing as contextual addition');
-      return await this.handleContextualContinuation(input);
-    }
-    
-    // Check for recent list action to continue with
-    if (this.conversationContext.lastAction) {
-      const timeSince = Date.now() - this.conversationContext.lastAction.timestamp.getTime();
-      const maxAge = 10 * 60 * 1000; // 10 minutes
+    if (match && match[1]) {
+      const apiKey = match[1].trim();
       
-      if (timeSince < maxAge && this.conversationContext.lastAction.listId) {
-        console.log('🔄 Found recent list action - activating continuation mode');
-        return await this.activateContinuationMode(input);
+      if (apiKey.startsWith('gsk_') && apiKey.length > 20) {
+        this.setApiKey(apiKey);
+        return {
+          success: true,
+          message: this.aiResponse.getApiKeySuccessMessage()
+        };
+      } else {
+        return {
+          success: false,
+          message: this.aiResponse.getApiKeyErrorMessage()
+        };
       }
     }
     
-    // No valid context for continuation
+    const hasKey = this.hasApiKey();
     return {
-      success: false,
-      message: '💡 Keine kürzliche Liste gefunden zum Fortsetzen.\n\n' +
-               'Verwende Fortsetzungs-Wörter wie "und" oder "weiters" nur nach dem Hinzufügen von Artikeln zu einer Liste.\n\n' +
-               'Beispiel:\n' +
-               '1. "Füge Milch zu Spar hinzu"\n' +
-               '2. "Und Brot" (fügt Brot zur selben Liste hinzu)\n' +
-               '3. "Weiters Käse" (fügt Käse zur selben Liste hinzu)'
+      success: true,
+      message: this.aiResponse.getApiKeyInstructions(hasKey)
     };
   }
 
-  /**
-   * Handle continuation in existing conversation context
-   */
-  private async handleContextualContinuation(input: string): Promise<AIExecutionResult> {
-    if (!this.conversationContext.waitingForArticles) {
-      return {
-        success: false,
-        message: '❌ Kein aktiver Unterhaltungskontext gefunden.'
-      };
-    }
-
-    const { listId, listName } = this.conversationContext.waitingForArticles;
-    
-    // Extract items after continuation keyword
-    const itemsText = this.extractItemsFromContinuation(input);
-    
-    if (!itemsText.trim()) {
-      // Just the continuation keyword - prompt for what to add
-      return {
-        success: true,
-        message: `Was möchtest du noch zu "${listName}" hinzufügen?`,
-        conversationContext: this.getConversationContext()
-      };
-    }
-    
-    // Process the items in conversation context
-    console.log('🔄 Processing continuation items:', itemsText);
-    return await this.handleContextualArticleAddition(itemsText);
-  }
-
-  /**
-   * Activate continuation mode from recent list action
-   */
-  private async activateContinuationMode(input: string): Promise<AIExecutionResult> {
-    if (!this.conversationContext.lastAction?.listId) {
-      return {
-        success: false,
-        message: '❌ Keine gültige Liste zum Fortsetzen gefunden.'
-      };
-    }
-
-    const { listId, listName } = this.conversationContext.lastAction;
-    
-    // Extract items after continuation keyword
-    const itemsText = this.extractItemsFromContinuation(input);
-    
-    if (!itemsText.trim()) {
-      // Set conversation context and prompt
-      this.setConversationContext({
-        lastAction: this.conversationContext.lastAction,
-        waitingForArticles: {
-          listId: listId,
-          listName: listName,
-          prompt: 'Continuation mode activated'
-        }
-      });
+  private async handleShowListsCommand(): Promise<AIExecutionResult> {
+    try {
+      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
       
-      return {
-        success: true,
-        message: `Fortsetzungsmodus aktiviert für "${listName}".\n\nWas möchtest du hinzufügen?`,
-        conversationContext: this.getConversationContext(),
-        followUpPrompt: `Was soll noch zu "${listName}" hinzugefügt werden?`
-      };
-    }
-    
-    // Set conversation context and process items
-    this.setConversationContext({
-      lastAction: this.conversationContext.lastAction,
-      waitingForArticles: {
-        listId: listId,
-        listName: listName,
-        prompt: 'Continuation mode'
+      if (!lists || lists.length === 0) {
+        return {
+          success: true,
+          message: this.aiResponse.getNoListsFoundMessage()
+        };
       }
-    });
-    
-    console.log('🔄 Processing continuation with items:', itemsText);
-    return await this.handleContextualArticleAddition(itemsText);
-  }
-
-  /**
-   * Extract items text from continuation command
-   */
-  private extractItemsFromContinuation(input: string): string {
-    const lowerInput = input.toLowerCase().trim();
-    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch', 'dann', 'danach'];
-    
-    for (const keyword of continuationKeywords) {
-      if (lowerInput.startsWith(keyword + ' ')) {
-        return input.substring(keyword.length + 1).trim();
-      } else if (lowerInput === keyword) {
-        return ''; // Just the keyword, no items
+      
+      let message = '📋 Deine Listen:\n\n';
+      
+      for (const list of lists) {
+        const itemCount = list.articleIds?.length || 0;
+        const itemText = itemCount === 1 ? 'Artikel' : 'Artikel';
+        message += `• ${list.name} (${itemCount} ${itemText})\n`;
       }
-    }
-    
-    return input; // Fallback
-  }
-
-  // ========================================
-  // ENHANCED CONTEXTUAL ARTICLE ADDITION
-  // ========================================
-
-  /**
-   * Handle contextual article addition when waiting for articles
-   */
-  private async handleContextualArticleAddition(input: string): Promise<AIExecutionResult> {
-    if (!this.conversationContext.waitingForArticles) {
-      return {
-        success: false,
-        message: '❌ Fehler: Kein Kontext für Artikel-Hinzufügung.'
-      };
-    }
-  
-    const { listId, listName } = this.conversationContext.waitingForArticles;
-    
-    console.log('🗣️ Handling contextual addition:', input);
-    console.log('🗣️ Target list:', listName, listId);
-    
-    // Check if input contains multiple items (comma-separated)
-    if (input.includes(',')) {
-      console.log('🗣️ Multiple items detected in contextual mode');
-      return await this.handleMultipleItemsInContext(input, listId, listName);
-    }
-    
-    // Handle single item with disambiguation
-    const quantityExtraction = this.quantityExtraction.extractQuantity(input);
-    console.log('🗣️ Single item extraction:', quantityExtraction);
-    
-    // Check for existing articles for disambiguation
-    console.log('🗣️ Checking for disambiguation options for:', quantityExtraction.itemName);
-    
-    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
-    console.log('🗣️ Found disambiguation options:', disambiguationOptions.length);
-    
-    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-    
-    if (existingOptions.length > 0) {
-      console.log('🗣️ Found existing options, showing disambiguation');
       
-      // 🍳 ADD SKIP OPTION for contextual addition
-      const enhancedOptions = [
-        ...disambiguationOptions,
-        {
-          id: 'skip_item',
-          displayName: `"${quantityExtraction.itemName}" überspringen`,
-          type: 'skip' as const,
-          confidence: 1.0,
-          icon: '⏭️'
-        }
-      ];
-      
-      // Create a pending action for disambiguation
-      const pendingAction: PendingAction = {
-        type: 'add_item',
-        originalInput: input,
-        itemName: quantityExtraction.itemName,
-        extractedQuantity: quantityExtraction.quantity,
-        listName: listName,
-        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
-      };
+      message += '\n💡 Befehle:\n';
+      message += '• "Füge [Artikel] zu [Liste] hinzu"\n';
+      message += '• "Erstelle Liste [Name]"\n';
+      message += '• "Rezept: [Zutatenliste]" (mit API Key)\n';
+      message += '• "und [Artikel]" - Fortsetzung nach Artikel-Hinzufügung';
       
       return {
         success: true,
-        message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
-        needsUserInput: true,
-        disambiguationOptions: enhancedOptions,
-        pendingAction: pendingAction
+        message: message
+      };
+      
+    } catch (error) {
+      console.error('📋 SHOW LISTS ERROR:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Laden der Listen.'
       };
     }
-    
-    // No existing items found - create new article directly
-    console.log('🗣️ No existing options, creating new article directly');
-    return await this.createArticleInConversationContext(quantityExtraction, listId, listName);
   }
 
   private async createArticleInConversationContext(quantityExtraction: any, listId: string, listName: string): Promise<AIExecutionResult> {
     try {
-      // Create the article
       const articleData = {
         name: quantityExtraction.itemName,
         amount: quantityExtraction.quantity || '',
@@ -802,7 +1268,7 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           }).toPromise();
           
           if (updateResult) {
-            // Update context to keep conversation going
+            // FIXED: Properly update conversation context
             this.setConversationContext({
               lastAction: {
                 type: 'article_added',
@@ -845,243 +1311,6 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     }
   }
 
-  private async handleMultipleItemsInContext(input: string, listId: string, listName: string): Promise<AIExecutionResult> {
-    console.log('🗣️ Handling multiple items in context with proper disambiguation:', input);
-    
-    const items = input.split(',').map(item => item.trim()).filter(item => item.length > 0);
-    console.log('🗣️ Split items:', items);
-    
-    if (items.length === 0) {
-      return {
-        success: false,
-        message: '❌ Konnte keine Artikel in der Eingabe erkennen.'
-      };
-    }
-    
-    const targetList = await this.findListById(listId);
-    if (!targetList) {
-      return {
-        success: false,
-        message: '❌ Zielliste nicht gefunden.'
-      };
-    }
-    
-    // Process each item individually with proper disambiguation
-    return await this.processMultipleItemsSequentially(items, targetList, 0, []);
-  }
-
-  /**
-   * Process multiple items sequentially with disambiguation
-   */
-  private async processMultipleItemsSequentially(
-    items: string[], 
-    targetList: any, 
-    currentIndex: number, 
-    processedItems: any[]
-  ): Promise<AIExecutionResult> {
-    
-    if (currentIndex >= items.length) {
-      // All items processed - update list and return success with PROPER conversation context
-      return await this.finalizeMultipleItemsAddition(targetList, processedItems);
-    }
-    
-    const currentItemText = items[currentIndex];
-    const quantityExtraction = this.quantityExtraction.extractQuantity(currentItemText);
-    
-    console.log('🗣️ Processing item', currentIndex + 1, 'of', items.length, ':', quantityExtraction.itemName);
-    
-    // Check for disambiguation for current item
-    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
-    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-    
-    if (existingOptions.length > 0) {
-      console.log('🗣️ Found existing options for item', currentIndex + 1, ', showing disambiguation with skip');
-      
-      // ENHANCED: Add skip option with better context for recipes
-      const enhancedOptions = [
-        ...disambiguationOptions,
-        {
-          id: 'skip_item',
-          displayName: `"${quantityExtraction.itemName}" überspringen`,
-          type: 'skip' as const,
-          confidence: 1.0,
-          icon: '⏭️',
-          skipReason: 'Bereits zu Hause vorhanden oder nicht benötigt'
-        }
-      ];
-      
-      // Create pending action for current item with remaining items info
-      const pendingAction: any = {
-        type: 'add_item',
-        originalInput: items.join(', '),
-        itemName: quantityExtraction.itemName,
-        extractedQuantity: quantityExtraction.quantity,
-        listName: targetList.name,
-        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
-        // Multi-item context
-        isMultiItemSequential: true,
-        allItems: items,
-        currentItemIndex: currentIndex,
-        processedItems: processedItems,
-        conversationListId: targetList.id,
-        isFromRecipe: true // ADDED: Flag to indicate this came from recipe processing
-      };
-      
-      return {
-        success: true,
-        message: `🍳 Zutat ${currentIndex + 1}/${items.length}: "${quantityExtraction.itemName}"\n\n${this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName)}\n\n⏭️ Du kannst Zutaten überspringen, die du bereits hast.`,
-        needsUserInput: true,
-        disambiguationOptions: enhancedOptions,
-        pendingAction: pendingAction
-      };
-    }
-    
-    // No disambiguation needed - create article and continue
-    try {
-      const articleData = {
-        name: quantityExtraction.itemName,
-        amount: quantityExtraction.quantity || '',
-        departmentId: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
-        icon: this.aiResponse.suggestIcon(quantityExtraction.itemName)
-      };
-      
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
-      
-      if (newArticle) {
-        processedItems.push({
-          article: newArticle,
-          quantity: quantityExtraction.quantity,
-          originalText: currentItemText
-        });
-        
-        console.log('🗣️ Created article for item', currentIndex + 1, ':', newArticle.name);
-        
-        // Continue with next item
-        return await this.processMultipleItemsSequentially(items, targetList, currentIndex + 1, processedItems);
-      } else {
-        throw new Error('Failed to create article');
-      }
-    } catch (error: any) {
-      console.error('🗣️ Error creating article for item', currentIndex + 1, ':', error);
-      
-      // Add failed item to processed items for reporting
-      processedItems.push({
-        originalText: currentItemText,
-        failed: true,
-        error: error.message
-      });
-      
-      // Continue with next item even if one fails
-      return await this.processMultipleItemsSequentially(items, targetList, currentIndex + 1, processedItems);
-    }
-  }
-
-  /**
-   * Finalize multiple items addition to list
-   */
-  private async finalizeMultipleItemsAddition(targetList: any, processedItems: any[]): Promise<AIExecutionResult> {
-    const successfulItems = processedItems.filter(item => !item.skipped && !item.failed);
-    const skippedItems = processedItems.filter(item => item.skipped);
-    const failedItems = processedItems.filter(item => item.failed);
-    
-    if (successfulItems.length === 0 && skippedItems.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Artikel konnten hinzugefügt werden.'
-      };
-    }
-    
-    try {
-      let updatedArticleIds = [...targetList.articleIds];
-      let updatedItemStates = { ...targetList.itemStates };
-      
-      // Add all successful items to the list
-      for (const item of successfulItems) {
-        if (!updatedArticleIds.includes(item.article.id)) {
-          updatedArticleIds.push(item.article.id);
-        }
-        
-        updatedItemStates[item.article.id] = {
-          articleId: item.article.id,
-          isChecked: false,
-          amount: item.quantity || ''
-        };
-      }
-      
-      const updateResult = await this.dataService.updateList(targetList.id, {
-        articleIds: updatedArticleIds,
-        itemStates: updatedItemStates
-      }).toPromise();
-      
-      if (updateResult) {
-        // CRITICAL: Set conversation context to continue conversation
-        this.setConversationContext({
-          lastAction: {
-            type: 'article_added',
-            listId: targetList.id,
-            listName: targetList.name,
-            articleName: `${successfulItems.length} Artikel`,
-            timestamp: new Date()
-          },
-          waitingForArticles: {
-            listId: targetList.id,
-            listName: targetList.name,
-            prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-          }
-        });
-  
-        // ENHANCED: Build comprehensive summary message
-        let message = '';
-        
-        if (successfulItems.length > 0) {
-          const addedItems = successfulItems.map(item => 
-            `"${item.article.name}"${item.quantity ? ` (${item.quantity})` : ''}`
-          );
-          message += `✅ ${successfulItems.length} Artikel zu "${targetList.name}" hinzugefügt:\n${addedItems.join(', ')}`;
-        }
-        
-        if (skippedItems.length > 0) {
-          const skippedSummary = skippedItems.map(item => 
-            `"${item.originalText}"`
-          );
-          message += `${message ? '\n\n' : ''}⏭️ ${skippedItems.length} Artikel übersprungen:\n${skippedSummary.join(', ')}`;
-        }
-        
-        if (failedItems.length > 0) {
-          const failedSummary = failedItems.map(item => 
-            `"${item.originalText}"`
-          );
-          message += `${message ? '\n\n' : ''}❌ ${failedItems.length} Artikel fehlgeschlagen:\n${failedSummary.join(', ')}`;
-        }
-        
-        const followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
-        
-        return {
-          success: true,
-          message: message,
-          listId: targetList.id,
-          conversationContext: this.getConversationContext(),
-          followUpPrompt
-        };
-      }
-      
-      return {
-        success: false,
-        message: '❌ Fehler beim Aktualisieren der Liste.'
-      };
-      
-    } catch (error: any) {
-      console.error('🗣️ Error finalizing multiple items addition:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Hinzufügen der Artikel zur Liste.'
-      };
-    }
-  }
-
-  /**
-   * Find list by ID
-   */
   private async findListById(listId: string): Promise<ShoppingList | null> {
     try {
       const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
@@ -1092,910 +1321,96 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     }
   }
 
-  // ========================================
-  // API KEY MANAGEMENT
-  // ========================================
-
-  /**
-   * SECURE: Get API key with localStorage priority
-   */
-  private getSecureApiKey(): string {
-    const localStorageKey = localStorage.getItem('groq-api-key');
-    const environmentKey = environment?.groqApiKey;
-    return localStorageKey || environmentKey || '';
-  }
-
-  /**
-   * SECURE: Set API key in localStorage
-   */
-  setApiKey(apiKey: string): void {
-    if (apiKey && apiKey.trim()) {
-      localStorage.setItem('groq-api-key', apiKey.trim());
-      console.log('🔑 API key saved to localStorage');
-      this.logApiKeyStatus();
-    }
-  }
-
-  /**
-   * SECURE: Check if API key is available
-   */
-  hasApiKey(): boolean {
-    return !!this.getSecureApiKey();
-  }
-
-  /**
-   * Get API key status
-   */
-  getApiKeyStatus(): ApiKeyStatus {
-    const finalKey = this.getSecureApiKey();
-    const hasKey = !!finalKey;
-    const source = localStorage.getItem('groq-api-key') ? 'localStorage' : 
-                  environment?.groqApiKey ? 'environment' : 'none';
-    
-    return {
-      configured: hasKey,
-      source: source as 'localStorage' | 'environment' | 'none',
-      length: hasKey ? finalKey.length : 0
-    };
-  }
-
-  /**
-   * SECURE: Log API key status without exposing the key
-   */
-  private logApiKeyStatus(): void {
-    const status = this.getApiKeyStatus();
-    console.log('🔑 API Key Status:', status);
-  }
-
-  // ========================================
-  // MAIN COMMAND EXECUTION (ENHANCED WITH CONVERSATION CONTEXT)
-  // ========================================
-
-  /**
-   * Execute AI command with conversation context awareness and continuation support
-   */
-  async executeCommand(input: string): Promise<AIExecutionResult> {
-    console.log('🗣️ CONVERSATION STATE DEBUG:');
-    console.log('🗣️ - isWaitingForArticles:', this.isWaitingForArticles());
-    console.log('🗣️ - isNegativeResponse:', this.isNegativeResponse(input));
-    console.log('🗣️ - isSimpleArticleInput:', this.isSimpleArticleInput(input));
-    console.log('🗣️ - isContinuationKeyword:', this.isContinuationKeyword(input));
-    console.log('🗣️ - isRecipeCommand:', this.isRecipeCommand(input));
-    console.log('🗣️ - conversationContext:', this.conversationContext);
-    console.log('🗣️ - input:', input);
-
-    try {
-      console.log('🤖 Processing command:', input);
-      console.log('🗣️ Current context:', this.conversationContext);
-      
-      // NEW: Check for recipe commands FIRST
-      if (this.isRecipeCommand(input)) {
-        console.log('🍳 Recipe command detected');
-        return await this.processRecipeCommand(input);
-      }
-      
-      // NEW: Check for continuation keywords FIRST
-      if (this.isContinuationKeyword(input)) {
-        console.log('🗣️ Continuation keyword detected');
-        return await this.handleContinuationCommand(input);
-      }
-      
-      // Handle API key setup commands FIRST
-      if (input.toLowerCase().includes('api key')) {
-        return this.handleApiKeyCommand(input);
-      }
-      
-      // Handle help commands with clean responses
-      if (input.toLowerCase().includes('hilfe') || input.toLowerCase().includes('help')) {
-        this.clearConversationContext();
-        const hasKey = this.hasApiKey();
-        return {
-          success: true,
-          message: this.aiResponse.getEnhancedHelpMessage(hasKey)
-        };
-      }
-          
-      // Handle test with existing functionality (keep as-is)
-      if (input.toLowerCase().includes('test')) {
-        const hasKey = this.hasApiKey();
-        return {
-          success: true,
-          message: this.aiResponse.getSystemStatusMessage(hasKey)
-        };
-      }
-  
-      // Handle show lists command
-      if (input.toLowerCase().includes('zeige') && input.toLowerCase().includes('liste')) {
-        this.clearConversationContext();
-        return await this.handleShowListsCommand();
-      }
-  
-      // Handle "no" or "nein" when waiting for articles - IMPROVED DETECTION
-      if (this.isWaitingForArticles() && this.isNegativeResponse(input)) {
-        console.log('🗣️ User declined to add more articles');
-        this.clearConversationContext();
-        return {
-          success: true,
-          message: this.aiResponse.getConversationEndedMessage()
-        };
-      }
-  
-      // Handle context-aware simple article addition - IMPROVED DETECTION  
-      if (this.isWaitingForArticles() && this.isSimpleArticleInput(input)) {
-        console.log('🗣️ Processing simple article in context');
-        return await this.handleContextualArticleAddition(input);
-      }
-  
-      // Clear context for new commands
-      this.clearConversationContext();
-  
-      // Rest of your existing executeCommand logic...
-      const hasApiKey = this.hasApiKey();
-      console.log('🔑 Has API Key:', hasApiKey);
-      
-      if (hasApiKey) {
-        console.log('🎯 Processing with enhanced features');
-        return await this.processEnhancedCommand(input);
-      } else {
-        console.log('🔄 Processing with basic features');
-        return await this.processBasicCommand(input);
-      }
-      
-    } catch (error) {
-      console.error('AI Service error:', error);
-      this.clearConversationContext();
-      return {
-        success: false,
-        message: this.aiResponse.getGenericErrorMessage(error instanceof Error ? error.message : undefined),
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  // ========================================
-  // ENHANCED COMMAND PROCESSING
-  // ========================================
-
-  /**
-   * Process command with enhanced features
-   */
-  private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
-    console.log('🎯 PROCESSING ENHANCED COMMAND:', input);
-    
-    // Check for comma-separated items first
-    if (this.quantityExtraction.hasMultipleItems(input)) {
-      console.log('🎯 Detected comma-separated items, using multi-item processing');
-      return this.processEnhancedCommandWithMultiItems(input);
-    }
-    
-    // Extract quantity from input with text number support
-    const quantityExtraction = this.quantityExtraction.extractQuantity(input);
-    console.log('🎯 Quantity extraction result:', quantityExtraction);
-    console.log('🎯 - Item name:', quantityExtraction.itemName);
-    console.log('🎯 - Quantity:', quantityExtraction.quantity);
-
-    // Parse command intent using the clean item name from quantity extraction
-    const intent = this.commandParser.parseIntent(input, quantityExtraction.itemName);
-    console.log('🎯 Parsed intent:', intent);
-    console.log('🎯 - Type:', intent.type);
-    console.log('🎯 - Item name:', intent.itemName);
-    console.log('🎯 - List name:', intent.listName);
-
-    // Check for unrecognized commands first
-    if (intent.itemName === 'UNRECOGNIZED_COMMAND') {
-      console.log('🎯 Unrecognized command, providing guidance');
-      return {
-        success: false,
-        message: `❌ Unbekannter Befehl: "${input}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle`
-      };
-    }
-
-    // Handle create list commands
-    if (intent.type === 'create_list') {
-      console.log('🎯 Processing create list command');
-      return await this.handleListCreationWithColor(input, quantityExtraction);
-    }
-
-    // Handle add item commands with better debugging
-    if (intent.type === 'add_item' && intent.itemName !== 'UNRECOGNIZED_COMMAND') {
-      console.log('🎯 Processing add item command');
-      console.log('🎯 Final item name:', quantityExtraction.itemName);
-      console.log('🎯 Final quantity:', quantityExtraction.quantity);
-      console.log('🎯 Target list:', intent.listName);
-      
-      // Create enhanced action with proper quantity
-      const pendingAction: PendingAction = {
-        type: intent.type,
-        originalInput: input,
-        itemName: quantityExtraction.itemName,
-        extractedQuantity: quantityExtraction.quantity,
-        listName: intent.listName,
-        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
-      };
-
-      console.log('🎯 Created pending action:', pendingAction);
-
-      return await this.handleItemActionWithDisambiguation(pendingAction);
-    }
-
-    // Fallback to basic processing
-    console.log('🎯 Fallback to basic processing');
-    return this.processBasicCommand(input);
-  }
-
-  /**
-   * Process command with multi-item support
-   */
-  private async processEnhancedCommandWithMultiItems(input: string): Promise<AIExecutionResult> {
-    console.log('🎯 PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS:', input);
-    
-    // Parse as multi-item command
-    const multiItemResult = this.quantityExtraction.parseMultipleItems(input);
-    
-    if (multiItemResult.command === 'unrecognized') {
-      // Fall back to single item processing
-      console.log('🎯 NOT A MULTI-ITEM COMMAND, USING SINGLE ITEM PROCESSING');
-      return this.processEnhancedCommand(input);
-    }
-
-    // Handle multi-item commands
-    if (multiItemResult.items.length === 0) {
-      return {
-        success: false,
-        message: this.aiResponse.getParsingErrorMessage(input, multiItemResult.parseErrors)
-      };
-    }
-
-    // Report any parse errors but continue with successfully parsed items
-    if (multiItemResult.parseErrors.length > 0) {
-      console.warn('🎯 PARSE ERRORS:', multiItemResult.parseErrors);
-    }
-
-    console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', {
-      command: multiItemResult.command,
-      itemCount: multiItemResult.items.length,
-      listName: multiItemResult.listName,
-      items: multiItemResult.items
-    });
-
-    // Create multi-item pending action
-    const multiAction: MultiItemPendingAction = {
-      type: multiItemResult.command === 'create_list_with_items' ? 'create_list_with_multiple_items' : 'add_multiple_items',
-      originalInput: input,
-      itemName: '', // Not used for multi-items
-      items: multiItemResult.items,
-      listName: multiItemResult.listName,
-      currentItemIndex: 0,
-      processedItems: [],
-      suggestedDepartment: this.aiResponse.suggestDepartment(multiItemResult.items[0]?.itemName || '')
-    };
-
-    // Start processing items sequentially
-    return this.disambiguation.processMultiItemSequentially(multiAction);
-  }
-
-  // ========================================
-  // BASIC COMMAND PROCESSING
-  // ========================================
-
-  /**
-   * Process commands with basic functionality
-   */
-  private async processBasicCommand(input: string): Promise<AIExecutionResult> {
-    console.log('🤖 PROCESSING BASIC COMMAND:', input);
-    
-    const lowerInput = input.toLowerCase();
-    const originalInput = input.trim();
-    
-    // Extract quantity and item name with text number support
-    const quantityExtraction = this.quantityExtraction.extractQuantity(originalInput);
-    
-    // Handle list creation with color support
-    if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
-      return await this.handleListCreationWithColor(originalInput, quantityExtraction);
-    }
-    
-    // Handle item addition
-    if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
-      return await this.handleItemAdditionBasic(originalInput, quantityExtraction);
-    }
-    
-    // Clean unrecognized command response
-    return {
-      success: false,
-      message: `❌ Unbekannter Befehl: "${originalInput}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle${!this.hasApiKey() ? '<br>🔑 Groq API Key nicht gesetzt' : ''}`
-    };
-  }
-
-  private getEnhancedHelpMessage(hasApiKey: boolean): string {
-    if (hasApiKey) {
-      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
-        '✅ <strong>Verfügbare Befehle:</strong><br>' +
-        '• "Füge [Artikel] hinzu"<br>' +
-        '• "Erstelle Liste [Name]"<br>' +
-        '• "Rezept: [Zutatenliste]"<br>' +
-        '• "und [Artikel]" - Fortsetzung<br>' +
-        '• "Zeige Listen"<br><br>' +
-        '<strong>🔄 Beispiele:</strong><br>' +
-        '• "Füge Milch hinzu"<br>' +
-        '• "Erstelle Liste Spar"<br>' +
-        '• "Rezept: 500g Mehl, 2 Eier"';
-    } else {
-      return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
-        '⚙️ <strong>Basis-Funktionen:</strong><br>' +
-        '• "Füge [Artikel] hinzu"<br>' +
-        '• "Erstelle Liste [Name]"<br>' +
-        '• "Zeige Listen"<br><br>' +
-        '💡 <strong>Für erweiterte Features:</strong><br>' +
-        '"set api key: gsk_YOUR_KEY"<br><br>' +
-        '<strong>🔄 Beispiele:</strong><br>' +
-        '• "Füge Milch hinzu"<br>' +
-        '• "Erstelle Liste Spar"';
-    }
-  }
-
-  // ========================================
-  // DISAMBIGUATION HANDLING
-  // ========================================
-
-  /**
-   * Handle disambiguation choice (supports both single and multi-item)
-   */
-  async handleDisambiguationChoice(
-    pendingAction: PendingAction | MultiItemPendingAction,
-    selectedOption: DisambiguationOption
-  ): Promise<AIExecutionResult> {
-    console.log('🎯 Handling disambiguation choice with conversation context');
-    console.log('🎯 Pending action:', pendingAction);
-    console.log('🎯 Selected option:', selectedOption);
-    console.log('🎯 Current conversation context:', this.conversationContext);
-    
-    // Handle SKIP option specially
-    if (selectedOption.type === 'skip') {
-      return await this.handleSkipOption(pendingAction, selectedOption);
-    }
-    
-    // Handle sequential multi-item disambiguation (for "und Brot, Gurken, Mais")
-    if ((pendingAction as any).isMultiItemSequential) {
-      return await this.handleSequentialMultiItemDisambiguation(pendingAction as any, selectedOption);
-    }
-    
-    // Check if we're in conversation mode
-    const isInConversation = this.isWaitingForArticles();
-    const conversationListId = this.conversationContext.waitingForArticles?.listId;
-    const conversationListName = this.conversationContext.waitingForArticles?.listName;
-    
-    console.log('🎯 Is in conversation:', isInConversation);
-    console.log('🎯 Conversation list:', conversationListName, conversationListId);
-    
-    // CONVERSATION MODE: Handle disambiguation within conversation context
-    if (isInConversation && conversationListId && conversationListName) {
-      console.log('🎯 Processing disambiguation in CONVERSATION MODE');
-      
-      try {
-        let articleToAdd;
-        
-        if (selectedOption.type === 'existing' && selectedOption.article) {
-          articleToAdd = selectedOption.article;
-          console.log('🎯 Using existing article in conversation:', articleToAdd.name);
-        } else {
-          const articleData = {
-            name: pendingAction.itemName,
-            amount: pendingAction.extractedQuantity || '',
-            departmentId: this.aiResponse.suggestDepartment(pendingAction.itemName),
-            icon: this.aiResponse.suggestIcon(pendingAction.itemName)
-          };
-          
-          console.log('🎯 Creating new article in conversation:', articleData);
-          articleToAdd = await this.dataService.createArticle(articleData).toPromise();
-        }
-        
-        if (articleToAdd) {
-          const targetList = await this.findListById(conversationListId);
-          
-          if (targetList) {
-            let updatedArticleIds = [...targetList.articleIds];
-            let updatedItemStates = { ...targetList.itemStates };
-            
-            if (!updatedArticleIds.includes(articleToAdd.id)) {
-              updatedArticleIds.push(articleToAdd.id);
-            }
-    
-            updatedItemStates[articleToAdd.id] = {
-              articleId: articleToAdd.id,
-              isChecked: false,
-              amount: pendingAction.extractedQuantity || ''
-            };
-    
-            const updateResult = await this.dataService.updateList(targetList.id, {
-              articleIds: updatedArticleIds,
-              itemStates: updatedItemStates
-            }).toPromise();
-            
-            if (updateResult) {
-              // CRITICAL: Maintain conversation context
-              this.setConversationContext({
-                lastAction: {
-                  type: 'article_added',
-                  listId: targetList.id,
-                  listName: targetList.name,
-                  articleName: articleToAdd.name,
-                  timestamp: new Date()
-                },
-                waitingForArticles: {
-                  listId: targetList.id,
-                  listName: targetList.name,
-                  prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-                }
-              });
-    
-              const message = `✅ "${articleToAdd.name}" wurde zu "${targetList.name}" hinzugefügt.`;
-              const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(articleToAdd.name, targetList.name);
-              
-              return {
-                success: true,
-                message: message,
-                listId: targetList.id,
-                conversationContext: this.getConversationContext(),
-                followUpPrompt
-              };
-            }
-          }
-        }
-        
-        return {
-          success: false,
-          message: '❌ Fehler beim Hinzufügen des Artikels.'
-        };
-        
-      } catch (error: any) {
-        console.error('🎯 Error in conversation disambiguation:', error);
-        return {
-          success: false,
-          message: '❌ Fehler beim Verarbeiten der Auswahl.'
-        };
-      }
-    }
-    
-    // NON-CONVERSATION MODE: Use regular disambiguation handling
-    console.log('🎯 Using REGULAR disambiguation handling with conversation setup');
-    
-    const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
-    
-    // CRITICAL FIX: Set conversation context after successful article addition
-    if (result.success && result.listId && result.message.includes('hinzugefügt')) {
-      const messageMatch = result.message.match(/"([^"]+)" wurde zu "([^"]+)" hinzugefügt/);
-      const articleName = messageMatch ? messageMatch[1] : pendingAction.itemName;
-      const listName = messageMatch ? messageMatch[2] : (pendingAction.listName || 'Unknown');
-      
-      this.setConversationContext({
-        lastAction: {
-          type: 'article_added',
-          listId: result.listId,
-          listName: listName,
-          articleName: articleName,
-          timestamp: new Date()
-        },
-        waitingForArticles: {
-          listId: result.listId,
-          listName: listName,
-          prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-        }
-      });
-      
-      result.conversationContext = this.getConversationContext();
-      result.followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
-    }
-    
-    return result;
-  }
-
-  // ADD this new method to handle skip options:
-  private async handleSkipOption(pendingAction: any, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
-    console.log('⏭️ Handling skip option for:', pendingAction.itemName);
-    
-    // Handle different types of pending actions for skip
-    if (pendingAction.isMultiItemSequential) {
-      return await this.handleSkipInSequentialMultiItem(pendingAction);
-    } else if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
-      return await this.handleSkipInMultiItem(pendingAction);
-    } else {
-      // Single item skip - maintain conversation context
-      const context = this.getConversationContext();
-      let message = `⏭️ "${pendingAction.itemName}" übersprungen`;
-      
-      if (selectedOption.skipReason) {
-        message += ` (${selectedOption.skipReason})`;
-      }
-      
-      if (context?.waitingForArticles) {
-        message += `.\n\nDu kannst weitere Artikel zu "${context.waitingForArticles.listName}" hinzufügen.`;
-        
-        return {
-          success: true,
-          message: message,
-          conversationContext: context,
-          followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-        };
-      }
-      
-      return {
-        success: true,
-        message: message + '.\n\nDu kannst weitere Artikel hinzufügen.'
-      };
-    }
-  }
-
-  private async handleSkipInSequentialMultiItem(pendingAction: any): Promise<AIExecutionResult> {
-    const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
-    
-    // Add skipped item to processed items
-    const updatedProcessedItems = [...processedItems, {
-      originalText: allItems[currentItemIndex],
-      skipped: true,
-      reason: 'already_have'
-    }];
-    
-    // Continue with next item
-    try {
-      const targetList = await this.findListById(conversationListId);
-      if (!targetList) {
-        return {
-          success: false,
-          message: '❌ Zielliste nicht gefunden.'
-        };
-      }
-      
-      return await this.processMultipleItemsSequentially(
-        allItems, 
-        targetList, 
-        currentItemIndex + 1, 
-        updatedProcessedItems
-      );
-    } catch (error) {
-      console.error('⏭️ Error handling skip in sequential processing:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Fortsetzen der Verarbeitung.'
-      };
-    }
-  }
-
-  private async handleSkipInMultiItem(pendingAction: any): Promise<AIExecutionResult> {
-    // Mark current item as skipped and continue
-    pendingAction.processedItems = pendingAction.processedItems || [];
-    pendingAction.processedItems.push({
-      item: { itemName: pendingAction.itemName },
-      skipped: true,
-      reason: 'already_have'
-    });
-    
-    // Move to next item
-    pendingAction.currentItemIndex++;
-    
-    // Continue processing through AI service multi-item flow
-    try {
-      return await this.disambiguation.processMultiItemSequentially(pendingAction);
-    } catch (error) {
-      console.error('⏭️ Error handling skip in multi-item:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Fortsetzen der Verarbeitung.'
-      };
-    }
-  }
-
-  // ADD this new method to handle sequential multi-item disambiguation:
-  private async handleSequentialMultiItemDisambiguation(pendingAction: any, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
-    console.log('🗣️ Handling sequential multi-item disambiguation');
-    
-    const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
-    const targetList = await this.findListById(conversationListId);
-    
-    if (!targetList) {
-      return {
-        success: false,
-        message: '❌ Zielliste nicht gefunden.'
-      };
-    }
-    
-    try {
-      let articleToAdd;
-      
-      if (selectedOption.type === 'existing' && selectedOption.article) {
-        articleToAdd = selectedOption.article;
-      } else {
-        const articleData = {
-          name: pendingAction.itemName,
-          amount: pendingAction.extractedQuantity || '',
-          departmentId: this.aiResponse.suggestDepartment(pendingAction.itemName),
-          icon: this.aiResponse.suggestIcon(pendingAction.itemName)
-        };
-        
-        articleToAdd = await this.dataService.createArticle(articleData).toPromise();
-      }
-      
-      if (articleToAdd) {
-        const updatedProcessedItems = [...processedItems, {
-          article: articleToAdd,
-          quantity: pendingAction.extractedQuantity,
-          originalText: allItems[currentItemIndex]
-        }];
-        
-        // Continue with next item
-        return await this.processMultipleItemsSequentially(
-          allItems, 
-          targetList, 
-          currentItemIndex + 1, 
-          updatedProcessedItems
-        );
-      }
-      
-      return {
-        success: false,
-        message: '❌ Fehler beim Erstellen des Artikels.'
-      };
-      
-    } catch (error: any) {
-      console.error('🗣️ Error in sequential disambiguation:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Verarbeiten der Auswahl.'
-      };
-    }
-  }
-
-  // ========================================
-  // SPECIFIC COMMAND HANDLERS
-  // ========================================
-
-  /**
-   * Handle API key setup via chat command
-   */
-  private handleApiKeyCommand(input: string): AIExecutionResult {
-    const lowerInput = input.toLowerCase();
-    
-    // Pattern: "set api key: gsk_..." or "api key gsk_..."
-    const keyPattern = /(?:set\s+)?api\s+key[:\s]+([a-zA-Z0-9_-]+)/i;
-    const match = input.match(keyPattern);
-    
-    if (match && match[1]) {
-      const apiKey = match[1].trim();
-      
-      // Validate key format (Groq keys start with 'gsk_')
-      if (apiKey.startsWith('gsk_') && apiKey.length > 20) {
-        this.setApiKey(apiKey);
-        return {
-          success: true,
-          message: this.aiResponse.getApiKeySuccessMessage()
-        };
-      } else {
-        return {
-          success: false,
-          message: this.aiResponse.getApiKeyErrorMessage()
-        };
-      }
-    }
-    
-    // No key provided - show instructions
-    const hasKey = this.hasApiKey();
-    return {
-      success: true,
-      message: this.aiResponse.getApiKeyInstructions(hasKey)
-    };
-  }
-
-  /**
-   * Handle show lists command
-   */
-  private async handleShowListsCommand(): Promise<AIExecutionResult> {
-    console.log('📋 HANDLING SHOW LISTS COMMAND');
-    
-    try {
-      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-      
-      if (!lists || lists.length === 0) {
-        return {
-          success: true,
-          message: this.aiResponse.getNoListsFoundMessage()
-        };
-      }
-      
-      let message = '📋 Deine Listen:\n\n';
-      
-      for (const list of lists) {
-        const itemCount = list.articleIds?.length || 0;
-        const itemText = itemCount === 1 ? 'Artikel' : 'Artikel';
-        message += `• ${list.name} (${itemCount} ${itemText})\n`;
-      }
-      
-      message += '\n💡 Befehle:\n';
-      message += '• "Füge [Artikel] zu [Liste] hinzu"\n';
-      message += '• "Erstelle Liste [Name]"\n';
-      message += '• "Rezept: [Zutatenliste]" (mit API Key)\n';
-      message += '• "und [Artikel]" - Fortsetzung nach Artikel-Hinzufügung';
-      
-      return {
-        success: true,
-        message: message
-      };
-      
-    } catch (error) {
-      console.error('📋 SHOW LISTS ERROR:', error);
-      return {
-        success: false,
-        message: '❌ Fehler beim Laden der Listen.'
-      };
-    }
-  }
-
-  /**
-   * Handle list creation with color support and conversation context
-   */
   private async handleListCreationWithColor(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
     console.log('🎨 HANDLING LIST CREATION WITH COLOR:', input);
-    console.log('🎨 Quantity extraction:', quantityExtraction);
     
     // Extract color first
     const colorExtraction = this.commandParser.extractColor(input);
     console.log('🎨 COLOR EXTRACTION:', colorExtraction);
     
-    // Parse list creation from original input to preserve case
     const cleanInput = colorExtraction.cleanInput;
     
-    // Better pattern matching for list creation
+    // Parse list creation
     const createMatch = cleanInput.match(/erstelle\s+liste\s+(.+?)(?:\s+mit\s+(.+))?$/i);
     
     if (!createMatch) {
       return {
         success: false,
-        message: '❌ Unverständlicher Liste-Befehl.\n\n💡 Beispiele:\n• "Erstelle Liste Spar"\n• "Erstelle Liste REWE in rot"\n• "Erstelle Liste ADEG mit Milch in blau"'
+        message: '❌ Unverständlicher Liste-Befehl.\n\n💡 Beispiele:\n• "Erstelle Liste Spar"\n• "Erstelle Liste REWE in rot"'
       };
     }
     
     const listName = createMatch[1].trim();
     const itemName = createMatch[2]?.trim();
     
-    console.log('🎨 PARSED LIST CREATION:', { 
-      originalInput: input,
-      cleanInput: cleanInput,
-      listName: listName, 
-      itemName: itemName, 
-      color: colorExtraction.colorHex 
-    });
-    
-    // Don't create an article if no explicit item was specified
-    if (!itemName) {
-      console.log('🎨 Creating list WITHOUT initial article');
+    try {
+      const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
       
-      try {
-        const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
-        
-        const listToCreate = {
-          name: listName,
-          color: listColor,
-          icon: '🛒',
-          articleIds: [],
-          itemStates: {}
-        };
-        
-        console.log('🎨 CREATING LIST:', listToCreate);
-        
-        const newList = await this.dataService.createList(listToCreate).toPromise();
-        
-        if (newList) {
-          console.log('✅ List created successfully, setting conversation context');
-
-          this.setConversationContext({
-            lastAction: {
-              type: 'list_created',
-              listId: newList.id,
-              listName: newList.name,
-              articleName: '',
-              timestamp: new Date()
-            },
-            waitingForArticles: {
-              listId: newList.id,
-              listName: newList.name,
-              prompt: 'Möchtest du Artikel hinzufügen?'
-            }
-          });
-          
-          const followUpPrompt = 'Möchtest du jetzt Artikel hinzufügen?';
-          
-          return {
-            success: true,
-            message: `✅ Liste "${newList.name}" wurde erstellt.`,
-            listId: newList.id,
-            conversationContext: this.getConversationContext(),
-            followUpPrompt
-          };
-        }
-      } catch (error) {
-        console.error('🎨 LIST CREATION ERROR:', error);
-        return {
-          success: false,
-          message: '❌ Fehler beim Erstellen der Liste.'
-        };
-      }
-    } else {
-      // Create list WITH initial article
-      console.log('🎨 Creating list WITH initial article:', itemName);
+      const listToCreate = {
+        name: listName,
+        color: listColor,
+        icon: '🛒',
+        articleIds: [] as string[],
+        itemStates: {} as any
+      };
       
-      try {
-        const articleIds: string[] = [];
-        const itemStates: any = {};
-        
-        // Create the initial article using the explicitly specified item name
-        const articleToCreate = {
+      // Create article if specified
+      if (itemName) {
+        const articleData = {
           name: itemName,
           amount: quantityExtraction.quantity || '',
           departmentId: this.aiResponse.suggestDepartment(itemName),
           icon: this.aiResponse.suggestIcon(itemName)
         };
         
-        console.log('🎨 CREATING INITIAL ARTICLE:', articleToCreate);
-        
-        const newArticle = await this.dataService.createArticle(articleToCreate).toPromise();
+        const newArticle = await this.dataService.createArticle(articleData).toPromise();
         
         if (newArticle) {
-          articleIds.push(newArticle.id);
-          itemStates[newArticle.id] = { 
-            articleId: newArticle.id, 
+          listToCreate.articleIds.push(newArticle.id);
+          listToCreate.itemStates[newArticle.id] = {
+            articleId: newArticle.id,
             isChecked: false,
-            amount: quantityExtraction.quantity || '',
-            addedAt: new Date().toISOString()
+            amount: quantityExtraction.quantity || ''
           };
         }
-        
-        const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
-        
-        const listToCreate = {
-          name: listName,
-          color: listColor,
-          icon: '🛒',
-          articleIds,
-          itemStates
-        };
-        
-        console.log('🎨 CREATING LIST WITH ARTICLE:', listToCreate);
-        
-        const newList = await this.dataService.createList(listToCreate).toPromise();
-        
-        if (newList) {
-          // Set conversation context for follow-up
-          this.setConversationContext({
-            lastAction: {
-              type: 'list_created',
-              listId: newList.id,
-              listName: newList.name,
-              articleName: '',
-              timestamp: new Date()
-            },
-            waitingForArticles: {
-              listId: newList.id,
-              listName: newList.name,
-              prompt: 'Möchtest du Artikel hinzufügen?'
-            }
-          });
-
-          const followUpPrompt = 'Möchtest du jetzt weitere Artikel hinzufügen?';
-
-          return {
-            success: true,
-            message: `✅ Liste "${newList.name}" wurde mit "${itemName}" erstellt.`,
+      }
+      
+      const newList = await this.dataService.createList(listToCreate).toPromise();
+      
+      if (newList) {
+        this.setConversationContext({
+          lastAction: {
+            type: 'list_created',
             listId: newList.id,
-            conversationContext: this.getConversationContext(),
-            followUpPrompt
-          };
-        }
-      } catch (error) {
-        console.error('🎨 LIST CREATION ERROR:', error);
+            listName: newList.name,
+            articleName: '',
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: newList.id,
+            listName: newList.name,
+            prompt: 'Möchtest du Artikel hinzufügen?'
+          }
+        });
+        
+        const message = itemName 
+          ? `✅ Liste "${newList.name}" wurde mit "${itemName}" erstellt.`
+          : `✅ Liste "${newList.name}" wurde erstellt.`;
+        
         return {
-          success: false,
-          message: '❌ Fehler beim Erstellen der Liste.'
+          success: true,
+          message: message,
+          listId: newList.id,
+          conversationContext: this.getConversationContext(),
+          followUpPrompt: 'Möchtest du jetzt Artikel hinzufügen?'
         };
       }
+    } catch (error) {
+      console.error('🎨 LIST CREATION ERROR:', error);
+      return {
+        success: false,
+        message: '❌ Fehler beim Erstellen der Liste.'
+      };
     }
     
     return {
@@ -2004,40 +1419,28 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     };
   }
 
-  /**
-   * Enhanced item action with smart disambiguation and skip support
-   */
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Handling item action with disambiguation:', action);
 
     // Get disambiguation options
     const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(action.itemName);
-    console.log('🎯 Disambiguation options for item:', action.itemName);
-    console.log('🎯 Number of disambiguation options:', disambiguationOptions.length);
+    console.log('🎯 Disambiguation options:', disambiguationOptions.length);
 
-    // ALWAYS show disambiguation if there are existing similar items
     const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
     
     if (existingOptions.length > 0) {
       console.log('🎯 Found existing options, showing disambiguation');
       
-      // 🍳 ADD SKIP OPTION for recipe processing or multi-item commands
-      const isFromRecipe = action.originalInput.toLowerCase().includes('rezept') || 
-                          action.originalInput.includes(',') ||
-                          (action as any).isMultiItemSequential;
-      
-      let enhancedOptions = [...disambiguationOptions];
-      
-      if (isFromRecipe) {
-        enhancedOptions.push({
+      const enhancedOptions = [
+        ...disambiguationOptions,
+        {
           id: 'skip_item',
           displayName: `"${action.itemName}" überspringen`,
           type: 'skip' as const,
           confidence: 1.0,
           icon: '⏭️'
-        });
-        console.log('🍳 Added skip option for recipe/multi-item processing');
-      }
+        }
+      ];
       
       return {
         success: true,
@@ -2053,16 +1456,12 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     return await this.executeActionWithNewArticle(action);
   }
 
-  /**
-   * Handle basic item addition
-   */
   private async handleItemAdditionBasic(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
     console.log('🔍 HANDLING BASIC ITEM ADDITION:', input);
-    console.log('🔍 Quantity extraction:', quantityExtraction);
     
     const lowerInput = input.toLowerCase();
     
-    // Parse add patterns from original input to preserve case
+    // Parse add patterns
     const addMatch = lowerInput.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/);
     
     if (!addMatch) {
@@ -2072,19 +1471,12 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
       };
     }
     
-    // Extract list name from original input to preserve case
+    // Extract list name from original input
     const originalAddMatch = input.match(/füge\s+(.+?)\s+(?:zu\s+(.+?)\s+)?hinzu/i);
     const listName = originalAddMatch?.[2]?.trim();
     const finalItemName = quantityExtraction.itemName;
     
-    console.log('🔍 ITEM ADDITION PARSED:', {
-      input,
-      finalItemName,
-      quantity: quantityExtraction.quantity,
-      listName
-    });
-    
-    // Create pending action for further processing
+    // Create pending action
     const pendingAction: PendingAction = {
       type: listName ? 'add_item' : 'select_list',
       originalInput: input,
@@ -2093,8 +1485,6 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
       listName: listName,
       suggestedDepartment: this.aiResponse.suggestDepartment(finalItemName)
     };
-
-    console.log('🔍 Created pending action:', pendingAction);
 
     if (!listName) {
       // Ask for list selection
@@ -2134,21 +1524,11 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     return this.executeActionWithNewArticleToList(pendingAction, listName);
   }
 
-  // ========================================
-  // ACTION EXECUTION HELPERS (ENHANCED WITH CONVERSATION CONTEXT)
-  // ========================================
-
-  /**
-   * Execute action with new article
-   */
   private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
     console.log('🎯 Executing action with new article:', action.itemName);
-    console.log('🎯 Action details:', action);
     
     try {
       if (action.type === 'create_list') {
-        console.log('🎯 Creating new article for list creation');
-        
         const articleData = {
           name: action.itemName,
           amount: action.extractedQuantity || '',
@@ -2156,15 +1536,11 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           icon: this.aiResponse.suggestIcon(action.itemName)
         };
         
-        console.log('🎯 Article data:', articleData);
-        
         const newArticle = await this.dataService.createArticle(articleData).toPromise();
 
         if (!newArticle) {
           throw new Error('Failed to create article');
         }
-
-        console.log('🎯 Created article:', newArticle);
 
         const listData = {
           name: action.listName!,
@@ -2180,13 +1556,8 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           }
         };
 
-        console.log('🎯 List data:', listData);
-
         const newList = await this.dataService.createList(listData).toPromise();
 
-        console.log('🎯 Created list:', newList);
-
-        // Set conversation context
         if (newList) {
           this.setConversationContext({
             lastAction: {
@@ -2203,22 +1574,14 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
             }
           });
 
-          const followUpPrompt = 'Möchtest du jetzt weitere Artikel hinzufügen?';
-
           return {
             success: true,
             message: `✅ Liste "${newList.name}" wurde mit "${newArticle.name}" erstellt.`,
             listId: newList.id,
             conversationContext: this.getConversationContext(),
-            followUpPrompt
+            followUpPrompt: 'Möchtest du jetzt weitere Artikel hinzufügen?'
           };
         }
-
-        return {
-          success: true,
-          message: this.aiResponse.getListCreatedMessage(action.listName!, newArticle.name, action.extractedQuantity),
-          listId: newList ? (newList as any).id : undefined
-        };
       } else {
         // Handle add item without list specified
         const listOptions = await this.disambiguation.getListSelectionOptions();
@@ -2258,39 +1621,30 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
         message: '❌ Fehler beim Erstellen des neuen Artikels.'
       };
     }
+
+    return {
+      success: false,
+      message: '❌ Unerwarteter Fehler.'
+    };
   }
 
-  /**
-   * Execute action with new article to specific list with conversation context
-   */
   private async executeActionWithNewArticleToList(action: PendingAction, listName: string): Promise<AIExecutionResult> {
     console.log('🎯 Executing action with new article to list:', listName);
-    console.log('🎯 Action details:', action);
     
     try {
-      console.log('🎯 Creating new article...');
-      
       const articleData = {
         name: action.itemName,
         amount: action.extractedQuantity || '',
         departmentId: this.aiResponse.suggestDepartment(action.itemName),
         icon: this.aiResponse.suggestIcon(action.itemName)
       };
-      
-      console.log('🎯 Article data to create:', articleData);
 
       const newArticle = await this.dataService.createArticle(articleData).toPromise();
 
       if (newArticle) {
-        console.log('✅ Created article:', newArticle);
-        
-        console.log('🎯 Finding target list...');
         const targetList = await this.findListByName(listName);
 
         if (targetList) {
-          console.log('✅ Found target list:', targetList.name);
-          console.log('🎯 Adding article to list using updateList method...');
-          
           const updatedArticleIds = [...targetList.articleIds];
           if (!updatedArticleIds.includes(newArticle.id)) {
             updatedArticleIds.push(newArticle.id);
@@ -2309,9 +1663,7 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
           }).toPromise();
           
           if (updateResult) {
-            console.log('✅ Successfully added article to list');
-            
-            // CRITICAL: Set conversation context for follow-up
+            // Set conversation context for follow-up
             this.setConversationContext({
               lastAction: {
                 type: 'article_added',
@@ -2327,31 +1679,26 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
               }
             });
           
-            const followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
-            
             return {
               success: true,
               message: `✅ "${newArticle.name}" wurde zu "${targetList.name}" hinzugefügt.`,
               listId: targetList.id,
               conversationContext: this.getConversationContext(),
-              followUpPrompt
+              followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.'
             };
           } else {
-            console.error('❌ updateList returned false');
             return {
               success: false,
               message: `❌ Fehler beim Hinzufügen von "${newArticle.name}" zur Liste "${targetList.name}".`
             };
           }
         } else {
-          console.error('❌ Target list not found:', listName);
           return {
             success: false,
             message: `❌ Liste "${listName}" nicht gefunden.`
           };
         }
       } else {
-        console.error('❌ Failed to create article');
         return {
           success: false,
           message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
@@ -2366,9 +1713,6 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
     }
   }
 
-  /**
-   * Find list by name (case-insensitive matching)
-   */
   private async findListByName(listName: string): Promise<ShoppingList | null> {
     try {
       console.log('🔍 Finding list by name:', listName);
@@ -2413,55 +1757,18 @@ Keine Erklärungen, keine Überschriften, keine leeren Zeilen.`;
   }
 
   // ========================================
-  // NEW: CONTINUATION HELPER METHODS
+  // ADDITIONAL HELPER METHODS
   // ========================================
 
-  /**
-   * Get continuation help message
-   */
-  getContinuationHelp(): string {
-    return '🔄 **Fortsetzungs-Funktionen:**\n\n' +
-           '**Verfügbare Schlüsselwörter:**\n' +
-           '• "und [Artikel]" - Fügt zur zuletzt verwendeten Liste hinzu\n' +
-           '• "weiters [Artikel]" - Österreichische Variante\n' +
-           '• "außerdem [Artikel]" - Alternative\n' +
-           '• "zusätzlich [Artikel]" - Weitere Alternative\n' +
-           '• "noch [Artikel]" - Kurze Variante\n\n' +
-           '**Beispiel-Ablauf:**\n' +
-           '1. "Füge Milch zu Spar hinzu"\n' +
-           '2. "Und Brot"\n' +
-           '3. "Weiters 2kg Bananen"\n' +
-           '4. "Noch Käse"\n\n' +
-           '**Hinweise:**\n' +
-           '• Funktioniert nur nach dem Hinzufügen von Artikeln\n' +
-           '• Zeitlimit: 10 Minuten nach letzter Aktion\n' +
-           '• Mengen werden unterstützt: "und 2kg Bananen"\n' +
-           '• Mehrere Artikel: "und Brot, Käse, Milch"';
+  public async getDisambiguationOptions(itemName: string): Promise<DisambiguationOption[]> {
+    return this.disambiguation.getDisambiguationOptions(itemName);
   }
 
-  /**
-   * Check if in continuation mode
-   */
-  isInContinuationMode(): boolean {
-    return !!(this.conversationContext.lastAction && 
-              Date.now() - this.conversationContext.lastAction.timestamp.getTime() < 10 * 60 * 1000);
+  public suggestDepartment(itemName: string): string {
+    return this.aiResponse.suggestDepartment(itemName);
   }
 
-  /**
-   * Get continuation status
-   */
-  getContinuationStatus(): string {
-    if (!this.conversationContext.lastAction) {
-      return 'Keine letzte Aktion verfügbar';
-    }
-    
-    const timeSince = Date.now() - this.conversationContext.lastAction.timestamp.getTime();
-    const minutes = Math.floor(timeSince / 60000);
-    
-    if (minutes > 10) {
-      return 'Fortsetzung abgelaufen (>10min)';
-    }
-    
-    return `Letzte Aktion: "${this.conversationContext.lastAction.listName}" vor ${minutes}min`;
+  public suggestIcon(itemName: string): string {
+    return this.aiResponse.suggestIcon(itemName);
   }
 }

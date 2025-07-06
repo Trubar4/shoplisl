@@ -1,10 +1,11 @@
-/* voice-ai-assistant.component.scss - Clean & Compact Version */
+/* voice-ai-assistant.component.scss - FIXED VERSION */
 
 .voice-ai-assistant {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background: #f5f5f5;
+  overflow: hidden; /* FIXED: Prevent overall overflow */
 }
 
 /* ========================================
@@ -14,6 +15,7 @@
 .app-toolbar {
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 100; /* Ensure toolbar stays on top */
   
   .toolbar-title {
     display: flex;
@@ -38,7 +40,7 @@
 }
 
 /* ========================================
-   CHAT CONTAINER & MESSAGES
+   CHAT CONTAINER & MESSAGES - FIXED
    ======================================== */
 
 .chat-container {
@@ -46,13 +48,23 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  min-height: 0; /* CRITICAL: Allow flex items to shrink */
 }
 
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden; /* FIXED: Prevent horizontal scroll */
   padding: 16px;
   scroll-behavior: smooth;
+  /* CRITICAL FIX: Proper padding bottom based on content */
+  padding-bottom: 16px;
+  
+  /* When disambiguation is shown, add more padding */
+  .voice-ai-assistant:has(.disambiguation-container) & {
+    padding-bottom: 0; /* Disambiguation handles its own spacing */
+  }
 }
 
 .message {
@@ -145,64 +157,95 @@
   }
 }
 
-
-// Enhanced SCSS styles for recipe skip support
-// Add these styles to voice-ai-assistant.component.scss
+/* ========================================
+   DISAMBIGUATION CONTAINER - FIXED
+   ======================================== */
 
 .disambiguation-container {
-  margin: 16px 0;
+  flex-shrink: 0; /* CRITICAL: Don't shrink */
+  background: white;
+  border-top: 2px solid #e0e0e0;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  z-index: 50;
+  
+  /* CRITICAL FIX: Proper height management */
+  max-height: 60vh;
+  overflow: hidden; /* Container doesn't scroll, content does */
   
   .disambiguation-card {
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-radius: 0; /* FIXED: Remove card radius for better fit */
+    box-shadow: none; /* FIXED: Remove shadow since container has it */
+    margin: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .disambiguation-header {
+    flex-shrink: 0;
+    padding: 16px 16px 8px 16px;
+    border-bottom: 1px solid #e0e0e0;
     
-    mat-card-header {
-      padding-bottom: 8px;
-      
-      .recipe-badge {
-        background: linear-gradient(45deg, #ff9800, #f57c00);
-        color: white;
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.7em;
-        font-weight: 600;
-        margin-left: 8px;
-        box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
-      }
+    .disambiguation-title {
+      font-size: 1.1em;
+      font-weight: 600;
     }
     
-    .recipe-help {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 16px 0;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, #fff3e0, #ffeaa7);
-      border-radius: 8px;
-      border-left: 4px solid #ff9800;
+    .disambiguation-subtitle {
       font-size: 0.9em;
-      color: #e65100;
-      box-shadow: 0 2px 6px rgba(255, 152, 0, 0.1);
-      
-      mat-icon {
-        font-size: 20px;
-        color: #ff9800;
-      }
-      
-      span {
-        font-weight: 500;
-      }
+      margin-top: 4px;
     }
+  }
+  
+  .disambiguation-content {
+    flex: 1;
+    padding: 16px;
+    overflow: hidden; /* Content manages its own scrolling */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .disambiguation-message {
+    flex-shrink: 0;
+    margin-bottom: 16px;
+    font-weight: 500;
+    color: #424242;
   }
 }
 
+/* FIXED: Disambiguation options with proper scrolling */
 .disambiguation-options {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin: 16px 0;
+  /* CRITICAL FIX: Enable scrolling only for options */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px; /* Space for scrollbar */
+  margin: 0 -4px; /* Compensate for padding */
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
   
   .disambiguation-option {
+    flex-shrink: 0; /* CRITICAL: Don't shrink options */
     display: flex;
     align-items: center;
     padding: 16px;
@@ -219,59 +262,16 @@
       box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
     }
     
-    &:active {
-      transform: translateY(0);
-    }
-    
-    // Enhanced skip option styling
+    /* FIXED: Standard styling for skip option */
     &.skip-option {
-      border: 2px solid #ff9800 !important;
-      background: linear-gradient(135deg, #fff3e0, #ffeaa7) !important;
-      position: relative;
-      overflow: hidden;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, 
-          transparent, 
-          rgba(255, 152, 0, 0.1), 
-          transparent);
-        transition: left 0.5s ease;
-      }
+      border: 2px solid #e0e0e0 !important;
+      background: #fafafa !important;
       
       &:hover {
-        background: linear-gradient(135deg, #ffe0b2, #ffcc80) !important;
-        border-color: #f57c00 !important;
-        transform: translateY(-3px);
-        box-shadow: 0 6px 16px rgba(255, 152, 0, 0.3);
-        
-        &::before {
-          left: 100%;
-        }
-        
-        .skip-icon {
-          animation: bounce 0.6s ease;
-        }
-      }
-      
-      &.prominent {
-        order: -1;
-        margin-bottom: 8px;
-        border-width: 3px;
-        
-        .option-main {
-          align-items: center;
-        }
-        
-        .skip-name {
-          font-size: 1.1em;
-          font-weight: 700;
-        }
+        background: #f0f0f0 !important;
+        border-color: #2196f3 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
       }
     }
     
@@ -293,22 +293,8 @@
         flex-shrink: 0;
         
         &.skip-icon {
-          background: linear-gradient(45deg, #ff9800, #f57c00);
-          color: white;
-          font-size: 24px;
-          box-shadow: 0 3px 8px rgba(255, 152, 0, 0.4);
-          
-          @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-              transform: translateY(0);
-            }
-            40% {
-              transform: translateY(-8px);
-            }
-            60% {
-              transform: translateY(-4px);
-            }
-          }
+          background: #e3f2fd !important;
+          color: #757575 !important;
         }
       }
       
@@ -324,8 +310,8 @@
           line-height: 1.2;
           
           &.skip-name {
-            color: #f57c00;
-            font-weight: 700;
+            color: #757575 !important;
+            font-weight: 600 !important;
           }
         }
         
@@ -337,15 +323,14 @@
         
         .option-confidence {
           font-size: 0.8em;
-          color: #888;
+          color: #999;
         }
         
         .skip-reason {
-          font-size: 0.85em;
-          color: #f57c00;
-          font-style: italic;
-          font-weight: 500;
-          margin-top: 2px;
+          font-size: 0.9em;
+          color: #757575 !important;
+          font-weight: 400;
+          margin-top: 4px;
         }
       }
       
@@ -354,14 +339,16 @@
         align-items: center;
         gap: 8px;
         color: #666;
+        flex-shrink: 0;
         
         .action-hint {
           font-size: 0.85em;
           text-align: right;
+          white-space: nowrap;
           
           &.skip-hint {
-            color: #f57c00 !important;
-            font-weight: 600;
+            color: #757575 !important;
+            font-weight: 500 !important;
           }
         }
         
@@ -369,7 +356,7 @@
           color: #999;
           
           .skip-option & {
-            color: #ff9800;
+            color: #757575 !important;
           }
         }
       }
@@ -377,8 +364,10 @@
   }
 }
 
+/* Recipe progress */
 .recipe-progress {
-  margin: 20px 0 16px 0;
+  flex-shrink: 0;
+  margin: 16px 0;
   padding: 16px;
   background: linear-gradient(135deg, #f1f8e9, #e8f5e8);
   border-radius: 10px;
@@ -395,6 +384,7 @@
       color: #2e7d32;
       min-width: 140px;
       font-size: 0.95em;
+      flex-shrink: 0;
     }
     
     .progress-bar {
@@ -410,312 +400,233 @@
         background: linear-gradient(90deg, #4caf50, #66bb6a, #81c784);
         border-radius: 5px;
         transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        
-        &::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(90deg, 
-            transparent, 
-            rgba(255,255,255,0.3), 
-            transparent);
-          animation: shimmer 2s infinite;
-        }
       }
     }
   }
-  
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
 }
 
+/* FIXED: Disambiguation actions with consistent button styling */
 .disambiguation-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
+  flex-shrink: 0;
+  margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #e0e0e0;
   
-  button {
+  .action-buttons-row {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .action-button {
+    /* FIXED: Consistent button styling matching other app buttons */
+    min-height: 40px;
     border-radius: 8px;
     font-weight: 500;
-    padding: 8px 16px;
-    
-    &[color="primary"] {
-      background: linear-gradient(45deg, #2196f3, #1976d2);
-      color: white;
-      
-      &:hover {
-        background: linear-gradient(45deg, #1976d2, #1565c0);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-      }
-    }
-    
-    &[color="warn"] {
-      color: #d32f2f;
-      
-      &:hover {
-        background: rgba(211, 47, 47, 0.1);
-      }
-    }
+    font-size: 14px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
     
     mat-icon {
-      margin-right: 6px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
-  }
-}
-
-// Responsive design for mobile
-@media (max-width: 768px) {
-  .disambiguation-options {
-    .disambiguation-option {
-      padding: 12px;
-      
-      .option-main {
-        gap: 12px;
-        
-        .option-icon {
-          width: 40px;
-          height: 40px;
-          font-size: 18px;
-          
-          &.skip-icon {
-            font-size: 20px;
-          }
-        }
-        
-        .option-details {
-          .option-name {
-            font-size: 0.95em;
-            
-            &.skip-name {
-              font-size: 1em;
-            }
-          }
-          
-          .skip-reason {
-            font-size: 0.8em;
-          }
-        }
-        
-        .option-action {
-          .action-hint {
-            display: none; // Hide hint text on mobile to save space
-          }
-        }
-      }
-    }
-  }
-  
-  .recipe-progress {
-    padding: 12px;
     
-    .progress-info {
-      gap: 12px;
-      
-      .current-item {
-        min-width: 100px;
-        font-size: 0.9em;
-      }
-      
-      .progress-bar {
-        height: 8px;
-      }
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-  }
-  
-  .disambiguation-actions {
-    flex-direction: column;
-    gap: 8px;
     
-    button {
-      width: 100%;
-    }
-  }
-}
-
-// Dark mode support
-@media (prefers-color-scheme: dark) {
-  .disambiguation-container {
-    .disambiguation-card {
-      background: #2d2d2d;
-      color: #ffffff;
-      
-      .recipe-help {
-        background: linear-gradient(135deg, #4a3728, #5d4037);
-        color: #ffab40;
-        border-left-color: #ff9800;
-      }
-    }
-  }
-  
-  .disambiguation-options {
-    .disambiguation-option {
-      background: #3d3d3d;
-      border-color: #555;
-      color: #ffffff;
+    &.cancel-button {
+      background-color: #f44336 !important;
+      color: white !important;
       
       &:hover {
-        background: #484848;
-        border-color: #2196f3;
-      }
-      
-      &.skip-option {
-        background: linear-gradient(135deg, #4a3728, #5d4037) !important;
-        border-color: #ff9800 !important;
-        
-        &:hover {
-          background: linear-gradient(135deg, #5d4037, #6d4c41) !important;
-        }
-      }
-      
-      .option-main {
-        .option-details {
-          .option-name {
-            color: #ffffff;
-            
-            &.skip-name {
-              color: #ffab40;
-            }
-          }
-          
-          .option-department {
-            color: #cccccc;
-          }
-          
-          .option-confidence {
-            color: #aaaaaa;
-          }
-          
-          .skip-reason {
-            color: #ffab40;
-          }
-        }
+        background-color: #d32f2f !important;
+        box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
       }
     }
-  }
-  
-  .recipe-progress {
-    background: linear-gradient(135deg, #2e3b2e, #3c4a3c);
-    border-left-color: #66bb6a;
     
-    .progress-info {
-      .current-item {
-        color: #81c784;
-      }
+    &.skip-all-button {
+      background-color: #757575 !important;
+      color: white !important;
       
-      .progress-bar {
-        background: #4a4a4a;
+      &:hover {
+        background-color: #616161 !important;
+        box-shadow: 0 4px 12px rgba(117, 117, 117, 0.3);
       }
     }
-  }
-  
-  .disambiguation-actions {
-    border-top-color: #555;
   }
 }
 
-  
-  .disambiguation-message {
-    margin-bottom: 16px;
-    font-weight: 500;
-    color: #424242;
-  }
-  
-
-
-
 /* ========================================
-   COMPACT INPUT AREA
+   INPUT AREA - FIXED FOR TAB BAR OVERLAP
    ======================================== */
 
 .input-area {
-  flex-shrink: 0;
-  padding: 12px 16px 16px 16px;
+  flex-shrink: 0; /* CRITICAL: Never shrink */
+  padding: 16px;
   background: white;
   border-top: 1px solid #e0e0e0;
-  position: relative;
-  z-index: 5;
-  min-height: 120px;
+  z-index: 40;
   
-  /* Override Angular Material spacing */
-  .mat-mdc-form-field {
-    margin-bottom: 0 !important;
-    
-    .mat-mdc-form-field-wrapper {
-      padding-bottom: 0 !important;
-      background: #fafafa;
-      border-radius: 8px;
-    }
-    
-    .mat-mdc-form-field-subscript-wrapper {
-      display: none !important;
-    }
-    
-    .mat-mdc-form-field-infix {
-      padding: 12px 0;
-      min-height: auto;
-    }
-  }
+  /* CRITICAL FIX: Proper minimum height and max height constraints */
+  min-height: auto; /* Let content determine height */
+  max-height: 35vh; /* FIXED: Reduced from 40vh to prevent overlap with tab bar */
+  
+  /* CRITICAL FIX: Bottom spacing for mobile navigation and tab bar */
+  margin-bottom: 0;
+  /* FIXED: Account for bottom tab bar (typically 56px) + safe area */
+  padding-bottom: calc(16px + 56px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Conversation status */
+/* FIXED: Conversation status with consistent styling */
 .conversation-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
-  padding: 6px 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
   background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
-  border-radius: 8px;
-  border-left: 3px solid #4caf50;
-}
-
-.conversation-chip {
-  background: rgba(76, 175, 80, 0.1) !important;
-  color: #2e7d32 !important;
+  border-radius: 10px;
+  border-left: 4px solid #4caf50;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.1);
   
-  mat-icon {
-    color: #4caf50;
+  .conversation-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0; /* Allow text to wrap */
+    
+    .conversation-icon {
+      color: #2e7d32;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    
+    .conversation-text {
+      font-weight: 500;
+      color: #2e7d32;
+      font-size: 14px;
+      word-break: break-word; /* FIXED: Handle long list names */
+    }
   }
-}
-
-.finish-conversation {
-  min-width: auto;
   
-  mat-icon {
-    margin-right: 4px;
+  /* FIXED: Consistent button styling for Fertig button */
+  .finish-conversation-button {
+    flex-shrink: 0;
+    min-height: 36px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+    
+    mat-icon {
+      font-size: 16px;
+      margin-right: 4px;
+    }
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
   }
 }
 
 /* Recipe hints */
 .recipe-hint {
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   background: rgba(255, 152, 0, 0.15);
-  border-radius: 6px;
+  border-radius: 8px;
   color: #e65100;
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
   animation: pulse 2s infinite;
   border-left: 3px solid #ff9800;
+  
+  .recipe-icon {
+    font-size: 18px;
+    color: #ff9800;
+  }
 }
 
+/* FIXED: Input form with proper layout */
+.input-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  width: 100%;
+  margin-bottom: 12px;
+  
+  .message-input {
+    flex: 1;
+    min-width: 0; /* CRITICAL: Allow input to shrink */
+    
+    /* FIXED: Textarea height management */
+    textarea {
+      resize: none;
+      line-height: 1.4;
+      /* CRITICAL FIX: Limit max height to prevent huge input area */
+      max-height: 100px !important; /* Reduced from 120px */
+    }
+    
+    /* FIXED: Form field appearance */
+    .mat-mdc-form-field-wrapper {
+      padding-bottom: 0;
+    }
+    
+    .mat-mdc-form-field-infix {
+      padding: 12px 0 8px 0;
+    }
+  }
+  
+  .input-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    
+    .voice-button {
+      width: 48px;
+      height: 48px;
+      transition: all 0.3s ease;
+      
+      &:hover:not(:disabled) {
+        transform: scale(1.05);
+      }
+      
+      &.recording {
+        background: rgba(244, 67, 54, 0.9) !important;
+        color: white !important;
+        animation: pulse 1s infinite;
+      }
+      
+      mat-icon {
+        font-size: 24px;
+      }
+    }
+  }
+}
+
+/* Processing status */
 .processing-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: rgba(255, 152, 0, 0.1);
   border-radius: 6px;
-  margin-top: 6px;
+  margin-bottom: 12px;
   color: #e65100;
   font-weight: 500;
   
@@ -724,118 +635,130 @@
     font-size: 16px;
     font-weight: bold;
   }
-}
-
-/* Input form */
-.input-form {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-.message-input {
-  flex: 1;
-  min-width: 0;
   
-  textarea {
-    resize: none;
-    line-height: 1.3;
+  .recipe-processing-icon {
+    font-size: 18px;
+    color: #ff9800;
   }
 }
 
-.input-actions {
-  display: flex;
-  gap: 8px;
-  flex-direction: row;
-  align-items: center;
-  flex-shrink: 0;
-  
-  button {
-    transition: all 0.3s ease;
-    
-    &:hover:not(:disabled) {
-      transform: scale(1.05);
-    }
-    
-    &.recording {
-      background: rgba(244, 67, 54, 0.1) !important;
-      color: #f44336 !important;
-      animation: pulse 1s infinite;
-    }
-  }
-}
-
-/* Quick actions */
+/* FIXED: Quick actions with Send button ALWAYS visible above tab bar */
 .quick-actions {
+  /* CRITICAL FIX: Always show quick actions above tab bar */
+  flex-shrink: 0;
   margin-top: 8px;
-  margin-bottom: 12px;
+  /* FIXED: Add z-index to ensure it's above tab bar */
+  position: relative;
+  z-index: 60;
+  
+  .quick-buttons {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    
+    /* FIXED: Consistent button styling for all action buttons */
+    button {
+      flex: 1;
+      min-height: 40px;
+      padding: 10px 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+      
+      /* CRITICAL FIX: Ensure button is ALWAYS visible above tab bar */
+      opacity: 1 !important;
+      visibility: visible !important;
+      position: relative;
+      z-index: 70; /* Higher than tab bar */
+      
+      mat-icon {
+        font-size: 18px;
+        margin: 0;
+      }
+      
+      .button-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* FIXED: Send button prominence and visibility */
+      &.send-button {
+        font-weight: 600;
+        /* CRITICAL: Ensure primary color is applied and always visible */
+        background-color: #1976d2 !important;
+        color: white !important;
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important; /* Always visible shadow */
+        
+        &:disabled {
+          background-color: #cccccc !important;
+          color: #666666 !important;
+          box-shadow: none !important;
+        }
+        
+        /* CRITICAL: Ensure send button stays above everything */
+        z-index: 80 !important;
+      }
+      
+      /* Other button types */
+      &.help-button,
+      &.recipe-help-button {
+        background-color: transparent;
+        border: 1px solid #1976d2;
+        color: #1976d2;
+        
+        &:hover {
+          background-color: rgba(25, 118, 210, 0.1);
+        }
+      }
+    }
+  }
 }
 
-.quick-buttons {
-  display: flex;
-  gap: 8px;
-  flex-direction: row !important;
-  justify-content: space-between;
-  width: 100%;
+/* Continuation section */
+.continuation-section {
+  margin-top: 12px;
   
-  button {
-    flex: 1;
-    min-width: 0;
-    height: 40px;
-    padding: 8px 4px;
-    font-size: 12px;
+  .continuation-info {
     display: flex;
     align-items: center;
-    justify-content: center;
-    white-space: nowrap;
+    gap: 6px;
+    font-size: 12px;
+    color: #757575;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 6px;
     
-    mat-icon {
-      margin-right: 2px;
+    .continuation-icon {
       font-size: 16px;
     }
-    
-    &[color="primary"] {
-      font-weight: 500;
-    }
-  }
-}
-
-/* Conversation actions */
-.continuation-info {
-  font-size: 12px;
-  color: #757575;
-  margin-bottom: 8px;
-  padding: 6px 8px;
-  background: rgba(33, 150, 243, 0.1);
-  border-radius: 4px;
-}
-
-.conversation-examples .example-commands {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.example-button {
-  text-align: left;
-  justify-content: flex-start;
-  font-size: 13px;
-  padding: 8px 12px;
-  min-height: 36px;
-  border-radius: 6px;
-  
-  &:hover {
-    background: rgba(25, 118, 210, 0.05);
   }
   
-  &.recipe-example {
-    background: rgba(255, 152, 0, 0.05);
-    border: 1px solid rgba(255, 152, 0, 0.2);
+  .continuation-buttons {
+    display: flex;
+    gap: 8px;
     
-    &:hover {
-      background: rgba(255, 152, 0, 0.1);
+    .continuation-button {
+      flex: 1;
+      min-height: 36px;
+      font-size: 12px;
+      border-radius: 6px;
+      
+      mat-icon {
+        font-size: 16px;
+        margin-right: 4px;
+      }
     }
   }
 }
@@ -874,26 +797,41 @@
 }
 
 /* ========================================
-   MOBILE RESPONSIVE
+   MOBILE RESPONSIVE - FIXED FOR TAB BAR
    ======================================== */
 
 @media (max-width: 768px) {
+  .input-area {
+    padding: 12px;
+    /* CRITICAL FIX: Prevent input area from becoming too tall on mobile */
+    max-height: 40vh; /* Slightly more space on mobile */
+    overflow-y: auto;
+    /* FIXED: Ensure proper spacing above tab bar on mobile */
+    padding-bottom: calc(12px + 60px + env(safe-area-inset-bottom, 0px)); /* More space for mobile tab bar */
+  }
+  
   .input-form {
     gap: 8px;
     margin-bottom: 12px;
-  }
-  
-  .input-actions {
-    flex-direction: row;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  
-  .message-input {
-    min-width: 0;
     
-    .mat-mdc-form-field-infix {
-      padding: 10px 0;
+    .message-input {
+      .mat-mdc-form-field-infix {
+        padding: 8px 0 6px 0;
+      }
+      
+      textarea {
+        /* CRITICAL FIX: Smaller max height on mobile to prevent tab bar overlap */
+        max-height: 60px !important; /* Reduced from 80px */
+      }
+    }
+    
+    .voice-button {
+      width: 44px !important;
+      height: 44px !important;
+      
+      mat-icon {
+        font-size: 20px;
+      }
     }
   }
   
@@ -902,54 +840,164 @@
     gap: 6px;
     
     button {
-      flex: 1;
-      min-width: 0;
-      font-size: 11px;
-      height: 36px;
-      padding: 6px 2px;
+      min-height: 36px;
+      font-size: 12px;
+      padding: 8px 4px;
+      /* CRITICAL: Ensure buttons stay above tab bar on mobile */
+      z-index: 75 !important;
+      
+      .button-text {
+        display: none; /* Hide text on very small screens */
+      }
       
       mat-icon {
-        margin-right: 1px;
-        font-size: 14px;
+        font-size: 16px;
+        margin: 0;
+      }
+      
+      /* CRITICAL: Send button extra visibility on mobile */
+      &.send-button {
+        z-index: 85 !important;
+        box-shadow: 0 3px 10px rgba(25, 118, 210, 0.4) !important;
       }
     }
   }
-
-  .input-area {
-    padding: 12px 16px 80px 16px !important;
+  
+  .disambiguation-container {
+    max-height: 70vh;
   }
   
-  .quick-actions {
-    margin-top: 8px;
-    margin-bottom: 16px;
+  .disambiguation-options {
+    .disambiguation-option {
+      padding: 12px;
+      
+      .option-main {
+        gap: 12px;
+        
+        .option-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 18px;
+        }
+        
+        .option-details {
+          .option-name {
+            font-size: 0.95em;
+          }
+          
+          .skip-reason {
+            font-size: 0.8em;
+          }
+        }
+        
+        .option-action {
+          .action-hint {
+            font-size: 0.75em;
+          }
+        }
+      }
+    }
+  }
+  
+  .disambiguation-actions {
+    .action-buttons-row {
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      
+      .action-button {
+        width: 100%;
+        justify-content: center;
+        min-height: 36px;
+      }
+    }
+  }
+  
+  .conversation-status {
+    padding: 10px 12px;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    
+    .conversation-info {
+      justify-content: center;
+      
+      .conversation-text {
+        font-size: 13px;
+        text-align: center;
+      }
+    }
+    
+    .finish-conversation-button {
+      width: 100%;
+      justify-content: center;
+    }
   }
 }
 
 @media (max-width: 480px) {
   .input-form {
     gap: 6px;
-  }
-  
-  .input-actions button {
-    min-width: auto;
-    padding: 8px;
+    
+    .voice-button {
+      width: 40px !important;
+      height: 40px !important;
+    }
   }
   
   .quick-buttons button {
-    font-size: 10px;
-    height: 32px;
-    padding: 4px 1px;
+    font-size: 11px;
+    min-height: 32px;
+    padding: 6px 2px;
+    /* CRITICAL: Maximum visibility on very small screens */
+    z-index: 90 !important;
+    
+    mat-icon {
+      font-size: 14px;
+    }
+    
+    &.send-button {
+      z-index: 95 !important;
+      box-shadow: 0 4px 12px rgba(25, 118, 210, 0.5) !important;
+    }
+  }
+  
+  .input-area {
+    padding: 8px;
+    max-height: 35vh; /* Even smaller on very small screens */
+    /* CRITICAL: Maximum tab bar clearance on tiny screens */
+    padding-bottom: calc(8px + 65px + env(safe-area-inset-bottom, 0px));
   }
 }
 
 /* ========================================
-   DARK MODE
+   DARK MODE SUPPORT
    ======================================== */
 
 @media (prefers-color-scheme: dark) {
   .voice-ai-assistant {
     background: #121212;
     color: #ffffff;
+  }
+  
+  .input-area {
+    background: #1e1e1e;
+    border-color: #333;
+  }
+  
+  .conversation-status {
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+    border-left-color: #4caf50;
+    
+    .conversation-info {
+      .conversation-text {
+        color: #a5d6a7;
+      }
+      
+      .conversation-icon {
+        color: #81c784;
+      }
+    }
   }
   
   .message {
@@ -970,31 +1018,96 @@
     }
   }
   
-  .input-area {
+  .disambiguation-container {
     background: #1e1e1e;
     border-color: #333;
+    
+    .disambiguation-card {
+      background: #1e1e1e;
+      color: #ffffff;
+    }
+  }
+  
+  .disambiguation-options {
+    .disambiguation-option {
+      background: #2d2d2d;
+      border-color: #555;
+      color: #ffffff;
+      
+      &:hover {
+        background: #383838;
+        border-color: #2196f3;
+      }
+      
+      &.skip-option {
+        background: #2d2d2d !important;
+        border-color: #555 !important;
+        
+        &:hover {
+          background: #383838 !important;
+          border-color: #2196f3 !important;
+        }
+      }
+      
+      .option-main {
+        .option-details {
+          .option-name {
+            color: #ffffff;
+            
+            &.skip-name {
+              color: #aaaaaa;
+            }
+          }
+          
+          .option-department {
+            color: #cccccc;
+          }
+          
+          .option-confidence {
+            color: #aaaaaa;
+          }
+          
+          .skip-reason {
+            color: #aaaaaa;
+          }
+        }
+      }
+    }
+  }
+  
+  .recipe-progress {
+    background: linear-gradient(135deg, #2e3b2e, #3c4a3c);
+    border-left-color: #66bb6a;
+    
+    .progress-info {
+      .current-item {
+        color: #81c784;
+      }
+      
+      .progress-bar {
+        background: #4a4a4a;
+      }
+    }
   }
   
   .recipe-hint {
     background: rgba(141, 78, 0, 0.25);
     color: #ffcc80;
+    border-left-color: #ff9800;
   }
   
   .processing-status {
     background: rgba(141, 78, 0, 0.2);
     color: #ffcc80;
   }
-   
-  .message-input .mat-mdc-form-field-wrapper {
-    background: #2d2d2d !important;
-  }
 }
 
 /* ========================================
-   PWA OPTIMIZATIONS
+   PWA OPTIMIZATIONS - FIXED FOR TAB BAR
    ======================================== */
 
 .voice-ai-assistant {
+  /* FIXED: Better PWA support with tab bar consideration */
   padding-bottom: env(safe-area-inset-bottom);
   
   &.keyboard-open {
@@ -1007,10 +1120,23 @@
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
+    
+    /* FIXED: Account for PWA status bar */
+    padding-top: env(safe-area-inset-top);
   }
   
   .message-content {
     user-select: text;
     -webkit-user-select: text;
+  }
+  
+  .app-toolbar {
+    /* FIXED: Adjust for PWA */
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* CRITICAL: Extra tab bar clearance in PWA mode */
+  .input-area {
+    padding-bottom: calc(16px + 70px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

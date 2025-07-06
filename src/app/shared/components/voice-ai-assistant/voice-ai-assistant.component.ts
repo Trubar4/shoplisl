@@ -1,6 +1,4 @@
-// src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts
-// Complete Organized Voice AI Assistant with Recipe Skip Support
-
+// src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts - FIXED VERSION
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
@@ -34,9 +32,6 @@ import {
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
 
-// ========================================
-// INTERFACES
-// ========================================
 interface ChatMessage {
   text: string;
   type: 'user' | 'assistant' | 'error' | 'system';
@@ -57,40 +52,27 @@ interface ChatMessage {
 })
 export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   
-  // ========================================
-  // VIEW REFERENCES
-  // ========================================
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   
-  // ========================================
-  // OBSERVABLE STREAMS
-  // ========================================
+  // Observable streams
   messages$: Observable<ChatMessage[]>;
   disambiguation$: Observable<any>;
   
-  // ========================================
-  // COMPONENT STATE
-  // ========================================
+  // Component state
   currentMessage = '';
   isProcessing = false;
   isRecording = false;
   private isSpeaking = false;
   
-  // ========================================
-  // INPUT TRACKING & AUDIO FEEDBACK
-  // ========================================
+  // Input tracking & audio feedback
   private lastInputSource: 'voice' | 'text' = 'text';
   private shouldProvideAudioFeedback = false;
   
-  // ========================================
-  // SPEECH SERVICES
-  // ========================================
+  // Speech services
   private recognition: any;
   private synthesis: SpeechSynthesis;
   
-  // ========================================
-  // LIFECYCLE MANAGEMENT
-  // ========================================
+  // Lifecycle management
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -104,16 +86,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   ) {
     this.synthesis = window.speechSynthesis;
     
-    // Initialize data streams
     this.messages$ = this.chatPersistence.messages$;
     this.disambiguation$ = this.chatPersistence.disambiguation$;
     
     this.initializeSpeechRecognition();
   }
 
-  // ========================================
-  // LIFECYCLE HOOKS
-  // ========================================
   ngOnInit(): void {
     this.initializeChat();
     this.setupPWAViewport();
@@ -127,27 +105,29 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // INITIALIZATION METHODS
+  // INITIALIZATION - FIXED
   // ========================================
+
   private initializeChat(): void {
     this.chatPersistence.initializeWithContext();
+    // FIXED: Ensure initial context sync
+    this.syncContextBidirectional();
   }
 
   private setupMessageScrolling(): void {
     this.messages$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      setTimeout(() => this.scrollToBottom(), 100);
+      this.scrollToBottom();
     });
   }
 
   private checkRestoredContext(): void {
     setTimeout(() => {
+      // FIXED: Check both sources and sync
+      this.syncContextBidirectional();
+      
       const context = this.chatPersistence.getConversationContext();
       if (context?.waitingForArticles) {
         console.log('🔄 Restored conversation context for:', context.waitingForArticles.listName);
-        this.chatPersistence.addMessage(
-          `🔄 Unterhaltung wiederhergestellt: Warte auf Artikel für "${context.waitingForArticles.listName}"`, 
-          'system'
-        );
       }
     }, 500);
   }
@@ -169,32 +149,125 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // CORE MESSAGING METHODS
+  // CONTEXT SYNCHRONIZATION - FIXED
   // ========================================
+
+  /**
+   * FIXED: Bidirectional context synchronization between services
+   */
+  private syncContextBidirectional(): void {
+    const chatContext = this.chatPersistence.getConversationContext();
+    const aiContext = this.aiService.getConversationContext();
+    
+    console.log('🔄 SYNC: Syncing contexts bidirectionally');
+    console.log('🔄 SYNC: Chat context:', chatContext);
+    console.log('🔄 SYNC: AI context:', aiContext);
+    
+    // Determine which context is more recent/complete
+    let sourceContext: ConversationContext | null = null;
+    let targetService: 'chat' | 'ai' | null = null;
+    
+    if (chatContext?.waitingForArticles && !aiContext.waitingForArticles) {
+      // Chat has active context, AI doesn't - sync to AI
+      sourceContext = chatContext;
+      targetService = 'ai';
+    } else if (aiContext.waitingForArticles && !chatContext?.waitingForArticles) {
+      // AI has active context, Chat doesn't - sync to Chat
+      sourceContext = aiContext;
+      targetService = 'chat';
+    } else if (chatContext?.lastAction && aiContext.lastAction) {
+      // Both have contexts - use the most recent
+      const chatTime = chatContext.lastAction.timestamp.getTime();
+      const aiTime = aiContext.lastAction.timestamp.getTime();
+      
+      if (chatTime > aiTime) {
+        sourceContext = chatContext;
+        targetService = 'ai';
+      } else {
+        sourceContext = aiContext;
+        targetService = 'chat';
+      }
+    } else if (chatContext?.lastAction && !aiContext.lastAction) {
+      sourceContext = chatContext;
+      targetService = 'ai';
+    } else if (aiContext.lastAction && !chatContext?.lastAction) {
+      sourceContext = aiContext;
+      targetService = 'chat';
+    }
+    
+    // Perform synchronization
+    if (sourceContext && targetService) {
+      console.log(`🔄 SYNC: Syncing ${targetService === 'ai' ? 'chat -> AI' : 'AI -> chat'}`);
+      
+      if (targetService === 'ai') {
+        this.aiService.setConversationContext(sourceContext);
+      } else {
+        this.chatPersistence.setConversationContext(sourceContext);
+      }
+      
+      console.log('🔄 SYNC: Synchronization completed');
+    } else {
+      console.log('🔄 SYNC: No synchronization needed');
+    }
+  }
+
+  /**
+   * FIXED: Enhanced context check with proper fallbacks
+   */
+  private getCurrentActiveContext(): ConversationContext {
+    // Always sync first
+    this.syncContextBidirectional();
+    
+    const chatContext = this.chatPersistence.getConversationContext();
+    const aiContext = this.aiService.getConversationContext();
+    
+    // Return the most complete context
+    if (chatContext?.waitingForArticles) {
+      return chatContext;
+    }
+    if (aiContext.waitingForArticles) {
+      return aiContext;
+    }
+    if (chatContext?.lastAction) {
+      return chatContext;
+    }
+    if (aiContext.lastAction) {
+      return aiContext;
+    }
+    
+    return {};
+  }
+
+  // ========================================
+  // CORE MESSAGING - FIXED
+  // ========================================
+
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
 
     const userMessage = this.currentMessage.trim();
     const lowerInput = userMessage.toLowerCase().trim();
     
-    console.log('💬 ENHANCED SEND MESSAGE CALLED');
-    console.log('💬 USER MESSAGE:', userMessage);
+    console.log('💬 SEND MESSAGE CALLED:', userMessage);
     
-    // Clear disambiguation
+    // FIXED: Sync contexts before processing
+    this.syncContextBidirectional();
+    
+    // Clear disambiguation and add user message
     this.chatPersistence.setDisambiguation(null);
     this.chatPersistence.addMessage(userMessage, 'user');
     this.currentMessage = '';
     this.isProcessing = true;
 
     try {
-      // CRITICAL: Special handling for recipe commands
+      // FIXED: Recipe detection with proper context preservation
       if (lowerInput.startsWith('rezept:') || lowerInput.startsWith('rezept ')) {
-        console.log('🍳 RECIPE DETECTED - Using enhanced context preservation');
+        console.log('🍳 Recipe detected - preserving context');
         await this.processRecipeWithContextPreservation(userMessage);
         return;
       }
       
-      // Handle continuation keywords
+      // FIXED: Continuation keywords with better context handling
       if (this.checkForContinuationKeywords(userMessage)) {
         const result = await this.handleContinuationKeywords(userMessage);
         await this.handleAIResult(result);
@@ -210,9 +283,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         return;
       }
       
-      // List creation
+      // List creation - clear context
       if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
-        this.chatPersistence.clearConversationContext();
+        this.clearAllContexts();
         const result = await this.aiService.executeCommand(userMessage);
         await this.handleAIResult(result);
         return;
@@ -220,52 +293,36 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       
       // Explicit add commands
       if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
+        // FIXED: Don't clear context for explicit add commands - might be continuing
         const result = await this.aiService.executeCommand(userMessage);
         await this.handleAIResult(result);
         return;
       }
       
-      // Conversation mode
+      // FIXED: Enhanced conversation mode handling
       if (this.isInActiveConversation()) {
-        const targetList = this.chatPersistence.getCurrentTargetList();
+        const targetList = this.getCurrentTargetList();
         if (targetList) {
           // End conversation check
           if (lowerInput === 'nein' || lowerInput === 'fertig' || 
               lowerInput === 'stop' || lowerInput === 'ende') {
-            this.chatPersistence.clearConversationContext();
+            this.clearAllContexts();
             this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
             this.isProcessing = false;
             return;
           }
           
-          // Process as article
-          const enhancedInput = `Füge ${userMessage} zu ${targetList.listName} hinzu`;
-          const result = await this.aiService.executeCommand(enhancedInput);
-          
-          // Force context if lost
-          if (result.success && !result.conversationContext) {
-            result.conversationContext = {
-              lastAction: {
-                type: 'article_added',
-                listId: targetList.listId,
-                listName: targetList.listName,
-                articleName: userMessage,
-                timestamp: new Date()
-              },
-              waitingForArticles: {
-                listId: targetList.listId,
-                listName: targetList.listName,
-                prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-              }
-            };
-          }
-          
+          // FIXED: Process as contextual article with proper context sync
+          this.syncContextBidirectional();
+          const result = await this.aiService.executeCommand(userMessage);
           await this.handleAIResult(result);
           return;
         }
       }
       
-      // Regular processing
+      // Regular processing - clear context for new commands
+      this.clearAllContexts();
+      
       const result = await this.aiService.executeCommand(userMessage);
       await this.handleAIResult(result);
       
@@ -281,6 +338,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * FIXED: Clear contexts in both services
+   */
+  private clearAllContexts(): void {
+    console.log('🗑️ Clearing all contexts');
+    this.chatPersistence.clearConversationContext();
+    this.aiService.clearConversationContext();
+  }
+
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
     console.log('🤖 HANDLE AI RESULT:', result);
     
@@ -289,21 +355,22 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
-      console.log('🤖 SHOWING DISAMBIGUATION');
+      console.log('🤖 Showing disambiguation');
       this.handleDisambiguation(result);
       return;
     }
 
-    // CRITICAL: Always update conversation context FIRST
+    // CRITICAL FIX: Always sync conversation context bidirectionally
     if (result.conversationContext) {
-      console.log('🤖 UPDATING CONVERSATION CONTEXT');
+      console.log('🤖 Updating conversation context bidirectionally');
       this.chatPersistence.setConversationContext(result.conversationContext);
-      this.chatPersistence.synchronizeWithAIService(result.conversationContext);
+      this.aiService.setConversationContext(result.conversationContext);
     }
 
-    // ENHANCED: Force conversation context for list creation
-    if (result.success && result.listId && result.message.includes('Liste') && result.message.includes('erstellt')) {
-      console.log('🤖 DETECTED LIST CREATION - FORCING CONVERSATION CONTEXT');
+    // FIXED: Enhanced list creation context detection
+    if (result.success && result.listId && 
+        (result.message.includes('Liste') && result.message.includes('erstellt'))) {
+      console.log('🤖 List creation detected - forcing conversation context');
       
       const listNameMatch = result.message.match(/Liste "([^"]+)" wurde erstellt/);
       const listName = listNameMatch ? listNameMatch[1] : 'Neue Liste';
@@ -325,23 +392,55 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         };
         
         this.chatPersistence.setConversationContext(forcedContext);
-        this.chatPersistence.synchronizeWithAIService(forcedContext);
+        this.aiService.setConversationContext(forcedContext);
         
         result.followUpPrompt = result.followUpPrompt || 
           `Möchtest du jetzt Artikel zu "${listName}" hinzufügen?`;
       }
     }
 
+    // FIXED: Enhanced article addition context detection
+    if (result.success && result.listId && result.message.includes('hinzugefügt')) {
+      console.log('🤖 Article addition detected - ensuring conversation context');
+      
+      if (!result.conversationContext) {
+        const messageMatch = result.message.match(/"([^"]+)" wurde (?:erstellt und )?zur Liste "([^"]+)" hinzugefügt/);
+        const articleName = messageMatch ? messageMatch[1] : 'Artikel';
+        const listName = messageMatch ? messageMatch[2] : 'Liste';
+        
+        const forcedContext: ConversationContext = {
+          lastAction: {
+            type: 'article_added' as const,
+            listId: result.listId,
+            listName: listName,
+            articleName: articleName,
+            timestamp: new Date()
+          },
+          waitingForArticles: {
+            listId: result.listId,
+            listName: listName,
+            prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+          }
+        };
+        
+        this.chatPersistence.setConversationContext(forcedContext);
+        this.aiService.setConversationContext(forcedContext);
+        
+        result.followUpPrompt = result.followUpPrompt || 
+          'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
+      }
+    }
+
     // Handle follow-up prompts
     if (result.success && result.followUpPrompt) {
-      console.log('🤖 ADDING FOLLOW-UP PROMPT:', result.followUpPrompt);
+      console.log('🤖 Adding follow-up prompt:', result.followUpPrompt);
       setTimeout(() => {
         this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
         this.scrollToBottom();
       }, 1000);
     }
 
-    // Handle successful actions
+    // Handle successful actions with audio feedback
     if (result.success && result.listId) {
       setTimeout(() => {
         this.handleSuccessfulAction(result);
@@ -350,55 +449,93 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // RECIPE PROCESSING METHODS
+  // CONVERSATION STATUS - FIXED
   // ========================================
-  private async processRecipeWithContextPreservation(userMessage: string): Promise<void> {
-    console.log('🍳 PROCESSING RECIPE WITH CONTEXT PRESERVATION');
+
+  getConversationStatus(): string {
+    // FIXED: Use active context with proper fallback
+    const activeContext = this.getCurrentActiveContext();
     
-    // Step 1: Capture current context from ALL sources
-    const aiContext = this.aiService.getConversationContext();
-    const chatContext = this.chatPersistence.getConversationContext();
+    console.log('🔍 Getting conversation status from active context:', activeContext);
     
-    console.log('🍳 STEP 1 - Current contexts:');
-    console.log('🍳 - AI Context:', JSON.stringify(aiContext, null, 2));
-    console.log('🍳 - Chat Context:', JSON.stringify(chatContext, null, 2));
+    // Check for active conversation context
+    if (activeContext.waitingForArticles) {
+      console.log('🔍 Active conversation found:', activeContext.waitingForArticles);
+      return `Sie können direkt weitere Artikel zu "${activeContext.waitingForArticles.listName}" hinzufügen`;
+    }
     
-    // Step 2: Determine the active list context
-    let targetListName = null;
-    let targetListId = null;
-    
-    if (aiContext.waitingForArticles) {
-      targetListName = aiContext.waitingForArticles.listName;
-      targetListId = aiContext.waitingForArticles.listId;
-      console.log('🍳 - Found target from AI context:', targetListName);
-    } else if (chatContext?.waitingForArticles) {
-      targetListName = chatContext.waitingForArticles.listName;
-      targetListId = chatContext.waitingForArticles.listId;
-      console.log('🍳 - Found target from chat context:', targetListName);
-    } else if (aiContext.lastAction) {
-      const timeSince = Date.now() - aiContext.lastAction.timestamp.getTime();
-      if (timeSince < 10 * 60 * 1000) {
-        targetListName = aiContext.lastAction.listName;
-        targetListId = aiContext.lastAction.listId;
-        console.log('🍳 - Found target from AI last action:', targetListName);
-      }
-    } else if (chatContext?.lastAction) {
-      const timeSince = Date.now() - chatContext.lastAction.timestamp.getTime();
-      if (timeSince < 10 * 60 * 1000) {
-        targetListName = chatContext.lastAction.listName;
-        targetListId = chatContext.lastAction.listId;
-        console.log('🍳 - Found target from chat last action:', targetListName);
+    // Check for recent last action
+    if (activeContext.lastAction) {
+      const timeSince = Date.now() - activeContext.lastAction.timestamp.getTime();
+      if (timeSince < 10 * 60 * 1000) { // 10 minutes
+        const minutes = Math.floor(timeSince / 60000);
+        return `Fortsetzung für "${activeContext.lastAction.listName}" möglich (vor ${minutes}min)`;
       }
     }
     
-    // Step 3: Log the final target
-    console.log('🍳 STEP 2 - Final target determination:');
-    console.log('🍳 - Target List Name:', targetListName);
-    console.log('🍳 - Target List ID:', targetListId);
+    console.log('🔍 No active conversation context found');
+    return 'Keine aktive Unterhaltung';
+  }
+
+  isInActiveConversation(): boolean {
+    const activeContext = this.getCurrentActiveContext();
+    return !!activeContext.waitingForArticles;
+  }
+
+  /**
+   * FIXED: Get current target list with proper context handling
+   */
+  getCurrentTargetList(): { listId: string; listName: string } | null {
+    const activeContext = this.getCurrentActiveContext();
     
-    // Step 4: Create forced context if we have a target
+    if (activeContext.waitingForArticles) {
+      return {
+        listId: activeContext.waitingForArticles.listId,
+        listName: activeContext.waitingForArticles.listName
+      };
+    }
+    
+    return null;
+  }
+
+  finishAddingArticles(): void {
+    console.log('🗣️ User manually finished adding articles');
+    this.clearAllContexts();
+    this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
+  }
+
+  // ========================================
+  // RECIPE PROCESSING - FIXED
+  // ========================================
+
+  private async processRecipeWithContextPreservation(userMessage: string): Promise<void> {
+    console.log('🍳 Processing recipe with context preservation');
+    
+    // CRITICAL FIX: Get active context properly
+    const activeContext = this.getCurrentActiveContext();
+    
+    console.log('🍳 Current active context before processing:', activeContext);
+    
+    // Determine active target list from context
+    let targetListName = null;
+    let targetListId = null;
+    
+    if (activeContext.waitingForArticles) {
+      targetListName = activeContext.waitingForArticles.listName;
+      targetListId = activeContext.waitingForArticles.listId;
+    } else if (activeContext.lastAction) {
+      const timeSince = Date.now() - activeContext.lastAction.timestamp.getTime();
+      if (timeSince < 10 * 60 * 1000) {
+        targetListName = activeContext.lastAction.listName;
+        targetListId = activeContext.lastAction.listId;
+      }
+    }
+    
+    console.log('🍳 Determined target:', { targetListName, targetListId });
+    
+    // CRITICAL FIX: Set context in AI service before processing
     if (targetListName && targetListId) {
-      const forcedContext: ConversationContext = {
+      const preservedContext: ConversationContext = {
         lastAction: {
           type: 'article_added' as const,
           listId: targetListId,
@@ -413,27 +550,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         }
       };
       
-      console.log('🍳 STEP 3 - Setting forced context in AI service:', forcedContext);
-      this.aiService.setConversationContext(forcedContext);
-      this.chatPersistence.setConversationContext(forcedContext);
+      console.log('🍳 Setting preserved context in AI service:', preservedContext);
+      this.aiService.setConversationContext(preservedContext);
     }
     
-    // Step 5: Process the recipe
-    console.log('🍳 STEP 4 - Processing recipe command');
+    // Process the recipe
     const result = await this.aiService.executeCommand(userMessage);
     
-    // Step 6: Verify context preservation
-    const newAiContext = this.aiService.getConversationContext();
-    const newChatContext = this.chatPersistence.getConversationContext();
-    
-    console.log('🍳 STEP 5 - Context after processing:');
-    console.log('🍳 - New AI Context:', JSON.stringify(newAiContext, null, 2));
-    console.log('🍳 - New Chat Context:', JSON.stringify(newChatContext, null, 2));
-    
-    // Step 7: Force context restoration if lost
-    if (targetListName && targetListId && 
-        (!result.conversationContext || !result.conversationContext.waitingForArticles)) {
-      console.log('🍳 STEP 6 - FORCING context restoration');
+    // CRITICAL FIX: Ensure context is maintained after processing
+    if (targetListName && targetListId && !result.conversationContext) {
+      console.log('🍳 Forcing context restoration after recipe processing');
       
       result.conversationContext = {
         lastAction: {
@@ -458,73 +584,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // CONVERSATION CONTEXT METHODS
+  // CONTINUATION HANDLING - FIXED
   // ========================================
-  getConversationStatus(): string {
-    const aiContext = this.aiService.getConversationContext();
-    const chatContext = this.chatPersistence.getConversationContext();
-    
-    console.log('🔍 GET CONVERSATION STATUS CALLED');
-    console.log('🔍 AI Service Context:', JSON.stringify(aiContext, null, 2));
-    console.log('🔍 Chat Persistence Context:', JSON.stringify(chatContext, null, 2));
-    
-    // Check multiple sources for conversation context
-    let activeContext = null;
-    let source = 'none';
-    
-    if (aiContext.waitingForArticles) {
-      activeContext = aiContext.waitingForArticles;
-      source = 'AI Service';
-    } else if (chatContext?.waitingForArticles) {
-      activeContext = chatContext.waitingForArticles;
-      source = 'Chat Persistence';
-    } else if (aiContext.lastAction) {
-      const timeSince = Date.now() - aiContext.lastAction.timestamp.getTime();
-      if (timeSince < 10 * 60 * 1000) { // 10 minutes
-        const minutes = Math.floor(timeSince / 60000);
-        return `"${aiContext.lastAction.listName}" vor ${minutes}min - Fortsetzung mit "und" möglich`;
-      }
-    } else if (chatContext?.lastAction) {
-      const timeSince = Date.now() - chatContext.lastAction.timestamp.getTime();
-      if (timeSince < 10 * 60 * 1000) { // 10 minutes
-        const minutes = Math.floor(timeSince / 60000);
-        return `"${chatContext.lastAction.listName}" vor ${minutes}min - Fortsetzung mit "und" möglich`;
-      }
-    }
-    
-    if (activeContext) {
-      console.log(`🔍 Active context found in ${source}:`, activeContext);
-      return `Warte auf Artikel für "${activeContext.listName}"`;
-    }
-    
-    console.log('🔍 No active conversation context found');
-    return 'Keine aktive Unterhaltung';
-  }
 
-  isInActiveConversation(): boolean {
-    const aiServiceContext = this.aiService.getConversationContext();
-    const persistenceContext = this.chatPersistence.getConversationContext();
-    
-    const hasAiServiceConversation = !!aiServiceContext.waitingForArticles;
-    const hasPersistenceConversation = !!persistenceContext?.waitingForArticles;
-    
-    return hasAiServiceConversation || hasPersistenceConversation;
-  }
-
-  finishAddingArticles(): void {
-    const context = this.aiService.getConversationContext();
-    const persistenceContext = this.chatPersistence.getConversationContext();
-    
-    if (context.waitingForArticles || persistenceContext?.waitingForArticles) {
-      console.log('🗣️ User manually finished adding articles');
-      this.chatPersistence.clearConversationContext();
-      this.sendQuickMessage('nein');
-    }
-  }
-
-  // ========================================
-  // CONTINUATION HANDLING
-  // ========================================
   private checkForContinuationKeywords(input: string): boolean {
     const lowerInput = input.toLowerCase().trim();
     const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch'];
@@ -536,10 +598,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private async handleContinuationKeywords(input: string): Promise<AIExecutionResult> {
-    const context = this.chatPersistence.getConversationContext();
+    // FIXED: Use active context
+    const activeContext = this.getCurrentActiveContext();
+    let lastAction = activeContext.lastAction;
     
-    if (context?.lastAction && context.lastAction.listId) {
-      const timeSince = Date.now() - context.lastAction.timestamp.getTime();
+    if (lastAction && lastAction.listId) {
+      const timeSince = Date.now() - lastAction.timestamp.getTime();
       const maxAge = 10 * 60 * 1000; // 10 minutes
       
       if (timeSince < maxAge) {
@@ -552,33 +616,42 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
             itemsText = input.substring(keyword.length + 1).trim();
             break;
           } else if (lowerInput === keyword) {
+            // FIXED: Set proper conversation context
+            const restoredContext: ConversationContext = {
+              lastAction: lastAction,
+              waitingForArticles: {
+                listId: lastAction.listId,
+                listName: lastAction.listName,
+                prompt: 'Continuation mode activated'
+              }
+            };
+            
+            this.chatPersistence.setConversationContext(restoredContext);
+            this.aiService.setConversationContext(restoredContext);
+            
             return {
               success: true,
-              message: `Was möchtest du noch zu "${context.lastAction.listName}" hinzufügen?`,
-              conversationContext: {
-                ...context,
-                waitingForArticles: {
-                  listId: context.lastAction.listId,
-                  listName: context.lastAction.listName,
-                  prompt: 'Continuation mode activated'
-                }
-              }
+              message: `Was möchtest du noch zu "${lastAction.listName}" hinzufügen?`,
+              conversationContext: restoredContext
             };
           }
         }
         
         if (itemsText.trim()) {
-          this.chatPersistence.setConversationContext({
-            lastAction: context.lastAction,
+          // FIXED: Set conversation context before processing
+          const activatedContext: ConversationContext = {
+            lastAction: lastAction,
             waitingForArticles: {
-              listId: context.lastAction.listId,
-              listName: context.lastAction.listName,
+              listId: lastAction.listId,
+              listName: lastAction.listName,
               prompt: 'Continuation mode'
             }
-          });
+          };
           
-          const enhancedInput = `Füge ${itemsText} zu ${context.lastAction.listName} hinzu`;
-          return await this.aiService.executeCommand(enhancedInput);
+          this.chatPersistence.setConversationContext(activatedContext);
+          this.aiService.setConversationContext(activatedContext);
+          
+          return await this.aiService.executeCommand(itemsText);
         }
       }
     }
@@ -590,23 +663,21 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // DISAMBIGUATION METHODS
+  // DISAMBIGUATION - FIXED
   // ========================================
+
   private handleDisambiguation(result: AIExecutionResult): void {
     if (!result.disambiguationOptions || !result.pendingAction) {
       console.error('Invalid disambiguation data:', result);
       return;
     }
 
-    console.log('🎯 HANDLING DISAMBIGUATION WITH SKIP OPTIONS');
-    console.log('🎯 Original options:', result.disambiguationOptions);
-    console.log('🎯 Pending action:', result.pendingAction);
+    console.log('🎯 Handling disambiguation');
 
-    // CRITICAL: Always ensure skip option is present with German label
+    // CRITICAL FIX: Always ensure skip option is present
     const hasSkipOption = result.disambiguationOptions.some(opt => opt.type === 'skip');
     
     if (!hasSkipOption && result.pendingAction) {
-      console.log('🍳 ADDING German skip option to disambiguation');
       result.disambiguationOptions.push({
         id: 'skip_item',
         displayName: `"${result.pendingAction.itemName}" überspringen`,
@@ -615,20 +686,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         icon: '⏭️',
         skipReason: 'Bereits zu Hause vorhanden'
       });
-    } else if (result.pendingAction) {
-      // CRITICAL: Ensure existing skip options have proper German labels
-      result.disambiguationOptions.forEach(option => {
-        if (option.type === 'skip') {
-          option.displayName = `"${result.pendingAction!.itemName}" überspringen`;
-          option.skipReason = option.skipReason || 'Bereits zu Hause vorhanden';
-          option.icon = '⏭️';
-        }
-      });
     }
 
-    console.log('🎯 FINAL options with skip:', result.disambiguationOptions);
-
-    // Convert options to avoid type conflicts
+    // Convert options for compatibility
     const compatibleOptions = result.disambiguationOptions.map((option: any) => ({
       id: option.id,
       displayName: option.displayName,
@@ -640,15 +700,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       skipReason: option.skipReason
     }));
     
+    // FIXED: Use simplified message
     this.chatPersistence.setDisambiguation({
-      message: result.message,
+      message: `"${result.pendingAction.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`,
       options: compatibleOptions as any[],
       pendingAction: result.pendingAction as any
     });
   }
 
   selectDisambiguationOption(option: any): void {
-    console.log('🎯 DISAMBIGUATION OPTION SELECTED:', option);
+    console.log('🎯 Disambiguation option selected:', option);
     
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) {
@@ -658,31 +719,30 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
     const pendingAction = disambiguation.pendingAction;
     
-    // CRITICAL: Handle SKIP option with German messaging
+    // Handle skip option
     if (option.type === 'skip') {
-      console.log('⏭️ Processing skip option with German labels');
-      this.handleSkipArticleWithGermanLabels(pendingAction, option);
+      console.log('⏭️ Processing skip option');
+      this.handleSkipArticle(pendingAction, option);
       return;
     }
     
-    // Clear disambiguation for non-skip options
+    // Clear disambiguation and add choice message
     this.chatPersistence.setDisambiguation(null);
     
-    // Generate choice text
-    const choiceText = this.generateChoiceTextWithGerman(option, pendingAction);
+    const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
     this.isProcessing = true;
 
-    // Process with conversation preservation
+    // CRITICAL FIX: Preserve context during disambiguation
+    const currentContext = this.getCurrentActiveContext();
+    
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
-        console.log('🎯 DISAMBIGUATION RESULT:', result);
+        console.log('🎯 Disambiguation result:', result);
         
-        // Preserve conversation context
-        if (!result.conversationContext && this.isInActiveConversation()) {
-          console.log('🎯 PRESERVING conversation context');
-          const currentContext = this.chatPersistence.getConversationContext() || 
-                                this.aiService.getConversationContext();
+        // CRITICAL FIX: Preserve conversation context if lost
+        if (result.success && !result.conversationContext && this.isInActiveConversation()) {
+          console.log('🎯 Preserving conversation context after disambiguation');
           if (currentContext.waitingForArticles) {
             result.conversationContext = currentContext;
             result.followUpPrompt = result.followUpPrompt || 
@@ -693,7 +753,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         this.handleAIResult(result);
       })
       .catch((error: any) => {
-        console.error('🎯 DISAMBIGUATION ERROR:', error);
+        console.error('🎯 Disambiguation error:', error);
         this.chatPersistence.addMessage(
           `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
@@ -705,68 +765,48 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       });
   }
 
-  cancelDisambiguation(): void {
-    this.chatPersistence.setDisambiguation(null);
-    this.chatPersistence.addMessage('Aktion abgebrochen.', 'system');
-  }
-
-  // ========================================
-  // SKIP FUNCTIONALITY METHODS
-  // ========================================
-  private handleSkipArticleWithGermanLabels(pendingAction: any, option: any): void {
-    console.log('⏭️ Enhanced German skip handling for:', pendingAction.itemName);
+  private handleSkipArticle(pendingAction: any, option: any): void {
+    console.log('⏭️ Handling skip for:', pendingAction.itemName);
     
-    // Clear disambiguation immediately
     this.chatPersistence.setDisambiguation(null);
     
-    // Generate German skip message
     let skipMessage = `⏭️ "${pendingAction.itemName}" übersprungen`;
-    
     if (option.skipReason) {
       skipMessage += ` (${option.skipReason})`;
-    } else {
-      skipMessage += ' (bereits vorhanden)';
-    }
-    
-    // Add progress info for sequential processing
-    if (this.isSequentialRecipeProcessing(pendingAction)) {
-      const current = this.getCurrentItemIndex(pendingAction) + 1;
-      const total = this.getTotalItems(pendingAction);
-      const remaining = total - current;
-      
-      if (remaining > 0) {
-        skipMessage += ` - ${remaining} weitere Zutat${remaining === 1 ? '' : 'en'} verbleibend`;
-      }
     }
     
     this.chatPersistence.addMessage(skipMessage, 'user');
-    this.isProcessing = false;
+    this.isProcessing = true;
     
-    // Show German continuation message
+    // CRITICAL FIX: Handle sequential processing continuation
     if (this.isSequentialRecipeProcessing(pendingAction)) {
-      const remaining = this.getTotalItems(pendingAction) - this.getCurrentItemIndex(pendingAction) - 1;
+      console.log('⏭️ Continuing sequential recipe processing after skip');
       
-      if (remaining > 0) {
-        this.chatPersistence.addMessage(
-          `⏭️ Zutat übersprungen. Verarbeite die nächste Zutat (${remaining} verbleibend)...`, 
-          'assistant'
-        );
-      } else {
-        this.chatPersistence.addMessage(
-          '🍳 Rezept-Verarbeitung abgeschlossen! Alle Zutaten wurden verarbeitet.', 
-          'assistant'
-        );
-      }
+      this.aiService.handleDisambiguationChoice(pendingAction, {
+        id: 'skip_item',
+        displayName: `"${pendingAction.itemName}" überspringen`,
+        type: 'skip' as const,
+        confidence: 1.0,
+        skipReason: option.skipReason || 'Übersprungen'
+      })
+      .then((result: AIExecutionResult) => {
+        this.handleAIResult(result);
+      })
+      .catch((error: any) => {
+        console.error('⏭️ Error continuing after skip:', error);
+        this.chatPersistence.addMessage('❌ Fehler beim Fortsetzen der Verarbeitung', 'error');
+      })
+      .finally(() => {
+        this.isProcessing = false;
+      });
+      
     } else {
-      const context = this.chatPersistence.getConversationContext();
-      if (context?.waitingForArticles) {
+      // Single item skip
+      this.isProcessing = false;
+      const context = this.getCurrentActiveContext();
+      if (context.waitingForArticles) {
         this.chatPersistence.addMessage(
-          `⏭️ Zutat übersprungen. Du kannst weitere Artikel zu "${context.waitingForArticles.listName}" hinzufügen.`, 
-          'assistant'
-        );
-      } else {
-        this.chatPersistence.addMessage(
-          '⏭️ Artikel übersprungen. Du kannst weitere Artikel hinzufügen.',
+          `Du kannst weitere Artikel zu "${context.waitingForArticles.listName}" hinzufügen.`, 
           'assistant'
         );
       }
@@ -776,14 +816,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   async skipAllRemaining(pendingAction: any): Promise<void> {
     if (!this.isSequentialRecipeProcessing(pendingAction)) return;
     
-    console.log('⏭️ Alle verbleibenden Zutaten überspringen');
+    console.log('⏭️ Skipping all remaining items');
     
-    // Clear disambiguation
     this.chatPersistence.setDisambiguation(null);
     
     const remaining = this.getTotalItems(pendingAction) - this.getCurrentItemIndex(pendingAction);
     
-    // Add German message
     this.chatPersistence.addMessage(
       `⏭️ Alle ${remaining} verbleibenden Zutaten übersprungen`, 
       'user'
@@ -792,8 +830,26 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.isProcessing = true;
     
     try {
-      // Create result for skipping all
-      const result = await this.handleSkipAllRemainingWithGerman(pendingAction);
+      // Skip to end
+      pendingAction.currentItemIndex = pendingAction.items.length;
+      
+      // Add all remaining as skipped
+      for (let i = this.getCurrentItemIndex(pendingAction); i < pendingAction.items.length; i++) {
+        pendingAction.processedItems = pendingAction.processedItems || [];
+        pendingAction.processedItems.push({
+          item: pendingAction.items[i],
+          skipped: true,
+          skipReason: 'Alle übersprungen'
+        });
+      }
+      
+      const result = await this.aiService.handleDisambiguationChoice(pendingAction, {
+        id: 'skip_all_remaining',
+        displayName: 'Alle verbleibenden überspringen',
+        type: 'skip' as const,
+        confidence: 1.0
+      });
+      
       await this.handleAIResult(result);
     } catch (error) {
       console.error('⏭️ Error skipping all items:', error);
@@ -803,200 +859,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async handleSkipAllRemainingWithGerman(pendingAction: any): Promise<AIExecutionResult> {
-    const { allItems, currentItemIndex, processedItems, conversationListId } = pendingAction;
-    
-    // Mark all remaining items as skipped
-    const updatedProcessedItems = [...processedItems];
-    
-    for (let i = currentItemIndex; i < allItems.length; i++) {
-      updatedProcessedItems.push({
-        originalText: allItems[i],
-        skipped: true,
-        reason: 'alle_übersprungen'
-      });
-    }
-    
-    // Build German summary
-    const successfulItems = updatedProcessedItems.filter(item => !item.skipped && !item.failed);
-    const skippedItems = updatedProcessedItems.filter(item => item.skipped);
-    
-    let message = '🍳 **Rezept-Verarbeitung abgeschlossen**\n\n';
-    
-    if (successfulItems.length > 0) {
-      const addedSummary = successfulItems
-        .map(item => `"${item.article?.name || item.originalText}"`)
-        .join(', ');
-      message += `✅ **${successfulItems.length} Artikel hinzugefügt:**\n${addedSummary}\n\n`;
-    }
-    
-    if (skippedItems.length > 0) {
-      const skippedSummary = skippedItems
-        .map(item => `"${item.originalText}"`)
-        .join(', ');
-      message += `⏭️ **${skippedItems.length} Artikel übersprungen:**\n${skippedSummary}\n\n`;
-    }
-    
-    // Maintain conversation context
-    const context = this.chatPersistence.getConversationContext();
-    let conversationContext = context;
-    
-    if (context?.waitingForArticles) {
-      message += `📋 **Liste "${context.waitingForArticles.listName}" ist bereit für den Einkauf!**`;
-      
-      conversationContext = {
-        lastAction: {
-          type: 'article_added' as const,
-          listId: context.waitingForArticles.listId,
-          listName: context.waitingForArticles.listName,
-          articleName: `Rezept (${successfulItems.length} Artikel)`,
-          timestamp: new Date()
-        },
-        waitingForArticles: {
-          listId: context.waitingForArticles.listId,
-          listName: context.waitingForArticles.listName,
-          prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-        }
-      };
-    }
-    
-    return {
-      success: true,
-      message: message,
-      listId: conversationContext?.waitingForArticles?.listId,
-      conversationContext: conversationContext || undefined,
-      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen oder ein neues Rezept verarbeiten?'
-    };
+  cancelDisambiguation(): void {
+    this.chatPersistence.setDisambiguation(null);
+    this.chatPersistence.addMessage('Aktion abgebrochen.', 'system');
   }
 
   // ========================================
-  // VOICE INPUT METHODS
+  // UI HELPER METHODS - FIXED
   // ========================================
-  toggleVoiceInput(): void {
-    if (this.isRecording) {
-      this.stopRecording();
-    } else {
-      this.startVoiceRecording();
-    }
-  }
 
-  private initializeSpeechRecognition(): void {
-    if (!this.isSpeechRecognitionSupported()) {
-      console.warn('Speech recognition not supported');
-      return;
-    }
-
-    const SpeechRecognition = this.getSpeechRecognitionClass();
-    this.recognition = new SpeechRecognition();
-    this.configureSpeechRecognition();
-  }
-
-  private isSpeechRecognitionSupported(): boolean {
-    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-  }
-
-  private getSpeechRecognitionClass(): any {
-    return (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-  }
-
-  private configureSpeechRecognition(): void {
-    this.recognition.continuous = false;
-    this.recognition.interimResults = false;
-    this.recognition.lang = 'de-DE';
-    
-    this.recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      this.currentMessage = transcript;
-      this.isRecording = false;
-      
-      // Mark as voice input for audio feedback
-      this.lastInputSource = 'voice';
-      this.shouldProvideAudioFeedback = true;
-      
-      console.log('🎤 Voice input received:', transcript);
-      setTimeout(() => this.sendMessage(), 500);
-    };
-
-    this.recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      this.isRecording = false;
-      this.handleSpeechError(event.error);
-    };
-
-    this.recognition.onend = () => {
-      this.isRecording = false;
-    };
-  }
-
-  private handleSpeechError(error: string): void {
-    let errorMessage = 'Spracherkennung fehlgeschlagen.';
-    
-    switch (error) {
-      case 'no-speech':
-        errorMessage = 'Keine Sprache erkannt. Versuche es erneut.';
-        break;
-      case 'not-allowed':
-        errorMessage = 'Mikrofon-Berechtigung erforderlich.';
-        break;
-    }
-    
-    this.snackBar.open(errorMessage, 'OK', { duration: 3000 });
-  }
-
-  private startVoiceRecording(): void {
-    if (!this.recognition) {
-      this.snackBar.open('Spracherkennung nicht unterstützt', 'OK', { duration: 3000 });
-      return;
-    }
-
-    this.isRecording = true;
-    this.currentMessage = '';
-    
-    try {
-      this.recognition.start();
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error);
-      this.isRecording = false;
-      this.snackBar.open('Spracherkennung konnte nicht gestartet werden', 'OK', { duration: 3000 });
-    }
-  }
-
-  private stopRecording(): void {
-    if (this.recognition && this.isRecording) {
-      this.recognition.stop();
-    }
-    this.isRecording = false;
-  }
-
-  private speak(text: string): void {
-    if (!this.synthesis || this.isSpeaking) return;
-    
-    this.synthesis.cancel();
-    this.isSpeaking = true;
-    
-    const cleanText = text.split('\n')[0]
-      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '')
-      .trim();
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
-    
-    utterance.onend = () => {
-      this.isSpeaking = false;
-    };
-    
-    utterance.onerror = () => {
-      this.isSpeaking = false;
-    };
-    
-    this.synthesis.speak(utterance);
-  }
-
-  // ========================================
-  // UI HELPER METHODS
-  // ========================================
   onTextInput(): void {
     this.lastInputSource = 'text';
     this.shouldProvideAudioFeedback = false;
@@ -1008,23 +879,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.sendMessage();
   }
 
-  /**
-   * Check if continuation keywords can be used
-   */
   canUseContinuation(): boolean {
-    const context = this.chatPersistence.getConversationContext();
+    const activeContext = this.getCurrentActiveContext();
     
-    if (context?.lastAction) {
-      const timeSince = Date.now() - context.lastAction.timestamp.getTime();
+    if (activeContext.lastAction) {
+      const timeSince = Date.now() - activeContext.lastAction.timestamp.getTime();
       return timeSince < 10 * 60 * 1000; // 10 minutes
     }
     
     return false;
   }
 
-  /**
-   * Quick continuation actions
-   */
   quickContinuation(keyword: string): void {
     const examples = ['Milch', 'Brot', '2kg Bananen', 'Käse'];
     const randomItem = examples[Math.floor(Math.random() * examples.length)];
@@ -1041,9 +906,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   getInputPlaceholder(): string {
     if (this.isInActiveConversation()) {
-      const context = this.chatPersistence.getConversationContext();
-      if (context?.waitingForArticles) {
-        return `Artikel für "${context.waitingForArticles.listName}"`;
+      const targetList = this.getCurrentTargetList();
+      if (targetList) {
+        return `Artikel für "${targetList.listName}"`;
       }
       return 'Artikel eingeben';
     }
@@ -1068,8 +933,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   // ========================================
-  // DISAMBIGUATION UI HELPERS
+  // DISAMBIGUATION UI HELPERS - FIXED
   // ========================================
+
   isRecipeProcessing(pendingAction: any): boolean {
     if (!pendingAction) return false;
     return pendingAction.isFromRecipe || 
@@ -1080,26 +946,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   isSequentialRecipeProcessing(pendingAction: any): boolean {
     return pendingAction?.isMultiItemSequential && 
-           pendingAction?.allItems &&
-           pendingAction?.currentItemIndex !== undefined;
-  }
-
-  getRegularOptions(options: any[]): any[] {
-    return options?.filter(option => option.type !== 'skip') || [];
-  }
-
-  getSkipOptions(options: any[]): any[] {
-    return options?.filter(option => option.type === 'skip') || [];
-  }
-
-  getSkipReason(option: any, pendingAction: any): string {
-    if (option.skipReason) {
-      return option.skipReason;
-    }
-    if (this.isRecipeProcessing(pendingAction)) {
-      return 'Bereits zu Hause vorhanden oder nicht benötigt';
-    }
-    return 'Nicht hinzufügen';
+           pendingAction?.items &&
+           Array.isArray(pendingAction.items) &&
+           typeof pendingAction?.currentItemIndex === 'number' &&
+           pendingAction.currentItemIndex < pendingAction.items.length;
   }
 
   getCurrentItemIndex(pendingAction: any): number {
@@ -1107,7 +957,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   getTotalItems(pendingAction: any): number {
-    return pendingAction?.allItems?.length || 1;
+    return pendingAction?.allItems?.length || pendingAction?.items?.length || 1;
   }
 
   getProgressPercentage(pendingAction: any): number {
@@ -1224,7 +1074,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     return `${percentage}% - Entfernt ähnlich`;
   }
 
-  private generateChoiceTextWithGerman(option: DisambiguationOption, pendingAction: any): string {
+  private generateChoiceText(option: DisambiguationOption, pendingAction: any): string {
     if (option.type === 'skip') {
       return `⏭️ "${pendingAction.itemName}" übersprungen`;
     }
@@ -1234,9 +1084,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       const total = this.getTotalItems(pendingAction);
       
       if (option.type === 'existing') {
-        return `🍳 Zutat ${current}/${total}: ${option.displayName} (vorhandener Artikel gewählt)`;
+        return `🍳 Zutat ${current}/${total}: ${option.displayName} gewählt`;
       } else {
-        return `🍳 Zutat ${current}/${total}: "${pendingAction.itemName}" (neuen Artikel erstellen)`;
+        return `🍳 Zutat ${current}/${total}: "${pendingAction.itemName}" (neu erstellen)`;
       }
     }
     
@@ -1257,15 +1107,137 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         this.speak(messageToSpeak);
       }
     }
-    
-    if (result.conversationContext) {
-      this.chatPersistence.setConversationContext(result.conversationContext);
+  }
+
+  // ========================================
+  // VOICE INPUT METHODS
+  // ========================================
+
+  toggleVoiceInput(): void {
+    if (this.isRecording) {
+      this.stopRecording();
+    } else {
+      this.startVoiceRecording();
     }
+  }
+
+  private initializeSpeechRecognition(): void {
+    if (!this.isSpeechRecognitionSupported()) {
+      console.warn('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = this.getSpeechRecognitionClass();
+    this.recognition = new SpeechRecognition();
+    this.configureSpeechRecognition();
+  }
+
+  private isSpeechRecognitionSupported(): boolean {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  }
+
+  private getSpeechRecognitionClass(): any {
+    return (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+  }
+
+  private configureSpeechRecognition(): void {
+    this.recognition.continuous = false;
+    this.recognition.interimResults = false;
+    this.recognition.lang = 'de-DE';
+    
+    this.recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      this.currentMessage = transcript;
+      this.isRecording = false;
+      
+      this.lastInputSource = 'voice';
+      this.shouldProvideAudioFeedback = true;
+      
+      console.log('🎤 Voice input received:', transcript);
+      setTimeout(() => this.sendMessage(), 500);
+    };
+
+    this.recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      this.isRecording = false;
+      this.handleSpeechError(event.error);
+    };
+
+    this.recognition.onend = () => {
+      this.isRecording = false;
+    };
+  }
+
+  private handleSpeechError(error: string): void {
+    let errorMessage = 'Spracherkennung fehlgeschlagen.';
+    
+    switch (error) {
+      case 'no-speech':
+        errorMessage = 'Keine Sprache erkannt. Versuche es erneut.';
+        break;
+      case 'not-allowed':
+        errorMessage = 'Mikrofon-Berechtigung erforderlich.';
+        break;
+    }
+    
+    this.snackBar.open(errorMessage, 'OK', { duration: 3000 });
+  }
+
+  private startVoiceRecording(): void {
+    if (!this.recognition) {
+      this.snackBar.open('Spracherkennung nicht unterstützt', 'OK', { duration: 3000 });
+      return;
+    }
+
+    this.isRecording = true;
+    this.currentMessage = '';
+    
+    try {
+      this.recognition.start();
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+      this.isRecording = false;
+      this.snackBar.open('Spracherkennung konnte nicht gestartet werden', 'OK', { duration: 3000 });
+    }
+  }
+
+  private stopRecording(): void {
+    if (this.recognition && this.isRecording) {
+      this.recognition.stop();
+    }
+    this.isRecording = false;
+  }
+
+  private speak(text: string): void {
+    if (!this.synthesis || this.isSpeaking) return;
+    
+    this.synthesis.cancel();
+    this.isSpeaking = true;
+    
+    const cleanText = text.split('\n')[0]
+      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '')
+      .trim();
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'de-DE';
+    utterance.rate = 0.9;
+    utterance.volume = 0.8;
+    
+    utterance.onend = () => {
+      this.isSpeaking = false;
+    };
+    
+    utterance.onerror = () => {
+      this.isSpeaking = false;
+    };
+    
+    this.synthesis.speak(utterance);
   }
 
   // ========================================
   // NAVIGATION & ACTIONS
   // ========================================
+
   onBack(): void {
     this.router.navigate(['/lists']);
   }
@@ -1273,6 +1245,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   clearChat(): void {
     this.chatPersistence.clearMessages();
     this.chatPersistence.initializeIfEmpty();
+    this.clearAllContexts();
     this.snackBar.open('Chat geleert', '', { duration: 1500 });
   }
 
@@ -1314,6 +1287,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // ========================================
   // PWA & UTILITY METHODS
   // ========================================
+
   private setupPWAViewport(): void {
     if (!isPlatformBrowser(this.platformId)) return;
 
@@ -1380,115 +1354,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   public trackByOptionId(index: number, option: any): string {
     return option.id || index.toString();
-  }
-
-  // ========================================
-  // DEBUG & TESTING METHODS
-  // ========================================
-  forceTestContext(): void {
-    const testContext: ConversationContext = {
-      lastAction: {
-        type: 'list_created' as const,
-        listId: 'test-123',
-        listName: 'Spar',
-        articleName: '',
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: 'test-123',
-        listName: 'Spar',
-        prompt: 'Test'
-      }
-    };
-    
-    console.log('🧪 SETTING TEST CONTEXT:', testContext);
-    this.aiService.setConversationContext(testContext);
-    this.chatPersistence.setConversationContext(testContext);
-    
-    this.chatPersistence.addMessage(
-      '🧪 Test-Kontext gesetzt: Warte auf Artikel für "Spar"', 
-      'system'
-    );
-  }
-
-  checkContextSources(): void {
-    const aiContext = this.aiService.getConversationContext();
-    const chatContext = this.chatPersistence.getConversationContext();
-    const status = this.getConversationStatus();
-    
-    const report = `🔍 **Kontext-Bericht:**\n\n` +
-      `**AI Service:**\n` +
-      `- Waiting: ${!!aiContext.waitingForArticles}\n` +
-      `- List: ${aiContext.waitingForArticles?.listName || 'Keine'}\n` +
-      `- Last Action: ${aiContext.lastAction?.listName || 'Keine'}\n\n` +
-      `**Chat Persistence:**\n` +
-      `- Waiting: ${!!chatContext?.waitingForArticles}\n` +
-      `- List: ${chatContext?.waitingForArticles?.listName || 'Keine'}\n` +
-      `- Last Action: ${chatContext?.lastAction?.listName || 'Keine'}\n\n` +
-      `**Status:** ${status}`;
-    
-    this.chatPersistence.addMessage(report, 'system');
-  }
-
-  testRecipeWithContext(): void {
-    this.forceTestContext();
-    setTimeout(() => {
-      this.sendQuickMessage('Rezept: Milch, Brot, Käse');
-    }, 1000);
-  }
-
-  testSkipFunctionality(): void {
-    console.log('🧪 TESTING SKIP FUNCTIONALITY');
-    
-    const testOptions: any[] = [
-      {
-        id: 'existing_1',
-        displayName: 'Milch (Ja! Vollmilch)',
-        type: 'existing' as const,
-        confidence: 0.9,
-        icon: '🥛'
-      },
-      {
-        id: 'new_1',
-        displayName: 'Neuen Artikel "Milch" erstellen',
-        type: 'new' as const,
-        confidence: 1.0,
-        icon: '✨'
-      },
-      {
-        id: 'skip_item',
-        displayName: '"Milch" überspringen',
-        type: 'skip' as const,
-        confidence: 1.0,
-        icon: '⏭️',
-        skipReason: 'Bereits zu Hause vorhanden'
-      }
-    ];
-    
-    const testPendingAction: any = {
-      type: 'add_item' as const,
-      itemName: 'Milch',
-      originalInput: 'Rezept: Milch, Brot, Käse',
-      isFromRecipe: true,
-      isMultiItemSequential: true,
-      currentItemIndex: 0,
-      allItems: ['Milch', 'Brot', 'Käse'],
-      conversationListId: 'test-list-123'
-    };
-    
-    this.chatPersistence.setDisambiguation({
-      message: '🍳 Zutat 1/3: "Milch"\n\nIch habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?\n\n⏭️ Du kannst Zutaten überspringen, die du bereits hast.',
-      options: testOptions,
-      pendingAction: testPendingAction
-    });
-    
-    this.chatPersistence.addMessage('🧪 Test-Disambiguation mit Skip-Option erstellt', 'system');
-  }
-
-  clearAllContexts(): void {
-    this.aiService.clearConversationContext();
-    this.chatPersistence.clearConversationContext();
-    this.chatPersistence.addMessage('🧹 Alle Kontexte gelöscht', 'system');
   }
 
   // Make Math available in template

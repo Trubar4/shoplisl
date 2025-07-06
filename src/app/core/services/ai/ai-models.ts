@@ -40,7 +40,7 @@ export interface AIExecutionResult {
 export interface DisambiguationOption {
   id: string;
   displayName: string;
-  type: 'existing' | 'new' | 'skip';
+  type: 'new' | 'existing' | 'skip';
   article?: Article;
   confidence: number;
   department?: string;
@@ -102,26 +102,21 @@ export interface MultiItemParseResult {
 }
 
 export interface MultiItemPendingAction {
-  type: 'add_multiple_items' | 'create_list_with_multiple_items' | 'select_list';
+  type: 'add_multiple_items' | 'create_list_with_multiple_items';
   originalInput: string;
-  itemName: string; // Not used for multi-items, kept for compatibility
-  extractedQuantity?: string; // Not used for multi-items, kept for compatibility
-  listName?: string;
-  suggestedDepartment?: string;
-  articleToAdd?: {
-    id?: string;
-    name: string;
-    amount?: string;
-    departmentId?: string;
-    icon?: string;
-  };
+  itemName: string;
+  extractedQuantity?: string; // ADD this property
   items: ParsedItem[];
-  currentItemIndex: number; // For sequential disambiguation
-  processedItems: Array<{
-    item: ParsedItem;
-    articleId?: string;
-    disambiguationResolved: boolean;
-  }>;
+  listName?: string;
+  currentItemIndex: number;
+  processedItems: ProcessedItem[];
+  suggestedDepartment?: string;
+  
+  // Recipe processing support
+  isFromRecipe?: boolean;
+  isMultiItemSequential?: boolean;
+  conversationListId?: string;
+  allItems?: string[];
 }
 
 // ========================================
@@ -287,4 +282,16 @@ export interface ProcessedItemWithSkip {
   reason?: SkipReason;
   originalText?: string;
   disambiguationResolved?: boolean;
+}
+
+export interface ProcessedItem {
+  item: ParsedItem;
+  articleId?: string;
+  disambiguationResolved?: boolean;
+  skipped?: boolean;
+  failed?: boolean;
+  skipReason?: string;
+  error?: string;
+  quantity?: string;
+  originalText?: string;
 }
