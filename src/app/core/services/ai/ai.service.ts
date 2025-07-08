@@ -306,6 +306,7 @@ export class AIService {
   async executeCommand(input: string): Promise<AIExecutionResult> {
     console.log('🗣️ EXECUTING COMMAND:', input);
     console.log('🗣️ Current context:', this.conversationContext);
+    console.log('🤖 DEBUG: isRecipeCommand?', this.isRecipeCommand(input));
 
     try {
       // FIXED: Recipe command detection and processing
@@ -523,7 +524,9 @@ export class AIService {
             
           } catch (aiError) {
             console.error('🍳 Groq processing failed, using enhanced fallback:', aiError);
-            finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} zu ${targetListName} hinzu`;
+            console.log('🍳 ERROR DETAILS:', aiError); // ADD THIS
+            finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
+            console.log('🍳 FALLBACK COMMAND:', finalCommand); // ADD THIS
           }
         } else {
           console.log('🍳 No API key - using enhanced local parsing');
@@ -1079,36 +1082,46 @@ export class AIService {
     
     const cleanedText = this.cleanRawRecipeText(rawRecipeText);
     
-    const prompt = `Du bist ein Experte für deutsche Rezepte. Analysiere diese Zutatenliste und konvertiere sie zu Einkaufsliste-Befehlen.
-
-EINGABE (kann unordentlich sein):
-${cleanedText}
-
-REGELN:
-1. Ignoriere Überschriften wie "Für den Teig:", "Zubereitung:", "Portionen:" etc.
-2. Ignoriere Zubereitungsschritte und Anweisungen
-3. Extrahiere nur echte Zutaten mit Mengen
-4. Konvertiere zu Format: "Füge [Artikel] [Menge] hinzu"
-5. Verwende deutsche Maßeinheiten (g, kg, ml, l, EL, TL, Prise, Stück)
-6. Vereinfache komplexe Beschreibungen zu Grundzutaten
-
-BEISPIELE:
-"500 g Weizenmehl Type 405" → "Füge Mehl 500g hinzu"
-"2 mittelgroße Eier" → "Füge Eier 2 Stück hinzu"
-"1 Prise Salz" → "Füge Salz 1 Prise hinzu"
-"250ml Vollmilch 3,5%" → "Füge Milch 250ml hinzu"
-
-AUSGABE:
-Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.`;
-
+    const prompt = `Du bist ein Experte für deutsche Rezepte. Konvertiere diese Zutatenliste zu einem einzigen Befehl.
+  
+  EINGABE (kann unordentlich sein mit verschiedenen Symbolen):
+  ${cleanedText}
+  
+  REGELN:
+  1. Ignoriere Überschriften wie "Für die Soße:", "Zubereitung:", "Portionen:" etc.
+  2. Ignoriere Zubereitungsschritte und Anweisungen  
+  3. Extrahiere nur echte Zutaten mit Mengen
+  4. Verwende deutsche Maßeinheiten (g, kg, ml, l, EL, TL, Prise, Stück)
+  5. Vereinfache komplexe Beschreibungen zu Grundzutaten
+  
+  BEISPIELE:
+  Eingabe: "• 500g Mehl Type 405\n◦ 2 Eier\n▪ 250ml Milch"
+  Ausgabe: Mehl 500g, Eier 2 Stück, Milch 250ml
+  
+  Eingabe: "- 200g Tomaten (gehackt)\n* 1 Zwiebel\n>>> 2 EL Öl"  
+  Ausgabe: Tomaten 200g, Zwiebel 1 Stück, Öl 2 EL
+  
+  WICHTIG: 
+  - Gib NUR die Zutaten zurück im Format: "Zutat1 Menge, Zutat2 Menge, Zutat3 Menge"
+  - KEINE "Füge ... hinzu" Befehle
+  - KEINE Pfeile oder andere Symbole
+  - NUR kommagetrennte Zutatenliste
+  
+  AUSGABE (nur die Zutatenliste):`;
+  
     try {
       const response = await this.callGroqAPI(prompt);
-      console.log('🍳 Groq standardization result:', response);
-      return response.trim();
+      const cleanResponse = response.trim();
+      console.log('🍳 Groq raw response:', cleanResponse);
+      
+      // Clean up any remaining formatting issues
+      const finalCommand = `Füge ${cleanResponse} hinzu`;
+      console.log('🍳 Final processed command:', finalCommand);
+      return finalCommand;
     } catch (error) {
       console.error('🍳 Error standardizing recipe:', error);
       // Fallback to simple processing
-      return rawRecipeText.split(',').map(item => `Füge ${item.trim()} hinzu`).join('\n');
+      return `Füge ${this.parseAdvancedRecipe(rawRecipeText).join(', ')} hinzu`;
     }
   }
 
@@ -1127,10 +1140,20 @@ Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.`;
   private async callGroqAPI(prompt: string): Promise<string> {
     const apiKey = this.getSecureApiKey();
     
-    if (!apiKey) {
-      throw new Error('Groq API Key ist erforderlich für erweiterte Rezept-Features');
-    }
-
+    const requestBody = {
+      model: 'llama-3.1-8b-instant', // FIXED: Updated to current model
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000
+    };
+    
+    console.log('🔑 API Request Body:', JSON.stringify(requestBody, null, 2));
+    
     try {
       const response = await fetch(this.GROQ_API_URL, {
         method: 'POST',
@@ -1138,20 +1161,14 @@ Gib nur die "Füge ... hinzu" Befehle zurück, einen pro Zeile.`;
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: 'llama-3.1-70b-versatile',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        })
+        body: JSON.stringify(requestBody)
       });
-
+  
+      console.log('🔑 API Response Status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.log('🔑 API Error Response:', errorText);
         throw new Error(`Groq API Fehler: ${response.status}`);
       }
 

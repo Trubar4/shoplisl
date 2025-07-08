@@ -181,9 +181,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     const chatContext = this.chatPersistence.getConversationContext();
     const aiContext = this.aiService.getConversationContext();
     
-    console.log('🔄 SYNC: Syncing contexts bidirectionally');
+    /*console.log('🔄 SYNC: Syncing contexts bidirectionally');
     console.log('🔄 SYNC: Chat context:', chatContext);
-    console.log('🔄 SYNC: AI context:', aiContext);
+    console.log('🔄 SYNC: AI context:', aiContext);*/
     
     // Determine which context is more recent/complete
     let sourceContext: ConversationContext | null = null;
@@ -227,9 +227,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         this.chatPersistence.setConversationContext(sourceContext);
       }
       
-      console.log('🔄 SYNC: Synchronization completed');
+      //console.log('🔄 SYNC: Synchronization completed');
     } else {
-      console.log('🔄 SYNC: No synchronization needed');
+      //console.log('🔄 SYNC: No synchronization needed');
     }
   }
 
@@ -269,7 +269,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     const userMessage = this.currentMessage.trim();
     const lowerInput = userMessage.toLowerCase().trim();
     
-    console.log('💬 SEND MESSAGE CALLED:', userMessage);
+    console.log('🔍 DEBUG: sendMessage() called at:', new Date().toLocaleTimeString());
+    console.log('🔍 DEBUG: Stack trace:', new Error().stack);
+    console.log('🔍 DEBUG: Input:', userMessage);
+    console.log('🔍 DEBUG: Lower input:', lowerInput);
+    console.log('🔍 DEBUG: Starts with rezept:?', lowerInput.startsWith('rezept:'));
+    console.log('🔍 DEBUG: Starts with rezept ?', lowerInput.startsWith('rezept '));
     
     // FIXED: Sync contexts before processing
     this.syncContextBidirectional();
@@ -287,6 +292,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     try {
       // FIXED: Recipe detection with proper context preservation
       if (lowerInput.startsWith('rezept:') || lowerInput.startsWith('rezept ')) {
+        console.log('🍳🍳🍳 RECIPE CONDITION TRIGGERED! 🍳🍳🍳');
         console.log('🍳 Recipe detected - preserving context');
         await this.processRecipeWithContextPreservation(userMessage);
         return;
