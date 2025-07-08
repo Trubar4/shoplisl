@@ -1,5 +1,3 @@
-<!-- voice-ai-assistant.component.html - FIXED VERSION -->
-
 <div class="voice-ai-assistant">
   <!-- Header with navigation and stats -->
   <mat-toolbar color="primary" class="app-toolbar">
@@ -53,7 +51,7 @@
       </div>
     </div>
 
-    <!-- FIXED: Disambiguation Interface with proper scrolling and improved layout -->
+    <!-- Disambiguation Interface -->
     <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-container">
       <mat-card class="disambiguation-card">
         <!-- Header -->
@@ -90,7 +88,7 @@
             </div>
           </div>
           
-          <!-- FIXED: Options with improved layout and scrolling -->
+          <!-- Options with improved layout and scrolling -->
           <div class="disambiguation-options">
             <div *ngFor="let option of disambiguation.options; trackBy: trackByOptionId" 
                  class="disambiguation-option"
@@ -114,7 +112,6 @@
                   <div class="option-confidence" *ngIf="option.confidence && option.type !== 'skip'">
                     {{ getConfidenceText(option.confidence) }}
                   </div>
-                  <!-- FIXED: Skip reason styling -->
                   <div class="skip-reason" *ngIf="option.type === 'skip'">
                     {{ option.skipReason || 'Bereits zu Hause vorhanden' }}
                   </div>
@@ -131,7 +128,7 @@
             </div>
           </div>
           
-          <!-- FIXED: Action buttons with consistent styling -->
+          <!-- Action buttons -->
           <div class="disambiguation-actions">
             <div class="action-buttons-row">
               <button mat-raised-button 
@@ -154,35 +151,10 @@
       </mat-card>
     </div>
 
-    <!-- FIXED: Input area with improved layout and consistent button styling -->
+    <!-- FIXED: Completely removed conversation status box -->
     <div class="input-area">
-      
-      <!-- FIXED: Conversation status with consistent button styling -->
-      <div class="conversation-status" *ngIf="isInActiveConversation()">
-        <div class="conversation-info">
-          <mat-icon class="conversation-icon">chat</mat-icon>
-          <span class="conversation-text">
-            {{ getConversationStatus() }}
-          </span>
-        </div>
-        
-        <!-- FIXED: Consistent button styling for Fertig button -->
-        <button mat-raised-button 
-                (click)="finishAddingArticles()" 
-                color="primary" 
-                class="finish-conversation-button">
-          <mat-icon>check</mat-icon>
-          Fertig
-        </button>
-      </div>
 
-      <!-- Recipe Status Hint -->
-      <div class="recipe-hint" *ngIf="currentMessage.toLowerCase().startsWith('rezept') && aiService.hasApiKey()">
-        <mat-icon class="recipe-icon">restaurant</mat-icon>
-        <span>Rezept erkannt - Zutaten werden automatisch verarbeitet</span>
-      </div>
-
-      <!-- FIXED: Main input form with proper layout -->
+      <!-- FIXED: Input form only - no info boxes -->
       <div class="input-form">
         <mat-form-field appearance="outline" class="message-input">
           <mat-label>{{ getInputPlaceholder() }}</mat-label>
@@ -193,15 +165,15 @@
             (keydown.enter)="onEnterKey($event)"
             (input)="onTextInput()"
             [disabled]="isProcessing"
-            rows="2"
+            rows="1"
             placeholder="Deine Nachricht oder Befehl..."
             cdkTextareaAutosize
             cdkAutosizeMinRows="1"
-            cdkAutosizeMaxRows="4">
+            cdkAutosizeMaxRows="3">
           </textarea>
         </mat-form-field>
 
-        <!-- FIXED: Input actions with consistent spacing -->
+        <!-- Mic button right next to input -->
         <div class="input-actions">
           <button 
             mat-fab 
@@ -217,20 +189,18 @@
         </div>
       </div>
 
-      <!-- Recipe Processing Status -->
+      <!-- FIXED: Only show minimal processing status when needed -->
       <div class="processing-status" *ngIf="isProcessing && currentMessage.toLowerCase().includes('rezept')">
         <div class="simple-spinner">⟳</div>
-        <mat-icon class="recipe-processing-icon">restaurant</mat-icon>
-        <span>Verarbeite Rezept-Zutaten...</span>
+        <span>Verarbeite Rezept...</span>
       </div>
 
-      <!-- FIXED: Quick actions with Send button always visible -->
+      <!-- FIXED: Button layout with "Beenden" button when in conversation -->
       <div class="quick-actions">
         <div class="quick-buttons">
-          <!-- FIXED: Send button always visible and properly styled -->
+          <!-- Send button - always visible -->
           <button 
             mat-raised-button 
-            color="primary"
             (click)="sendMessage()"
             [disabled]="!currentMessage.trim() || isProcessing"
             [matTooltip]="getSendTooltip()"
@@ -239,7 +209,17 @@
             <span class="button-text">Senden</span>
           </button>
           
-          <!-- Show help buttons only when not in conversation -->
+          <!-- FIXED: "Beenden" button with full descriptive text -->
+          <button *ngIf="isInActiveConversation()" 
+              mat-raised-button 
+              (click)="finishAddingArticles()" 
+              matTooltip="Hinzufügen weiterer Artikel beenden"
+              class="end-conversation-button">
+            <mat-icon>check</mat-icon>
+            <span class="button-text">Hinzufügen weiterer Artikel beenden</span>
+          </button>
+          
+          <!-- Help button - only when NOT in conversation -->
           <button *ngIf="!isInActiveConversation()" 
                   mat-stroked-button 
                   (click)="showContextualHelp()" 
@@ -249,6 +229,7 @@
             <span class="button-text">Hilfe</span>
           </button>
           
+          <!-- Recipe help button - only when NOT in conversation -->
           <button *ngIf="!isInActiveConversation()" 
                   mat-stroked-button 
                   (click)="showRecipeHelp()" 
@@ -257,30 +238,6 @@
             <mat-icon>restaurant</mat-icon>
             <span class="button-text">Rezept</span>
           </button>
-        </div>
-
-        <!-- FIXED: Continuation actions with improved layout -->
-        <div class="continuation-section" *ngIf="canUseContinuation()">
-          <div class="continuation-info">
-            <mat-icon class="continuation-icon">history</mat-icon>
-            <span>{{ getConversationStatus() }}</span>
-          </div>
-          <div class="continuation-buttons">
-            <button mat-stroked-button 
-                    (click)="quickContinuation('und')" 
-                    matTooltip="Beispiel: 'und Milch'"
-                    class="continuation-button">
-              <mat-icon>add</mat-icon>
-              <span>und ...</span>
-            </button>
-            <button mat-stroked-button 
-                    (click)="quickContinuation('weiters')" 
-                    matTooltip="Österreichisch: 'weiters Brot'"
-                    class="continuation-button">
-              <mat-icon>add</mat-icon>
-              <span>weiters ...</span>
-            </button>
-          </div>
         </div>
       </div>
 

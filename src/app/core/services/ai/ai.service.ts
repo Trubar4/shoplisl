@@ -629,7 +629,7 @@ export class AIService {
       return this.parseSimpleIngredients(recipeContent);
     }
     
-    return ingredients.slice(0, 15); // Limit to 15 items
+    return ingredients.length > 0 ? ingredients.slice(0, 15) : recipeContent.split(/\s+(?=\d)/).filter(item => item.trim());
   }
 
   /**
@@ -1064,7 +1064,7 @@ export class AIService {
       });
       
       result.conversationContext = this.getConversationContext();
-      result.followUpPrompt = 'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
+      result.followUpPrompt = 'Du kannst direkt weitere Artikel zur letzt gewählten Liste hinzufügen (zB "Käse, Tomaten"). Wenn du damit fertig bist, kannst du rechts unten den ✅-Button klicken.';
     }
     
     return result;

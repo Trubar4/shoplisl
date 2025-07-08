@@ -55,16 +55,10 @@
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden; /* FIXED: Prevent horizontal scroll */
+  overflow-x: hidden;
   padding: 16px;
-  scroll-behavior: smooth;
-  /* CRITICAL FIX: Proper padding bottom based on content */
+  scroll-behavior: initial !important;
   padding-bottom: 16px;
-  
-  /* When disambiguation is shown, add more padding */
-  .voice-ai-assistant:has(.disambiguation-container) & {
-    padding-bottom: 0; /* Disambiguation handles its own spacing */
-  }
 }
 
 .message {
@@ -486,120 +480,103 @@
   padding-bottom: calc(16px + 56px + env(safe-area-inset-bottom, 0px));
 }
 
-/* FIXED: Conversation status with consistent styling */
 .conversation-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding: 12px 16px;
+  margin-bottom: 4px; /* Further reduced */
+  padding: 4px 8px; /* Much smaller padding */
   background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
-  border-radius: 10px;
-  border-left: 4px solid #4caf50;
-  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.1);
+  border-radius: 4px; /* Smaller radius */
+  border-left: 2px solid #4caf50; /* Thinner border */
+  box-shadow: 0 1px 2px rgba(76, 175, 80, 0.1);
   
   .conversation-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px; /* Minimal gap */
     flex: 1;
-    min-width: 0; /* Allow text to wrap */
+    min-width: 0;
     
     .conversation-icon {
       color: #2e7d32;
-      font-size: 20px;
+      font-size: 14px; /* Smaller icon */
       flex-shrink: 0;
     }
     
     .conversation-text {
       font-weight: 500;
       color: #2e7d32;
-      font-size: 14px;
-      word-break: break-word; /* FIXED: Handle long list names */
+      font-size: 11px; /* Much smaller text */
+      word-break: break-word;
     }
   }
   
-  /* FIXED: Consistent button styling for Fertig button */
+  /* FIXED: Match article detail button style for Fertig button */
   .finish-conversation-button {
     flex-shrink: 0;
-    min-height: 36px;
-    border-radius: 8px;
+    min-height: 24px; /* Much smaller */
+    border-radius: 12px; /* Consistent with article detail style */
     font-weight: 500;
-    font-size: 14px;
-    padding: 8px 16px;
-    transition: all 0.3s ease;
+    font-size: 10px; /* Much smaller text */
+    padding: 2px 8px; /* Minimal padding */
+    transition: all 0.2s ease;
     
     mat-icon {
-      font-size: 16px;
-      margin-right: 4px;
+      font-size: 12px; /* Smaller icon */
+      margin-right: 2px;
     }
     
     &:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
   }
 }
 
-/* Recipe hints */
 .recipe-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 152, 0, 0.15);
-  border-radius: 8px;
-  color: #e65100;
-  font-weight: 500;
-  margin-bottom: 12px;
-  animation: pulse 2s infinite;
-  border-left: 3px solid #ff9800;
-  
-  .recipe-icon {
-    font-size: 18px;
-    color: #ff9800;
-  }
+  display: none; /* Hide recipe hints to simplify layout */
 }
 
-/* FIXED: Input form with proper layout */
 .input-form {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  gap: 4px; /* Minimal gap */
+  align-items: center; /* FIXED: Center alignment for perfect vertical centering */
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 4px; /* Minimal margin */
   
   .message-input {
     flex: 1;
-    min-width: 0; /* CRITICAL: Allow input to shrink */
+    min-width: 0;
     
-    /* FIXED: Textarea height management */
     textarea {
       resize: none;
-      line-height: 1.4;
-      /* CRITICAL FIX: Limit max height to prevent huge input area */
-      max-height: 100px !important; /* Reduced from 120px */
+      line-height: 1.3; /* Tighter line height */
+      max-height: 80px !important; /* Reduced max height */
     }
     
-    /* FIXED: Form field appearance */
     .mat-mdc-form-field-wrapper {
       padding-bottom: 0;
     }
     
     .mat-mdc-form-field-infix {
-      padding: 12px 0 8px 0;
+      padding: 8px 0 4px 0; /* Reduced padding */
     }
   }
   
   .input-actions {
     display: flex;
-    align-items: center;
+    align-items: center; /* FIXED: Center alignment */
+    justify-content: center; /* FIXED: Center alignment */
     flex-shrink: 0;
     
     .voice-button {
-      width: 48px;
-      height: 48px;
+      width: 36px; /* Much smaller */
+      height: 36px; /* Much smaller */
       transition: all 0.3s ease;
+      display: flex; /* FIXED: Flex for perfect icon centering */
+      align-items: center; /* FIXED: Center icon vertically */
+      justify-content: center; /* FIXED: Center icon horizontally */
       
       &:hover:not(:disabled) {
         transform: scale(1.05);
@@ -612,42 +589,26 @@
       }
       
       mat-icon {
-        font-size: 24px;
+        font-size: 18px; /* Smaller icon */
+        line-height: 1; /* FIXED: Perfect line height for centering */
+        display: flex; /* FIXED: Flex for perfect centering */
+        align-items: center;
+        justify-content: center;
       }
     }
   }
 }
 
-/* Processing status */
 .processing-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 152, 0, 0.1);
-  border-radius: 6px;
-  margin-bottom: 12px;
-  color: #e65100;
-  font-weight: 500;
-  
-  .simple-spinner {
-    animation: spin 1s linear infinite;
-    font-size: 16px;
-    font-weight: bold;
-  }
-  
-  .recipe-processing-icon {
-    font-size: 18px;
-    color: #ff9800;
-  }
+  padding: 6px 10px; /* Reduced padding */
+  margin-bottom: 8px; /* Reduced margin */
+  border-radius: 4px; /* Smaller radius */
+  font-size: 12px; /* Smaller text */
 }
 
-/* FIXED: Quick actions with Send button ALWAYS visible above tab bar */
 .quick-actions {
-  /* CRITICAL FIX: Always show quick actions above tab bar */
   flex-shrink: 0;
-  margin-top: 8px;
-  /* FIXED: Add z-index to ensure it's above tab bar */
+  margin-top: 2px; /* Minimal margin */
   position: relative;
   z-index: 60;
   
@@ -656,28 +617,29 @@
     gap: 8px;
     width: 100%;
     
-    /* FIXED: Consistent button styling for all action buttons */
+    /* FIXED: Match exact article detail button styling */
     button {
       flex: 1;
-      min-height: 40px;
-      padding: 10px 8px;
-      font-size: 13px;
+      min-height: 36px; /* Slightly smaller than article detail's 48px for compactness */
       font-weight: 500;
-      border-radius: 8px;
+      font-size: 12px; /* Compact size */
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      transition: all 0.3s ease;
+      gap: 6px; /* Match article detail gap */
+      transition: all 0.2s ease; /* Match article detail transition */
+      border: 1px solid transparent; /* Match article detail border setup */
+      text-transform: none; /* Match article detail text transform */
       
-      /* CRITICAL FIX: Ensure button is ALWAYS visible above tab bar */
       opacity: 1 !important;
       visibility: visible !important;
       position: relative;
-      z-index: 70; /* Higher than tab bar */
+      z-index: 70;
       
       mat-icon {
-        font-size: 18px;
+        font-size: 16px; /* Compact icon size */
+        width: 16px;
+        height: 16px;
         margin: 0;
       }
       
@@ -688,17 +650,18 @@
       }
       
       &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px); /* Match article detail hover */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* Match article detail hover shadow */
       }
       
-      /* FIXED: Send button prominence and visibility */
+      /* FIXED: Send button - match primary-button style from article detail */
       &.send-button {
-        font-weight: 600;
-        /* CRITICAL: Ensure primary color is applied and always visible */
-        background-color: #1976d2 !important;
+        border-radius: 18px; /* Match article detail border radius (scaled down from 24px) */
+        font-weight: 500; /* Match article detail font weight */
+        background-color: #1976d2 !important; /* Match primary color */
         color: white !important;
-        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important; /* Always visible shadow */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; /* Match article detail shadow */
+        padding: 0 16px; /* Match article detail padding style */
         
         &:disabled {
           background-color: #cccccc !important;
@@ -706,61 +669,62 @@
           box-shadow: none !important;
         }
         
-        /* CRITICAL: Ensure send button stays above everything */
+        &:hover:not(:disabled) {
+          background-color: #1565c0 !important; /* Darker shade on hover */
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+        }
+        
         z-index: 80 !important;
       }
       
-      /* Other button types */
-      &.help-button,
-      &.recipe-help-button {
-        background-color: transparent;
-        border: 1px solid #1976d2;
-        color: #1976d2;
+      /* FIXED: End conversation button - match secondary-button style from article detail */
+      &.end-conversation-button {
+        border-radius: 18px;
+        background-color: #4caf50 !important;
+        color: white !important;
+        padding: 0 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        min-width: 0;
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+        
+        .button-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: white !important;
+        }
+        
+        mat-icon {
+          color: white !important;
+        }
         
         &:hover {
-          background-color: rgba(25, 118, 210, 0.1);
+          background-color: #388e3c !important;
+          box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+        }
+      }
+      
+      /* FIXED: Help and Recipe buttons - match secondary-button style from article detail */
+      &.help-button,
+      &.recipe-help-button {
+        border-radius: 18px; /* Match article detail border radius (scaled down) */
+        background-color: transparent;
+        border: 1px solid #1976d2; /* Match stroked button style */
+        color: #1976d2;
+        padding: 0 12px; /* Slightly less padding for compact design */
+        
+        &:hover {
+          background-color: rgba(25, 118, 210, 0.1); /* Match article detail hover */
+          border-color: #1976d2;
         }
       }
     }
   }
 }
 
-/* Continuation section */
 .continuation-section {
-  margin-top: 12px;
-  
-  .continuation-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #757575;
-    margin-bottom: 8px;
-    padding: 6px 8px;
-    background: rgba(33, 150, 243, 0.1);
-    border-radius: 6px;
-    
-    .continuation-icon {
-      font-size: 16px;
-    }
-  }
-  
-  .continuation-buttons {
-    display: flex;
-    gap: 8px;
-    
-    .continuation-button {
-      flex: 1;
-      min-height: 36px;
-      font-size: 12px;
-      border-radius: 6px;
-      
-      mat-icon {
-        font-size: 16px;
-        margin-right: 4px;
-      }
-    }
-  }
+  display: none; /* Hide continuation section to simplify layout */
 }
 
 /* ========================================
@@ -800,140 +764,65 @@
    MOBILE RESPONSIVE - FIXED FOR TAB BAR
    ======================================== */
 
-@media (max-width: 768px) {
-  .input-area {
-    padding: 12px;
-    /* CRITICAL FIX: Prevent input area from becoming too tall on mobile */
-    max-height: 40vh; /* Slightly more space on mobile */
-    overflow-y: auto;
-    /* FIXED: Ensure proper spacing above tab bar on mobile */
-    padding-bottom: calc(12px + 60px + env(safe-area-inset-bottom, 0px)); /* More space for mobile tab bar */
-  }
-  
-  .input-form {
-    gap: 8px;
-    margin-bottom: 12px;
-    
-    .message-input {
-      .mat-mdc-form-field-infix {
-        padding: 8px 0 6px 0;
-      }
+   @media (max-width: 768px) {
+    .input-form {
+      gap: 3px; /* Minimal gap on mobile */
+      margin-bottom: 3px;
       
-      textarea {
-        /* CRITICAL FIX: Smaller max height on mobile to prevent tab bar overlap */
-        max-height: 60px !important; /* Reduced from 80px */
+      .input-actions {
+        .voice-button {
+          width: 32px !important; /* Much smaller on mobile */
+          height: 32px !important;
+          
+          mat-icon {
+            font-size: 16px;
+          }
+        }
       }
     }
     
-    .voice-button {
-      width: 44px !important;
-      height: 44px !important;
+    .quick-buttons {
+      gap: 4px; /* Smaller gap on mobile */
       
-      mat-icon {
-        font-size: 20px;
-      }
-    }
-  }
-  
-  .quick-buttons {
-    flex-direction: row !important;
-    gap: 6px;
-    
-    button {
-      min-height: 36px;
-      font-size: 12px;
-      padding: 8px 4px;
-      /* CRITICAL: Ensure buttons stay above tab bar on mobile */
-      z-index: 75 !important;
-      
-      .button-text {
-        display: none; /* Hide text on very small screens */
-      }
-      
-      mat-icon {
-        font-size: 16px;
-        margin: 0;
-      }
-      
-      /* CRITICAL: Send button extra visibility on mobile */
-      &.send-button {
-        z-index: 85 !important;
-        box-shadow: 0 3px 10px rgba(25, 118, 210, 0.4) !important;
-      }
-    }
-  }
-  
-  .disambiguation-container {
-    max-height: 70vh;
-  }
-  
-  .disambiguation-options {
-    .disambiguation-option {
-      padding: 12px;
-      
-      .option-main {
-        gap: 12px;
+      button {
+        min-height: 32px; /* Smaller on mobile */
+        font-size: 11px;
+        padding: 0 8px; /* Compact padding */
+        border-radius: 16px; /* Proportionally smaller radius */
         
-        .option-icon {
-          width: 40px;
-          height: 40px;
-          font-size: 18px;
+        .button-text {
+          display: none; /* Hide text on mobile for space - show icons only */
         }
         
-        .option-details {
-          .option-name {
-            font-size: 0.95em;
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+        
+        /* FIXED: End conversation button mobile styling - icon only */
+        &.end-conversation-button {
+          background-color: #4caf50 !important;
+          color: white !important;
+          min-width: 40px;
+          
+          &:hover {
+            background-color: #388e3c !important;
           }
           
-          .skip-reason {
-            font-size: 0.8em;
-          }
-        }
-        
-        .option-action {
-          .action-hint {
-            font-size: 0.75em;
+          mat-icon {
+            color: white !important;
           }
         }
       }
     }
-  }
-  
-  .disambiguation-actions {
-    .action-buttons-row {
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-      
-      .action-button {
-        width: 100%;
-        justify-content: center;
-        min-height: 36px;
-      }
-    }
-  }
-  
-  .conversation-status {
-    padding: 10px 12px;
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
     
-    .conversation-info {
-      justify-content: center;
-      
-      .conversation-text {
-        font-size: 13px;
-        text-align: center;
-      }
-    }
-    
-    .finish-conversation-button {
-      width: 100%;
-      justify-content: center;
+    .input-area {
+      padding: 6px; /* Much smaller padding on mobile */
+      max-height: 20vh; /* Even more compact on mobile */
+      padding-bottom: calc(6px + 60px + env(safe-area-inset-bottom, 0px));
     }
   }
-}
 
 @media (max-width: 480px) {
   .input-form {
@@ -1090,15 +979,11 @@
     }
   }
   
-  .recipe-hint {
-    background: rgba(141, 78, 0, 0.25);
-    color: #ffcc80;
-    border-left-color: #ff9800;
-  }
-  
   .processing-status {
-    background: rgba(141, 78, 0, 0.2);
-    color: #ffcc80;
+    padding: 6px 10px; /* Reduced padding */
+    margin-bottom: 8px; /* Reduced margin */
+    border-radius: 4px; /* Smaller radius */
+    font-size: 12px; /* Smaller text */
   }
 }
 

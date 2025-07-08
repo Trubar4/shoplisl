@@ -1,5 +1,5 @@
 // src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts - FIXED VERSION
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, Inject, PLATFORM_ID, AfterViewInit } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
@@ -50,7 +50,7 @@ interface ChatMessage {
   templateUrl: './voice-ai-assistant.component.html',
   styleUrls: ['./voice-ai-assistant.component.scss']
 })
-export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
+export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewInit {
   
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   
@@ -95,13 +95,30 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initializeChat();
     this.setupPWAViewport();
-    this.setupMessageScrolling();
+    this.setupMessageScrolling(); // This will now include enhanced scrolling
     this.checkRestoredContext();
     this.logChatStatus();
+    
+    // CRITICAL: Initial scroll to bottom
+    setTimeout(() => this.scrollToBottom(true), 10);
   }
 
   ngOnDestroy(): void {
     this.cleanup();
+  }
+
+  ngAfterViewInit(): void {
+    // Ensure scroll container is available and scroll to bottom
+    setTimeout(() => {
+      if (this.messagesContainer) {
+        this.scrollToBottom(true);
+      }
+    }, 30);
+  }
+
+  onContentChange(): void {
+    // Call this method whenever content dynamically changes
+    setTimeout(() => this.scrollToBottom(true), 50);
   }
 
   // ========================================
@@ -115,10 +132,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   }
 
   private setupMessageScrolling(): void {
-    this.messages$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.scrollToBottom();
+    this.messages$.pipe(takeUntil(this.destroy$)).subscribe((messages) => {
+      // Scroll whenever messages update
+      setTimeout(() => this.scrollToBottom(true), 50);
+      
+      // Additional scroll for dynamic content
+      setTimeout(() => this.scrollToBottom(true), 200);
     });
   }
+  
 
   private checkRestoredContext(): void {
     setTimeout(() => {
@@ -241,10 +263,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
   // ========================================
   // CORE MESSAGING - FIXED
   // ========================================
-
   async sendMessage(): Promise<void> {
     if (!this.currentMessage.trim() || this.isProcessing) return;
-
+  
     const userMessage = this.currentMessage.trim();
     const lowerInput = userMessage.toLowerCase().trim();
     
@@ -256,9 +277,13 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     // Clear disambiguation and add user message
     this.chatPersistence.setDisambiguation(null);
     this.chatPersistence.addMessage(userMessage, 'user');
+    
+    // CRITICAL: Scroll immediately after user message
+    this.scrollToBottom(true);
+    
     this.currentMessage = '';
     this.isProcessing = true;
-
+  
     try {
       // FIXED: Recipe detection with proper context preservation
       if (lowerInput.startsWith('rezept:') || lowerInput.startsWith('rezept ')) {
@@ -308,6 +333,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
               lowerInput === 'stop' || lowerInput === 'ende') {
             this.clearAllContexts();
             this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
+            // CRITICAL: Scroll after end conversation message
+            this.scrollToBottom(true);
             this.isProcessing = false;
             return;
           }
@@ -332,9 +359,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
         `❌ Entschuldigung, ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, 
         'error'
       );
+      
+      // CRITICAL: Scroll after error message
+      this.scrollToBottom(true);
+      
     } finally {
       this.isProcessing = false;
-      this.scrollToBottom();
+      
+      // CRITICAL: Final scroll guarantee
+      setTimeout(() => this.scrollToBottom(true), 100);
     }
   }
 
@@ -352,21 +385,26 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
-
+    
+    // CRITICAL: Force scroll after message addition
+    this.scrollToBottom(true);
+  
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
       console.log('🤖 Showing disambiguation');
       this.handleDisambiguation(result);
+      // Scroll after disambiguation setup
+      setTimeout(() => this.scrollToBottom(true), 200);
       return;
     }
-
+  
     // CRITICAL FIX: Always sync conversation context bidirectionally
     if (result.conversationContext) {
       console.log('🤖 Updating conversation context bidirectionally');
       this.chatPersistence.setConversationContext(result.conversationContext);
       this.aiService.setConversationContext(result.conversationContext);
     }
-
+  
     // FIXED: Enhanced list creation context detection
     if (result.success && result.listId && 
         (result.message.includes('Liste') && result.message.includes('erstellt'))) {
@@ -398,7 +436,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
           `Möchtest du jetzt Artikel zu "${listName}" hinzufügen?`;
       }
     }
-
+  
     // FIXED: Enhanced article addition context detection
     if (result.success && result.listId && result.message.includes('hinzugefügt')) {
       console.log('🤖 Article addition detected - ensuring conversation context');
@@ -430,22 +468,28 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
           'Möchtest du noch weitere Artikel hinzufügen? Du kannst auch "und [Artikel]" oder "weiters [Artikel]" sagen.';
       }
     }
-
-    // Handle follow-up prompts
+  
+    // Handle follow-up prompts with enhanced scroll
     if (result.success && result.followUpPrompt) {
       console.log('🤖 Adding follow-up prompt:', result.followUpPrompt);
       setTimeout(() => {
         this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
-        this.scrollToBottom();
+        // CRITICAL: Scroll after follow-up message
+        setTimeout(() => this.scrollToBottom(true), 100);
       }, 1000);
     }
-
-    // Handle successful actions with audio feedback
+  
+    // Handle successful actions with audio feedback and scroll
     if (result.success && result.listId) {
       setTimeout(() => {
         this.handleSuccessfulAction(result);
+        // CRITICAL: Scroll after any additional UI updates
+        this.scrollToBottom(true);
       }, 100);
     }
+  
+    // CRITICAL: Additional scroll guarantee for any dynamic content
+    setTimeout(() => this.scrollToBottom(true), 300);
   }
 
   // ========================================
@@ -589,7 +633,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
 
   private checkForContinuationKeywords(input: string): boolean {
     const lowerInput = input.toLowerCase().trim();
-    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch'];
+    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch', 'dann', 'danach'];
     
     return continuationKeywords.some(keyword => 
       lowerInput.startsWith(keyword + ' ') || 
@@ -716,7 +760,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       console.error('🎯 No disambiguation available!');
       return;
     }
-
+  
+    // FIXED: Properly extract pendingAction from disambiguation
     const pendingAction = disambiguation.pendingAction;
     
     // Handle skip option
@@ -731,8 +776,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     
     const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
+    
+    // CRITICAL: Scroll after choice message
+    this.scrollToBottom(true);
+    
     this.isProcessing = true;
-
+  
     // CRITICAL FIX: Preserve context during disambiguation
     const currentContext = this.getCurrentActiveContext();
     
@@ -758,10 +807,13 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
           `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
         );
+        // CRITICAL: Scroll after error
+        this.scrollToBottom(true);
       })
       .finally(() => {
         this.isProcessing = false;
-        this.scrollToBottom();
+        // CRITICAL: Final scroll
+        setTimeout(() => this.scrollToBottom(true), 100);
       });
   }
 
@@ -877,6 +929,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     this.chatPersistence.setDisambiguation(null);
     this.currentMessage = message;
     this.sendMessage();
+    
+    // Ensure scroll after quick message
+    setTimeout(() => this.scrollToBottom(true), 50);
   }
 
   canUseContinuation(): boolean {
@@ -1319,7 +1374,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
       document.body.style.setProperty('--pwa-bottom-padding', 'calc(75px + env(safe-area-inset-bottom, 0px))');
       setTimeout(() => {
         window.scrollTo(0, 0);
-      }, 300);
+      }, 30);
     }
   }
 
@@ -1345,9 +1400,19 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy {
     }, true);
   }
 
-  private scrollToBottom(): void {
-    if (this.messagesContainer) {
-      const element = this.messagesContainer.nativeElement;
+  private scrollToBottom(force: boolean = false): void {
+    if (!this.messagesContainer) return;
+    
+    const element = this.messagesContainer.nativeElement;
+    
+    // INSTANT: Most direct scroll command
+    try {
+      element.scrollTo({
+        top: element.scrollHeight,
+        behavior: 'instant'
+      });
+    } catch (error) {
+      // Fallback for older browsers
       element.scrollTop = element.scrollHeight;
     }
   }
