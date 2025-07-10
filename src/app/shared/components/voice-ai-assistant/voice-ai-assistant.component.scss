@@ -177,12 +177,13 @@
   
   .disambiguation-header {
     flex-shrink: 0;
-    padding: 16px 16px 8px 16px;
+    padding: 12px 16px 6px 16px; /* REDUCED: Less padding */
     border-bottom: 1px solid #e0e0e0;
     
     .disambiguation-title {
       font-size: 1.1em;
       font-weight: 600;
+      margin-bottom: 0; /* REDUCED: No bottom margin */
     }
     
     .disambiguation-subtitle {
@@ -193,7 +194,7 @@
   
   .disambiguation-content {
     flex: 1;
-    padding: 16px;
+    padding: 12px 16px; /* REDUCED: Less padding */
     overflow: hidden; /* Content manages its own scrolling */
     display: flex;
     flex-direction: column;
@@ -201,18 +202,18 @@
   
   .disambiguation-message {
     flex-shrink: 0;
-    margin-bottom: 16px;
+    margin-bottom: 12px; /* REDUCED: Less margin */
     font-weight: 500;
     color: #424242;
   }
 }
 
-/* FIXED: Disambiguation options with proper scrolling */
+/* FIXED: More compact disambiguation options */
 .disambiguation-options {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px; /* REDUCED: Less gap between items */
   /* CRITICAL FIX: Enable scrolling only for options */
   overflow-y: auto;
   overflow-x: hidden;
@@ -242,9 +243,9 @@
     flex-shrink: 0; /* CRITICAL: Don't shrink options */
     display: flex;
     align-items: center;
-    padding: 16px;
+    padding: 12px; /* REDUCED: Less padding */
     border: 2px solid #e0e0e0;
-    border-radius: 10px;
+    border-radius: 8px; /* REDUCED: Smaller border radius */
     cursor: pointer;
     transition: all 0.3s ease;
     background: #fafafa;
@@ -252,8 +253,8 @@
     &:hover {
       background: #f0f0f0;
       border-color: #2196f3;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+      transform: translateY(-1px); /* REDUCED: Less hover movement */
+      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2); /* REDUCED: Less shadow */
     }
     
     /* FIXED: Standard styling for skip option */
@@ -264,8 +265,8 @@
       &:hover {
         background: #f0f0f0 !important;
         border-color: #2196f3 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
       }
     }
     
@@ -273,17 +274,17 @@
       display: flex;
       align-items: center;
       width: 100%;
-      gap: 16px;
+      gap: 12px; /* REDUCED: Less gap */
       
       .option-icon {
-        width: 48px;
-        height: 48px;
+        width: 40px; /* REDUCED: Smaller icon container */
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
         background: #e3f2fd;
-        font-size: 20px;
+        font-size: 18px; /* REDUCED: Smaller icon */
         flex-shrink: 0;
         
         &.skip-icon {
@@ -298,9 +299,9 @@
         
         .option-name {
           font-weight: 600;
-          font-size: 1em;
+          font-size: 0.95em; /* REDUCED: Smaller font */
           color: #333;
-          margin-bottom: 4px;
+          margin-bottom: 2px; /* REDUCED: Less margin */
           line-height: 1.2;
           
           &.skip-name {
@@ -310,13 +311,13 @@
         }
         
         .option-department {
-          font-size: 0.85em;
+          font-size: 0.8em; /* REDUCED: Smaller font */
           color: #666;
-          margin-bottom: 2px;
+          margin-bottom: 1px; /* REDUCED: Less margin */
         }
         
         .option-confidence {
-          font-size: 0.8em;
+          font-size: 0.75em; /* REDUCED: Smaller font */
           color: #999;
         }
         
@@ -331,12 +332,12 @@
       .option-action {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px; /* REDUCED: Less gap */
         color: #666;
         flex-shrink: 0;
         
         .action-hint {
-          font-size: 0.85em;
+          font-size: 0.8em; /* REDUCED: Smaller font */
           text-align: right;
           white-space: nowrap;
           
@@ -348,6 +349,7 @@
         
         mat-icon {
           color: #999;
+          font-size: 18px; /* REDUCED: Smaller icon */
           
           .skip-option & {
             color: #757575 !important;
@@ -402,61 +404,109 @@
 /* FIXED: Disambiguation actions with consistent button styling */
 .disambiguation-actions {
   flex-shrink: 0;
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #e0e0e0;
   
   .action-buttons-row {
     display: flex;
-    gap: 12px;
+    gap: 6px; /* Match quick-buttons gap */
     justify-content: flex-start;
     align-items: center;
     flex-wrap: wrap;
   }
   
   .action-button {
-    /* FIXED: Consistent button styling matching other app buttons */
-    min-height: 40px;
-    border-radius: 8px;
+    /* FIXED: Match exact quick-buttons styling */
+    flex: 1;
+    min-height: 32px;
     font-weight: 500;
-    font-size: 14px;
-    padding: 10px 20px;
+    font-size: 11px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    text-transform: none;
+    border-radius: 18px; /* Match quick-buttons border radius */
+    padding: 0 12px; /* Match quick-buttons padding */
+    
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: relative;
+    z-index: 70;
     
     mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      margin: 0;
     }
     
-    &:hover {
+    .button-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    &:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     
+    /* FIXED: Match primary button style for cancel */
     &.cancel-button {
       background-color: #f44336 !important;
       color: white !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
       
-      &:hover {
+      &:disabled {
+        background-color: #cccccc !important;
+        color: #666666 !important;
+        box-shadow: none !important;
+      }
+      
+      &:hover:not(:disabled) {
         background-color: #d32f2f !important;
-        box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3) !important;
       }
     }
     
+    /* FIXED: Match secondary button style for skip */
+    &.skip-button {
+      background-color: #ff9800 !important;
+      color: white !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+      
+      &:hover:not(:disabled) {
+        background-color: #f57c00 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3) !important;
+      }
+    }
+    
+    /* FIXED: Match secondary button style for skip all */
     &.skip-all-button {
       background-color: #757575 !important;
       color: white !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
       
-      &:hover {
+      &:hover:not(:disabled) {
         background-color: #616161 !important;
-        box-shadow: 0 4px 12px rgba(117, 117, 117, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(117, 117, 117, 0.3) !important;
       }
     }
   }
+}
+
+.progress-indicator {
+  font-size: 0.85em; /* REDUCED: Smaller font */
+  color: #666;
+  margin-left: 6px; /* REDUCED: Less margin */
+  font-weight: 400;
 }
 
 /* ========================================
@@ -464,20 +514,15 @@
    ======================================== */
 
 .input-area {
-  flex-shrink: 0; /* CRITICAL: Never shrink */
-  padding: 16px;
+  flex-shrink: 0;
+  padding: 12px 16px; /* REDUCED: Less padding */
   background: white;
   border-top: 1px solid #e0e0e0;
   z-index: 40;
-  
-  /* CRITICAL FIX: Proper minimum height and max height constraints */
-  min-height: auto; /* Let content determine height */
-  max-height: 35vh; /* FIXED: Reduced from 40vh to prevent overlap with tab bar */
-  
-  /* CRITICAL FIX: Bottom spacing for mobile navigation and tab bar */
+  min-height: auto;
+  max-height: 35vh;
   margin-bottom: 0;
-  /* FIXED: Account for bottom tab bar (typically 56px) + safe area */
-  padding-bottom: calc(16px + 56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(12px + 56px + env(safe-area-inset-bottom, 0px)); /* REDUCED: Less padding */
 }
 
 .conversation-status {
@@ -540,10 +585,10 @@
 
 .input-form {
   display: flex;
-  gap: 4px; /* Minimal gap */
-  align-items: center; /* FIXED: Center alignment for perfect vertical centering */
+  gap: 4px;
+  align-items: center;
   width: 100%;
-  margin-bottom: 4px; /* Minimal margin */
+  margin-bottom: 2px; /* REDUCED: Even less margin */
   
   .message-input {
     flex: 1;
@@ -551,8 +596,8 @@
     
     textarea {
       resize: none;
-      line-height: 1.3; /* Tighter line height */
-      max-height: 80px !important; /* Reduced max height */
+      line-height: 1.3;
+      max-height: 80px !important;
     }
     
     .mat-mdc-form-field-wrapper {
@@ -560,23 +605,23 @@
     }
     
     .mat-mdc-form-field-infix {
-      padding: 8px 0 4px 0; /* Reduced padding */
+      padding: 4px 0 2px 0; /* REDUCED: Even less padding */
     }
   }
   
   .input-actions {
     display: flex;
-    align-items: center; /* FIXED: Center alignment */
-    justify-content: center; /* FIXED: Center alignment */
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
     
     .voice-button {
-      width: 36px; /* Much smaller */
-      height: 36px; /* Much smaller */
+      width: 32px;
+      height: 32px;
       transition: all 0.3s ease;
-      display: flex; /* FIXED: Flex for perfect icon centering */
-      align-items: center; /* FIXED: Center icon vertically */
-      justify-content: center; /* FIXED: Center icon horizontally */
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
       &:hover:not(:disabled) {
         transform: scale(1.05);
@@ -589,9 +634,9 @@
       }
       
       mat-icon {
-        font-size: 18px; /* Smaller icon */
-        line-height: 1; /* FIXED: Perfect line height for centering */
-        display: flex; /* FIXED: Flex for perfect centering */
+        font-size: 16px;
+        line-height: 1;
+        display: flex;
         align-items: center;
         justify-content: center;
       }
@@ -600,36 +645,48 @@
 }
 
 .processing-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 10px; /* Reduced padding */
   margin-bottom: 8px; /* Reduced margin */
   border-radius: 4px; /* Smaller radius */
   font-size: 12px; /* Smaller text */
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  border: 1px solid #90caf9;
+  color: #1565c0;
+  
+  .simple-spinner {
+    animation: spin 1s linear infinite;
+    font-size: 14px;
+  }
 }
 
 .quick-actions {
   flex-shrink: 0;
-  margin-top: 2px; /* Minimal margin */
+  margin-top: 0px; /* REDUCED: No margin at all */
   position: relative;
   z-index: 60;
   
   .quick-buttons {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     
-    /* FIXED: Match exact article detail button styling */
     button {
       flex: 1;
-      min-height: 36px; /* Slightly smaller than article detail's 48px for compactness */
+      min-height: 32px;
       font-weight: 500;
-      font-size: 12px; /* Compact size */
+      font-size: 11px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px; /* Match article detail gap */
-      transition: all 0.2s ease; /* Match article detail transition */
-      border: 1px solid transparent; /* Match article detail border setup */
-      text-transform: none; /* Match article detail text transform */
+      gap: 4px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      text-transform: none;
+      border-radius: 18px;
+      padding: 0 12px;
       
       opacity: 1 !important;
       visibility: visible !important;
@@ -637,9 +694,9 @@
       z-index: 70;
       
       mat-icon {
-        font-size: 16px; /* Compact icon size */
-        width: 16px;
-        height: 16px;
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
         margin: 0;
       }
       
@@ -650,18 +707,18 @@
       }
       
       &:hover:not(:disabled) {
-        transform: translateY(-1px); /* Match article detail hover */
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* Match article detail hover shadow */
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
       }
       
-      /* FIXED: Send button - match primary-button style from article detail */
+      /* Send button - match primary-button style */
       &.send-button {
-        border-radius: 18px; /* Match article detail border radius (scaled down from 24px) */
-        font-weight: 500; /* Match article detail font weight */
-        background-color: #1976d2 !important; /* Match primary color */
+        border-radius: 18px;
+        font-weight: 500;
+        background-color: #1976d2 !important;
         color: white !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; /* Match article detail shadow */
-        padding: 0 16px; /* Match article detail padding style */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        padding: 0 16px;
         
         &:disabled {
           background-color: #cccccc !important;
@@ -670,15 +727,15 @@
         }
         
         &:hover:not(:disabled) {
-          background-color: #1565c0 !important; /* Darker shade on hover */
+          background-color: #1565c0 !important;
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
         }
         
         z-index: 80 !important;
       }
-      
-      /* FIXED: End conversation button - match secondary-button style from article detail */
+
+      /* End conversation button - match secondary-button style */
       &.end-conversation-button {
         border-radius: 18px;
         background-color: #4caf50 !important;
@@ -704,18 +761,18 @@
           box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
         }
       }
-      
-      /* FIXED: Help and Recipe buttons - match secondary-button style from article detail */
+
+      /* Help and Recipe buttons - match secondary-button style */
       &.help-button,
       &.recipe-help-button {
-        border-radius: 18px; /* Match article detail border radius (scaled down) */
+        border-radius: 18px;
         background-color: transparent;
-        border: 1px solid #1976d2; /* Match stroked button style */
+        border: 1px solid #1976d2;
         color: #1976d2;
-        padding: 0 12px; /* Slightly less padding for compact design */
+        padding: 0 12px;
         
         &:hover {
-          background-color: rgba(25, 118, 210, 0.1); /* Match article detail hover */
+          background-color: rgba(25, 118, 210, 0.1);
           border-color: #1976d2;
         }
       }
@@ -764,65 +821,69 @@
    MOBILE RESPONSIVE - FIXED FOR TAB BAR
    ======================================== */
 
-   @media (max-width: 768px) {
-    .input-form {
-      gap: 3px; /* Minimal gap on mobile */
-      margin-bottom: 3px;
-      
-      .input-actions {
-        .voice-button {
-          width: 32px !important; /* Much smaller on mobile */
-          height: 32px !important;
-          
-          mat-icon {
-            font-size: 16px;
-          }
-        }
-      }
-    }
+@media (max-width: 768px) {
+  .input-form {
+    gap: 2px;
+    margin-bottom: 1px; /* REDUCED: Minimal margin on mobile */
     
-    .quick-buttons {
-      gap: 4px; /* Smaller gap on mobile */
-      
-      button {
-        min-height: 32px; /* Smaller on mobile */
-        font-size: 11px;
-        padding: 0 8px; /* Compact padding */
-        border-radius: 16px; /* Proportionally smaller radius */
-        
-        .button-text {
-          display: none; /* Hide text on mobile for space - show icons only */
-        }
+    .input-actions {
+      .voice-button {
+        width: 28px !important;
+        height: 28px !important;
         
         mat-icon {
           font-size: 14px;
-          width: 14px;
-          height: 14px;
-        }
-        
-        /* FIXED: End conversation button mobile styling - icon only */
-        &.end-conversation-button {
-          background-color: #4caf50 !important;
-          color: white !important;
-          min-width: 40px;
-          
-          &:hover {
-            background-color: #388e3c !important;
-          }
-          
-          mat-icon {
-            color: white !important;
-          }
         }
       }
     }
+  }
+  
+  .quick-actions {
+    margin-top: 0px; /* REDUCED: No margin on mobile */
+  }
+  
+  .quick-buttons {
+    gap: 4px; /* Smaller gap on mobile */
     
-    .input-area {
-      padding: 6px; /* Much smaller padding on mobile */
-      max-height: 20vh; /* Even more compact on mobile */
-      padding-bottom: calc(6px + 60px + env(safe-area-inset-bottom, 0px));
+    button {
+      min-height: 32px; /* Smaller on mobile */
+      font-size: 11px;
+      padding: 0 8px; /* Compact padding */
+      border-radius: 16px; /* Proportionally smaller radius */
+      
+      .button-text {
+        display: none; /* Hide text on mobile for space - show icons only */
+      }
+      
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+      
+      /* FIXED: End conversation button mobile styling - icon only */
+      &.end-conversation-button {
+        background-color: #4caf50 !important;
+        color: white !important;
+        min-width: 40px;
+        
+        &:hover {
+          background-color: #388e3c !important;
+        }
+        
+        mat-icon {
+          color: white !important;
+        }
+      }
     }
   }
+  
+  .input-area {
+    padding: 8px 12px; /* REDUCED: Less padding on mobile */
+    max-height: 20vh; /* Even more compact on mobile */
+    padding-bottom: calc(8px + 60px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 @media (max-width: 480px) {
   .input-form {
@@ -980,10 +1041,9 @@
   }
   
   .processing-status {
-    padding: 6px 10px; /* Reduced padding */
-    margin-bottom: 8px; /* Reduced margin */
-    border-radius: 4px; /* Smaller radius */
-    font-size: 12px; /* Smaller text */
+    background: linear-gradient(135deg, #1a237e, #283593);
+    border-color: #3f51b5;
+    color: #90caf9;
   }
 }
 

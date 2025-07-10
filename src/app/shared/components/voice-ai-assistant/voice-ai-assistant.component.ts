@@ -721,24 +721,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       console.error('Invalid disambiguation data:', result);
       return;
     }
-
+  
     console.log('🎯 Handling disambiguation');
-
-    // CRITICAL FIX: Always ensure skip option is present
-    const hasSkipOption = result.disambiguationOptions.some(opt => opt.type === 'skip');
-    
-    if (!hasSkipOption && result.pendingAction) {
-      result.disambiguationOptions.push({
-        id: 'skip_item',
-        displayName: `"${result.pendingAction.itemName}" überspringen`,
-        type: 'skip' as const,
-        confidence: 1.0,
-        icon: '⏭️',
-        skipReason: 'Bereits zu Hause vorhanden'
-      });
-    }
-
-    // Convert options for compatibility
+  
+    // Convert options for compatibility - NO SKIP OPTION ADDED
     const compatibleOptions = result.disambiguationOptions.map((option: any) => ({
       id: option.id,
       displayName: option.displayName,
@@ -746,13 +732,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       article: option.article,
       confidence: option.confidence,
       department: option.department,
-      icon: option.icon,
-      skipReason: option.skipReason
+      icon: option.icon
     }));
     
-    // FIXED: Use simplified message
+    // FIXED: Simplified message - will be displayed in content area
     this.chatPersistence.setDisambiguation({
-      message: `"${result.pendingAction.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`,
+      message: `"${result.pendingAction.itemName}" Welchen dieser ähnlichen Artikel möchtest du verwenden?`,
       options: compatibleOptions as any[],
       pendingAction: result.pendingAction as any
     });
@@ -819,6 +804,42 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       .finally(() => {
         this.isProcessing = false;
         // CRITICAL: Final scroll
+        setTimeout(() => this.scrollToBottom(true), 100);
+      });
+  }
+
+  skipCurrentArticle(pendingAction: any): void {
+    console.log('⏭️ Skipping current article from button');
+    
+    this.chatPersistence.setDisambiguation(null);
+    
+    let skipMessage = `⏭️ "${pendingAction.itemName}" übersprungen`;
+    
+    this.chatPersistence.addMessage(skipMessage, 'user');
+    this.scrollToBottom(true);
+    
+    this.isProcessing = true;
+    
+    // Handle skip with proper option structure
+    const skipOption = {
+      id: 'skip_item',
+      displayName: `"${pendingAction.itemName}" überspringen`,
+      type: 'skip' as const,
+      confidence: 1.0,
+      skipReason: 'Artikel übersprungen'
+    };
+    
+    this.aiService.handleDisambiguationChoice(pendingAction, skipOption)
+      .then((result: AIExecutionResult) => {
+        this.handleAIResult(result);
+      })
+      .catch((error: any) => {
+        console.error('⏭️ Error skipping article:', error);
+        this.chatPersistence.addMessage('❌ Fehler beim Überspringen des Artikels', 'error');
+        this.scrollToBottom(true);
+      })
+      .finally(() => {
+        this.isProcessing = false;
         setTimeout(() => this.scrollToBottom(true), 100);
       });
   }

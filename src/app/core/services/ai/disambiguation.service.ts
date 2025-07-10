@@ -36,11 +36,11 @@ export class DisambiguationService {
     try {
       const articles = await this.dataService.getArticles().pipe(take(1)).toPromise();
       const options: DisambiguationOption[] = [];
-
+  
       if (!articles) return options;
-
+  
       const searchTerm = itemName.toLowerCase().trim();
-
+  
       const similarArticles = articles
         .filter(article => article.id !== excludeId)
         .map(article => {
@@ -56,8 +56,8 @@ export class DisambiguationService {
         })
         .filter(item => item.similarity >= MIN_SIMILARITY_THRESHOLD)
         .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 4);
-
+        .slice(0, 3); // FIXED: Only show top 4 options
+  
       // Add existing articles as options
       for (const item of similarArticles) {
         options.push({
@@ -70,7 +70,7 @@ export class DisambiguationService {
           icon: item.article.icon
         });
       }
-
+  
       // Always add option to create new article
       options.push({
         id: 'new_article',
@@ -79,7 +79,7 @@ export class DisambiguationService {
         confidence: 1.0,
         icon: '✨'
       });
-
+  
       return options;
       
     } catch (error) {
@@ -120,20 +120,7 @@ export class DisambiguationService {
     try {
       // Get disambiguation options for current item
       const disambiguationOptions = await this.getDisambiguationOptions(currentItem.itemName);
-      
-      // CRITICAL: Always add skip option for sequential processing
-      const hasSkipOption = disambiguationOptions.some(opt => opt.type === 'skip');
-      if (!hasSkipOption) {
-        disambiguationOptions.push({
-          id: 'skip_item',
-          displayName: `"${currentItem.itemName}" überspringen`,
-          type: 'skip' as const,
-          confidence: 1.0,
-          icon: '⏭️',
-          skipReason: 'Bereits vorhanden oder nicht benötigt'
-        });
-      }
-      
+          
       // Check if disambiguation is needed (existing articles found)
       const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
       

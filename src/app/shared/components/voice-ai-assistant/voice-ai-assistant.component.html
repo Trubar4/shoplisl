@@ -54,6 +54,7 @@
     <!-- Disambiguation Interface -->
     <div *ngIf="disambiguation$ | async as disambiguation" class="disambiguation-container">
       <mat-card class="disambiguation-card">
+        
         <!-- Header -->
         <mat-card-header class="disambiguation-header">
           <mat-icon 
@@ -61,33 +62,21 @@
             mat-card-avatar>
             {{ getDisambiguationHeaderIcon(disambiguation) }}
           </mat-icon>
-          <mat-card-title class="disambiguation-title">{{ getDisambiguationHeaderTitle(disambiguation) }}</mat-card-title>
-          <mat-card-subtitle class="disambiguation-subtitle">
-            {{ getActionDescription(disambiguation.pendingAction) }}
-          </mat-card-subtitle>
+          <mat-card-title class="disambiguation-title">
+            {{ getDisambiguationHeaderTitle(disambiguation) }}
+            <span *ngIf="isSequentialRecipeProcessing(disambiguation.pendingAction)" class="progress-indicator">
+              {{ getCurrentItemIndex(disambiguation.pendingAction) + 1 }}/{{ getTotalItems(disambiguation.pendingAction) }}
+            </span>
+          </mat-card-title>
+          <!-- REMOVED: No subtitle anymore to avoid duplication -->
         </mat-card-header>
-        
+
         <mat-card-content class="disambiguation-content">
-          <!-- Message -->
+          <!-- FIXED: Updated message text -->
           <div class="disambiguation-message">
-            {{ disambiguation.message }}
+            "{{ disambiguation.pendingAction.itemName }}" Welchen dieser ähnlichen Artikel möchtest du verwenden?
           </div>
-          
-          <!-- Recipe progress indicator -->
-          <div *ngIf="isSequentialRecipeProcessing(disambiguation.pendingAction)" class="recipe-progress">
-            <div class="progress-info">
-              <span class="current-item">
-                Zutat {{ getCurrentItemIndex(disambiguation.pendingAction) + 1 }} 
-                von {{ getTotalItems(disambiguation.pendingAction) }}
-              </span>
-              <div class="progress-bar">
-                <div class="progress-fill" 
-                     [style.width.%]="getProgressPercentage(disambiguation.pendingAction)">
-                </div>
-              </div>
-            </div>
-          </div>
-          
+                    
           <!-- Options with improved layout and scrolling -->
           <div class="disambiguation-options">
             <div *ngFor="let option of disambiguation.options; trackBy: trackByOptionId" 
@@ -136,6 +125,14 @@
                       class="action-button cancel-button">
                 <mat-icon>cancel</mat-icon>
                 Abbrechen
+              </button>
+              
+              <!-- NEW: Skip current article button -->
+              <button mat-raised-button 
+                      (click)="skipCurrentArticle(disambiguation.pendingAction)"
+                      class="action-button skip-button">
+                <mat-icon>skip_next</mat-icon>
+                Artikel überspringen
               </button>
               
               <button *ngIf="canSkipAll(disambiguation.pendingAction)" 
