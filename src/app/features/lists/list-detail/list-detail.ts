@@ -196,7 +196,23 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.updateThemeColorMeta('#1a9edb');
+    //this.updateThemeColorMeta('#1a9edb');
+    this.resetToDefaultTheme();
+  }
+
+  private resetToDefaultTheme(): void {
+    const defaultColor = '#1a9edb';
+    const root = document.documentElement;
+    
+    // Reset CSS custom properties to default
+    root.style.setProperty('--list-primary-color', defaultColor);
+    root.style.setProperty('--list-contrast-color', 'white');
+    root.style.setProperty('--list-light-color', '#a8d4f0');
+    root.style.setProperty('--list-dark-color', '#1976d2');
+    root.style.setProperty('--list-primary-color-rgb', '26, 158, 219');
+    
+    // Reset meta theme color to default blue
+    this.updateThemeColorMeta(defaultColor);
   }
 
   private setupDepartmentGroups(): void {
