@@ -47,10 +47,6 @@ export const routes: Routes = [
     component: EditArticleComponent
   },
   {
-    path: 'recipes',
-    component: ListsOverviewComponent
-  },
-  {
     path: 'admin/upload',
     component: ArticleUploadComponent
   },

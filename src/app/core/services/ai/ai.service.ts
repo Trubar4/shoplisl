@@ -1078,51 +1078,134 @@ export class AIService {
   // ========================================
 
   private async standardizeRecipeIngredients(rawRecipeText: string, targetList?: string): Promise<string> {
-    console.log('🍳 Standardizing recipe ingredients:', rawRecipeText.substring(0, 100));
+    console.log('🍳 Standardizing recipe ingredients with AI:', rawRecipeText.substring(0, 100));
     
     const cleanedText = this.cleanRawRecipeText(rawRecipeText);
     
-    const prompt = `Du bist ein Experte für deutsche Rezepte. Konvertiere diese Zutatenliste zu einem einzigen Befehl.
+    const prompt = `Konvertiere diese Zutatenliste in ein standardisiertes Format.
   
-  EINGABE (kann unordentlich sein mit verschiedenen Symbolen):
-  ${cleanedText}
+  EINGABE: ${cleanedText}
   
   REGELN:
-  1. Ignoriere Überschriften wie "Für die Soße:", "Zubereitung:", "Portionen:" etc.
-  2. Ignoriere Zubereitungsschritte und Anweisungen  
-  3. Extrahiere nur echte Zutaten mit Mengen
-  4. Verwende deutsche Maßeinheiten (g, kg, ml, l, EL, TL, Prise, Stück)
-  5. Vereinfache komplexe Beschreibungen zu Grundzutaten
+  - Nur echte Zutaten mit Mengen extrahieren
+  - Format: "MENGE EINHEIT ZUTAT" (z.B. "2 EL Öl", nicht "Öl 2 EL")
+  - Deutsche Einheiten: g, kg, ml, l, EL, TL, Prise, Stück
   
-  BEISPIELE:
-  Eingabe: "• 500g Mehl Type 405\n◦ 2 Eier\n▪ 250ml Milch"
-  Ausgabe: Mehl 500g, Eier 2 Stück, Milch 250ml
-  
-  Eingabe: "- 200g Tomaten (gehackt)\n* 1 Zwiebel\n>>> 2 EL Öl"  
-  Ausgabe: Tomaten 200g, Zwiebel 1 Stück, Öl 2 EL
-  
-  WICHTIG: 
-  - Gib NUR die Zutaten zurück im Format: "Zutat1 Menge, Zutat2 Menge, Zutat3 Menge"
-  - KEINE "Füge ... hinzu" Befehle
-  - KEINE Pfeile oder andere Symbole
-  - NUR kommagetrennte Zutatenliste
-  
-  AUSGABE (nur die Zutatenliste):`;
+  ANTWORTE NUR mit der kommagetrennten Zutatenliste, KEINE anderen Texte:`;
   
     try {
       const response = await this.callGroqAPI(prompt);
-      const cleanResponse = response.trim();
-      console.log('🍳 Groq raw response:', cleanResponse);
+      let cleanResponse = this.extractIngredientsFromAIResponse(response);
       
-      // Clean up any remaining formatting issues
+      console.log('🍳 AI raw response:', response.substring(0, 200));
+      console.log('🍳 Extracted ingredients:', cleanResponse);
+      
+      if (!cleanResponse || cleanResponse.length < 5) {
+        throw new Error('Invalid AI response');
+      }
+      
       const finalCommand = `Füge ${cleanResponse} hinzu`;
-      console.log('🍳 Final processed command:', finalCommand);
+      console.log('🍳 Final standardized command:', finalCommand);
       return finalCommand;
+      
     } catch (error) {
-      console.error('🍳 Error standardizing recipe:', error);
-      // Fallback to simple processing
-      return `Füge ${this.parseAdvancedRecipe(rawRecipeText).join(', ')} hinzu`;
+      console.error('🍳 AI standardization failed:', error);
+      // Use enhanced fallback
+      const fallbackItems = this.parseAdvancedRecipeWithAI(rawRecipeText);
+      return `Füge ${fallbackItems.join(', ')} hinzu`;
     }
+  }
+
+  /**
+   * Extract just the ingredients list from AI response that might contain explanations
+   */
+  private extractIngredientsFromAIResponse(response: string): string {
+    console.log('🍳 Extracting ingredients from AI response');
+    
+    const lines = response.split('\n');
+    
+    // Look for the line that contains comma-separated ingredients
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip empty lines and obvious explanatory text
+      if (!trimmed || 
+          trimmed.toLowerCase().includes('ich kann') ||
+          trimmed.toLowerCase().includes('hier ist') ||
+          trimmed.toLowerCase().includes('wurde zu') ||
+          trimmed.toLowerCase().includes('korrigiert') ||
+          trimmed.startsWith('-') ||
+          trimmed.startsWith('•') ||
+          trimmed.length < 10) {
+        continue;
+      }
+      
+      // Look for pattern that looks like ingredients: contains commas and food-related words
+      if (trimmed.includes(',') && 
+          /\d+/.test(trimmed) && 
+          (trimmed.includes('g ') || trimmed.includes('ml ') || trimmed.includes('EL ') || 
+          trimmed.includes('TL ') || trimmed.includes('Stück ') || trimmed.includes('l '))) {
+        
+        // Clean up any remaining artifacts
+        const cleaned = trimmed
+          .replace(/^[^a-zA-Z0-9]*/, '') // Remove leading non-alphanumeric
+          .replace(/[^a-zA-Z0-9äöüÄÖÜß,\s]*$/, '') // Remove trailing artifacts
+          .trim();
+        
+        console.log('🍳 Found ingredients line:', cleaned);
+        return cleaned;
+      }
+    }
+    
+    // Fallback: if no clear line found, try to clean the entire response
+    const fallback = response
+      .replace(/ich kann.+?liste:/i, '') // Remove explanatory start
+      .replace(/ich habe.+$/i, '') // Remove explanatory end
+      .replace(/hier ist.+?:/i, '') // Remove "here is" parts
+      .replace(/-.+$/gm, '') // Remove bullet explanations
+      .replace(/\n+/g, ' ') // Replace newlines with spaces
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+    
+    console.log('🍳 Fallback extraction:', fallback);
+    return fallback;
+  }
+
+  /**
+   * Enhanced fallback parser that handles "item quantity" patterns like "Öl 2 EL"
+   */
+  private parseAdvancedRecipeWithAI(recipeContent: string): string[] {
+    console.log('🍳 Enhanced fallback parsing:', recipeContent.substring(0, 100));
+    
+    const ingredients: string[] = [];
+    const items = recipeContent.split(/[,\n;]/);
+    
+    for (let item of items) {
+      let cleaned = item
+        .replace(/^[-•◦▪▫*>]+\s*/, '')
+        .replace(/^[\d\.\)]+\s*/, '')
+        .trim();
+      
+      if (!cleaned || cleaned.length < 2) continue;
+      
+      // Handle "item quantity unit" pattern: "Öl 2 EL" → "2 EL Öl"
+      const itemQuantityMatch = cleaned.match(/^([a-zA-ZäöüÄÖÜß\s]+?)\s+(\d+(?:[.,]\d+)?)\s*(EL|TL|g|kg|ml|l|Prise|Stück|Dose|Pack)?$/i);
+      if (itemQuantityMatch) {
+        const itemName = itemQuantityMatch[1].trim();
+        const quantity = itemQuantityMatch[2];
+        const unit = itemQuantityMatch[3] || 'Stück';
+        const standardized = `${quantity} ${unit} ${itemName}`;
+        ingredients.push(standardized);
+        console.log('🍳 Converted:', cleaned, '→', standardized);
+        continue;
+      }
+      
+      // Already in correct format or simple item
+      ingredients.push(cleaned);
+    }
+    
+    console.log('🍳 Enhanced fallback result:', ingredients);
+    return ingredients.slice(0, 15);
   }
 
   private cleanRawRecipeText(rawText: string): string {

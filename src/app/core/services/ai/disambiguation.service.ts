@@ -131,6 +131,9 @@ export class DisambiguationService {
         (action as any).isMultiItemSequential = true;
         (action as any).isFromRecipe = true;
         
+        // FIXED: Update itemName to current item
+        action.itemName = currentItem.itemName;
+        
         // Generate simplified message for sequential processing
         const message = `"${currentItem.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`;
         

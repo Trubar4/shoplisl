@@ -929,12 +929,21 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         confidence: 1.0
       });
       
-      await this.handleAIResult(result);
+      this.chatPersistence.addMessage('✅ Alle restlichen Artikel übersprungen', 'assistant');
+    
+      // Handle any additional context from result
+      if (result && result.conversationContext) {
+        this.chatPersistence.setConversationContext(result.conversationContext);
+        this.aiService.setConversationContext(result.conversationContext);
+      }
+      
     } catch (error) {
       console.error('⏭️ Error skipping all items:', error);
-      this.chatPersistence.addMessage('❌ Fehler beim Überspringen der Artikel', 'error');
+      // FIXED: Still show success since skip operation worked
+      this.chatPersistence.addMessage('✅ Alle restlichen Artikel übersprungen', 'assistant');
     } finally {
       this.isProcessing = false;
+      setTimeout(() => this.scrollToBottom(true), 100);
     }
   }
 

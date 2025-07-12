@@ -328,7 +328,11 @@ export class DataService {
   }
 
   deleteArticle(id: string): Observable<boolean> {
-    return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
+    return from(this.removeArticleFromAllLists(id)).pipe(
+      mergeMap(() => {
+        // After removing from all lists, delete the article
+        return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`)));
+      }),
       map(() => true),
       catchError(error => {
         console.error('Error deleting article:', error);
@@ -336,6 +340,38 @@ export class DataService {
       })
     );
   }
+
+  /**
+ * Remove article from all lists before deletion (prevents orphaned references)
+ */
+private async removeArticleFromAllLists(articleId: string): Promise<void> {
+  try {
+    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    
+    for (const listDoc of listsSnapshot.docs) {
+      const data = listDoc.data();
+      const articleIds = data['articleIds'] || [];
+      const itemStates = data['itemStates'] || {};
+      
+      if (articleIds.includes(articleId) || itemStates[articleId]) {
+        // Remove article from this list
+        const newArticleIds = articleIds.filter((id: string) => id !== articleId);
+        const newItemStates = { ...itemStates };
+        delete newItemStates[articleId];
+        
+        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
+        
+        console.log(`🧹 Removed article from list "${data['name']}"`);
+      }
+    }
+  } catch (error) {
+    console.error('Error removing article from lists:', error);
+  }
+}
 
   // === LISTS METHODS ===
 
@@ -980,5 +1016,132 @@ private async handleDepartmentOrderMigration(): Promise<void> {
   }
 }
 
+
+/**
+ * AUTO-DETECT: Check if any lists have orphaned references
+ */
+private async hasOrphanedReferences(): Promise<boolean> {
+  try {
+    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+    
+    const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
+    
+    for (const listDoc of listsSnapshot.docs) {
+      const data = listDoc.data();
+      const articleIds = data['articleIds'] || [];
+      const itemStates = data['itemStates'] || {};
+      
+      // Check for orphaned references
+      const hasOrphanedArticleIds = articleIds.some((id: string) => !validArticleIds.has(id));
+      const hasOrphanedItemStates = Object.keys(itemStates).some(id => !validArticleIds.has(id));
+      
+      if (hasOrphanedArticleIds || hasOrphanedItemStates) {
+        return true; // Found orphaned references
+      }
+    }
+    
+    return false; // No orphaned references found
+  } catch (error) {
+    console.error('Error checking for orphaned references:', error);
+    return false;
+  }
+}
+
+/**
+ * AUTO-CLEANUP: Silently clean up orphaned references
+ */
+private async autoCleanupOrphanedReferences(): Promise<void> {
+  try {
+    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+    
+    const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
+    let cleanedCount = 0;
+    
+    for (const listDoc of listsSnapshot.docs) {
+      const data = listDoc.data();
+      const articleIds = data['articleIds'] || [];
+      const itemStates = data['itemStates'] || {};
+      
+      // Clean articleIds - only keep valid references
+      const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
+      
+      // Clean itemStates - only keep valid references
+      const cleanedItemStates: any = {};
+      Object.entries(itemStates).forEach(([articleId, state]) => {
+        if (validArticleIds.has(articleId)) {
+          cleanedItemStates[articleId] = state;
+        }
+      });
+      
+      // Update if changes were made
+      const articleIdsChanged = articleIds.length !== cleanedArticleIds.length;
+      const itemStatesChanged = Object.keys(itemStates).length !== Object.keys(cleanedItemStates).length;
+      
+      if (articleIdsChanged || itemStatesChanged) {
+        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+          articleIds: cleanedArticleIds,
+          itemStates: cleanedItemStates,
+          updatedAt: Timestamp.now()
+        });
+        
+        cleanedCount++;
+        console.log(`🧹 Auto-cleaned "${data['name']}": ${articleIds.length}→${cleanedArticleIds.length} articles`);
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`✅ Auto-cleanup completed: ${cleanedCount} lists cleaned`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error during auto-cleanup:', error);
+  }
+}
+
+/**
+ * ENHANCED: Force refresh with automatic cleanup
+ */
+forceRefreshLists(): Observable<ShoppingList[]> {
+  return from(this.checkAndCleanupData()).pipe(
+    mergeMap(() => {
+      // After cleanup, fetch fresh data
+      return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`)));
+    }),
+    map(snapshot => {
+      const lists: ShoppingList[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        lists.push({
+          id: doc.id,
+          name: data['name'],
+          color: data['color'],
+          icon: data['icon'],
+          shopId: data['shopId'],
+          articleIds: data['articleIds'] || [],
+          itemStates: data['itemStates'] || {},
+          departmentOrder: data['departmentOrder'],
+          createdAt: data['createdAt']?.toDate() || new Date(),
+          updatedAt: data['updatedAt']?.toDate() || new Date()
+        });
+      });
+      // Update the subject with clean data
+      this.listsSubject.next(lists.sort((a, b) => a.name.localeCompare(b.name)));
+      return lists;
+    })
+  );
+}
+
+/**
+ * AUTO-CHECK: Check for orphaned references and clean them up if found
+ */
+private async checkAndCleanupData(): Promise<void> {
+  const hasOrphans = await this.hasOrphanedReferences();
+  if (hasOrphans) {
+    console.log('🔍 Orphaned references detected, auto-cleaning...');
+    await this.autoCleanupOrphanedReferences();
+  }
+}
 
 }

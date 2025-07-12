@@ -1038,3 +1038,36 @@
     transform: translateY(0);
   }
 }
+
+::ng-deep {
+  .mat-mdc-snack-bar-container,
+  .mat-snack-bar-container,
+  .notification-bottom,
+  .save-status,
+  .changes-detected,
+  [class*="bottom-notification"],
+  [class*="änderungen"] {
+    bottom: 70px !important; /* 61px tab bar + 9px spacing */
+    z-index: 1100 !important; /* Above tab bar (1000) and edit actions (1050) */
+    
+    @supports (bottom: calc(70px + env(safe-area-inset-bottom))) {
+      bottom: calc(70px + env(safe-area-inset-bottom)) !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .mat-mdc-snack-bar-container,
+    .mat-snack-bar-container,
+    .notification-bottom,
+    .save-status,
+    .changes-detected,
+    [class*="bottom-notification"],
+    [class*="änderungen"] {
+      bottom: 67px !important; /* 58px mobile tab bar + 9px spacing */
+      
+      @supports (bottom: calc(67px + env(safe-area-inset-bottom))) {
+        bottom: calc(67px + env(safe-area-inset-bottom)) !important;
+      }
+    }
+  }
+}

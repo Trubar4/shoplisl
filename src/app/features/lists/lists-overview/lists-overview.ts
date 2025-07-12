@@ -50,6 +50,9 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
+    // Force refresh when component loads
+    this.dataService.forceRefreshLists().subscribe();
+
     // Reset theme color to default blue when in lists overview
     this.resetThemeColor();
     
@@ -350,9 +353,14 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
    * Count active (non-checked) articles in a list
    */
   getActiveItemCount(list: ShoppingList): number {
+    if (!list || !list.articleIds || list.articleIds.length === 0) {
+      return 0;
+    }
+  
     return list.articleIds.filter(articleId => {
-      const itemState = list.itemStates[articleId];
-      return !itemState || !itemState.isChecked; // active if not checked
+      const itemState = list.itemStates?.[articleId];
+      // Only count as checked if itemState exists AND isChecked is explicitly true
+      return !itemState?.isChecked;
     }).length;
   }
 
@@ -414,4 +422,17 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     
     return `rgb(${lightR}, ${lightG}, ${lightB})`;
   }
+
+  // Add to constructor or ngOnInit
+  private handleVisibilityChange(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        // Page became visible, refresh data
+        setTimeout(() => {
+          this.dataService.forceRefreshLists().subscribe();
+        }, 100);
+      }
+    });
+  }
+
 }

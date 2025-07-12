@@ -50,7 +50,7 @@ export class QuantityExtractionService {
   private readonly QUANTITY_PATTERNS: QuantityPattern[] = [
     // NEW: Pattern for text numbers with units: "drei kg Bananen", "zwei liter Milch"
     { 
-      pattern: new RegExp(`^(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\\s+(.+)$`, 'i'),
+      pattern: new RegExp(`^(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\\s+(.+)$`, 'i'),
       type: 'text_unit_item',
       itemGroup: 3,
       quantityGroup: 1,
@@ -58,7 +58,7 @@ export class QuantityExtractionService {
     },
     // NEW: Pattern for "Artikel text_number Unit": "Bananen drei kg"
     { 
-      pattern: new RegExp(`^(.+?)\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
+      pattern: new RegExp(`^(.+?)\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
       type: 'item_text_unit',
       itemGroup: 1,
       quantityGroup: 2,
@@ -66,7 +66,7 @@ export class QuantityExtractionService {
     },
     // NEW: Pattern for "Artikel Menge text_number Unit": "Milch Menge drei Liter"
     { 
-      pattern: new RegExp(`^(.+?)\\s+menge\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
+      pattern: new RegExp(`^(.+?)\\s+menge\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
       type: 'item_menge_text_unit',
       itemGroup: 1,
       quantityGroup: 2,
@@ -88,14 +88,14 @@ export class QuantityExtractionService {
     },
     // EXISTING: Pattern 1: "Artikel Menge Amount Unit" → "Milch Menge 1l"
     { 
-      pattern: /^(.+?)\s+menge\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
+      pattern: /^(.+?)\s+menge\s+(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))$/i,
       type: 'item_menge_amount',
       itemGroup: 1,
       quantityGroup: 2
     },
     // EXISTING: Pattern 2: "Amount Unit Artikel" → "2kg Bananen", "500ml Milch"
     { 
-      pattern: /^(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)$/i,
+      pattern: /^(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)$/i,
       type: 'unit_start',
       itemGroup: 2,
       quantityGroup: 1
@@ -130,21 +130,21 @@ export class QuantityExtractionService {
   private readonly TOKEN_QUANTITY_PATTERNS: QuantityPattern[] = [
     // NEW: Text number patterns for tokens
     { 
-      pattern: new RegExp(`^(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\\s+(.+)$`, 'i'),
+      pattern: new RegExp(`^(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\\s+(.+)$`, 'i'),
       type: 'text_unit_item',
       itemGroup: 3,
       quantityGroup: 1,
       unitGroup: 2
     },
     { 
-      pattern: new RegExp(`^(.+?)\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
+      pattern: new RegExp(`^(.+?)\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
       type: 'item_text_unit',
       itemGroup: 1,
       quantityGroup: 2,
       unitGroup: 3
     },
     { 
-      pattern: new RegExp(`^(.+?)\\s+menge\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
+      pattern: new RegExp(`^(.+?)\\s+menge\\s+(${Object.keys(this.TEXT_NUMBERS).join('|')})\\s+(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$`, 'i'),
       type: 'item_menge_text_unit',
       itemGroup: 1,
       quantityGroup: 2,
@@ -166,7 +166,7 @@ export class QuantityExtractionService {
     },
     // EXISTING: Pattern 1: "Artikel Menge Amount Unit" → "Milch Menge 1 Liter"
     { 
-      pattern: /^(.+?)\s+menge\s+(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)?$/i,
+      pattern: /^(.+?)\s+menge\s+(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)?$/i,
       type: 'item_menge_amount_unit',
       itemGroup: 1,
       quantityGroup: 2,
@@ -174,7 +174,7 @@ export class QuantityExtractionService {
     },
     // EXISTING: Pattern 2: "Amount Unit Artikel" → "2kg Bananen", "500ml Milch"
     { 
-      pattern: /^(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\s+(.+)$/i,
+      pattern: /^(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)\s+(.+)$/i,
       type: 'amount_unit_item',
       itemGroup: 3,
       quantityGroup: 1,
@@ -190,7 +190,7 @@ export class QuantityExtractionService {
     },
     // EXISTING: Pattern 4: "Artikel Amount Unit" → "Bananen 2kg", "Milch 1 Liter"
     { 
-      pattern: /^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$/i,
+      pattern: /^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser)$/i,
       type: 'item_amount_unit',
       itemGroup: 1,
       quantityGroup: 2,
