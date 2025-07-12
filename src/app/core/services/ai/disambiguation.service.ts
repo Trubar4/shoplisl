@@ -95,20 +95,25 @@ export class DisambiguationService {
   async processMultiItemSequentially(action: MultiItemPendingAction): Promise<AIExecutionResult> {
     console.log('🎯 PROCESSING MULTI-ITEM SEQUENTIALLY - FIXED VERSION');
     console.log(`🎯 Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
-    console.log('🎯 Action state:', {
-      currentIndex: action.currentItemIndex,
-      totalItems: action.items.length,
-      processedCount: action.processedItems.length,
-      listName: action.listName,
-      conversationListId: (action as any).conversationListId
-    });
+    
+    // SAFETY: Prevent infinite recursion
+    if (!action.items || action.items.length === 0) {
+      console.error('🎯 SAFETY: No items to process');
+      return { success: false, message: '❌ Keine Artikel zu verarbeiten.' };
+    }
+    
+    // SAFETY: Prevent processing more than 20 items
+    if (action.currentItemIndex > 20) {
+      console.error('🎯 SAFETY: Too many iterations - stopping to prevent infinite loop');
+      return this.executeMultiItemFinalAction(action);
+    }
     
     // CRITICAL FIX: Check completion condition first
     if (action.currentItemIndex >= action.items.length) {
       console.log('🎯 All items processed - executing final action');
       return this.executeMultiItemFinalAction(action);
     }
-
+  
     const currentItem = action.items[action.currentItemIndex];
     if (!currentItem) {
       console.log('🎯 No current item found - executing final action');
@@ -164,8 +169,12 @@ export class DisambiguationService {
       action.processedItems.push(failedItem);
       action.currentItemIndex++;
       
-      // Continue with next item
-      return this.processMultiItemSequentially(action);
+      // SAFETY: Use setTimeout to prevent stack overflow
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.processMultiItemSequentially(action).then(resolve);
+        }, 0);
+      });
     }
   }
 
@@ -181,6 +190,13 @@ export class DisambiguationService {
     
     console.log('🎯 Processing current item and continuing:', currentItem);
     console.log('🎯 Selected article:', selectedArticle?.name || 'NEW');
+    
+    // SAFETY: Ensure we have a valid item
+    if (!currentItem) {
+      console.error('🎯 SAFETY: No current item to process');
+      action.currentItemIndex++;
+      return this.executeMultiItemFinalAction(action);
+    }
     
     try {
       let articleId: string;
@@ -232,8 +248,12 @@ export class DisambiguationService {
       action.currentItemIndex++;
       console.log(`🎯 Moving to next item: ${action.currentItemIndex + 1}/${action.items.length}`);
   
-      // CRITICAL FIX: Continue processing next item recursively
-      return this.processMultiItemSequentially(action);
+      // SAFETY: Use setTimeout to prevent stack overflow  
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.processMultiItemSequentially(action).then(resolve);
+        }, 0);
+      });
   
     } catch (error) {
       console.error('🎯 ERROR PROCESSING CURRENT ITEM:', error);
@@ -249,8 +269,12 @@ export class DisambiguationService {
       action.processedItems.push(failedItem);
       action.currentItemIndex++;
       
-      // Continue with next item
-      return this.processMultiItemSequentially(action);
+      // SAFETY: Use setTimeout to prevent stack overflow
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          this.processMultiItemSequentially(action).then(resolve);
+        }, 0);
+      });
     }
   }
 

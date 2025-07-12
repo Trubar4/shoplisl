@@ -1083,6 +1083,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     if (disambiguation.pendingAction?.type === 'select_list') {
       return 'Liste auswählen';
     }
+    
+    // For article disambiguation, don't show "X Artikel" subtitle
     return 'Artikel auswählen';
   }
 

@@ -45,7 +45,13 @@
         [(ngModel)]="searchQuery"
         (input)="onSearchQueryChange()"
         placeholder="Artikel suchen...">
-      <mat-icon matSuffix>search</mat-icon>
+      @if (searchQuery) {
+        <button matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
+      }
     </mat-form-field>
   </div>
 
@@ -144,7 +150,13 @@
           [(ngModel)]="searchQuery"
           (input)="onSearchQueryChange()"
           placeholder="Artikel suchen...">
-        <mat-icon matSuffix>search</mat-icon>
+        @if (searchQuery) {
+          <button matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
+            <mat-icon>close</mat-icon>
+          </button>
+        } @else {
+          <mat-icon matSuffix>search</mat-icon>
+        }
       </mat-form-field>
     </div>
 

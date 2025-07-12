@@ -328,16 +328,17 @@ export class QuantityExtractionService {
       originalInput: input,
       parseErrors: []
     };
-
+  
     // Clean the input
     const cleanInput = input.trim();
-
+    console.log('🎯 CLEAN INPUT:', cleanInput);
+  
     // Find matching command pattern
     let commandMatch = null;
     let commandType: 'add_items' | 'create_list_with_items' = 'add_items';
     let itemsText = '';
     let listName: string | undefined;
-
+  
     for (const cmdPattern of this.COMMAND_PATTERNS) {
       const match = cleanInput.match(cmdPattern.pattern);
       if (match) {
@@ -345,37 +346,76 @@ export class QuantityExtractionService {
         commandType = cmdPattern.type;
         itemsText = match[cmdPattern.itemsGroup].trim();
         listName = cmdPattern.listGroup !== null ? match[cmdPattern.listGroup].trim() : undefined;
+        console.log('🎯 MATCHED PATTERN:', cmdPattern.type, 'Items text:', itemsText);
         break;
       }
     }
-
+  
     if (!commandMatch) {
       console.log('🎯 NO COMMAND PATTERN MATCHED');
-      return result; // Returns 'unrecognized'
+      return result;
     }
-
-    console.log('🎯 COMMAND MATCHED:', { commandType, itemsText, listName });
-
+  
     // Set command type and list name
     result.command = commandType;
     result.listName = listName;
-
+  
     // Split items by comma and parse each one
     const itemTokens = this.splitCommaItems(itemsText);
-    console.log('🎯 SPLIT ITEMS:', itemTokens);
-
+    console.log('🎯 SPLIT TOKENS:', itemTokens);
+  
     for (const token of itemTokens) {
+      console.log('🎯 PROCESSING TOKEN:', token);
       const parsedItem = this.parseSingleItemFromToken(token);
       if (parsedItem) {
         result.items.push(parsedItem);
+        console.log('🎯 PARSED ITEM:', parsedItem);
       } else {
         result.parseErrors.push(`Konnte "${token}" nicht interpretieren`);
+        console.log('🎯 PARSE ERROR for token:', token);
       }
     }
-
+  
     console.log('🎯 FINAL PARSE RESULT:', result);
     return result;
   }
+
+  /**
+ * 🔍 Check if a comma is a decimal separator (like "0,5") vs item separator
+ */
+private isDecimalComma(before: string, after: string): boolean {
+  // Extract the last character before comma and first character after comma
+  const charBefore = before.slice(-1);
+  const charAfter = after.slice(0, 1);
+  
+  // It's a decimal comma if:
+  // 1. There's a digit immediately before AND immediately after the comma
+  // 2. AND the digit before is part of a number (not standalone)
+  const isDigitBefore = /\d/.test(charBefore);
+  const isDigitAfter = /\d/.test(charAfter);
+  
+  if (!isDigitBefore || !isDigitAfter) {
+    return false;
+  }
+  
+  // Additional check: make sure it's actually a decimal number
+  // Look for patterns like "0,5" or "123,45" 
+  const beforeMatch = before.match(/(\d+)$/);
+  const afterMatch = after.match(/^(\d+)/);
+  
+  if (beforeMatch && afterMatch) {
+    const numberBefore = beforeMatch[1];
+    const numberAfter = afterMatch[1];
+    
+    // Typical decimal patterns: single digit before comma, 1-3 digits after
+    // "0,5", "1,25", "12,345" etc.
+    if (numberBefore.length <= 3 && numberAfter.length <= 3) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
   /**
    * 🔍 Smart comma splitting that preserves "Menge" constructs
@@ -384,35 +424,78 @@ export class QuantityExtractionService {
   private splitCommaItems(itemsText: string): string[] {
     console.log('🔍 SPLITTING COMMA ITEMS:', itemsText);
     
-    const items: string[] = [];
-    
-    // Simple split by comma, then clean each item
-    const rawItems = itemsText.split(/\s*,\s*/);
-    
-    for (let i = 0; i < rawItems.length; i++) {
-      let currentItem = rawItems[i].trim();
+    // Step 1: Check if we have semicolons - if so, use semicolon splitting (AI response format)
+    if (itemsText.includes(';')) {
+      console.log('🔍 Found semicolons - using semicolon splitting');
+      const items = itemsText
+        .split(/\s*;\s*/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
       
-      // Check if this looks like an incomplete "Menge" pattern
-      // E.g., if we have "Milch Menge" and the next item is "drei Liter"
-      if (i < rawItems.length - 1) {
-        const nextItem = rawItems[i + 1].trim();
-        
-        // Pattern: current item ends with "Menge" and next item starts with number/text number/amount
-        if (currentItem.toLowerCase().endsWith('menge') && (/^\d+/.test(nextItem) || this.startsWithTextNumber(nextItem))) {
-          // Combine them: "Milch Menge" + "drei Liter" = "Milch Menge drei Liter"
-          currentItem = `${currentItem} ${nextItem}`;
-          i++; // Skip the next item since we've consumed it
-          console.log('🔍 COMBINED MENGE PATTERN:', currentItem);
+      console.log('🔍 SEMICOLON SPLIT RESULT:', items);
+      return items;
+    }
+    
+    // Step 2: For comma-separated items, we need to be smart about decimal commas
+    if (itemsText.includes(',')) {
+      console.log('🔍 Found commas - analyzing for decimal vs separator commas');
+      
+      const items: string[] = [];
+      let currentPosition = 0;
+      
+      // Find all comma positions
+      const commas: number[] = [];
+      for (let i = 0; i < itemsText.length; i++) {
+        if (itemsText[i] === ',') {
+          commas.push(i);
         }
       }
       
-      if (currentItem) {
-        items.push(currentItem);
+      if (commas.length === 0) {
+        return [itemsText.trim()];
+      }
+      
+      // Analyze each comma to determine if it's decimal or separator
+      const separatorCommas: number[] = [];
+      
+      for (const commaPos of commas) {
+        const before = itemsText.substring(Math.max(0, commaPos - 3), commaPos);
+        const after = itemsText.substring(commaPos + 1, Math.min(itemsText.length, commaPos + 4));
+        
+        console.log(`🔍 Comma at ${commaPos}: "${before.slice(-1)},${after.slice(0, 1)}" - ${this.isDecimalComma(before, after) ? 'DECIMAL' : 'SEPARATOR'}`);
+        
+        // Check if this is a decimal comma (digit before AND digit after)
+        if (!this.isDecimalComma(before, after)) {
+          separatorCommas.push(commaPos);
+        }
+      }
+      
+      // Split only at separator commas
+      if (separatorCommas.length > 0) {
+        let lastPos = 0;
+        
+        for (const commaPos of separatorCommas) {
+          const item = itemsText.substring(lastPos, commaPos).trim();
+          if (item) {
+            items.push(item);
+          }
+          lastPos = commaPos + 1;
+        }
+        
+        // Add the last item
+        const lastItem = itemsText.substring(lastPos).trim();
+        if (lastItem) {
+          items.push(lastItem);
+        }
+        
+        console.log('🔍 SMART COMMA SPLIT RESULT:', items);
+        return items.filter(item => item.length > 0);
       }
     }
     
-    console.log('🔍 SPLIT RESULT:', items);
-    return items;
+    // Step 3: No separators found - return as single item
+    console.log('🔍 No separators found - returning as single item');
+    return [itemsText.trim()].filter(item => item.length > 0);
   }
 
   /**
@@ -508,7 +591,37 @@ export class QuantityExtractionService {
    * Validate if input contains multiple items (comma-separated)
    */
   hasMultipleItems(input: string): boolean {
-    return input.includes(',') && input.split(',').length > 1;
+    // Quick check for semicolons (AI response format)
+    if (input.includes(';')) {
+      return input.split(/\s*;\s*/).length > 1;
+    }
+    
+    // For commas, use smart detection
+    if (input.includes(',')) {
+      // Find all comma positions
+      const commas: number[] = [];
+      for (let i = 0; i < input.length; i++) {
+        if (input[i] === ',') {
+          commas.push(i);
+        }
+      }
+      
+      // Check if any comma is a separator (not decimal)
+      let separatorCount = 0;
+      
+      for (const commaPos of commas) {
+        const before = input.substring(Math.max(0, commaPos - 3), commaPos);
+        const after = input.substring(commaPos + 1, Math.min(input.length, commaPos + 4));
+        
+        if (!this.isDecimalComma(before, after)) {
+          separatorCount++;
+        }
+      }
+      
+      return separatorCount > 0;
+    }
+    
+    return false;
   }
 
   /**

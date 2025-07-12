@@ -577,51 +577,31 @@ export class AIService {
   // RECIPE PARSING HELPER - NEW
   // ========================================
 
-  /**
-   * FIXED: Advanced recipe parsing for all formats
-   * Handles: newlines, bullet points, sections, symbols
-   */
   private parseAdvancedRecipe(recipeContent: string): string[] {
     console.log('🍳 Advanced parsing recipe:', recipeContent.substring(0, 100));
     
     const ingredients: string[] = [];
+    
+    // Split by newlines first
     const lines = recipeContent.split(/\r?\n/);
     
     for (let line of lines) {
-      // Clean line from various symbols and prefixes
-      let cleaned = line
-        .replace(/^[-•◦▪▫*>]+\s*/, '') // Remove bullet points
-        .replace(/^[\d\.\)]+\s*/, '')   // Remove numbered lists  
-        .replace(/^>\s*/, '')           // Remove >
-        .replace(/^\*+\s*/, '')         // Remove asterisks
-        .replace(/\*+$/, '')            // Remove trailing asterisks
-        .replace(/^-+\s*/, '')          // Remove dashes
-        .replace(/\s*-+$/, '')          // Remove trailing dashes
-        .replace(/^•+\s*/, '')          // Remove bullets
-        .replace(/•+$/, '')             // Remove trailing bullets
-        .trim();
-      
-      // Skip section headers and empty lines
-      if (!cleaned || 
-          cleaned.length < 3 ||
-          cleaned.toLowerCase().includes('für den') ||
-          cleaned.toLowerCase().includes('für die') ||
-          cleaned.toLowerCase().includes('zum würzen') ||
-          cleaned.toLowerCase().includes('zubereitung') ||
-          cleaned.toLowerCase().includes('portionen') ||
-          /^-{3,}/.test(cleaned)) {
-        continue;
-      }
-      
-      // Check if line contains quantity (number + optional unit)
-      const hasQuantity = /\d+/.test(cleaned) && 
-        (cleaned.includes('g') || cleaned.includes('ml') || cleaned.includes('l') || 
-         cleaned.includes('el') || cleaned.includes('tl') || cleaned.includes('prise') ||
-         cleaned.includes('stück') || cleaned.includes('dose') || cleaned.includes('pack') ||
-         /^\d+\s+[a-zA-ZäöüÄÖÜß]/.test(cleaned)); // "2 Eier"
-      
-      if (hasQuantity) {
-        ingredients.push(cleaned);
+      // Check if line contains multiple items separated by comma or semicolon
+      if (line.includes(',') || line.includes(';')) {
+        // Split by both separators
+        const items = line.split(/\s*[,;]\s*/);
+        for (let item of items) {
+          const processedItem = this.processRecipeItem(item);
+          if (processedItem) {
+            ingredients.push(processedItem);
+          }
+        }
+      } else {
+        // Handle single item lines
+        const processedItem = this.processRecipeItem(line);
+        if (processedItem) {
+          ingredients.push(processedItem);
+        }
       }
     }
     
@@ -632,26 +612,65 @@ export class AIService {
       return this.parseSimpleIngredients(recipeContent);
     }
     
-    return ingredients.length > 0 ? ingredients.slice(0, 15) : recipeContent.split(/\s+(?=\d)/).filter(item => item.trim());
+    return ingredients.length > 0 ? ingredients.slice(0, 15) : [recipeContent.trim()];
   }
 
+
   /**
-   * FIXED: Parse simple ingredients from space-separated text
-   * "500g Mehl 2 Eier 250ml Milch" → ["500g Mehl", "2 Eier", "250ml Milch"]
-   */
+ * FIXED: Process individual recipe item with better cleaning and validation
+ */
+private processRecipeItem(item: string): string | null {
+  let cleaned = item
+    .replace(/^[-•◦▪▫*>]+\s*/, '') // Remove bullet points
+    .replace(/^[\d\.\)]+\s*/, '')   // Remove numbered lists  
+    .replace(/^>\s*/, '')           // Remove >
+    .replace(/^\*+\s*/, '')         // Remove asterisks
+    .replace(/\*+$/, '')            // Remove trailing asterisks
+    .replace(/^-+\s*/, '')          // Remove dashes
+    .replace(/\s*-+$/, '')          // Remove trailing dashes
+    .replace(/^•+\s*/, '')          // Remove bullets
+    .replace(/•+$/, '')             // Remove trailing bullets
+    .trim();
+  
+  // Skip section headers and empty lines
+  if (!cleaned || 
+      cleaned.length < 3 ||
+      cleaned.toLowerCase().includes('für den') ||
+      cleaned.toLowerCase().includes('für die') ||
+      cleaned.toLowerCase().includes('zum würzen') ||
+      cleaned.toLowerCase().includes('zubereitung') ||
+      cleaned.toLowerCase().includes('portionen') ||
+      /^-{3,}/.test(cleaned)) {
+    return null;
+  }
+  
+  // Check if line contains quantity (number + optional unit) OR food keywords
+  const hasQuantity = /\d+/.test(cleaned);
+  const hasUnit = /\b(g|kg|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser|pck)\b/i.test(cleaned);
+  const hasFoodWords = /\b(butter|zucker|mehl|ei|eier|salz|natron|milch|öl|schokolade|schoko|vanille|zimt|kakao|nüsse|mandeln|rosinen|backpulver|zwiebel|knoblauch|tomate|kartoffel|fleisch|fisch|käse|brot|nudeln|reis|bohnen|erbsen|karotte|paprika|gurke|salat|apfel|banane|orange|zitrone|petersilie|basilikum|oregano|thymian|rosmarin|pfeffer|chili|ingwer|honig|essig|wein|bier|sahne|joghurt|quark|frischkäse|mozzarella|parmesan|gouda|emmentaler|cheddar|feta|ricotta|mascarpone|pecorino|gorgonzola|camembert|brie|roquefort|stilton)\b/i.test(cleaned);
+  
+  // Accept if it has quantity with unit OR food keywords, or basic quantity pattern
+  if ((hasQuantity && hasUnit) || hasFoodWords || /^\d+\s+[a-zA-ZäöüÄÖÜß]/.test(cleaned)) {
+    return cleaned;
+  }
+  
+  return null;
+}
+
+
   private parseSimpleIngredients(recipeContent: string): string[] {
     console.log('🍳 Parsing simple ingredients:', recipeContent);
     
-    // First try comma/newline/semicolon separation
+    // FIXED: Try comma/newline/semicolon separation first
     if (recipeContent.includes(',') || recipeContent.includes('\n') || recipeContent.includes(';')) {
       const items = recipeContent
-        .split(/[,\n;]/)
+        .split(/[,\n;]/)  // Split by comma, newline, OR semicolon
         .map(item => item.trim())
         .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
         .slice(0, 15);
       
       if (items.length > 1) {
-        console.log('🍳 Found comma/newline separated items:', items);
+        console.log('🍳 Found comma/newline/semicolon separated items:', items);
         return items;
       }
     }
@@ -697,6 +716,8 @@ export class AIService {
     
     return validIngredients;
   }
+
+
 
   // ========================================
   // MULTI-ITEM PROCESSING - FIXED
@@ -1082,16 +1103,27 @@ export class AIService {
     
     const cleanedText = this.cleanRawRecipeText(rawRecipeText);
     
-    const prompt = `Konvertiere diese Zutatenliste in ein standardisiertes Format.
+    const prompt = `Konvertiere diese deutsche Zutatenliste in ein standardisiertes Format.
   
   EINGABE: ${cleanedText}
   
   REGELN:
   - Nur echte Zutaten mit Mengen extrahieren
   - Format: "MENGE EINHEIT ZUTAT" (z.B. "2 EL Öl", nicht "Öl 2 EL")
+  - Deutsche Dezimalzahlen: 0,3 nicht 0.3
   - Deutsche Einheiten: g, kg, ml, l, EL, TL, Prise, Stück
+  - Behalte Kommas in Dezimalzahlen: "0,3 TL Natron"
+  - WICHTIG: Gib ALLE Zutaten in EINER Zeile aus, getrennt durch Semikolon
   
-  ANTWORTE NUR mit der kommagetrennten Zutatenliste, KEINE anderen Texte:`;
+  BEISPIELE:
+  "Öl 2 EL" → "2 EL Öl"
+  "Natron 0,3 TL" → "0,3 TL Natron"
+  "Mehl 500g" → "500g Mehl"
+  
+  AUSGABEFORMAT: Alle Zutaten in einer Zeile mit Semikolon getrennt:
+  "0,5kg Mehl; 2 Eier; 250ml Milch; 0,3 TL Öl"
+  
+  ANTWORTE NUR mit einer Zeile im oben gezeigten Format:`;
   
     try {
       const response = await this.callGroqAPI(prompt);
@@ -1111,64 +1143,9 @@ export class AIService {
     } catch (error) {
       console.error('🍳 AI standardization failed:', error);
       // Use enhanced fallback
-      const fallbackItems = this.parseAdvancedRecipeWithAI(rawRecipeText);
-      return `Füge ${fallbackItems.join(', ')} hinzu`;
+      const fallbackItems = this.parseAdvancedRecipe(rawRecipeText);
+      return `Füge ${fallbackItems.join('; ')} hinzu`;
     }
-  }
-
-  /**
-   * Extract just the ingredients list from AI response that might contain explanations
-   */
-  private extractIngredientsFromAIResponse(response: string): string {
-    console.log('🍳 Extracting ingredients from AI response');
-    
-    const lines = response.split('\n');
-    
-    // Look for the line that contains comma-separated ingredients
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      // Skip empty lines and obvious explanatory text
-      if (!trimmed || 
-          trimmed.toLowerCase().includes('ich kann') ||
-          trimmed.toLowerCase().includes('hier ist') ||
-          trimmed.toLowerCase().includes('wurde zu') ||
-          trimmed.toLowerCase().includes('korrigiert') ||
-          trimmed.startsWith('-') ||
-          trimmed.startsWith('•') ||
-          trimmed.length < 10) {
-        continue;
-      }
-      
-      // Look for pattern that looks like ingredients: contains commas and food-related words
-      if (trimmed.includes(',') && 
-          /\d+/.test(trimmed) && 
-          (trimmed.includes('g ') || trimmed.includes('ml ') || trimmed.includes('EL ') || 
-          trimmed.includes('TL ') || trimmed.includes('Stück ') || trimmed.includes('l '))) {
-        
-        // Clean up any remaining artifacts
-        const cleaned = trimmed
-          .replace(/^[^a-zA-Z0-9]*/, '') // Remove leading non-alphanumeric
-          .replace(/[^a-zA-Z0-9äöüÄÖÜß,\s]*$/, '') // Remove trailing artifacts
-          .trim();
-        
-        console.log('🍳 Found ingredients line:', cleaned);
-        return cleaned;
-      }
-    }
-    
-    // Fallback: if no clear line found, try to clean the entire response
-    const fallback = response
-      .replace(/ich kann.+?liste:/i, '') // Remove explanatory start
-      .replace(/ich habe.+$/i, '') // Remove explanatory end
-      .replace(/hier ist.+?:/i, '') // Remove "here is" parts
-      .replace(/-.+$/gm, '') // Remove bullet explanations
-      .replace(/\n+/g, ' ') // Replace newlines with spaces
-      .replace(/\s+/g, ' ') // Normalize spaces
-      .trim();
-    
-    console.log('🍳 Fallback extraction:', fallback);
-    return fallback;
   }
 
   /**
@@ -1207,6 +1184,116 @@ export class AIService {
     console.log('🍳 Enhanced fallback result:', ingredients);
     return ingredients.slice(0, 15);
   }
+
+
+  /**
+   * Extract just the ingredients list from AI response that might contain explanations
+   */
+  private extractIngredientsFromAIResponse(response: string): string {
+    console.log('🍳 Extracting ingredients from AI response');
+    
+    const lines = response.split('\n');
+    const ingredientLines: string[] = [];
+    
+    // First pass: Look for a single line with comma/semicolon separated ingredients
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip empty lines and obvious explanatory text
+      if (!trimmed || 
+          trimmed.toLowerCase().includes('ich kann') ||
+          trimmed.toLowerCase().includes('hier ist') ||
+          trimmed.toLowerCase().includes('wurde zu') ||
+          trimmed.toLowerCase().includes('korrigiert') ||
+          trimmed.startsWith('-') ||
+          trimmed.startsWith('•') ||
+          trimmed.length < 10) {
+        continue;
+      }
+      
+      // Look for single line with multiple ingredients (comma OR semicolon separated)
+      if ((trimmed.includes(',') || trimmed.includes(';')) && 
+          /\d+/.test(trimmed) && 
+          (trimmed.includes('g ') || trimmed.includes('ml ') || trimmed.includes('EL ') || 
+          trimmed.includes('TL ') || trimmed.includes('Stück ') || trimmed.includes('l ') ||
+          trimmed.includes('kg ') || trimmed.includes('Liter'))) {
+        
+        // Check if this looks like multiple ingredients on one line
+        const separatorCount = (trimmed.match(/[,;]/g) || []).length;
+        if (separatorCount >= 2) { // At least 2 separators = 3+ ingredients
+          const cleaned = trimmed
+            .replace(/^[^a-zA-Z0-9]*/, '') // Remove leading non-alphanumeric
+            .replace(/[^a-zA-Z0-9äöüÄÖÜß,;\s]*$/, '') // Remove trailing artifacts, keep semicolons
+            .trim();
+          
+          console.log('🍳 Found single-line ingredients:', cleaned);
+          return cleaned;
+        }
+      }
+    }
+    
+    // Second pass: Look for multiple lines with individual ingredients
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip empty lines and explanatory text
+      if (!trimmed || 
+          trimmed.toLowerCase().includes('ich kann') ||
+          trimmed.toLowerCase().includes('hier ist') ||
+          trimmed.toLowerCase().includes('wurde zu') ||
+          trimmed.toLowerCase().includes('korrigiert') ||
+          trimmed.toLowerCase().includes('antwort') ||
+          trimmed.toLowerCase().includes('liste:') ||
+          trimmed.startsWith('-') ||
+          trimmed.startsWith('•') ||
+          trimmed.length < 5) {
+        continue;
+      }
+      
+      // Look for lines that look like individual ingredients
+      // Must contain: number + unit/food word
+      const hasNumber = /\d+/.test(trimmed);
+      const hasUnit = /\b(g|kg|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser|pck)\b/i.test(trimmed);
+      const hasFoodWords = /\b(butter|zucker|mehl|ei|eier|salz|natron|milch|öl|schokolade|schoko|vanille|zimt|kakao|nüsse|mandeln|rosinen|backpulver)\b/i.test(trimmed);
+      
+      // Must have number AND (unit OR food word)
+      if (hasNumber && (hasUnit || hasFoodWords)) {
+        // Additional check: make sure it's not just a number
+        const wordCount = trimmed.split(/\s+/).length;
+        if (wordCount >= 2) { // At least "amount item" or "amount unit item"
+          console.log('🍳 Found ingredient line:', trimmed);
+          ingredientLines.push(trimmed);
+        }
+      }
+    }
+    
+    // If we found multiple ingredient lines, combine them
+    if (ingredientLines.length >= 2) {
+      const combined = ingredientLines.join('; ');
+      console.log('🍳 Combined multi-line ingredients:', combined);
+      return combined;
+    }
+    
+    // If we found exactly one ingredient line, return it
+    if (ingredientLines.length === 1) {
+      console.log('🍳 Found single ingredient line:', ingredientLines[0]);
+      return ingredientLines[0];
+    }
+    
+    // Fallback: if no clear structure found, try to clean the entire response
+    const fallback = response
+      .replace(/ich kann.+?liste:/i, '') // Remove explanatory start
+      .replace(/ich habe.+$/i, '') // Remove explanatory end
+      .replace(/hier ist.+?:/i, '') // Remove "here is" parts
+      .replace(/-.+$/gm, '') // Remove bullet explanations
+      .replace(/\n+/g, ' ') // Replace newlines with spaces
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+    
+    console.log('🍳 Fallback extraction:', fallback);
+    return fallback;
+  }
+
 
   private cleanRawRecipeText(rawText: string): string {
     return rawText

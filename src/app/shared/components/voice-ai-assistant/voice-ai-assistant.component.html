@@ -74,7 +74,12 @@
         <mat-card-content class="disambiguation-content">
           <!-- FIXED: Updated message text -->
           <div class="disambiguation-message">
-            "{{ disambiguation.pendingAction.itemName }}" Welchen dieser ähnlichen Artikel möchtest du verwenden?
+            <span *ngIf="disambiguation.pendingAction?.type === 'select_list'; else articleSelection">
+              Zu welcher Liste sollen die Artikel hinzugefügt werden?
+            </span>
+            <ng-template #articleSelection>
+              "{{ disambiguation.pendingAction.itemName }}" Welchen dieser ähnlichen Artikel möchtest du verwenden?
+            </ng-template>
           </div>
                     
           <!-- Options with improved layout and scrolling -->
@@ -168,6 +173,11 @@
             cdkAutosizeMinRows="1"
             cdkAutosizeMaxRows="3">
           </textarea>
+          @if (currentMessage) {
+            <button matSuffix matIconButton aria-label="Clear" (click)="currentMessage=''">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
         </mat-form-field>
 
         <!-- Mic button right next to input -->
