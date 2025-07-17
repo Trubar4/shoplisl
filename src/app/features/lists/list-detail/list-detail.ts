@@ -67,6 +67,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('offen');
   private editFilter$ = new BehaviorSubject<EditFilter>('alle');
   private allListArticles$!: Observable<ArticleWithState[]>;
+  private celebrationTimeout?: any;
   
   isFabExpanded = false;
   listArticles$!: Observable<ArticleWithState[]>;
@@ -307,7 +308,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
     
     // Auto-hide after 3 seconds
-    setTimeout(() => {
+    this.celebrationTimeout = setTimeout(() => {
       console.log('🎉 Ending celebration animation');
       this.showCelebrationAnimation = false;
       this.cdr.detectChanges();
@@ -682,6 +683,15 @@ private checkCompletionDirectly(): void {
       this.triggerCelebrationAnimation();
     }
   });
+}
+
+closeCelebrationAnimation(): void {
+  if (this.celebrationTimeout) {
+    clearTimeout(this.celebrationTimeout);
+    this.celebrationTimeout = undefined;
+  }
+  this.showCelebrationAnimation = false;
+  this.cdr.detectChanges();
 }
 
 }
