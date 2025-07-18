@@ -18,6 +18,7 @@ import { Article, ShoppingList } from '../../models';
 import { DataService } from '../data';
 import { DepartmentService } from '../department.service';
 import { SmartSuggestionsService } from './smart-suggestions.service'; 
+import { LoggerService } from '../logger.service';
 
 
 @Injectable({
@@ -28,7 +29,8 @@ export class DisambiguationService {
   constructor(
     private dataService: DataService,
     private departmentService: DepartmentService,
-    private smartSuggestions: SmartSuggestionsService
+    private smartSuggestions: SmartSuggestionsService,
+    private logger: LoggerService
   ) {}
 
   // ========================================
@@ -80,27 +82,39 @@ export class DisambiguationService {
       const hasExactMatch = similarArticles.some(item => 
         item.article.name.toLowerCase().trim() === searchTerm
       );
-
+      
       console.log('🎯 Exact match check:', { searchTerm, hasExactMatch, similarCount: similarArticles.length });
 
       if (!hasExactMatch) {
         console.log('🎯🤖 Getting smart suggestions for disambiguation...');
         
-        // Get smart suggestions from the dedicated service
-        const [suggestedDepartmentId, suggestedIcon] = await Promise.all([
-          this.smartSuggestions.suggestDepartment(itemName),
-          this.smartSuggestions.suggestIcon(itemName)
-        ]);
+        // Get smart suggestions from the dedicated service  
+        const suggestions = await this.smartSuggestions.getSmartSuggestions(itemName);
+        
+        let suggestedDepartmentId = 'miscellaneous';
+        let suggestedIcon = '📦';
+        
+        if (suggestions) {
+          suggestedDepartmentId = suggestions.departmentId;
+          suggestedIcon = suggestions.icon;
+          console.log('✅ Smart suggestions for disambiguation:', {
+            item: itemName,
+            department: suggestedDepartmentId,
+            icon: suggestedIcon
+          });
+        } else {
+          // Fallback to manual suggestions
+          suggestedDepartmentId = await this.smartSuggestions.suggestDepartment(itemName);
+          suggestedIcon = await this.smartSuggestions.suggestIcon(itemName);
+          console.log('📦 Fallback suggestions:', {
+            item: itemName,
+            department: suggestedDepartmentId,
+            icon: suggestedIcon
+          });
+        }
         
         const departmentName = this.departmentService.getDepartmentName(suggestedDepartmentId, 'german');
         
-        console.log('🎯✨ DISAMBIGUATION SMART SUGGESTIONS:', {
-          item: itemName,
-          departmentId: suggestedDepartmentId,
-          departmentName: departmentName,
-          icon: suggestedIcon
-        });
-
         options.push({
           id: 'new_article',
           displayName: `"${itemName}" (neu erstellen)`,
@@ -109,7 +123,7 @@ export class DisambiguationService {
           icon: suggestedIcon,
           department: departmentName,
           suggestedDepartmentId: suggestedDepartmentId,
-          preview: `AI-Vorschlag: ${departmentName} ${suggestedIcon}`
+          preview: `${departmentName} ${suggestedIcon}`
         });
         
         console.log('✅ Added create new option with smart suggestions:', {
