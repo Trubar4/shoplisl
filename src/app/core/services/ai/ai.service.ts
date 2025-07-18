@@ -18,6 +18,8 @@ import { AIResponseService } from './ai-response.service';
 import { DataService } from '../data';
 import { ShoppingList, ConversationContext } from '../../models';
 import { environment } from '../../../../environments/environment';
+import { SmartSuggestionsService } from './smart-suggestions.service';
+
 
 @Injectable({
   providedIn: 'root'
@@ -31,7 +33,8 @@ export class AIService {
     private commandParser: CommandParserService,
     private disambiguation: DisambiguationService,
     public aiResponse: AIResponseService,
-    private dataService: DataService
+    private dataService: DataService,
+    private smartSuggestions: SmartSuggestionsService
   ) {
     this.logApiKeyStatus();
     this.ensureRequiredMethods();
@@ -809,11 +812,11 @@ private processRecipeItem(item: string): string | null {
     // Extract quantity from input
     const quantityExtraction = this.quantityExtraction.extractQuantity(input);
     console.log('🎯 Quantity extraction result:', quantityExtraction);
-
+  
     // Parse command intent
     const intent = this.commandParser.parseIntent(input, quantityExtraction.itemName);
     console.log('🎯 Parsed intent:', intent);
-
+  
     // Check for unrecognized commands
     if (intent.itemName === 'UNRECOGNIZED_COMMAND' || 
         (intent as any).confidence !== undefined && (intent as any).confidence < 0.5) {
@@ -823,29 +826,48 @@ private processRecipeItem(item: string): string | null {
         message: `❌ Unbekannter Befehl: "${input}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle`
       };
     }
-
+  
     // Handle create list commands
     if (intent.type === 'create_list') {
       console.log('🎯 Processing create list command');
       return await this.handleListCreationWithColor(input, quantityExtraction);
     }
-
+  
     // Handle add item commands
     if (intent.type === 'add_item') {
       console.log('🎯 Processing add item command');
+      
+      // CRITICAL FIX: Check conversation context for target list
+      const conversationContext = this.getConversationContext();
+      let targetListName = intent.listName;
+      let targetListId: string | undefined;
+      
+      // If no explicit list in command but we have conversation context, use it
+      if (!targetListName && conversationContext.waitingForArticles) {
+        targetListName = conversationContext.waitingForArticles.listName;
+        targetListId = conversationContext.waitingForArticles.listId;
+        console.log('🎯 Using target list from conversation context:', targetListName, targetListId);
+      }
       
       const pendingAction: PendingAction = {
         type: intent.type,
         originalInput: input,
         itemName: quantityExtraction.itemName,
         extractedQuantity: quantityExtraction.quantity,
-        listName: intent.listName,
+        listName: targetListName, // FIXED: Now includes conversation context list
         suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName)
       };
-
+  
+      // CRITICAL FIX: Store conversation list ID in pending action for disambiguation service
+      if (targetListId) {
+        (pendingAction as any).conversationListId = targetListId;
+      }
+  
+      console.log('🎯 Created pending action with conversation context:', pendingAction);
+  
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
-
+  
     // Fallback to basic processing
     return this.processBasicCommand(input);
   }
@@ -1463,16 +1485,23 @@ private extractIngredientsFromAIResponse(response: string): string {
     }
   }
 
-  private async createArticleInConversationContext(quantityExtraction: any, listId: string, listName: string): Promise<AIExecutionResult> {
+  private async createArticleInConversationContext(
+    quantityExtraction: any, 
+    listId: string, 
+    listName: string
+  ): Promise<AIExecutionResult> {
     try {
+      const [departmentId, icon] = await Promise.all([
+        this.suggestDepartment(quantityExtraction.itemName),
+        this.suggestIcon(quantityExtraction.itemName)
+      ]);
+      
       const articleData = {
         name: quantityExtraction.itemName,
         amount: quantityExtraction.quantity || '',
-        departmentId: this.aiResponse.suggestDepartment(quantityExtraction.itemName),
-        icon: this.aiResponse.suggestIcon(quantityExtraction.itemName)
+        departmentId,
+        icon
       };
-      
-      console.log('🗣️ Creating article in conversation context:', articleData);
       
       const newArticle = await this.dataService.createArticle(articleData).toPromise();
       
@@ -1498,7 +1527,6 @@ private extractIngredientsFromAIResponse(response: string): string {
           }).toPromise();
           
           if (updateResult) {
-            // FIXED: Properly update conversation context
             this.setConversationContext({
               lastAction: {
                 type: 'article_added',
@@ -1523,14 +1551,24 @@ private extractIngredientsFromAIResponse(response: string): string {
               conversationContext: this.getConversationContext(),
               followUpPrompt
             };
+          } else {
+            return {
+              success: false,
+              message: `❌ Fehler beim Aktualisieren der Liste "${targetList.name}".`
+            };
           }
+        } else {
+          return {
+            success: false,
+            message: `❌ Liste mit ID "${listId}" nicht gefunden.`
+          };
         }
+      } else {
+        return {
+          success: false,
+          message: `❌ Fehler beim Erstellen des Artikels "${quantityExtraction.itemName}".`
+        };
       }
-      
-      return {
-        success: false,
-        message: '❌ Fehler beim Hinzufügen des Artikels.'
-      };
       
     } catch (error) {
       console.error('Error creating article in conversation context:', error);
@@ -1538,6 +1576,49 @@ private extractIngredientsFromAIResponse(response: string): string {
         success: false,
         message: '❌ Fehler beim Hinzufügen des Artikels.'
       };
+    }
+  }
+
+  private async getSmartSuggestions(itemName: string): Promise<{
+    departmentId: string;
+    icon: string;
+  } | null> {
+    if (!this.hasApiKey()) {
+      return null;
+    }
+  
+    try {
+      const articles = await this.dataService.getArticles().pipe(take(1)).toPromise();
+      const iconCounts = new Map<string, number>();
+      
+      articles?.forEach(article => {
+        if (article.icon) iconCounts.set(article.icon, (iconCounts.get(article.icon) || 0) + 1);
+      });
+  
+      const topIcons = Array.from(iconCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([icon]) => icon)
+        .join(' ');
+  
+      const prompt = `Item: "${itemName}"
+  Departments: fruit-vegetables, dairy-products, bread, meat-fish, beverages-alcohol, household-goods, miscellaneous
+  User icons: ${topIcons || '🥛🍞🧀🍎🥩'}
+  Format: {"dept":"beverages-alcohol","icon":"🍺"}`;
+  
+      console.log('🎯🤖 Getting AI suggestions for:', itemName);
+      const response = await this.callGroqAPI(prompt);
+      const result = JSON.parse(response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      
+      if (result.dept && result.icon) {
+        console.log('✅🤖 AI suggestions:', result);
+        return { departmentId: result.dept, icon: result.icon };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('🎯❌ AI suggestions failed:', error);
+      return null;
     }
   }
 
@@ -1995,11 +2076,43 @@ private extractIngredientsFromAIResponse(response: string): string {
     return this.disambiguation.getDisambiguationOptions(itemName);
   }
 
-  public suggestDepartment(itemName: string): string {
-    return this.aiResponse.suggestDepartment(itemName);
+  async suggestDepartment(itemName: string): Promise<string> {
+    try {
+      const suggestions = await this.getSmartSuggestions(itemName);
+      if (suggestions?.departmentId) {
+        console.log('✅🤖 AI department:', suggestions.departmentId);
+        return suggestions.departmentId;
+      }
+    } catch (error) {
+      console.log('🎯❌ AI failed, using fallback');
+    }
+    
+    // Fallback
+    const lowerName = itemName.toLowerCase();
+    if (/milch|käse|joghurt/.test(lowerName)) return 'dairy-products';
+    if (/brot|nudeln|reis/.test(lowerName)) return 'bread';
+    if (/fleisch|wurst|fisch/.test(lowerName)) return 'meat-fish';
+    if (/bier|wein|wasser|saft/.test(lowerName)) return 'beverages-alcohol';
+    return 'miscellaneous';
   }
-
-  public suggestIcon(itemName: string): string {
-    return this.aiResponse.suggestIcon(itemName);
+  
+  async suggestIcon(itemName: string): Promise<string> {
+    try {
+      const suggestions = await this.getSmartSuggestions(itemName);
+      if (suggestions?.icon) {
+        console.log('✅🤖 AI icon:', suggestions.icon);
+        return suggestions.icon;
+      }
+    } catch (error) {
+      console.log('🎯❌ AI failed, using fallback');
+    }
+    
+    // Fallback
+    const lowerName = itemName.toLowerCase();
+    if (/milch/.test(lowerName)) return '🥛';
+    if (/brot/.test(lowerName)) return '🍞';
+    if (/bier/.test(lowerName)) return '🍺';
+    if (/käse/.test(lowerName)) return '🧀';
+    return '📦';
   }
 }

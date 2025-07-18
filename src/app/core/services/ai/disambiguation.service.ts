@@ -17,6 +17,8 @@ import {
 import { Article, ShoppingList } from '../../models';
 import { DataService } from '../data';
 import { DepartmentService } from '../department.service';
+import { SmartSuggestionsService } from './smart-suggestions.service'; 
+
 
 @Injectable({
   providedIn: 'root'
@@ -25,7 +27,8 @@ export class DisambiguationService {
 
   constructor(
     private dataService: DataService,
-    private departmentService: DepartmentService
+    private departmentService: DepartmentService,
+    private smartSuggestions: SmartSuggestionsService
   ) {}
 
   // ========================================
@@ -38,11 +41,11 @@ export class DisambiguationService {
     try {
       const articles = await this.dataService.getArticles().pipe(take(1)).toPromise();
       const options: DisambiguationOption[] = [];
-  
+
       if (!articles) return options;
-  
+
       const searchTerm = itemName.toLowerCase().trim();
-  
+
       const similarArticles = articles
         .filter(article => article.id !== excludeId)
         .map(article => {
@@ -59,7 +62,7 @@ export class DisambiguationService {
         .filter(item => item.similarity >= MIN_SIMILARITY_THRESHOLD)
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, 3);
-  
+
       // Add existing articles as options
       for (const item of similarArticles) {
         options.push({
@@ -72,13 +75,8 @@ export class DisambiguationService {
           icon: item.article.icon
         });
       }
-  
-     // 🎯 ENHANCED: Add option to create new article with suggestions  
-      const suggestedDepartmentId = this.suggestDepartment(itemName);
-      const suggestedIcon = this.suggestIcon(itemName);
-      const departmentName = this.departmentService.getDepartmentName(suggestedDepartmentId, 'german');
 
-      // 🎯 CRITICAL FIX: Only add "create new" if no exact match exists
+      // ENHANCED: Add "create new" option with smart suggestions
       const hasExactMatch = similarArticles.some(item => 
         item.article.name.toLowerCase().trim() === searchTerm
       );
@@ -86,21 +84,43 @@ export class DisambiguationService {
       console.log('🎯 Exact match check:', { searchTerm, hasExactMatch, similarCount: similarArticles.length });
 
       if (!hasExactMatch) {
+        console.log('🎯🤖 Getting smart suggestions for disambiguation...');
+        
+        // Get smart suggestions from the dedicated service
+        const [suggestedDepartmentId, suggestedIcon] = await Promise.all([
+          this.smartSuggestions.suggestDepartment(itemName),
+          this.smartSuggestions.suggestIcon(itemName)
+        ]);
+        
+        const departmentName = this.departmentService.getDepartmentName(suggestedDepartmentId, 'german');
+        
+        console.log('🎯✨ DISAMBIGUATION SMART SUGGESTIONS:', {
+          item: itemName,
+          departmentId: suggestedDepartmentId,
+          departmentName: departmentName,
+          icon: suggestedIcon
+        });
+
         options.push({
           id: 'new_article',
           displayName: `"${itemName}" (neu erstellen)`,
           type: 'new',
           confidence: 1.0,
           icon: suggestedIcon,
-          department: departmentName, // 🎯 Show suggested department name
-          suggestedDepartmentId: suggestedDepartmentId, // 🎯 Include ID for processing
-          preview: `Vorschlag: ${departmentName}` // 🎯 Additional preview text
+          department: departmentName,
+          suggestedDepartmentId: suggestedDepartmentId,
+          preview: `AI-Vorschlag: ${departmentName} ${suggestedIcon}`
         });
-        console.log('✅ Added create new option with suggestions:', { departmentName, suggestedIcon });
+        
+        console.log('✅ Added create new option with smart suggestions:', {
+          icon: suggestedIcon,
+          department: departmentName,
+          departmentId: suggestedDepartmentId
+        });
       } else {
         console.log('⏭️ Skipped create new option - exact match exists');
       }
-  
+
       return options;
       
     } catch (error) {
@@ -108,6 +128,46 @@ export class DisambiguationService {
       throw new DisambiguationError('Failed to get disambiguation options', { itemName, error });
     }
   }
+
+  // Helper method to get AI suggestions (simplified interface)
+private async getAISuggestions(itemName: string, type: 'department' | 'icon'): Promise<string | null> {
+  try {
+    // This would ideally call the AI service's smart suggestions
+    // For now, we'll implement a simple version that can be enhanced
+    
+    // Mock API call - replace with actual AI service call
+    const result = await this.callSimpleAISuggestion(itemName, type);
+    return result;
+    
+  } catch (error) {
+    console.error(`🎯 AI ${type} suggestion failed:`, error);
+    return null;
+  }
+}
+
+private async callSimpleAISuggestion(itemName: string, type: 'department' | 'icon'): Promise<string | null> {
+  // This is a placeholder - in practice, you'd either:
+  // 1. Inject the AI service and call its methods
+  // 2. Make a direct API call here
+  // 3. Use a shared service for AI suggestions
+  
+  // For now, return null to use fallback
+  return null;
+}
+
+  // Helper methods to check AI service availability
+  private hasAIService(): boolean {
+    // This would need to be injected or accessed somehow
+    // For now, return false to use fallback
+    return false;
+  }
+
+  private getAIService(): any {
+    // This would return the injected AI service
+    // For now, return null
+    return null;
+  }
+
 
   // ========================================
   // ENHANCED SUGGESTION METHODS
@@ -592,7 +652,6 @@ public suggestIcon(itemName: string): string {
     console.log('🎯 Processing current item and continuing:', currentItem);
     console.log('🎯 Selected article:', selectedArticle?.name || 'NEW');
     
-    // SAFETY: Ensure we have a valid item
     if (!currentItem) {
       console.error('🎯 SAFETY: No current item to process');
       action.currentItemIndex++;
@@ -603,11 +662,9 @@ public suggestIcon(itemName: string): string {
       let articleId: string;
       
       if (selectedArticle) {
-        // Use existing article
-        console.log('🎯 Using existing article:', selectedArticle.name);
         articleId = selectedArticle.id;
+        console.log('🎯 Using existing article:', selectedArticle.name);
         
-        // Update quantity if specified
         if (currentItem.quantity) {
           await this.dataService.updateArticle(articleId, {
             ...selectedArticle,
@@ -615,24 +672,45 @@ public suggestIcon(itemName: string): string {
           }).toPromise();
         }
       } else {
-        // Create new article with enhanced suggestions
-        console.log('🎯 Creating new article for:', currentItem.itemName);
-        const newArticle = await this.dataService.createArticle({
+        // ENHANCED: Create new article with smart suggestions
+        console.log('🎯🤖 Getting smart suggestions for:', currentItem.itemName);
+        
+        // Get smart suggestions from the dedicated service
+        const [departmentId, icon] = await Promise.all([
+          this.smartSuggestions.suggestDepartment(currentItem.itemName),
+          this.smartSuggestions.suggestIcon(currentItem.itemName)
+        ]);
+        
+        console.log('🎯✨ SMART SUGGESTIONS RESULT:', {
+          item: currentItem.itemName,
+          department: departmentId,
+          icon: icon
+        });
+        
+        const articleData = {
           name: currentItem.itemName,
           amount: currentItem.quantity || '',
-          departmentId: this.suggestDepartment(currentItem.itemName),
-          icon: this.suggestIcon(currentItem.itemName)
-        }).toPromise();
+          departmentId,
+          icon
+        };
+        
+        console.log('🎯✨ Creating article with smart suggestions:', articleData);
+        
+        const newArticle = await this.dataService.createArticle(articleData).toPromise();
         
         if (!newArticle) {
           throw new Error(`Failed to create article: ${currentItem.itemName}`);
         }
         
         articleId = newArticle.id;
-        console.log('✅ Created new article:', newArticle.name, 'ID:', articleId);
+        console.log('✅ Created new article with smart suggestions:', {
+          name: newArticle.name,
+          id: articleId,
+          department: newArticle.departmentId,
+          icon: newArticle.icon
+        });
       }
-  
-      // CRITICAL FIX: Add to processed items with correct structure
+
       const processedItem: ProcessedItem = {
         item: currentItem,
         articleId,
@@ -643,23 +721,19 @@ public suggestIcon(itemName: string): string {
       
       action.processedItems.push(processedItem);
       console.log(`✅ Added item ${action.currentItemIndex + 1}/${action.items.length} to processed items`);
-      console.log('✅ Processed items so far:', action.processedItems.length);
-  
-      // CRITICAL FIX: Move to next item
+
       action.currentItemIndex++;
       console.log(`🎯 Moving to next item: ${action.currentItemIndex + 1}/${action.items.length}`);
-  
-      // SAFETY: Use setTimeout to prevent stack overflow  
+
       return new Promise((resolve) => {
         setTimeout(() => {
           this.processMultiItemSequentially(action).then(resolve);
         }, 0);
       });
-  
+
     } catch (error) {
       console.error('🎯 ERROR PROCESSING CURRENT ITEM:', error);
       
-      // Add failed item but continue processing
       const failedItem: ProcessedItem = {
         item: currentItem,
         failed: true,
@@ -670,7 +744,6 @@ public suggestIcon(itemName: string): string {
       action.processedItems.push(failedItem);
       action.currentItemIndex++;
       
-      // SAFETY: Use setTimeout to prevent stack overflow
       return new Promise((resolve) => {
         setTimeout(() => {
           this.processMultiItemSequentially(action).then(resolve);
@@ -1146,16 +1219,69 @@ public suggestIcon(itemName: string): string {
   }
 
   private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    console.log('🎯 EXECUTING ACTION WITH EXISTING ARTICLE:', { action, article });
+    
+    console.log('🎯 DEBUGGING executeActionWithArticle:', {
+      actionListName: action.listName,
+      conversationListId: (action as any).conversationListId,
+      actionType: action.type
+    });
     
     try {
-      if (action.listName) {
-        const targetList = await this.findListByName(action.listName);
+      let targetListName = action.listName;
+      let targetListId: string | undefined;
+      
+      // CRITICAL FIX: Check conversation list ID from pending action
+      if ((action as any).conversationListId) {
+        targetListId = (action as any).conversationListId;
+        console.log('🎯 Using conversation list ID from pending action:', targetListId);
+        
+        // Find list by ID to get the name
+        const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+        const conversationList = lists?.find(list => list.id === targetListId);
+        if (conversationList) {
+          targetListName = conversationList.name;
+          console.log('🎯 Found conversation list by ID:', targetListName);
+        }
+      }
+      
+      // FALLBACK: If still no target list, try to get from conversation context
+      if (!targetListName && !targetListId) {
+        console.log('🎯 No target list found in action, checking conversation context...');
+        
+        // Get conversation context from data service (assumes we can access it)
+        // Note: This might need adjustment based on how conversation context is accessible
+        try {
+          const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+          if (lists && lists.length === 1) {
+            // Only one list available - use it as fallback
+            targetListName = lists[0].name;
+            targetListId = lists[0].id;
+            console.log('🎯 Using only available list as fallback:', targetListName);
+          }
+        } catch (error) {
+          console.error('🎯 Error getting fallback list:', error);
+        }
+      }
+      
+      if (targetListName) {
+        let targetList: any;
+        
+        // Try to find by ID first, then by name
+        if (targetListId) {
+          const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+          targetList = lists?.find(list => list.id === targetListId);
+          console.log('🎯 Found target list by ID:', targetList?.name);
+        }
+        
+        if (!targetList) {
+          targetList = await this.findListByName(targetListName);
+          console.log('🎯 Found target list by name:', targetList?.name);
+        }
         
         if (!targetList) {
           return {
             success: false,
-            message: `❌ Liste "${action.listName}" nicht gefunden.`
+            message: `❌ Liste "${targetListName}" nicht gefunden.`
           };
         }
         
@@ -1164,14 +1290,14 @@ public suggestIcon(itemName: string): string {
         if (!updatedArticleIds.includes(article.id)) {
           updatedArticleIds.push(article.id);
         }
-
+  
         const updatedItemStates = { ...targetList.itemStates };
         updatedItemStates[article.id] = {
           articleId: article.id,
           isChecked: false, // ACTIVE state
           amount: action.extractedQuantity || article.amount || ''
         };
-
+  
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
@@ -1179,10 +1305,29 @@ public suggestIcon(itemName: string): string {
         
         if (updateResult) {
           const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+          
+          // CRITICAL FIX: Return conversation context to maintain the flow
+          const conversationContext = {
+            lastAction: {
+              type: 'article_added' as const,
+              listId: targetList.id,
+              listName: targetList.name,
+              articleName: article.name,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: targetList.id,
+              listName: targetList.name,
+              prompt: 'Conversation mode maintained'
+            }
+          };
+          
           return {
             success: true,
             message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-            listId: targetList.id
+            listId: targetList.id,
+            conversationContext: conversationContext,
+            followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
           };
         } else {
           return {
@@ -1201,7 +1346,7 @@ public suggestIcon(itemName: string): string {
             message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
           };
         }
-
+  
         if (listOptions.length === 1) {
           // Use the only available list
           const singleList = listOptions[0];
@@ -1212,14 +1357,14 @@ public suggestIcon(itemName: string): string {
             if (!updatedArticleIds.includes(article.id)) {
               updatedArticleIds.push(article.id);
             }
-
+  
             const updatedItemStates = { ...targetList.itemStates };
             updatedItemStates[article.id] = {
               articleId: article.id,
               isChecked: false,
               amount: action.extractedQuantity || article.amount || ''
             };
-
+  
             const updateResult = await this.dataService.updateList(targetList.id, {
               articleIds: updatedArticleIds,
               itemStates: updatedItemStates
@@ -1227,15 +1372,34 @@ public suggestIcon(itemName: string): string {
             
             if (updateResult) {
               const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+              
+              // CRITICAL FIX: Return conversation context for single list case too
+              const conversationContext = {
+                lastAction: {
+                  type: 'article_added' as const,
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  articleName: article.name,
+                  timestamp: new Date()
+                },
+                waitingForArticles: {
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  prompt: 'Conversation mode maintained'
+                }
+              };
+              
               return {
                 success: true,
                 message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-                listId: targetList.id
+                listId: targetList.id,
+                conversationContext: conversationContext,
+                followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
               };
             }
           }
         }
-
+  
         // Multiple lists - ask user to choose
         const listSelectionAction: PendingAction = {
           type: 'select_list',
@@ -1252,7 +1416,7 @@ public suggestIcon(itemName: string): string {
             icon: article.icon || '📦'
           }
         };
-
+  
         const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
         return {
           success: true,
@@ -1297,14 +1461,44 @@ public suggestIcon(itemName: string): string {
       
       console.log('✅ Created new article:', newArticle);
       
-      // Add to list if specified
-      if (pendingAction.listName) {
-        const targetList = await this.findListByName(pendingAction.listName);
+      // CRITICAL FIX: Handle target list with conversation context
+      let targetListName = pendingAction.listName;
+      let targetListId: string | undefined;
+      
+      // Check conversation list ID from pending action
+      if ((pendingAction as any).conversationListId) {
+        targetListId = (pendingAction as any).conversationListId;
+        console.log('🎯 Using conversation list ID from pending action:', targetListId);
+        
+        // Find list by ID to get the name
+        const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+        const conversationList = lists?.find(list => list.id === targetListId);
+        if (conversationList) {
+          targetListName = conversationList.name;
+          console.log('🎯 Found conversation list by ID:', targetListName);
+        }
+      }
+      
+      // Add to list if specified or found through conversation context
+      if (targetListName) {
+        let targetList: any;
+        
+        // Try to find by ID first, then by name
+        if (targetListId) {
+          const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+          targetList = lists?.find(list => list.id === targetListId);
+          console.log('🎯 Found target list by ID:', targetList?.name);
+        }
+        
+        if (!targetList) {
+          targetList = await this.findListByName(targetListName);
+          console.log('🎯 Found target list by name:', targetList?.name);
+        }
         
         if (!targetList) {
           return {
             success: false,
-            message: `❌ Liste "${pendingAction.listName}" nicht gefunden.`
+            message: `❌ Liste "${targetListName}" nicht gefunden.`
           };
         }
         
@@ -1312,14 +1506,14 @@ public suggestIcon(itemName: string): string {
         if (!updatedArticleIds.includes(newArticle.id)) {
           updatedArticleIds.push(newArticle.id);
         }
-
+  
         const updatedItemStates = { ...targetList.itemStates };
         updatedItemStates[newArticle.id] = {
           articleId: newArticle.id,
           isChecked: false,
           amount: pendingAction.extractedQuantity || ''
         };
-
+  
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
@@ -1327,10 +1521,29 @@ public suggestIcon(itemName: string): string {
         
         if (updateResult) {
           const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
+          
+          // CRITICAL FIX: Return conversation context to maintain the flow
+          const conversationContext = {
+            lastAction: {
+              type: 'article_added' as const,
+              listId: targetList.id,
+              listName: targetList.name,
+              articleName: newArticle.name,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: targetList.id,
+              listName: targetList.name,
+              prompt: 'Conversation mode maintained'
+            }
+          };
+          
           return {
             success: true,
             message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
-            listId: targetList.id
+            listId: targetList.id,
+            conversationContext: conversationContext,
+            followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
           };
         } else {
           return {
@@ -1349,7 +1562,7 @@ public suggestIcon(itemName: string): string {
             message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
           };
         }
-
+  
         if (listOptions.length === 1) {
           // Use the only available list
           const singleList = listOptions[0];
@@ -1360,14 +1573,14 @@ public suggestIcon(itemName: string): string {
             if (!updatedArticleIds.includes(newArticle.id)) {
               updatedArticleIds.push(newArticle.id);
             }
-
+  
             const updatedItemStates = { ...targetList.itemStates };
             updatedItemStates[newArticle.id] = {
               articleId: newArticle.id,
               isChecked: false,
               amount: pendingAction.extractedQuantity || ''
             };
-
+  
             const updateResult = await this.dataService.updateList(targetList.id, {
               articleIds: updatedArticleIds,
               itemStates: updatedItemStates
@@ -1375,15 +1588,34 @@ public suggestIcon(itemName: string): string {
             
             if (updateResult) {
               const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
+              
+              // CRITICAL FIX: Return conversation context for single list case too
+              const conversationContext = {
+                lastAction: {
+                  type: 'article_added' as const,
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  articleName: newArticle.name,
+                  timestamp: new Date()
+                },
+                waitingForArticles: {
+                  listId: targetList.id,
+                  listName: targetList.name,
+                  prompt: 'Conversation mode maintained'
+                }
+              };
+              
               return {
                 success: true,
                 message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
-                listId: targetList.id
+                listId: targetList.id,
+                conversationContext: conversationContext,
+                followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
               };
             }
           }
         }
-
+  
         // Multiple lists - ask user to choose
         const listSelectionAction: PendingAction = {
           type: 'select_list',
@@ -1400,7 +1632,7 @@ public suggestIcon(itemName: string): string {
             icon: newArticle.icon || '📦'
           }
         };
-
+  
         const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
         return {
           success: true,
