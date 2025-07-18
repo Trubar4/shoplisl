@@ -78,7 +78,7 @@
               Zu welcher Liste sollen die Artikel hinzugefügt werden?
             </span>
             <ng-template #articleSelection>
-              "{{ disambiguation.pendingAction.itemName }}" Welchen dieser ähnlichen Artikel möchtest du verwenden?
+              Für "{{ disambiguation.pendingAction.itemName }}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?
             </ng-template>
           </div>
                     
@@ -92,7 +92,7 @@
               <div class="option-main">
                 <!-- Icon -->
                 <div class="option-icon" [class.skip-icon]="option.type === 'skip'">
-                  <span>{{ getDefaultIcon(option) }}</span>
+                  <span>{{ getOptionIcon(option) }}</span>
                 </div>
                 
                 <!-- Content -->
@@ -100,12 +100,17 @@
                   <div class="option-name" [class.skip-name]="option.type === 'skip'">
                     {{ option.displayName }}
                   </div>
+                  
+                  <!-- 🎯 ENHANCED: Show department suggestion for new articles -->
                   <div class="option-department" *ngIf="option.department && option.type !== 'skip'">
-                    {{ getDepartmentName(option.department) }}
+                    <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag für Abteilung: </span>{{ getDepartmentName(option.department) }}
                   </div>
-                  <div class="option-confidence" *ngIf="option.confidence && option.type !== 'skip'">
+                                    
+                  <!-- Show confidence for existing articles -->
+                  <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
                     {{ getConfidenceText(option.confidence) }}
                   </div>
+                  
                   <div class="skip-reason" *ngIf="option.type === 'skip'">
                     {{ option.skipReason || 'Bereits zu Hause vorhanden' }}
                   </div>

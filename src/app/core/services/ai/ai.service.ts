@@ -577,43 +577,67 @@ export class AIService {
   // RECIPE PARSING HELPER - NEW
   // ========================================
 
-  private parseAdvancedRecipe(recipeContent: string): string[] {
-    console.log('🍳 Advanced parsing recipe:', recipeContent.substring(0, 100));
+  /**
+ * ENHANCED: Better fallback for simple recipe inputs
+ */
+private parseAdvancedRecipe(recipeContent: string): string[] {
+  console.log('🍳 Advanced parsing recipe:', recipeContent.substring(0, 100));
+  
+  // CRITICAL FIX: Handle single ingredient case first
+  const trimmed = recipeContent.trim();
+  
+  // If it looks like a single ingredient, return it directly
+  if (!trimmed.includes(',') && !trimmed.includes(';') && !trimmed.includes('\n')) {
+    const singleItemMatch = trimmed.match(/^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)/);
+    if (singleItemMatch) {
+      const cleanSingle = singleItemMatch[1].trim();
+      console.log('🍳 Detected single ingredient in fallback:', cleanSingle);
+      return [cleanSingle];
+    }
+  }
+  
+  const ingredients: string[] = [];
+  
+  // Split by newlines first
+  const lines = recipeContent.split(/\r?\n/);
+  
+  for (let line of lines) {
+    // Skip explanatory lines
+    if (line.toLowerCase().includes('da es nur') || 
+        line.toLowerCase().includes('ist die ausgabe') ||
+        line.toLowerCase().includes('hier ist') ||
+        line.toLowerCase().includes('ich kann')) {
+      continue;
+    }
     
-    const ingredients: string[] = [];
-    
-    // Split by newlines first
-    const lines = recipeContent.split(/\r?\n/);
-    
-    for (let line of lines) {
-      // Check if line contains multiple items separated by comma or semicolon
-      if (line.includes(',') || line.includes(';')) {
-        // Split by both separators
-        const items = line.split(/\s*[,;]\s*/);
-        for (let item of items) {
-          const processedItem = this.processRecipeItem(item);
-          if (processedItem) {
-            ingredients.push(processedItem);
-          }
-        }
-      } else {
-        // Handle single item lines
-        const processedItem = this.processRecipeItem(line);
+    // Check if line contains multiple items separated by comma or semicolon
+    if (line.includes(',') || line.includes(';')) {
+      // Split by both separators
+      const items = line.split(/\s*[,;]\s*/);
+      for (let item of items) {
+        const processedItem = this.processRecipeItem(item);
         if (processedItem) {
           ingredients.push(processedItem);
         }
       }
+    } else {
+      // Handle single item lines
+      const processedItem = this.processRecipeItem(line);
+      if (processedItem) {
+        ingredients.push(processedItem);
+      }
     }
-    
-    console.log('🍳 Advanced parsed ingredients:', ingredients);
-    
-    // Fallback to simple parsing if advanced fails
-    if (ingredients.length === 0) {
-      return this.parseSimpleIngredients(recipeContent);
-    }
-    
-    return ingredients.length > 0 ? ingredients.slice(0, 15) : [recipeContent.trim()];
   }
+  
+  console.log('🍳 Advanced parsed ingredients:', ingredients);
+  
+  // Fallback to simple parsing if advanced fails
+  if (ingredients.length === 0) {
+    return this.parseSimpleIngredients(recipeContent);
+  }
+  
+  return ingredients.length > 0 ? ingredients.slice(0, 15) : [recipeContent.trim()];
+}
 
 
   /**
@@ -761,7 +785,7 @@ private processRecipeItem(item: string): string | null {
       listName: targetListName,
       currentItemIndex: 0,
       processedItems: [],
-      suggestedDepartment: this.aiResponse.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
+      suggestedDepartment: this.disambiguation.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
       conversationListId: targetListId || undefined
     };
 
@@ -816,7 +840,7 @@ private processRecipeItem(item: string): string | null {
         itemName: quantityExtraction.itemName,
         extractedQuantity: quantityExtraction.quantity,
         listName: intent.listName,
-        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
+        suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName)
       };
 
       return await this.handleItemActionWithDisambiguation(pendingAction);
@@ -914,7 +938,7 @@ private processRecipeItem(item: string): string | null {
         itemName: quantityExtraction.itemName,
         extractedQuantity: quantityExtraction.quantity,
         listName: listName,
-        suggestedDepartment: this.aiResponse.suggestDepartment(quantityExtraction.itemName)
+        suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName)
       };
       
       return {
@@ -935,27 +959,79 @@ private processRecipeItem(item: string): string | null {
   // ========================================
 
   private isRecipeCommand(input: string): boolean {
-    const lowerInput = input.toLowerCase().trim();
+    const normalizedInput = input.toLowerCase().trim();
+    
+    // FIXED: Check first line only for recipe keywords
+    const firstLine = normalizedInput.split(/\r?\n/)[0].trim();
+    
     const recipeKeywords = [
-      'rezept:', 'rezept ', 'zutaten:', 'zutaten ',
-      'ingredienzien:', 'ingredienzien ', 'ingredients:',
+      'rezept:', 'rezept', 'zutaten:', 'zutaten',
+      'ingredienzien:', 'ingredienzien', 'ingredients:',
       'einkaufsliste aus rezept'
     ];
     
-    return recipeKeywords.some(keyword => lowerInput.startsWith(keyword));
+    // FIXED: Check if first line starts with or equals recipe keywords
+    const isRecipeDetected = recipeKeywords.some(keyword => {
+      if (keyword.endsWith(':')) {
+        return firstLine.startsWith(keyword);
+      } else {
+        // For keywords without colon, check if first line starts with keyword followed by space/end
+        return firstLine === keyword || firstLine.startsWith(keyword + ' ');
+      }
+    });
+    
+    console.log('🍳 Recipe detection:', { 
+      firstLine, 
+      normalizedInput: normalizedInput.substring(0, 50), 
+      detected: isRecipeDetected 
+    });
+    
+    return isRecipeDetected;
   }
 
   private extractRecipeContent(input: string): string {
-    const lowerInput = input.toLowerCase();
-    const keywords = ['rezept:', 'rezept ', 'zutaten:', 'zutaten ', 'ingredienzien:', 'ingredienzien ', 'ingredients:'];
+    const lines = input.split(/\r?\n/);
+    const firstLine = lines[0].toLowerCase().trim();
+    
+    const keywords = ['rezept:', 'rezept', 'zutaten:', 'zutaten', 'ingredienzien:', 'ingredienzien', 'ingredients:'];
     
     for (const keyword of keywords) {
-      const index = lowerInput.indexOf(keyword);
-      if (index !== -1) {
-        return input.substring(index + keyword.length).trim();
+      if (keyword.endsWith(':')) {
+        // For keywords with colon, find the colon position
+        const colonIndex = firstLine.indexOf(keyword);
+        if (colonIndex !== -1) {
+          // Extract everything after the colon from the first line + all subsequent lines
+          const afterColon = lines[0].substring(colonIndex + keyword.length).trim();
+          const remainingLines = lines.slice(1);
+          
+          if (afterColon) {
+            return [afterColon, ...remainingLines].join('\n').trim();
+          } else {
+            return remainingLines.join('\n').trim();
+          }
+        }
+      } else {
+        // For keywords without colon
+        if (firstLine === keyword || firstLine.startsWith(keyword + ' ')) {
+          if (firstLine === keyword) {
+            // "Rezept" is on its own line, content starts from next line
+            return lines.slice(1).join('\n').trim();
+          } else {
+            // "Rezept [content]" - extract content after keyword
+            const afterKeyword = lines[0].substring(keyword.length).trim();
+            const remainingLines = lines.slice(1);
+            
+            if (afterKeyword) {
+              return [afterKeyword, ...remainingLines].join('\n').trim();
+            } else {
+              return remainingLines.join('\n').trim();
+            }
+          }
+        }
       }
     }
     
+    // Fallback: return everything if no keyword found
     return input.trim();
   }
 
@@ -1187,112 +1263,79 @@ private processRecipeItem(item: string): string | null {
 
 
   /**
-   * Extract just the ingredients list from AI response that might contain explanations
-   */
-  private extractIngredientsFromAIResponse(response: string): string {
-    console.log('🍳 Extracting ingredients from AI response');
+ * FIXED: Extract just the ingredients list from AI response that might contain explanations
+ */
+private extractIngredientsFromAIResponse(response: string): string {
+  console.log('🍳 Extracting ingredients from AI response');
+  console.log('🍳 Raw AI response:', response);
+  
+  // CRITICAL FIX: Handle single ingredient responses with explanations
+  const singleItemPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)(?:\s*→.*|\s*\n|\s*Da es nur|\s*ist die Ausgabe|$)/i;
+  const singleMatch = response.match(singleItemPattern);
+  
+  if (singleMatch) {
+    const cleanSingle = singleMatch[1].trim();
+    console.log('🍳 Detected single ingredient:', cleanSingle);
     
-    const lines = response.split('\n');
-    const ingredientLines: string[] = [];
-    
-    // First pass: Look for a single line with comma/semicolon separated ingredients
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      // Skip empty lines and obvious explanatory text
-      if (!trimmed || 
-          trimmed.toLowerCase().includes('ich kann') ||
-          trimmed.toLowerCase().includes('hier ist') ||
-          trimmed.toLowerCase().includes('wurde zu') ||
-          trimmed.toLowerCase().includes('korrigiert') ||
-          trimmed.startsWith('-') ||
-          trimmed.startsWith('•') ||
-          trimmed.length < 10) {
-        continue;
-      }
-      
-      // Look for single line with multiple ingredients (comma OR semicolon separated)
-      if ((trimmed.includes(',') || trimmed.includes(';')) && 
-          /\d+/.test(trimmed) && 
-          (trimmed.includes('g ') || trimmed.includes('ml ') || trimmed.includes('EL ') || 
-          trimmed.includes('TL ') || trimmed.includes('Stück ') || trimmed.includes('l ') ||
-          trimmed.includes('kg ') || trimmed.includes('Liter'))) {
-        
-        // Check if this looks like multiple ingredients on one line
-        const separatorCount = (trimmed.match(/[,;]/g) || []).length;
-        if (separatorCount >= 2) { // At least 2 separators = 3+ ingredients
-          const cleaned = trimmed
-            .replace(/^[^a-zA-Z0-9]*/, '') // Remove leading non-alphanumeric
-            .replace(/[^a-zA-Z0-9äöüÄÖÜß,;\s]*$/, '') // Remove trailing artifacts, keep semicolons
-            .trim();
-          
-          console.log('🍳 Found single-line ingredients:', cleaned);
-          return cleaned;
-        }
-      }
+    // Verify it looks like a real ingredient (has number + unit/food word)
+    if (/\d+/.test(cleanSingle) && 
+        (/\b(g|kg|ml|l|el|tl|gramm|liter|prise|stück|flaschen|pack|dose)\b/i.test(cleanSingle) ||
+         /\b(milch|öl|mehl|ei|zucker|salz|butter|sekt|wein|bier)\b/i.test(cleanSingle))) {
+      return cleanSingle;
     }
-    
-    // Second pass: Look for multiple lines with individual ingredients
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      // Skip empty lines and explanatory text
-      if (!trimmed || 
-          trimmed.toLowerCase().includes('ich kann') ||
-          trimmed.toLowerCase().includes('hier ist') ||
-          trimmed.toLowerCase().includes('wurde zu') ||
-          trimmed.toLowerCase().includes('korrigiert') ||
-          trimmed.toLowerCase().includes('antwort') ||
-          trimmed.toLowerCase().includes('liste:') ||
-          trimmed.startsWith('-') ||
-          trimmed.startsWith('•') ||
-          trimmed.length < 5) {
-        continue;
-      }
-      
-      // Look for lines that look like individual ingredients
-      // Must contain: number + unit/food word
-      const hasNumber = /\d+/.test(trimmed);
-      const hasUnit = /\b(g|kg|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser|pck)\b/i.test(trimmed);
-      const hasFoodWords = /\b(butter|zucker|mehl|ei|eier|salz|natron|milch|öl|schokolade|schoko|vanille|zimt|kakao|nüsse|mandeln|rosinen|backpulver)\b/i.test(trimmed);
-      
-      // Must have number AND (unit OR food word)
-      if (hasNumber && (hasUnit || hasFoodWords)) {
-        // Additional check: make sure it's not just a number
-        const wordCount = trimmed.split(/\s+/).length;
-        if (wordCount >= 2) { // At least "amount item" or "amount unit item"
-          console.log('🍳 Found ingredient line:', trimmed);
-          ingredientLines.push(trimmed);
-        }
-      }
-    }
-    
-    // If we found multiple ingredient lines, combine them
-    if (ingredientLines.length >= 2) {
-      const combined = ingredientLines.join('; ');
-      console.log('🍳 Combined multi-line ingredients:', combined);
-      return combined;
-    }
-    
-    // If we found exactly one ingredient line, return it
-    if (ingredientLines.length === 1) {
-      console.log('🍳 Found single ingredient line:', ingredientLines[0]);
-      return ingredientLines[0];
-    }
-    
-    // Fallback: if no clear structure found, try to clean the entire response
-    const fallback = response
-      .replace(/ich kann.+?liste:/i, '') // Remove explanatory start
-      .replace(/ich habe.+$/i, '') // Remove explanatory end
-      .replace(/hier ist.+?:/i, '') // Remove "here is" parts
-      .replace(/-.+$/gm, '') // Remove bullet explanations
-      .replace(/\n+/g, ' ') // Replace newlines with spaces
-      .replace(/\s+/g, ' ') // Normalize spaces
+  }
+  
+  // Look for clean semicolon-separated list (multiple ingredients)
+  const multiItemPattern = /^([^→\n]*(?:[0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+\s*;\s*){1,}[0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+[^→\n]*)/m;
+  const multiMatch = response.match(multiItemPattern);
+  
+  if (multiMatch) {
+    const cleanMulti = multiMatch[1]
+      .replace(/[""]/g, '') // Remove quotes
+      .replace(/\s*→.*$/gm, '') // Remove everything after →
+      .replace(/^\s*-\s*/, '') // Remove leading dash
       .trim();
     
-    console.log('🍳 Fallback extraction:', fallback);
-    return fallback;
+    if (cleanMulti.includes(';') && cleanMulti.length > 10) {
+      console.log('🍳 Found clean semicolon list:', cleanMulti);
+      return cleanMulti;
+    }
   }
+  
+  // CRITICAL FIX: Clean common corruption patterns
+  let cleaned = response
+    .replace(/→.*$/gm, '') // Remove everything after →
+    .replace(/\n.*?Da es nur.*$/gmi, '') // Remove "Da es nur eine Zutat gibt" and everything after
+    .replace(/\n.*?ist die Ausgabe.*$/gmi, '') // Remove "ist die Ausgabe" and everything after
+    .replace(/\n.*?hier ist.*$/gmi, '') // Remove "hier ist" explanations
+    .replace(/\n.*?ich kann.*$/gmi, '') // Remove "ich kann" explanations
+    .replace(/\n.*?konvertiert.*$/gmi, '') // Remove conversion explanations
+    .replace(/\n{2,}/g, ' ') // Replace multiple newlines with space
+    .replace(/\s{2,}/g, ' ') // Replace multiple spaces with single space
+    .trim();
+  
+  console.log('🍳 Cleaned response:', cleaned);
+  
+  // Try to extract just the ingredient part again
+  const finalPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+?)(?:\s|$)/;
+  const finalMatch = cleaned.match(finalPattern);
+  
+  if (finalMatch) {
+    const finalClean = finalMatch[1].trim();
+    console.log('🍳 Final extracted ingredient:', finalClean);
+    return finalClean;
+  }
+  
+  // Ultimate fallback - return first meaningful part
+  const firstLine = cleaned.split('\n')[0].trim();
+  if (firstLine.length > 0 && /\d+/.test(firstLine)) {
+    console.log('🍳 Fallback to first line:', firstLine);
+    return firstLine;
+  }
+  
+  console.log('🍳 Could not extract clean ingredients, returning original');
+  return response.trim();
+}
 
 
   private cleanRawRecipeText(rawText: string): string {
@@ -1670,7 +1713,8 @@ private processRecipeItem(item: string): string | null {
       itemName: finalItemName,
       extractedQuantity: quantityExtraction.quantity,
       listName: listName,
-      suggestedDepartment: this.aiResponse.suggestDepartment(finalItemName)
+      suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName)
+
     };
 
     if (!listName) {

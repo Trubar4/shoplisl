@@ -238,6 +238,40 @@
       background: #a8a8a8;
     }
   }
+
+  .option-preview {
+    font-size: 0.8em;
+    color: #4caf50;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  .suggestion-label {
+    color: #4caf50;
+    font-weight: 600;
+  }
+  
+  .option-department {
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 1px;
+    
+    .suggestion-label {
+      color: #4caf50;
+      font-weight: 600;
+    }
+  }
+  
+  // Dark mode support
+  @media (prefers-color-scheme: dark) {
+    .option-department {
+      color: #cccccc;
+      
+      .suggestion-label {
+        color: #81c784;
+      }
+    }
+  }
   
   .disambiguation-option {
     flex-shrink: 0; /* CRITICAL: Don't shrink options */

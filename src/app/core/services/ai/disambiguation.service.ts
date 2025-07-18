@@ -1,4 +1,4 @@
-// src/app/core/services/ai/disambiguation.service.ts - FIXED VERSION
+// src/app/core/services/ai/disambiguation.service.ts - ENHANCED SUGGESTIONS VERSION
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -16,6 +16,7 @@ import {
 } from './ai-models';
 import { Article, ShoppingList } from '../../models';
 import { DataService } from '../data';
+import { DepartmentService } from '../department.service';
 
 @Injectable({
   providedIn: 'root'
@@ -23,11 +24,12 @@ import { DataService } from '../data';
 export class DisambiguationService {
 
   constructor(
-    private dataService: DataService
+    private dataService: DataService,
+    private departmentService: DepartmentService
   ) {}
 
   // ========================================
-  // MAIN DISAMBIGUATION METHODS
+  // MAIN DISAMBIGUATION METHODS - ENHANCED
   // ========================================
 
   async getDisambiguationOptions(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
@@ -56,7 +58,7 @@ export class DisambiguationService {
         })
         .filter(item => item.similarity >= MIN_SIMILARITY_THRESHOLD)
         .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 3); // FIXED: Only show top 4 options
+        .slice(0, 3);
   
       // Add existing articles as options
       for (const item of similarArticles) {
@@ -71,14 +73,33 @@ export class DisambiguationService {
         });
       }
   
-      // Always add option to create new article
-      options.push({
-        id: 'new_article',
-        displayName: `"${itemName}" (neu erstellen)`,
-        type: 'new',
-        confidence: 1.0,
-        icon: '✨'
-      });
+     // 🎯 ENHANCED: Add option to create new article with suggestions  
+      const suggestedDepartmentId = this.suggestDepartment(itemName);
+      const suggestedIcon = this.suggestIcon(itemName);
+      const departmentName = this.departmentService.getDepartmentName(suggestedDepartmentId, 'german');
+
+      // 🎯 CRITICAL FIX: Only add "create new" if no exact match exists
+      const hasExactMatch = similarArticles.some(item => 
+        item.article.name.toLowerCase().trim() === searchTerm
+      );
+
+      console.log('🎯 Exact match check:', { searchTerm, hasExactMatch, similarCount: similarArticles.length });
+
+      if (!hasExactMatch) {
+        options.push({
+          id: 'new_article',
+          displayName: `"${itemName}" (neu erstellen)`,
+          type: 'new',
+          confidence: 1.0,
+          icon: suggestedIcon,
+          department: departmentName, // 🎯 Show suggested department name
+          suggestedDepartmentId: suggestedDepartmentId, // 🎯 Include ID for processing
+          preview: `Vorschlag: ${departmentName}` // 🎯 Additional preview text
+        });
+        console.log('✅ Added create new option with suggestions:', { departmentName, suggestedIcon });
+      } else {
+        console.log('⏭️ Skipped create new option - exact match exists');
+      }
   
       return options;
       
@@ -89,9 +110,393 @@ export class DisambiguationService {
   }
 
   // ========================================
-  // MULTI-ITEM SEQUENTIAL PROCESSING - FIXED
+  // ENHANCED SUGGESTION METHODS
   // ========================================
 
+  /**
+   * 🎯 ENHANCED: Comprehensive German food department mapping
+   */
+  public suggestDepartment(itemName: string): string {
+    const lowerName = itemName.toLowerCase().trim();
+    
+    // 🥬 FRUIT & VEGETABLES
+    const fruitsVegetables = [
+      'apfel', 'äpfel', 'birne', 'banane', 'bananen', 'orange', 'orangen', 'zitrone', 'zitronen',
+      'gurke', 'gurken', 'tomate', 'tomaten', 'karotte', 'karotten', 'möhre', 'möhren',
+      'zwiebel', 'zwiebeln', 'knoblauch', 'paprika', 'salat', 'kopfsalat', 'eisbergsalat',
+      'spinat', 'brokkoli', 'blumenkohl', 'zucchini', 'aubergine', 'kartoffel', 'kartoffeln',
+      'süßkartoffel', 'radieschen', 'rettich', 'sellerie', 'lauch', 'porree', 'petersilie',
+      'schnittlauch', 'dill', 'basilikum', 'rucola', 'feldsalat', 'champignon', 'pilze',
+      'avocado', 'mango', 'ananas', 'kiwi', 'trauben', 'erdbeeren', 'himbeeren', 'blaubeeren',
+      'kirschen', 'pfirsich', 'aprikose', 'pflaume', 'melone', 'wassermelone', 'limette',
+      'ingwer', 'chili', 'jalapeño', 'paprikaschote', 'rote paprika', 'gelbe paprika',
+      'grüne paprika', 'süßpaprika', 'spitzpaprika', 'romana', 'rucola', 'mangold',
+      'grünkohl', 'rosenkohl', 'weißkohl', 'rotkohl', 'wirsing', 'chinakohl', 'fenchel',
+      'artischocke', 'spargel', 'rhabarber', 'kürbis', 'hokkaido', 'butternut'
+    ];
+    
+    if (fruitsVegetables.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'fruit-vegetables';
+    }
+    
+    // 🥛 DAIRY PRODUCTS
+    const dairy = [
+      'milch', 'butter', 'sahne', 'schlagsahne', 'saure sahne', 'schmand', 'crème fraîche',
+      'joghurt', 'jogurt', 'skyr', 'quark', 'magerquark', 'frischkäse', 'hüttenkäse',
+      'ricotta', 'mascarpone', 'mozzarella', 'feta', 'ziegenkäse', 'schafskäse',
+      'buttermilch', 'kondensmilch', 'sahnejoghurt', 'naturjoghurt', 'griechischer joghurt',
+      'kefir', 'ayran', 'dickmilch', 'sauermilch'
+    ];
+    
+    if (dairy.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'dairy-products';
+    }
+    
+    // 🧀 SAUSAGE & CHEESE COUNTER  
+    const sausageCheese = [
+      'käse', 'gouda', 'emmentaler', 'edamer', 'cheddar', 'parmesan', 'pecorino',
+      'gorgonzola', 'roquefort', 'camembert', 'brie', 'tilsiter', 'limburger',
+      'wurst', 'salami', 'schinken', 'speck', 'leberwurst', 'mettwurst', 'bratwurst',
+      'wiener', 'frankfurter', 'bockwurst', 'weißwurst', 'blutwurst', 'teewurst',
+      'mortadella', 'chorizo', 'serrano', 'prosciutto', 'coppa', 'pancetta',
+      'bergkäse', 'alpenkäse', 'hartkäse', 'weichkäse', 'schnittkäse'
+    ];
+    
+    if (sausageCheese.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'sausage-cheese-counter';
+    }
+    
+    // 🥩 FRIDGE MEAT
+    const meat = [
+      'fleisch', 'rind', 'rindfleisch', 'schwein', 'schweinefleisch', 'hähnchen', 'hühnchen',
+      'pute', 'putenfleisch', 'truthahn', 'lamm', 'lammfleisch', 'kalb', 'kalbfleisch',
+      'hackfleisch', 'hack', 'mett', 'tartar', 'schnitzel', 'steak', 'filet', 'gulasch',
+      'braten', 'kotelett', 'rippchen', 'spare ribs', 'entenbrust', 'gänsebrust',
+      'wild', 'hirsch', 'reh', 'wildschwein', 'kaninchen', 'hase'
+    ];
+    
+    if (meat.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'fridge-meat';
+    }
+    
+    // 🐟 FISH
+    const fish = [
+      'fisch', 'lachs', 'forelle', 'thunfisch', 'kabeljau', 'seelachs', 'pangasius',
+      'scholle', 'zander', 'hecht', 'karpfen', 'makrele', 'hering', 'sardine',
+      'garnele', 'garnelen', 'shrimp', 'scampi', 'muschel', 'muscheln', 'tintenfisch',
+      'oktopus', 'krake', 'krebs', 'hummer', 'languste', 'krabben', 'meeresfrüchte',
+      'räucherlachs', 'geräucherter lachs', 'matjes', 'rollmops'
+    ];
+    
+    if (fish.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'fish';
+    }
+    
+    // 🍞 BREAD
+    const bread = [
+      'brot', 'brötchen', 'semmel', 'baguette', 'ciabatta', 'vollkornbrot', 'weißbrot',
+      'schwarzbrot', 'roggenbrot', 'dinkelbre', 'mehrkornbrot', 'toast', 'toastbrot',
+      'bagel', 'pumpernickel', 'knäckebrot', 'fladenbrot', 'pita', 'naan',
+      'brezel', 'laugenbrezeln', 'croissant', 'hörnchen'
+    ];
+    
+    if (bread.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'bread';
+    }
+    
+    // 🍝 NOODLES & RICE
+    const noodlesRice = [
+      'nudeln', 'pasta', 'spaghetti', 'penne', 'fusilli', 'farfalle', 'rigatoni',
+      'linguine', 'fettuccine', 'lasagne', 'gnocchi', 'ravioli', 'tortellini',
+      'reis', 'basmati', 'jasmin reis', 'risotto', 'arborio', 'wildreis', 'naturreis',
+      'parboiled', 'sushi reis', 'milchreis', 'quinoa', 'bulgur', 'couscous',
+      'spätzle', 'schupfnudeln', 'maultaschen'
+    ];
+    
+    if (noodlesRice.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'noodles-rice';
+    }
+    
+    // 🥫 TINS & JARS
+    const tinsJars = [
+      'bohnen', 'kidneybohnen', 'weiße bohnen', 'schwarze bohnen', 'kichererbsen',
+      'linsen', 'mais', 'zuckermais', 'erbsen', 'karotten konserve', 'tomaten dose',
+      'passierte tomaten', 'geschälte tomaten', 'tomatenmark', 'tomatensauce',
+      'oliven', 'kapern', 'cornichons', 'gewürzgurken', 'essiggurken', 'sauerkraut',
+      'rotkraut', 'marmelade', 'konfitüre', 'honig', 'nutella', 'erdnussbutter',
+      'senf', 'ketchup', 'mayo', 'mayonnaise', 'barbecue sauce', 'worcester',
+      'thunfisch dose', 'sardinen', 'anchonis'
+    ];
+    
+    if (tinsJars.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'tins-jars';
+    }
+    
+    // 🧂 SPICES & OILS
+    const spicesOils = [
+      'salz', 'pfeffer', 'paprika pulver', 'curry', 'kurkuma', 'kümmel', 'kreuzkümmel',
+      'koriander', 'zimt', 'muskat', 'nelken', 'lorbeer', 'thymian', 'rosmarin',
+      'oregano', 'majoran', 'estragon', 'salbei', 'bohnenkraut', 'kerbel',
+      'öl', 'olivenöl', 'sonnenblumenöl', 'rapsöl', 'sesamöl', 'kokosöl', 'erdnussöl',
+      'essig', 'balsamico', 'weißweinessig', 'rotweinessig', 'apfelessig',
+      'vanille', 'vanillezucker', 'backpulver', 'natron', 'hefe', 'trockenhefe'
+    ];
+    
+    if (spicesOils.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'spices-oils';
+    }
+    
+    // 🥤 BEVERAGES & ALCOHOL
+    const beverages = [
+      'wasser', 'sprudel', 'mineralwasser', 'limonade', 'cola', 'fanta', 'sprite',
+      'saft', 'orangensaft', 'apfelsaft', 'traubensaft', 'cranberrysaft',
+      'bier', 'weißbier', 'pils', 'weizen', 'radler', 'wein', 'rotwein', 'weißwein',
+      'rosé', 'sekt', 'champagner', 'prosecco', 'schnaps', 'vodka', 'gin', 'rum',
+      'whiskey', 'cognac', 'likör', 'aperitif', 'kaffee', 'espresso', 'cappuccino',
+      'tee', 'grüner tee', 'schwarzer tee', 'früchtetee', 'kräutertee', 'energy drink',
+      'isotonisch', 'smoothie'
+    ];
+    
+    if (beverages.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'beverages-alcohol';
+    }
+    
+    // 🧊 FROZEN GOODS
+    const frozen = [
+      'tiefkühl', 'gefror', 'eis', 'eiscreme', 'sorbet', 'frozen', 'tk-',
+      'tiefkühlpizza', 'tiefkühlgemüse', 'tiefkühlfisch', 'fish sticks',
+      'pommes', 'kroketten', 'chicken nuggets', 'frühlingsrollen'
+    ];
+    
+    if (frozen.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'frozen-goods';
+    }
+    
+    // 🍰 PASTRIES
+    const pastries = [
+      'kuchen', 'torte', 'muffin', 'keks', 'plätzchen', 'cookie', 'stollen',
+      'lebkuchen', 'donut', 'berliner', 'hefezopf', 'streuselkuchen'
+    ];
+    
+    if (pastries.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'pastries';
+    }
+    
+    // 🍭 SWEET & SALTY
+    const sweetSalty = [
+      'süß', 'schokolade', 'gummibär', 'bonbon', 'lutscher', 'chips', 'snack',
+      'nüsse', 'erdnüsse', 'mandeln', 'cashew', 'haselnüsse', 'walnüsse',
+      'salzstangen', 'cracker', 'reiswaffeln', 'müsliriegel', 'energieriegel'
+    ];
+    
+    if (sweetSalty.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'sweet-salty';
+    }
+    
+    // 🧻 HOUSEHOLD GOODS
+    const household = [
+      'klopapier', 'toilettenpapier', 'küchenrolle', 'zewa', 'tempo', 'serviette',
+      'müllbeutel', 'gefrierbeutel', 'frischhaltefolie', 'alufolie', 'backpapier',
+      'staubsauger', 'batterien', 'glühbirne', 'kerzen'
+    ];
+    
+    if (household.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'household-goods';
+    }
+    
+    // 🧴 BODY CARE
+    const bodyCare = [
+      'shampoo', 'duschgel', 'seife', 'zahnbürste', 'zahnpasta', 'mundspülung',
+      'deo', 'deodorant', 'parfum', 'creme', 'bodylotion', 'sonnencreme',
+      'rasierer', 'rasierschaum', 'aftershave', 'damenhygiene', 'binden'
+    ];
+    
+    if (bodyCare.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'body-care';
+    }
+    
+    // 🧽 CLEANING AGENTS
+    const cleaning = [
+      'spülmittel', 'waschmittel', 'weichspüler', 'allzweckreiniger', 'badreiniger',
+      'wc reiniger', 'glasreiniger', 'entkalker', 'scheuermilch', 'schwamm'
+    ];
+    
+    if (cleaning.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'cleaning-agents';
+    }
+    
+    // 🥣 BREAKFAST
+    const breakfast = [
+      'müsli', 'cornflakes', 'haferflocken', 'porridge', 'ei', 'eier',
+      'spiegelei', 'rührei', 'omelett', 'frühstück'
+    ];
+    
+    if (breakfast.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'breakfast';
+    }
+    
+    // 🌍 INTERNATIONAL
+    const international = [
+      'sushi', 'wasabi', 'sojasauce', 'teriyaki', 'miso', 'ramen', 'udon',
+      'kimchi', 'sriracha', 'fish sauce', 'oyster sauce', 'tacos', 'tortilla',
+      'salsa', 'guacamole', 'jalapenos', 'hummus', 'tahini', 'harissa',
+      'couscous', 'baklava', 'falafel', 'tzatziki', 'gyros', 'paella'
+    ];
+    
+    if (international.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'international';
+    }
+    
+    // 🐕 PET SUPPLIES
+    const petSupplies = [
+      'hundefutter', 'katzenfutter', 'tierfutter', 'leckerli', 'katzenstreu',
+      'vogelfutter', 'fischfutter'
+    ];
+    
+    if (petSupplies.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'pet-supplies';
+    }
+    
+    // 👶 BABY
+    const baby = [
+      'windel', 'babybrei', 'babymilch', 'schnuller', 'babycreme', 'feuchttücher'
+    ];
+    
+    if (baby.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'baby';
+    }
+    
+    // 💊 MEDICINE
+    const medicine = [
+      'aspirin', 'ibuprofen', 'paracetamol', 'hustensaft', 'nasenspray',
+      'tabletten', 'medikament', 'arznei', 'tropfen', 'salbe'
+    ];
+    
+    if (medicine.some(item => lowerName.includes(item) || item.includes(lowerName))) {
+      return 'medicine';
+    }
+    
+    // Default fallback
+    return 'miscellaneous';
+  }
+
+  /**
+ * 🎯 ENHANCED: Comprehensive emoji mapping for German foods
+ */
+public suggestIcon(itemName: string): string {
+  const lowerName = itemName.toLowerCase().trim();
+  
+  // CRITICAL FIX: Better beverage detection first
+  if (lowerName.includes('sekt') || lowerName.includes('champagner') || lowerName.includes('prosecco')) return '🍾';
+  if (lowerName.includes('bier')) return '🍺';
+  if (lowerName.includes('wein')) return '🍷';
+  if (lowerName.includes('whiskey') || lowerName.includes('vodka') || lowerName.includes('gin') || lowerName.includes('rum')) return '🥃';
+  if (lowerName.includes('kaffee') || lowerName.includes('espresso')) return '☕';
+  if (lowerName.includes('tee')) return '🍵';
+  if (lowerName.includes('wasser') || lowerName.includes('sprudel') || lowerName.includes('mineralwasser')) return '💧';
+  if (lowerName.includes('saft') || lowerName.includes('orangensaft') || lowerName.includes('apfelsaft')) return '🧃';
+  if (lowerName.includes('cola') || lowerName.includes('limonade') || lowerName.includes('fanta') || lowerName.includes('sprite')) return '🥤';
+  if (lowerName.includes('milch')) return '🥛';
+  
+  // Fruits & Vegetables
+  if (lowerName.includes('gurke')) return '🥒';
+  if (lowerName.includes('tomate')) return '🍅';
+  if (lowerName.includes('karotte') || lowerName.includes('möhre')) return '🥕';
+  if (lowerName.includes('zwiebel')) return '🧅';
+  if (lowerName.includes('knoblauch')) return '🧄';
+  if (lowerName.includes('paprika')) return '🌶️';
+  if (lowerName.includes('salat')) return '🥗';
+  if (lowerName.includes('spinat')) return '🥬';
+  if (lowerName.includes('brokkoli')) return '🥦';
+  if (lowerName.includes('kartoffel')) return '🥔';
+  if (lowerName.includes('pilz') || lowerName.includes('champignon')) return '🍄';
+  if (lowerName.includes('avocado')) return '🥑';
+  if (lowerName.includes('mais')) return '🌽';
+  if (lowerName.includes('aubergine')) return '🍆';
+  
+  if (lowerName.includes('apfel') || lowerName.includes('äpfel')) return '🍎';
+  if (lowerName.includes('banane')) return '🍌';
+  if (lowerName.includes('orange')) return '🍊';
+  if (lowerName.includes('zitrone')) return '🍋';
+  if (lowerName.includes('erdbeere')) return '🍓';
+  if (lowerName.includes('traube')) return '🍇';
+  if (lowerName.includes('kirsche')) return '🍒';
+  if (lowerName.includes('pfirsich')) return '🍑';
+  if (lowerName.includes('ananas')) return '🍍';
+  if (lowerName.includes('mango')) return '🥭';
+  if (lowerName.includes('kiwi')) return '🥝';
+  if (lowerName.includes('melone')) return '🍉';
+  
+  // Dairy & Eggs  
+  if (lowerName.includes('butter')) return '🧈';
+  if (lowerName.includes('käse')) return '🧀';
+  if (lowerName.includes('joghurt') || lowerName.includes('jogurt')) return '🥛';
+  if (lowerName.includes('ei') && !lowerName.includes('fleisch') && !lowerName.includes('wein')) return '🥚';
+  
+  // Meat & Fish
+  if (lowerName.includes('fleisch') || lowerName.includes('steak') || lowerName.includes('schnitzel')) return '🥩';
+  if (lowerName.includes('hähnchen') || lowerName.includes('hühnchen') || lowerName.includes('chicken')) return '🍗';
+  if (lowerName.includes('speck') || lowerName.includes('bacon')) return '🥓';
+  if (lowerName.includes('wurst') || lowerName.includes('salami')) return '🌭';
+  if (lowerName.includes('schinken')) return '🍖';
+  if (lowerName.includes('fisch') || lowerName.includes('lachs')) return '🐟';
+  if (lowerName.includes('garnele') || lowerName.includes('shrimp')) return '🦐';
+  
+  // Bread & Baked goods
+  if (lowerName.includes('brot')) return '🍞';
+  if (lowerName.includes('brötchen') || lowerName.includes('semmel')) return '🥖';
+  if (lowerName.includes('croissant')) return '🥐';
+  if (lowerName.includes('bagel')) return '🥯';
+  if (lowerName.includes('brezel')) return '🥨';
+  if (lowerName.includes('kuchen') || lowerName.includes('torte')) return '🍰';
+  if (lowerName.includes('muffin')) return '🧁';
+  if (lowerName.includes('donut')) return '🍩';
+  if (lowerName.includes('keks') || lowerName.includes('cookie')) return '🍪';
+  
+  // Noodles & Rice
+  if (lowerName.includes('nudeln') || lowerName.includes('pasta') || lowerName.includes('spaghetti')) return '🍝';
+  if (lowerName.includes('reis')) return '🍚';
+  if (lowerName.includes('ramen')) return '🍜';
+  
+  // Sweets & Snacks
+  if (lowerName.includes('schokolade')) return '🍫';
+  if (lowerName.includes('bonbon') || lowerName.includes('süßigkeit')) return '🍬';
+  if (lowerName.includes('gummibär')) return '🐻';
+  if (lowerName.includes('eis') && (lowerName.includes('creme') || lowerName.includes('cream'))) return '🍦';
+  if (lowerName.includes('chips')) return '🍟';
+  if (lowerName.includes('nuss') || lowerName.includes('nüsse')) return '🥜';
+  if (lowerName.includes('popcorn')) return '🍿';
+  
+  // Spices & Condiments
+  if (lowerName.includes('salz')) return '🧂';
+  if (lowerName.includes('pfeffer')) return '🌶️';
+  if (lowerName.includes('öl')) return '🫒';
+  if (lowerName.includes('honig')) return '🍯';
+  if (lowerName.includes('senf')) return '🥨';
+  if (lowerName.includes('ketchup')) return '🍅';
+  
+  // Household
+  if (lowerName.includes('klopapier') || lowerName.includes('toilettenpapier')) return '🧻';
+  if (lowerName.includes('seife')) return '🧼';
+  if (lowerName.includes('zahnbürste')) return '🪥';
+  if (lowerName.includes('shampoo') || lowerName.includes('duschgel')) return '🧴';
+  if (lowerName.includes('kerze')) return '🕯️';
+  if (lowerName.includes('batterie')) return '🔋';
+  
+  // Baby & Pet
+  if (lowerName.includes('windel')) return '👶';
+  if (lowerName.includes('hundefutter') || lowerName.includes('katzenfutter')) return '🐕';
+  
+  // Default fallback
+  return '📦';
+}
+
+  // ========================================
+  // REST OF THE CLASS REMAINS UNCHANGED
+  // ========================================
+
+  // [All other methods remain exactly the same as before...]
+  
   async processMultiItemSequentially(action: MultiItemPendingAction): Promise<AIExecutionResult> {
     console.log('🎯 PROCESSING MULTI-ITEM SEQUENTIALLY - FIXED VERSION');
     console.log(`🎯 Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
@@ -178,10 +583,6 @@ export class DisambiguationService {
     }
   }
 
-  // ========================================
-  // ITEM PROCESSING - FIXED
-  // ========================================
-
   async processCurrentItemAndContinue(
     action: MultiItemPendingAction,
     selectedArticle: Article | null
@@ -214,7 +615,7 @@ export class DisambiguationService {
           }).toPromise();
         }
       } else {
-        // Create new article
+        // Create new article with enhanced suggestions
         console.log('🎯 Creating new article for:', currentItem.itemName);
         const newArticle = await this.dataService.createArticle({
           name: currentItem.itemName,
@@ -277,10 +678,6 @@ export class DisambiguationService {
       });
     }
   }
-
-  // ========================================
-  // FINAL ACTION EXECUTION - FIXED
-  // ========================================
 
   private async executeMultiItemFinalAction(action: MultiItemPendingAction): Promise<AIExecutionResult> {
     console.log('🎯 EXECUTING FINAL MULTI-ITEM ACTION - FIXED VERSION');
@@ -497,10 +894,6 @@ export class DisambiguationService {
     }
   }
 
-  // ========================================
-  // DISAMBIGUATION CHOICE HANDLING - FIXED
-  // ========================================
-
   async handleDisambiguationChoice(
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
@@ -613,10 +1006,6 @@ export class DisambiguationService {
     // CRITICAL FIX: Continue processing with next item
     return this.processMultiItemSequentially(action);
   }
-
-  // ========================================
-  // LIST SELECTION METHODS
-  // ========================================
 
   async handleListSelection(pendingAction: PendingAction, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
     try {
@@ -756,10 +1145,6 @@ export class DisambiguationService {
     }));
   }
 
-  // ========================================
-  // ARTICLE EXECUTION METHODS - FIXED
-  // ========================================
-
   private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
     console.log('🎯 EXECUTING ACTION WITH EXISTING ARTICLE:', { action, article });
     
@@ -887,39 +1272,39 @@ export class DisambiguationService {
     }
   }
 
-  private async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 EXECUTING ACTION WITH NEW ARTICLE:', action);
+  private async executeActionWithNewArticle(pendingAction: PendingAction): Promise<AIExecutionResult> {
+    console.log('🎯 EXECUTING ACTION WITH NEW ARTICLE:', pendingAction);
     
     try {
-      // Create new article
+      // Create new article with enhanced suggestions
       const articleData = {
-        name: action.itemName,
-        amount: action.extractedQuantity || '',
-        departmentId: action.suggestedDepartment || 'miscellaneous',
-        icon: this.suggestIcon(action.itemName)
+        name: pendingAction.itemName,
+        amount: pendingAction.extractedQuantity || '',
+        departmentId: pendingAction.suggestedDepartment || this.suggestDepartment(pendingAction.itemName),
+        icon: this.suggestIcon(pendingAction.itemName)
       };
       
-      console.log('🎯 Creating new article:', articleData);
+      console.log('🎯 Creating new article with enhanced suggestions:', articleData);
       
       const newArticle = await this.dataService.createArticle(articleData).toPromise();
       
       if (!newArticle) {
         return {
           success: false,
-          message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
+          message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
         };
       }
       
       console.log('✅ Created new article:', newArticle);
       
       // Add to list if specified
-      if (action.listName) {
-        const targetList = await this.findListByName(action.listName);
+      if (pendingAction.listName) {
+        const targetList = await this.findListByName(pendingAction.listName);
         
         if (!targetList) {
           return {
             success: false,
-            message: `❌ Liste "${action.listName}" nicht gefunden.`
+            message: `❌ Liste "${pendingAction.listName}" nicht gefunden.`
           };
         }
         
@@ -932,7 +1317,7 @@ export class DisambiguationService {
         updatedItemStates[newArticle.id] = {
           articleId: newArticle.id,
           isChecked: false,
-          amount: action.extractedQuantity || ''
+          amount: pendingAction.extractedQuantity || ''
         };
 
         const updateResult = await this.dataService.updateList(targetList.id, {
@@ -941,7 +1326,7 @@ export class DisambiguationService {
         }).toPromise();
         
         if (updateResult) {
-          const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+          const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
           return {
             success: true,
             message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
@@ -980,7 +1365,7 @@ export class DisambiguationService {
             updatedItemStates[newArticle.id] = {
               articleId: newArticle.id,
               isChecked: false,
-              amount: action.extractedQuantity || ''
+              amount: pendingAction.extractedQuantity || ''
             };
 
             const updateResult = await this.dataService.updateList(targetList.id, {
@@ -989,7 +1374,7 @@ export class DisambiguationService {
             }).toPromise();
             
             if (updateResult) {
-              const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+              const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
               return {
                 success: true,
                 message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
@@ -1002,21 +1387,21 @@ export class DisambiguationService {
         // Multiple lists - ask user to choose
         const listSelectionAction: PendingAction = {
           type: 'select_list',
-          originalInput: action.originalInput,
+          originalInput: pendingAction.originalInput,
           itemName: newArticle.name,
-          extractedQuantity: action.extractedQuantity,
+          extractedQuantity: pendingAction.extractedQuantity,
           listName: undefined,
-          suggestedDepartment: action.suggestedDepartment,
+          suggestedDepartment: pendingAction.suggestedDepartment,
           articleToAdd: {
             id: newArticle.id,
             name: newArticle.name,
-            amount: action.extractedQuantity || '',
+            amount: pendingAction.extractedQuantity || '',
             departmentId: newArticle.departmentId || 'miscellaneous',
             icon: newArticle.icon || '📦'
           }
         };
 
-        const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
+        const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
         return {
           success: true,
           message: `🎯 Artikel "${newArticle.name}" wurde erstellt.\n\nZu welcher Liste soll er${quantityText} hinzugefügt werden?`,
@@ -1030,14 +1415,10 @@ export class DisambiguationService {
       console.error('🎯 Error executing action with new article:', error);
       return {
         success: false,
-        message: `❌ Fehler beim Erstellen des Artikels "${action.itemName}".`
+        message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
       };
     }
   }
-
-  // ========================================
-  // UTILITY METHODS
-  // ========================================
 
   private calculateSimilarity(str1: string, str2: string): number {
     const maxLength = Math.max(str1.length, str2.length);
@@ -1092,14 +1473,5 @@ export class DisambiguationService {
       console.error('Error finding list by name:', error);
       return null;
     }
-  }
-
-  // Placeholder methods (should be moved to appropriate services)
-  private suggestDepartment(itemName: string): string {
-    return 'miscellaneous';
-  }
-
-  private suggestIcon(itemName: string): string {
-    return '📦';
   }
 }

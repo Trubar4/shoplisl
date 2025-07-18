@@ -291,7 +291,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   
     try {
       // FIXED: Recipe detection with proper context preservation
-      if (lowerInput.startsWith('rezept:') || lowerInput.startsWith('rezept ')) {
+      if (this.isRecipeInput(lowerInput, userMessage)) {
         console.log('🍳🍳🍳 RECIPE CONDITION TRIGGERED! 🍳🍳🍳');
         console.log('🍳 Recipe detected - preserving context');
         await this.processRecipeWithContextPreservation(userMessage);
@@ -712,6 +712,37 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     };
   }
 
+  /**
+ * FIXED: Enhanced recipe detection that handles multiline input
+ */
+private isRecipeInput(lowerInput: string, originalInput: string): boolean {
+  // Check first line only for recipe keywords
+  const firstLine = lowerInput.split(/\r?\n/)[0].trim();
+  
+  const recipeKeywords = [
+    'rezept:', 'rezept', 'zutaten:', 'zutaten',
+    'ingredienzien:', 'ingredienzien', 'ingredients:',
+    'einkaufsliste aus rezept'
+  ];
+  
+  const isRecipeDetected = recipeKeywords.some(keyword => {
+    if (keyword.endsWith(':')) {
+      return firstLine.startsWith(keyword);
+    } else {
+      // For keywords without colon, check if first line starts with keyword followed by space/end
+      return firstLine === keyword || firstLine.startsWith(keyword + ' ');
+    }
+  });
+  
+  console.log('🍳 Voice Assistant Recipe detection:', { 
+    firstLine, 
+    originalInput: originalInput.substring(0, 50), 
+    detected: isRecipeDetected 
+  });
+  
+  return isRecipeDetected;
+}
+
   // ========================================
   // DISAMBIGUATION - FIXED
   // ========================================
@@ -1119,13 +1150,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   getDefaultIcon(option: any): string {
-    if (option.type === 'new') {
-      return '✨';
-    }
-    if (option.type === 'skip') {
-      return '⏭️';
-    }
-    return option.icon || '📦';
+    if (option.type === 'skip') return '⏭️';
+    if (option.type === 'new') return '➕';
+    if (option.type === 'existing') return '📦';
+    return '📋';
   }
 
   getActionHint(option: any, pendingAction: any): string {
@@ -1154,9 +1182,49 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     }
   }
 
-  getDepartmentName(departmentId?: string): string {
-    if (!departmentId) return 'Unbekannt';
-    return this.departmentService.getDepartmentName(departmentId, 'german');
+  getDepartmentName(departmentId: string): string {
+    // Map department IDs to German names
+    const departmentNames: Record<string, string> = {
+      'fruit-vegetables': 'Obst & Gemüse',
+      'dairy-products': 'Milchprodukte', 
+      'sausage-cheese-counter': 'Wurst & Käse',
+      'fridge-meat': 'Fleisch',
+      'fish': 'Fisch',
+      'bread': 'Brot & Backwaren',
+      'noodles-rice': 'Nudeln & Reis',
+      'tins-jars': 'Konserven',
+      'spices-oils': 'Gewürze & Öle',
+      'beverages-alcohol': 'Getränke',
+      'frozen-goods': 'Tiefkühl',
+      'pastries': 'Süßwaren',
+      'sweet-salty': 'Süß & Salzig',
+      'household-goods': 'Haushalt',
+      'body-care': 'Körperpflege',
+      'cleaning-agents': 'Reinigung',
+      'breakfast': 'Frühstück',
+      'international': 'International',
+      'pet-supplies': 'Tierbedarf',
+      'baby': 'Baby',
+      'medicine': 'Medikamente',
+      'miscellaneous': 'Sonstiges'
+    };
+    
+    return departmentNames[departmentId] || departmentId;
+  }
+
+  getOptionIcon(option: any): string {
+    // Skip options get their specific icon
+    if (option.type === 'skip') {
+      return '⏭️';
+    }
+    
+    // Use suggested icon if available
+    if (option.icon && option.icon !== '✨') {
+      return option.icon;
+    }
+    
+    // Fallback to default
+    return this.getDefaultIcon(option);
   }
 
   getConfidenceText(confidence: number): string {

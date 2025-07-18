@@ -40,12 +40,14 @@ export interface AIExecutionResult {
 export interface DisambiguationOption {
   id: string;
   displayName: string;
-  type: 'new' | 'existing' | 'skip';
-  article?: Article;
+  type: 'existing' | 'new' | 'skip';
   confidence: number;
+  article?: Article;
   department?: string;
   icon?: string;
   skipReason?: string;
+  suggestedDepartmentId?: string;
+  preview?: string;
 }
 
 export interface PendingAction {
