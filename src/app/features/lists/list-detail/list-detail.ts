@@ -198,12 +198,16 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.resetToDefaultTheme();
-    
-    // Force immediate meta tag update for iPhone
-    setTimeout(() => {
-      this.updateThemeColorMeta('#1a9edb');
-    }, 0);
+    // Only reset theme if we're not navigating to another list
+    const currentUrl = this.router.url;
+    if (!currentUrl.includes('/lists/') || currentUrl === '/lists') {
+      this.resetToDefaultTheme();
+      
+      // Force immediate meta tag update for iPhone
+      setTimeout(() => {
+        this.updateThemeColorMeta('#1a9edb');
+      }, 0);
+    }
   }
 
   private resetToDefaultTheme(): void {

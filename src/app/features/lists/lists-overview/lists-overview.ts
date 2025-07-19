@@ -52,9 +52,6 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     // Force refresh when component loads
     this.dataService.forceRefreshLists().subscribe();
-
-    // Reset theme color to default blue when in lists overview
-    this.resetThemeColor();
     
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
