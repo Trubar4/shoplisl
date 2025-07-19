@@ -133,33 +133,45 @@ export class AIResponseService {
   // HELP MESSAGES
   // ========================================
 
-  /**
-   * 💡 Enhanced help guidance with color examples and quantity patterns
-   */
   public getEnhancedHelpMessage(hasApiKey: boolean): string {
     if (hasApiKey) {
       return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
         '✅ <strong>Verfügbare Befehle:</strong><br>' +
-        '• "Füge [Artikel] hinzu"<br>' +
-        '• "Erstelle Liste [Name]"<br>' +
-        '• "Rezept: [Zutatenliste]"<br>' +
-        '• "und [Artikel]" - Fortsetzung<br>' +
-        '• "Zeige Listen"<br><br>' +
+        '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge [Artikel] hinzu"<br><em>Tipp: Mehrere Artikel mit Komma \',\' als Trennzeichen diktieren oder eintippen. Nach der Artikelauswahl kann man eine beliebige Liste von allen auswählen. Neu hinzugefügte Artikel können später auch über das ℹ️ aus der Liste bearbeitet werden.</em></td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🆕 "Erstelle Liste [Name] in [Farbe]"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🍽️ "Rezept: [Zutatenliste reinkopieren]"</td></tr>' +
+        '</table><br>' +
         '<strong>🔄 Beispiele:</strong><br>' +
-        '• "Füge Milch hinzu"<br>' +
-        '• "Erstelle Liste Spar"<br>' +
-        '• "Rezept: 500g Mehl, 2 Eier"';
+        '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge Milch hinzu"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge Milch, 2 Gurken, Eier 1 Pack hinzu"<br><em>Tipp \',\' als Komma sprechen</em></td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🆕 "Erstelle Liste Spar in Rot"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🍽️ "Rezept: 500g Mehl, 2 Eier, Karotten 5 Stück"</td></tr>' +
+        '</table>';
     } else {
       return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
         '⚙️ <strong>Basis-Funktionen:</strong><br>' +
-        '• "Füge [Artikel] hinzu"<br>' +
-        '• "Erstelle Liste [Name]"<br>' +
-        '• "Zeige Listen"<br><br>' +
+        '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">"Füge [Artikel] hinzu"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">"Erstelle Liste [Name]"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">"Zeige Listen"</td></tr>' +
+        '</table><br>' +
         '💡 <strong>Für erweiterte Features:</strong><br>' +
         '"set api key: gsk_YOUR_KEY"<br><br>' +
         '<strong>🔄 Beispiele:</strong><br>' +
-        '• "Füge Milch hinzu"<br>' +
-        '• "Erstelle Liste Spar"';
+        '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">"Füge Milch hinzu"</td></tr>' +
+        '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">"Erstelle Liste Spar"</td></tr>' +
+        '</table>';
     }
   }
 

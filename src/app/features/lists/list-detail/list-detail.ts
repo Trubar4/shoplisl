@@ -68,6 +68,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private editFilter$ = new BehaviorSubject<EditFilter>('alle');
   private allListArticles$!: Observable<ArticleWithState[]>;
   private celebrationTimeout?: any;
+  private autoSwitchTimer?: any;
   
   isFabExpanded = false;
   listArticles$!: Observable<ArticleWithState[]>;
@@ -197,8 +198,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    //this.updateThemeColorMeta('#1a9edb');
     this.resetToDefaultTheme();
+    
+    // Force immediate meta tag update for iPhone
+    setTimeout(() => {
+      this.updateThemeColorMeta('#1a9edb');
+    }, 0);
   }
 
   private resetToDefaultTheme(): void {
@@ -212,8 +217,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     root.style.setProperty('--list-dark-color', '#1976d2');
     root.style.setProperty('--list-primary-color-rgb', '26, 158, 219');
     
-    // Reset meta theme color to default blue
+    // Reset meta theme color immediately
     this.updateThemeColorMeta(defaultColor);
+    
+    // Force background color reset
+    document.documentElement.style.backgroundColor = defaultColor;
   }
 
   private setupDepartmentGroups(): void {
@@ -341,14 +349,27 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   
   switchToShoppingMode(): void { 
     this.currentMode = 'shopping'; 
-    this.searchQuery = ''; 
-    this.searchQuery$.next(''); 
   }
   
   switchToEditMode(): void { 
     this.currentMode = 'edit'; 
-    this.searchQuery = ''; 
-    this.searchQuery$.next(''); 
+  }
+
+  private checkAndAutoSwitchFilter(): void {
+    if (this.currentMode !== 'shopping' || this.currentShoppingFilter === 'alle' || !this.searchQuery.trim()) {
+      return;
+    }
+  
+    this.listArticles$.pipe(take(1)).subscribe(articles => {
+      if (articles.length === 0) {
+        // Auto-switch to show all items
+        this.setShoppingFilter('alle');
+        this.snackBar.open('Filter auf Alle gestellt', '', { 
+          duration: 2000,
+          verticalPosition: 'bottom'
+        });
+      }
+    });
   }
 
   getCurrentListColor(): string { return this.currentList?.color || '#1a9edb'; }
@@ -456,7 +477,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  onSearchQueryChange(): void { this.searchQuery$.next(this.searchQuery.trim()); }
+  onSearchQueryChange(): void { 
+    this.searchQuery$.next(this.searchQuery.trim());
+    
+    // Clear existing auto-switch timer
+    if (this.autoSwitchTimer) {
+      clearTimeout(this.autoSwitchTimer);
+    }
+    
+    // Set new timer for 1.5 seconds after user stops typing
+    this.autoSwitchTimer = setTimeout(() => {
+      this.checkAndAutoSwitchFilter();
+    }, 1500);
+  }
 
   onCreateNewArticle(): void {
     const queryParams: any = { 
