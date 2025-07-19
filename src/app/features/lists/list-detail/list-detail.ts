@@ -345,7 +345,16 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   // Public methods
-  onBack(): void { this.router.navigate(['/lists']); }
+  onBack(): void {
+    // Force theme reset before navigation
+    this.resetToDefaultTheme();
+    
+    // Multiple reset attempts for iPhone
+    setTimeout(() => this.updateThemeColorMeta('#1a9edb'), 50);
+    setTimeout(() => this.updateThemeColorMeta('#1a9edb'), 200);
+    
+    this.router.navigate(['/lists']);
+  }
   
   switchToShoppingMode(): void { 
     this.currentMode = 'shopping'; 
