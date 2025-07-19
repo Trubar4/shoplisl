@@ -52,10 +52,16 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     // Force refresh when component loads
     this.dataService.forceRefreshLists().subscribe();
+  
+    // Reset theme color specifically for lists overview (with delay to override any list-detail changes)
+    setTimeout(() => {
+      this.resetThemeColor();
+    }, 100);
     
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
   }
+  
 
   ngAfterViewInit(): void {
     // Ensure scroll container is properly initialized
@@ -134,6 +140,8 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     const root = document.documentElement;
     root.style.setProperty('--list-primary-color', '#1a9edb');
     root.style.setProperty('--list-contrast-color', 'white');
+    root.style.setProperty('--list-light-color', '#a8d4f0');
+    root.style.setProperty('--list-dark-color', '#1976d2');
   }
 
   onListClick(list: ShoppingList): void {
