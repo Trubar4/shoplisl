@@ -8,10 +8,10 @@
   font-family: 'Roboto', sans-serif;
   position: relative;
   
-  .app-header {
+  .app-header.mat-toolbar.mat-primary {
     background-color: #1a9edb !important;
     color: white !important;
-    flex-shrink: 0; // Prevent header from shrinking
+    flex-shrink: 0;
     
     span {
       font-weight: 500;
@@ -21,6 +21,10 @@
     .mat-icon-button .mat-icon {
       color: white !important;
     }
+    
+    // Override any CSS custom properties that might be set
+    --list-primary-color: #1a9edb;
+    --list-contrast-color: white;
   }
 
   // Search container styling (matches list-detail)
