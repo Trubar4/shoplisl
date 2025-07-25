@@ -1,8 +1,13 @@
 import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
+import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,11 +21,15 @@ import { DataService } from '../../../core/services/data';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatToolbarModule,
     MatListModule,
     MatIconModule,
     MatButtonModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatTooltipModule
   ],
   templateUrl: './lists-overview.html',
   styleUrls: ['./lists-overview.scss']
@@ -38,6 +47,14 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     currentX: number;
   } } = {};
   
+  searchQuery$ = new BehaviorSubject<string>('');
+  searchQuery = '';
+
+  // FAB and sorting functionality
+  isFabExpanded = false;
+  currentSortMode: 'lastChanged' | 'alphabetical' = this.loadSortPreference();
+  private sortMode$ = new BehaviorSubject<'lastChanged' | 'alphabetical'>(this.loadSortPreference());
+
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
   
@@ -46,7 +63,34 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     private router: Router,
     private snackBar: MatSnackBar
   ) {
-    this.lists$ = this.dataService.getLists();
+    // Setup filtered and sorted lists observable
+    this.lists$ = combineLatest([
+      this.dataService.getLists(),
+      this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()),
+      this.sortMode$
+    ]).pipe(
+      map(([lists, query, sortMode]) => {
+        // First apply search filter
+        let filteredLists = lists;
+        if (query?.trim()) {
+          filteredLists = lists.filter(list => 
+            list.name.toLowerCase().includes(query.toLowerCase())
+          );
+        }
+        
+        // Then apply sorting
+        switch (sortMode) {
+          case 'alphabetical':
+            return [...filteredLists].sort((a, b) => a.name.localeCompare(b.name));
+          case 'lastChanged':
+          default:
+            // Sort by most recently updated first
+            return [...filteredLists].sort((a, b) => 
+              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+        }
+      })
+    );
   }
 
   ngOnInit(): void {
@@ -142,6 +186,10 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     root.style.setProperty('--list-contrast-color', 'white');
     root.style.setProperty('--list-light-color', '#a8d4f0');
     root.style.setProperty('--list-dark-color', '#1976d2');
+  }
+
+  onSearchQueryChange(): void {
+    this.searchQuery$.next(this.searchQuery.trim());
   }
 
   onListClick(list: ShoppingList): void {
@@ -438,6 +486,31 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
         }, 100);
       }
     });
+  }
+
+  // FAB and sorting methods
+  toggleFab(): void {
+    this.isFabExpanded = !this.isFabExpanded;
+  }
+
+  closeFab(): void {
+    this.isFabExpanded = false;
+  }
+
+  setSortMode(mode: 'lastChanged' | 'alphabetical'): void {
+    this.currentSortMode = mode;
+    this.sortMode$.next(mode);
+    this.saveSortPreference(mode);
+    this.isFabExpanded = false;
+  }
+
+  private loadSortPreference(): 'lastChanged' | 'alphabetical' {
+    const saved = localStorage.getItem('shoplisl-sort-preference');
+    return (saved === 'alphabetical') ? 'alphabetical' : 'lastChanged';
+  }
+  
+  private saveSortPreference(mode: 'lastChanged' | 'alphabetical'): void {
+    localStorage.setItem('shoplisl-sort-preference', mode);
   }
 
 }

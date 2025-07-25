@@ -8,6 +8,25 @@
     </button>
   </mat-toolbar>
 
+  <!-- Search Field -->
+  <div class="search-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Listen suchen</mat-label>
+      <input 
+        matInput 
+        [(ngModel)]="searchQuery"
+        (input)="onSearchQueryChange()"
+        placeholder="Listen suchen...">
+      @if (searchQuery) {
+        <button matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
+          <mat-icon>close</mat-icon>
+        </button>
+      } @else {
+        <mat-icon matSuffix>search</mat-icon>
+      }
+    </mat-form-field>
+  </div>
+
   <!-- Lists -->
   <div class="lists-container" #listsContainer>
     <div class="lists-list">
@@ -84,5 +103,51 @@
       <mat-icon>swipe</mat-icon>
       <span>Wische nach links um Listen zu löschen</span>
     </div>
+  </div>
+
+  <!-- FAB Sort Menu -->
+  <div class="fab-container">
+    <!-- Backdrop to close FAB when clicking outside -->
+    <div 
+      class="fab-backdrop" 
+      *ngIf="isFabExpanded"
+      [class.visible]="isFabExpanded"
+      (click)="closeFab()">
+    </div>
+
+    <!-- Expandable Sort Options -->
+    <div class="fab-menu" [class.expanded]="isFabExpanded">
+      <div class="fab-options">
+        <button 
+          mat-mini-fab 
+          [class.active]="currentSortMode === 'alphabetical'"
+          (click)="setSortMode('alphabetical'); $event.stopPropagation()"
+          class="fab-option"
+          matTooltip="Alphabetisch">
+          <mat-icon>sort_by_alpha</mat-icon>
+          <span class="fab-label">Alphabetisch</span>
+        </button>
+        
+        <button 
+          mat-mini-fab 
+          [class.active]="currentSortMode === 'lastChanged'"
+          (click)="setSortMode('lastChanged'); $event.stopPropagation()"
+          class="fab-option"
+          matTooltip="Zuletzt geändert">
+          <mat-icon>schedule</mat-icon>
+          <span class="fab-label">Zuletzt geändert</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main FAB Button -->
+    <button 
+      mat-fab 
+      (click)="toggleFab(); $event.stopPropagation()"
+      class="main-fab"
+      [class.expanded]="isFabExpanded"
+      matTooltip="Sortieren">
+      <mat-icon [class.rotated]="isFabExpanded">sort</mat-icon>
+    </button>
   </div>
 </div>
