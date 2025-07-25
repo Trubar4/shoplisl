@@ -10,26 +10,16 @@
   
   .app-header {
     background-color: #1a9edb !important;
-    background: #1a9edb !important;
     color: white !important;
-    flex-shrink: 0;
-    
-    // Override Material Design CSS custom properties specifically
-    --mdc-filled-button-container-color: #1a9edb !important;
-    --mat-toolbar-container-background-color: #1a9edb !important;
     
     span {
       font-weight: 500;
-      color: white !important;
     }
     
     // Ensure plus icon is white
     .mat-icon-button .mat-icon {
       color: white !important;
     }
-    
-    // Force override any inherited custom properties
-    background: #1a9edb !important;
   }
   
   // Additional specificity for stubborn cases
