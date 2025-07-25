@@ -97,10 +97,10 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     // Force refresh when component loads
     this.dataService.forceRefreshLists().subscribe();
   
-    // Reset theme color specifically for lists overview (with delay to override any list-detail changes)
-    setTimeout(() => {
-      this.resetThemeColor();
-    }, 100);
+    // Reset theme immediately and with multiple attempts for iPhone
+    this.resetThemeColor();
+    setTimeout(() => this.resetThemeColor(), 50);
+    setTimeout(() => this.resetThemeColor(), 200);
     
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
@@ -168,7 +168,9 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   }
 
 
+// Reset theme color to default blue
 private resetThemeColor(): void {
+  // Reset meta theme color
   let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
   if (!themeColorMeta) {
     themeColorMeta = document.createElement('meta');
@@ -177,19 +179,15 @@ private resetThemeColor(): void {
   }
   themeColorMeta.content = '#1a9edb';
   
-  // Also update HTML background
+  // Reset HTML background
   document.documentElement.style.backgroundColor = '#1a9edb';
   
-  // Force reset CSS custom properties with !important
+  // IMPORTANT: Reset only the root level custom properties, don't force them
   const root = document.documentElement;
-  root.style.setProperty('--list-primary-color', '#1a9edb', 'important');
-  root.style.setProperty('--list-contrast-color', 'white', 'important');
-  root.style.setProperty('--list-light-color', '#a8d4f0', 'important');
-  root.style.setProperty('--list-dark-color', '#1976d2', 'important');
-  
-  // Add a body class to force override
-  document.body.classList.add('lists-overview-page');
-  document.body.classList.remove('list-detail-page');
+  root.style.setProperty('--list-primary-color', '#1a9edb');
+  root.style.setProperty('--list-contrast-color', 'white');
+  root.style.setProperty('--list-light-color', '#a8d4f0');
+  root.style.setProperty('--list-dark-color', '#1976d2');
 }
 
   onSearchQueryChange(): void {

@@ -8,13 +8,19 @@
   font-family: 'Roboto', sans-serif;
   position: relative;
   
-  .app-header.mat-toolbar.mat-primary {
+  .app-header {
     background-color: #1a9edb !important;
+    background: #1a9edb !important;
     color: white !important;
     flex-shrink: 0;
     
+    // Override Material Design CSS custom properties specifically
+    --mdc-filled-button-container-color: #1a9edb !important;
+    --mat-toolbar-container-background-color: #1a9edb !important;
+    
     span {
       font-weight: 500;
+      color: white !important;
     }
     
     // Ensure plus icon is white
@@ -22,9 +28,14 @@
       color: white !important;
     }
     
-    // Override any CSS custom properties that might be set
-    --list-primary-color: #1a9edb;
-    --list-contrast-color: white;
+    // Force override any inherited custom properties
+    background: #1a9edb !important;
+  }
+  
+  // Additional specificity for stubborn cases
+  .lists-overview .mat-toolbar.mat-primary {
+    background-color: #1a9edb !important;
+    background: #1a9edb !important;
   }
 
   // Search container styling (matches list-detail)
