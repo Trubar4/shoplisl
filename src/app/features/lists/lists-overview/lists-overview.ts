@@ -96,11 +96,6 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     // Force refresh when component loads
     this.dataService.forceRefreshLists().subscribe();
-  
-    // Reset theme immediately and with multiple attempts for iPhone
-    this.resetThemeColor();
-    setTimeout(() => this.resetThemeColor(), 50);
-    setTimeout(() => this.resetThemeColor(), 200);
     
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
@@ -167,28 +162,6 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     }
   }
 
-
-// Reset theme color to default blue
-private resetThemeColor(): void {
-  // Reset meta theme color
-  let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
-  if (!themeColorMeta) {
-    themeColorMeta = document.createElement('meta');
-    themeColorMeta.name = 'theme-color';
-    document.head.appendChild(themeColorMeta);
-  }
-  themeColorMeta.content = '#1a9edb';
-  
-  // Reset HTML background
-  document.documentElement.style.backgroundColor = '#1a9edb';
-  
-  // IMPORTANT: Reset only the root level custom properties, don't force them
-  const root = document.documentElement;
-  root.style.setProperty('--list-primary-color', '#1a9edb');
-  root.style.setProperty('--list-contrast-color', 'white');
-  root.style.setProperty('--list-light-color', '#a8d4f0');
-  root.style.setProperty('--list-dark-color', '#1976d2');
-}
 
   onSearchQueryChange(): void {
     this.searchQuery$.next(this.searchQuery.trim());

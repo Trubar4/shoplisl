@@ -53,8 +53,8 @@ app-root {
 
 .mat-toolbar {
   &.mat-primary {
-    background-color: var(--list-primary-color, #1a9edb) !important;
-    color: var(--list-contrast-color, white) !important;
+    background-color: #1a9edb !important;
+    color: white !important;
   }
 }
 

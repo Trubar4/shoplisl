@@ -77,6 +77,11 @@
     color: #666;
   }
 
+  .list-detail .mat-toolbar.mat-primary {
+    background-color: var(--list-primary-color, #1a9edb) !important;
+    color: var(--list-contrast-color, white) !important;
+  }
+
   .content-container {
     flex: 1;
     overflow-y: auto;
