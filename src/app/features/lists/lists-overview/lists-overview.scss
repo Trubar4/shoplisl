@@ -441,7 +441,7 @@
 // === FAB STYLING (adapted from list-detail) ===
 .fab-container {
   position: fixed;
-  bottom: 24px;
+  bottom: 93px;
   right: 24px;
   z-index: 9999;
   
@@ -585,7 +585,7 @@
 // Mobile responsive adjustments for FAB
 @media (max-width: 768px) {
   .fab-container {
-    bottom: 20px;
+    bottom: 100px;
     right: 20px;
     
     .fab-menu .fab-option {
@@ -613,7 +613,7 @@
 
 @media (max-width: 480px) {
   .fab-container {
-    bottom: 16px;
+    bottom: 87px;
     right: 16px;
     
     .fab-menu .fab-option {
@@ -633,10 +633,10 @@
   }
   
   .swipe-hint-footer ~ .fab-container {
-    bottom: calc(16px + 50px);
+    bottom: calc(93px + 60px); // 93px base + 60px footer height
     
-    @supports (bottom: calc(66px + env(safe-area-inset-bottom))) {
-      bottom: calc(66px + env(safe-area-inset-bottom));
+    @supports (bottom: calc(153px + env(safe-area-inset-bottom))) {
+      bottom: calc(153px + env(safe-area-inset-bottom));
     }
   }
 }
