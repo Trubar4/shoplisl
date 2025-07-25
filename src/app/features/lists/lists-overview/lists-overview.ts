@@ -167,26 +167,30 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     }
   }
 
-  // Reset theme color to default blue
-  private resetThemeColor(): void {
-    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
-    if (!themeColorMeta) {
-      themeColorMeta = document.createElement('meta');
-      themeColorMeta.name = 'theme-color';
-      document.head.appendChild(themeColorMeta);
-    }
-    themeColorMeta.content = '#1a9edb';
-    
-    // Also update HTML background
-    document.documentElement.style.backgroundColor = '#1a9edb';
-    
-    // Reset CSS custom properties
-    const root = document.documentElement;
-    root.style.setProperty('--list-primary-color', '#1a9edb');
-    root.style.setProperty('--list-contrast-color', 'white');
-    root.style.setProperty('--list-light-color', '#a8d4f0');
-    root.style.setProperty('--list-dark-color', '#1976d2');
+
+private resetThemeColor(): void {
+  let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+  if (!themeColorMeta) {
+    themeColorMeta = document.createElement('meta');
+    themeColorMeta.name = 'theme-color';
+    document.head.appendChild(themeColorMeta);
   }
+  themeColorMeta.content = '#1a9edb';
+  
+  // Also update HTML background
+  document.documentElement.style.backgroundColor = '#1a9edb';
+  
+  // Force reset CSS custom properties with !important
+  const root = document.documentElement;
+  root.style.setProperty('--list-primary-color', '#1a9edb', 'important');
+  root.style.setProperty('--list-contrast-color', 'white', 'important');
+  root.style.setProperty('--list-light-color', '#a8d4f0', 'important');
+  root.style.setProperty('--list-dark-color', '#1976d2', 'important');
+  
+  // Add a body class to force override
+  document.body.classList.add('lists-overview-page');
+  document.body.classList.remove('list-detail-page');
+}
 
   onSearchQueryChange(): void {
     this.searchQuery$.next(this.searchQuery.trim());
