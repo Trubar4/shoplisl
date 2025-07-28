@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject, from, of, combineLatest } from 'rxjs';
+import { Observable, BehaviorSubject, from, of, combineLatest, Subscription } from 'rxjs';
 import { map, catchError, mergeMap, take, tap, switchMap } from 'rxjs/operators';
 // Direct Firebase imports (more reliable in StackBlitz)
 import { initializeApp } from 'firebase/app';
@@ -40,6 +40,9 @@ export class DataService {
   private articlesLoadingSubject = new BehaviorSubject<boolean>(false);
   private listsLoadingSubject = new BehaviorSubject<boolean>(false);
   
+  private queuedOperations: Array<() => Promise<any>> = [];
+  private queueConnectionSubscription?: Subscription;
+
   // Unsubscribe functions for real-time listeners
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
@@ -57,24 +60,130 @@ export class DataService {
       console.log('✅ Firebase initialized successfully');
     } catch (error) {
       console.error('❌ Firebase initialization failed:', error);
-      return;
     }
     
     console.log('👥 Using shared user ID:', this.SHARED_USER_ID);
+    
+    // Initialize subjects first
+    this.articlesSubject = new BehaviorSubject<Article[]>([]);
+    this.listsSubject = new BehaviorSubject<ShoppingList[]>([]);
+    this.articlesLoadingSubject = new BehaviorSubject<boolean>(false);
+    this.listsLoadingSubject = new BehaviorSubject<boolean>(false);
+    
+    // Add to window for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).dataService = this;
+    }
     
     // Initialize data loading based on connection status
     this.initializeDataLoading();
   }
 
+  /**
+   * Emergency data loading - tries all methods
+   */
+  async loadDataEmergency(): Promise<void> {
+    console.log('🚨 Emergency data loading triggered');
+    
+    // First try cached data
+    console.log('1️⃣ Trying cached data...');
+    this.loadCachedData();
+    
+    const cachedArticles = this.articlesSubject.value;
+    const cachedLists = this.listsSubject.value;
+    
+    if (cachedArticles.length > 0 || cachedLists.length > 0) {
+      console.log(`✅ Loaded from cache: ${cachedArticles.length} articles, ${cachedLists.length} lists`);
+      return;
+    }
+    
+    // If no cache and online, try Firebase directly
+    if (this.connectionService.isOnline() && this.firestore) {
+      console.log('2️⃣ Trying direct Firebase fetch...');
+      
+      try {
+        // Direct fetch articles
+        const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+        const articles: Article[] = [];
+        articlesSnapshot.forEach((doc) => {
+          const data = doc.data();
+          articles.push({
+            id: doc.id,
+            name: data['name'],
+            amount: data['amount'],
+            notes: data['notes'],
+            icon: data['icon'],
+            categoryId: data['categoryId'],
+            departmentId: data['departmentId'],
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date(),
+            availableInShops: data['availableInShops'] || [],
+            usageCount: data['usageCount'] || 0
+          });
+        });
+        
+        // Direct fetch lists
+        const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+        const lists: ShoppingList[] = [];
+        listsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          lists.push({
+            id: doc.id,
+            name: data['name'],
+            color: data['color'],
+            icon: data['icon'],
+            shopId: data['shopId'],
+            articleIds: data['articleIds'] || [],
+            itemStates: data['itemStates'] || {},
+            departmentOrder: data['departmentOrder'],
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date()
+          });
+        });
+        
+        console.log(`🔥 Direct Firebase fetch: ${articles.length} articles, ${lists.length} lists`);
+        
+        // Update subjects
+        this.articlesSubject.next(articles);
+        this.listsSubject.next(lists);
+        
+        // Cache the data
+        this.cacheService.cacheArticles(articles);
+        this.cacheService.cacheLists(lists);
+        
+        // Now set up real-time listeners
+        this.setupRealtimeListeners();
+        
+      } catch (error) {
+        console.error('❌ Direct Firebase fetch failed:', error);
+      }
+    }
+  }
+
   private initializeDataLoading(): void {
-    // Monitor connection status and load data accordingly
+    // Get initial connection status and load data immediately
+    const currentStatus = this.connectionService.getCurrentStatus();
+    
+    if (currentStatus.isOnline) {
+      console.log('🌐 Initially online - loading fresh data');
+      this.loadFreshData();
+    } else {
+      console.log('📱 Initially offline - attempting cached data');
+      this.loadCachedData();
+    }
+  
+    // Then monitor connection changes
     this.connectionService.getConnectionStatus().subscribe(status => {
-      if (status.isOnline) {
-        console.log('🌐 Connection available - loading fresh data');
-        this.loadFreshData();
-      } else {
-        console.log('📱 Offline - attempting to load cached data');
-        this.loadCachedData();
+      // Only react to connection status changes, not initial state
+      const currentTime = Date.now();
+      const statusChangeTime = status.lastOnlineAt?.getTime() || 0;
+      
+      if (Math.abs(currentTime - statusChangeTime) < 1000) {
+        // This is a recent connection change
+        if (status.isOnline) {
+          console.log('🌐 Connection restored - refreshing data');
+          this.loadFreshData();
+        }
       }
     });
   }
@@ -83,7 +192,15 @@ export class DataService {
     console.log('🔄 Loading fresh data from Firebase...');
     
     try {
-      // Set up real-time listeners for fresh data
+      // FIRST: Process any queued operations before listeners overwrite local state
+      if (this.queuedOperations.length > 0) {
+        console.log('🚀 Processing queued operations BEFORE loading fresh data');
+        await this.processQueuedOperations();
+        // Wait a moment for operations to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // THEN: Set up real-time listeners for fresh data
       this.setupRealtimeListeners();
       
       // Also run migrations if needed
@@ -246,49 +363,56 @@ export class DataService {
     );
   }
 
-  /**
-   * Queue operations for when connection is restored
-   */
-  private queuedOperations: Array<() => Promise<any>> = [];
-
+  
   private queueOperation(operation: () => Promise<any>): void {
     this.queuedOperations.push(operation);
     console.log(`📝 Queued operation (${this.queuedOperations.length} pending)`);
-
-    // Process queue when connection is restored
-    this.connectionService.getConnectionStatus().pipe(
-      take(1)
-    ).subscribe(status => {
-      if (status.isOnline) {
-        this.processQueuedOperations();
-      }
-    });
+  
+    // Don't process immediately if offline
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Operation queued for later sync');
+      return;
+    }
+  
+    // If online, process queue after a short delay
+    console.log('🌐 Online: Processing queue immediately');
+    setTimeout(() => this.processQueuedOperations(), 1000);
   }
 
-  private async processQueuedOperations(): Promise<void> {
-    if (this.queuedOperations.length === 0) return;
-
+  async processQueuedOperations(): Promise<void> {
+    if (this.queuedOperations.length === 0) {
+      console.log('📭 No queued operations to process');
+      return;
+    }
+  
     console.log(`🔄 Processing ${this.queuedOperations.length} queued operations...`);
     
     const operations = [...this.queuedOperations];
-    this.queuedOperations = [];
-
-    for (const operation of operations) {
+    this.queuedOperations = []; // Clear queue immediately to prevent re-processing
+  
+    let successCount = 0;
+    let failCount = 0;
+  
+    for (const [index, operation] of operations.entries()) {
       try {
+        console.log(`⏳ Processing operation ${index + 1}/${operations.length}`);
         await operation();
-        console.log('✅ Queued operation completed');
+        successCount++;
+        console.log(`✅ Operation ${index + 1} completed successfully`);
       } catch (error) {
-        console.error('❌ Queued operation failed:', error);
+        failCount++;
+        console.error(`❌ Operation ${index + 1} failed:`, error);
         // Re-queue failed operations
         this.queuedOperations.push(operation);
       }
     }
-
+  
+    console.log(`🎉 Queue processing complete: ${successCount} success, ${failCount} failed`);
+    
     if (this.queuedOperations.length > 0) {
-      console.log(`⚠️ ${this.queuedOperations.length} operations still pending`);
+      console.log(`⚠️ ${this.queuedOperations.length} operations still pending (will retry later)`);
     }
   }
-
   // === PUBLIC METHODS (Enhanced with offline support) ===
   
   getArticles(): Observable<Article[]> {
@@ -300,16 +424,18 @@ export class DataService {
   }
 
   getArticle(id: string): Observable<Article | undefined> {
-    // First try to get from current state (might be cached)
+    // ALWAYS try to get from current state first (local changes take priority)
     const currentArticles = this.articlesSubject.value;
-    const cachedArticle = currentArticles.find(a => a.id === id);
+    const localArticle = currentArticles.find(a => a.id === id);
     
-    if (cachedArticle) {
-      return of(cachedArticle);
+    if (localArticle) {
+      console.log(`📦 Found article "${localArticle.name}" in local state`);
+      return of(localArticle);
     }
-
-    // If not in current state and online, fetch from Firebase
-    if (this.connectionService.isOnline()) {
+  
+    // Only fetch from Firebase if not in local state AND online
+    if (this.connectionService.isOnline() && this.firestore) {
+      console.log(`🔍 Article ${id} not in local state, fetching from Firebase`);
       return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
         map(docSnap => {
           if (docSnap.exists()) {
@@ -331,13 +457,14 @@ export class DataService {
           return undefined;
         }),
         catchError(error => {
-          console.error('Error getting article:', error);
+          console.error('Error getting article from Firebase:', error);
           return of(undefined);
         })
       );
     }
-
-    // Offline and not in cache
+  
+    // Offline and not in local state
+    console.log(`❌ Article ${id} not found (offline)`);
     return of(undefined);
   }
 
@@ -358,7 +485,7 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: Article creation will be synced when online');
       // Generate temporary ID for offline creation
-      const tempId = 'temp_' + Date.now();
+      const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const tempArticle: Article = {
         id: tempId,
         ...article,
@@ -368,18 +495,24 @@ export class DataService {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      // Add to local state immediately
+    
+      // Add to local state immediately AND persist it in the subject
       const currentArticles = this.articlesSubject.value;
-      this.articlesSubject.next([...currentArticles, tempArticle]);
-
+      const updatedArticles = [...currentArticles, tempArticle];
+      
+      // CRITICAL: Update the subject so components see the change
+      this.articlesSubject.next(updatedArticles);
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheArticles(updatedArticles);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`), articleData);
         // Real-time listener will handle the update
         return docRef;
       });
-
+    
       return of(tempArticle);
     }
 
@@ -417,18 +550,23 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: Article update will be synced when online');
       
-      // Update local state immediately
+      // Update local state immediately AND persist it in the subject
       const currentArticles = this.articlesSubject.value;
       const updatedArticles = currentArticles.map(article => 
         article.id === id ? { ...article, ...updates, updatedAt: new Date() } : article
       );
+      
+      // CRITICAL: Update the subject so components see the change
       this.articlesSubject.next(updatedArticles);
-
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheArticles(updatedArticles);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`), updateData);
       });
-
+    
       const updatedArticle = updatedArticles.find(a => a.id === id);
       return of(updatedArticle);
     }
@@ -450,16 +588,22 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: Article deletion will be synced when online');
       
-      // Remove from local state immediately
+      // Remove from local state immediately AND persist it in the subject
       const currentArticles = this.articlesSubject.value;
-      this.articlesSubject.next(currentArticles.filter(a => a.id !== id));
-
+      const updatedArticles = currentArticles.filter(a => a.id !== id);
+      
+      // CRITICAL: Update the subject so components see the change
+      this.articlesSubject.next(updatedArticles);
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheArticles(updatedArticles);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         await this.removeArticleFromAllLists(id);
         return deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`));
       });
-
+    
       return of(true);
     }
 
@@ -518,16 +662,18 @@ export class DataService {
   }
 
   getList(id: string): Observable<ShoppingList | undefined> {
-    // First try to get from current state (might be cached)
+    // ALWAYS try to get from current state first (local changes take priority)
     const currentLists = this.listsSubject.value;
-    const cachedList = currentLists.find(l => l.id === id);
+    const localList = currentLists.find(l => l.id === id);
     
-    if (cachedList) {
-      return of(cachedList);
+    if (localList) {
+      console.log(`📋 Found list "${localList.name}" in local state`);
+      return of(localList);
     }
-
-    // If not in current state and online, fetch from Firebase
-    if (this.connectionService.isOnline()) {
+  
+    // Only fetch from Firebase if not in local state AND online
+    if (this.connectionService.isOnline() && this.firestore) {
+      console.log(`🔍 List ${id} not in local state, fetching from Firebase`);
       return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
         map(docSnap => {
           if (docSnap.exists()) {
@@ -548,13 +694,14 @@ export class DataService {
           return undefined;
         }),
         catchError(error => {
-          console.error('Error getting list:', error);
+          console.error('Error getting list from Firebase:', error);
           return of(undefined);
         })
       );
     }
-
-    // Offline and not in cache
+  
+    // Offline and not in local state
+    console.log(`❌ List ${id} not found (offline)`);
     return of(undefined);
   }
 
@@ -568,24 +715,30 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: List creation will be synced when online');
       
-      const tempId = 'temp_' + Date.now();
+      const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const tempList: ShoppingList = {
         id: tempId,
         ...list,
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      // Add to local state immediately
+    
+      // Add to local state immediately AND persist it in the subject
       const currentLists = this.listsSubject.value;
-      this.listsSubject.next([...currentLists, tempList]);
-
+      const updatedLists = [...currentLists, tempList];
+      
+      // CRITICAL: Update the subject so components see the change
+      this.listsSubject.next(updatedLists);
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheLists(updatedLists);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData);
         return docRef;
       });
-
+    
       return of(tempList);
     }
 
@@ -612,18 +765,23 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: List update will be synced when online');
       
-      // Update local state immediately
+      // Update local state immediately AND persist it in the subject
       const currentLists = this.listsSubject.value;
       const updatedLists = currentLists.map(list => 
         list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
       );
+      
+      // CRITICAL: Update the subject so components see the change
       this.listsSubject.next(updatedLists);
-
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheLists(updatedLists);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData);
       });
-
+    
       const updatedList = updatedLists.find(l => l.id === id);
       return of(updatedList);
     }
@@ -645,15 +803,21 @@ export class DataService {
     if (!this.connectionService.isOnline()) {
       console.log('📱 Offline: List deletion will be synced when online');
       
-      // Remove from local state immediately
+      // Remove from local state immediately AND persist it in the subject
       const currentLists = this.listsSubject.value;
-      this.listsSubject.next(currentLists.filter(l => l.id !== id));
-
+      const updatedLists = currentLists.filter(l => l.id !== id);
+      
+      // CRITICAL: Update the subject so components see the change
+      this.listsSubject.next(updatedLists);
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheLists(updatedLists);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         return deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`));
       });
-
+    
       return of(true);
     }
 
@@ -683,15 +847,24 @@ export class DataService {
             checkedAt: new Date()
           }
         };
-
+  
         if (!this.connectionService.isOnline()) {
-          // Update local state immediately
+          // Update local state immediately AND persist it in the subject
           const currentLists = this.listsSubject.value;
           const updatedLists = currentLists.map(l => 
-            l.id === listId ? { ...l, itemStates: newItemStates, updatedAt: new Date() } : l
+            l.id === listId ? { 
+              ...l, 
+              itemStates: newItemStates, 
+              updatedAt: new Date() 
+            } : l
           );
+          
+          // CRITICAL: Update the subject so components see the change
           this.listsSubject.next(updatedLists);
-
+          
+          // ALSO: Update the cache so changes persist across navigation
+          this.cacheService.cacheLists(updatedLists);
+  
           // Queue for sync when online
           this.queueOperation(async () => {
             return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
@@ -700,12 +873,13 @@ export class DataService {
             });
           });
         } else {
+          // Online - update Firebase directly
           updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
             itemStates: newItemStates,
             updatedAt: Timestamp.now()
           });
         }
-
+  
         return true;
       }),
       catchError(error => {
@@ -730,7 +904,7 @@ export class DataService {
         };
 
         if (!this.connectionService.isOnline()) {
-          // Update local state immediately
+          // Update local state immediately AND persist it in the subject
           const currentLists = this.listsSubject.value;
           const updatedLists = currentLists.map(l => 
             l.id === listId ? { 
@@ -740,8 +914,13 @@ export class DataService {
               updatedAt: new Date() 
             } : l
           );
+          
+          // CRITICAL: Update the subject so components see the change
           this.listsSubject.next(updatedLists);
-
+          
+          // ALSO: Update the cache so changes persist across navigation
+          this.cacheService.cacheLists(updatedLists);
+        
           // Queue for sync when online
           this.queueOperation(async () => {
             return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
@@ -777,7 +956,7 @@ export class DataService {
         delete newItemStates[articleId];
 
         if (!this.connectionService.isOnline()) {
-          // Update local state immediately
+          // Update local state immediately AND persist it in the subject
           const currentLists = this.listsSubject.value;
           const updatedLists = currentLists.map(l => 
             l.id === listId ? { 
@@ -787,8 +966,13 @@ export class DataService {
               updatedAt: new Date() 
             } : l
           );
+          
+          // CRITICAL: Update the subject so components see the change
           this.listsSubject.next(updatedLists);
-
+          
+          // ALSO: Update the cache so changes persist across navigation
+          this.cacheService.cacheLists(updatedLists);
+        
           // Queue for sync when online
           this.queueOperation(async () => {
             return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
@@ -829,13 +1013,22 @@ export class DataService {
         };
 
         if (!this.connectionService.isOnline()) {
-          // Update local state immediately
+          // Update local state immediately AND persist it in the subject
           const currentLists = this.listsSubject.value;
           const updatedLists = currentLists.map(l => 
-            l.id === listId ? { ...l, itemStates: newItemStates, updatedAt: new Date() } : l
+            l.id === listId ? { 
+              ...l, 
+              itemStates: newItemStates, 
+              updatedAt: new Date() 
+            } : l
           );
+          
+          // CRITICAL: Update the subject so components see the change
           this.listsSubject.next(updatedLists);
-
+          
+          // ALSO: Update the cache so changes persist across navigation
+          this.cacheService.cacheLists(updatedLists);
+        
           // Queue for sync when online
           this.queueOperation(async () => {
             return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
@@ -861,7 +1054,7 @@ export class DataService {
 
   clearAllItemsFromList(listId: string): Observable<boolean> {
     if (!this.connectionService.isOnline()) {
-      // Update local state immediately
+      // Update local state immediately AND persist it in the subject
       const currentLists = this.listsSubject.value;
       const updatedLists = currentLists.map(l => 
         l.id === listId ? { 
@@ -871,8 +1064,13 @@ export class DataService {
           updatedAt: new Date() 
         } : l
       );
+      
+      // CRITICAL: Update the subject so components see the change
       this.listsSubject.next(updatedLists);
-
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheLists(updatedLists);
+    
       // Queue for sync when online
       this.queueOperation(async () => {
         return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
@@ -881,7 +1079,7 @@ export class DataService {
           updatedAt: Timestamp.now()
         });
       });
-
+    
       return of(true);
     }
 
@@ -1174,12 +1372,17 @@ export class DataService {
 
   updateListDepartmentOrder(listId: string, departmentOrder: string[]): Observable<boolean> {
     if (!this.connectionService.isOnline()) {
-      // Update local state immediately
+      // Update local state immediately AND persist it in the subject
       const currentLists = this.listsSubject.value;
       const updatedLists = currentLists.map(l => 
         l.id === listId ? { ...l, departmentOrder, updatedAt: new Date() } : l
       );
+      
+      // CRITICAL: Update the subject so components see the change
       this.listsSubject.next(updatedLists);
+      
+      // ALSO: Update the cache so changes persist across navigation
+      this.cacheService.cacheLists(updatedLists);
 
       // Queue for sync when online
       this.queueOperation(async () => {
