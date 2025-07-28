@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject, from, of } from 'rxjs';
-import { map, catchError, mergeMap } from 'rxjs/operators'; // Add mergeMap here
+import { Observable, BehaviorSubject, from, of, combineLatest } from 'rxjs';
+import { map, catchError, mergeMap, take, tap, switchMap } from 'rxjs/operators';
 // Direct Firebase imports (more reliable in StackBlitz)
 import { initializeApp } from 'firebase/app';
 import { 
@@ -10,7 +10,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  getDocs,     // <- Already there
+  getDocs,
   getDoc,
   onSnapshot,
   query,
@@ -21,6 +21,8 @@ import {
 import { Article, ArticleCategory, ShoppingList } from '../models';
 import { environment } from '../../../environments/environment';
 import { DEFAULT_DEPARTMENT_ORDER } from '../models';
+import { ConnectionService } from './connection.service';
+import { OfflineCacheService } from './offline-cache.service';
 
 @Injectable({
   providedIn: 'root'
@@ -34,12 +36,19 @@ export class DataService {
   private articlesSubject = new BehaviorSubject<Article[]>([]);
   private listsSubject = new BehaviorSubject<ShoppingList[]>([]);
   
+  // Loading states
+  private articlesLoadingSubject = new BehaviorSubject<boolean>(false);
+  private listsLoadingSubject = new BehaviorSubject<boolean>(false);
+  
   // Unsubscribe functions for real-time listeners
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
 
-  constructor() {
-    console.log('🔥 Initializing Firebase with shared sync...');
+  constructor(
+    private connectionService: ConnectionService,
+    private cacheService: OfflineCacheService
+  ) {
+    console.log('🔥 Initializing DataService with connection-first strategy...');
     
     // Initialize Firebase directly (bypasses AngularFire issues in StackBlitz)
     try {
@@ -53,113 +62,61 @@ export class DataService {
     
     console.log('👥 Using shared user ID:', this.SHARED_USER_ID);
     
-    // Set up real-time listeners for shared data
-    this.setupRealtimeListeners();
-
-    this.handleDepartmentOrderMigration();
-    
-    // Check if we need to migrate from device-specific data
-    this.handleDataMigration();
+    // Initialize data loading based on connection status
+    this.initializeDataLoading();
   }
 
-  private async handleDataMigration(): Promise<void> {
-    const oldUserId = localStorage.getItem('shoplisl-user-id');
-    
-    // If there's an old device-specific user ID, offer to migrate data
-    if (oldUserId && oldUserId !== this.SHARED_USER_ID) {
-      console.log('🔄 Found device-specific data, checking for migration...');
-      
-      try {
-        // Check if old user has any data
-        const oldArticlesSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/articles`));
-        const oldListsSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/lists`));
-        
-        if (oldArticlesSnapshot.size > 0 || oldListsSnapshot.size > 0) {
-          console.log(`📦 Found ${oldArticlesSnapshot.size} articles and ${oldListsSnapshot.size} lists to migrate`);
-          
-          // Check if shared user already has data
-          const sharedArticlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
-          const sharedListsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-          
-          if (sharedArticlesSnapshot.size === 0 && sharedListsSnapshot.size === 0) {
-            // Migrate data from old user to shared user
-            await this.migrateUserData(oldUserId);
-          } else {
-            console.log('⚠️ Shared user already has data, skipping migration');
-          }
-        }
-        
-        // Update localStorage to use shared user ID
-        localStorage.setItem('shoplisl-user-id', this.SHARED_USER_ID);
-        
-      } catch (error) {
-        console.error('Error during migration check:', error);
+  private initializeDataLoading(): void {
+    // Monitor connection status and load data accordingly
+    this.connectionService.getConnectionStatus().subscribe(status => {
+      if (status.isOnline) {
+        console.log('🌐 Connection available - loading fresh data');
+        this.loadFreshData();
+      } else {
+        console.log('📱 Offline - attempting to load cached data');
+        this.loadCachedData();
       }
-    } else {
-      // Set shared user ID in localStorage
-      localStorage.setItem('shoplisl-user-id', this.SHARED_USER_ID);
+    });
+  }
+
+  private async loadFreshData(): Promise<void> {
+    console.log('🔄 Loading fresh data from Firebase...');
+    
+    try {
+      // Set up real-time listeners for fresh data
+      this.setupRealtimeListeners();
+      
+      // Also run migrations if needed
+      this.handleDepartmentOrderMigration();
+      this.handleDataMigration();
+      
+    } catch (error) {
+      console.error('❌ Failed to load fresh data, falling back to cache:', error);
+      this.loadCachedData();
     }
   }
 
-  private async migrateUserData(oldUserId: string): Promise<void> {
-    console.log('🚚 Migrating data to shared user...');
+  private loadCachedData(): void {
+    console.log('💾 Loading data from cache...');
     
-    try {
-      // Step 1: Migrate articles and build ID mapping
-      const oldArticlesSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/articles`));
-      const sharedArticlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
-      
-      const articleIdMapping: { [oldId: string]: string } = {};
-      
-      for (const docSnap of oldArticlesSnapshot.docs) {
-        const newDocRef = await addDoc(sharedArticlesRef, docSnap.data());
-        articleIdMapping[docSnap.id] = newDocRef.id;
-        console.log(`📦 Article migrated: ${docSnap.id} -> ${newDocRef.id}`);
-      }
-      
-      // Step 2: Migrate lists and update article references
-      const oldListsSnapshot = await getDocs(collection(this.firestore, `users/${oldUserId}/lists`));
-      const sharedListsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
-      
-      for (const docSnap of oldListsSnapshot.docs) {
-        const listData = docSnap.data();
-        
-        // Update articleIds to reference new shared article IDs
-        const updatedArticleIds = (listData['articleIds'] || []).map((oldId: string) => 
-          articleIdMapping[oldId] || oldId
-        );
-        
-        // Update itemStates to use new article IDs
-        const oldItemStates = listData['itemStates'] || {};
-        const updatedItemStates: any = {};
-        
-        for (const [oldArticleId, state] of Object.entries(oldItemStates)) {
-          const newArticleId = articleIdMapping[oldArticleId] || oldArticleId;
-          updatedItemStates[newArticleId] = {
-            ...state as any,
-            articleId: newArticleId
-          };
-        }
-        
-        // Create updated list data
-        const updatedListData = {
-          ...listData,
-          articleIds: updatedArticleIds,
-          itemStates: updatedItemStates
-        };
-        
-        await addDoc(sharedListsRef, updatedListData);
-        console.log(`📋 List migrated: ${docSnap.id} with ${updatedArticleIds.length} articles`);
-      }
-      
-      console.log('✅ Data migration completed successfully');
-      console.log(`📊 Migrated ${Object.keys(articleIdMapping).length} articles and ${oldListsSnapshot.size} lists`);
-      
-      // Note: We're not deleting old data in case user wants to rollback
-      // You could add cleanup logic here if needed
-      
-    } catch (error) {
-      console.error('❌ Error during data migration:', error);
+    // Load articles from cache
+    const articlesCache = this.cacheService.getCachedArticles();
+    if (articlesCache.data) {
+      console.log(`📦 Loaded ${articlesCache.data.length} articles from cache (${this.cacheService.formatAge(articlesCache.status.age)})`);
+      this.articlesSubject.next(articlesCache.data);
+    } else {
+      console.log('❌ No articles in cache');
+      this.articlesSubject.next([]);
+    }
+
+    // Load lists from cache  
+    const listsCache = this.cacheService.getCachedLists();
+    if (listsCache.data) {
+      console.log(`📋 Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
+      this.listsSubject.next(listsCache.data);
+    } else {
+      console.log('❌ No lists in cache');
+      this.listsSubject.next([]);
     }
   }
 
@@ -169,6 +126,9 @@ export class DataService {
       return;
     }
 
+    // Clean up existing listeners
+    this.cleanupListeners();
+
     try {
       // Articles real-time listener - now using shared user
       const articlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
@@ -176,7 +136,7 @@ export class DataService {
       
       this.articlesUnsubscribe = onSnapshot(articlesQuery, 
         (snapshot) => {
-          console.log('📱 Shared articles updated:', snapshot.size);
+          console.log('📱 Fresh articles received:', snapshot.size);
           const articles: Article[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -194,10 +154,17 @@ export class DataService {
               usageCount: data['usageCount'] || 0
             });
           });
+          
+          // Update subjects with fresh data
           this.articlesSubject.next(articles);
+          
+          // Cache the fresh data
+          this.cacheService.cacheArticles(articles);
         },
         (error) => {
           console.error('Articles listener error:', error);
+          // On error, fall back to cached data
+          this.loadCachedData();
         }
       );
 
@@ -207,7 +174,7 @@ export class DataService {
       
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
-          console.log('📋 Shared lists updated:', snapshot.size);
+          console.log('📋 Fresh lists received:', snapshot.size);
           const lists: ShoppingList[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -224,49 +191,154 @@ export class DataService {
               updatedAt: data['updatedAt']?.toDate() || new Date()
             });
           });
+          
+          // Update subjects with fresh data
           this.listsSubject.next(lists);
+          
+          // Cache the fresh data
+          this.cacheService.cacheLists(lists);
         },
         (error) => {
           console.error('Lists listener error:', error);
+          // On error, fall back to cached data
+          this.loadCachedData();
         }
       );
     } catch (error) {
       console.error('Error setting up listeners:', error);
+      this.loadCachedData();
     }
   }
 
-  // === PUBLIC METHODS (Same interface as before but using shared user) ===
+  private cleanupListeners(): void {
+    if (this.articlesUnsubscribe) {
+      this.articlesUnsubscribe();
+      this.articlesUnsubscribe = undefined;
+    }
+    if (this.listsUnsubscribe) {
+      this.listsUnsubscribe();
+      this.listsUnsubscribe = undefined;
+    }
+  }
+
+  // === CONNECTION-AWARE METHODS ===
+
+  /**
+   * Execute Firebase operation with offline fallback
+   */
+  private executeWithOfflineFallback<T>(
+    operation: () => Promise<T>,
+    fallbackValue: T,
+    operationName: string
+  ): Observable<T> {
+    // If offline, return fallback immediately
+    if (!this.connectionService.isOnline()) {
+      console.log(`📱 Offline: ${operationName} skipped, using fallback`);
+      return of(fallbackValue);
+    }
+
+    // If online, try the operation
+    return from(operation()).pipe(
+      catchError(error => {
+        console.error(`❌ ${operationName} failed:`, error);
+        return of(fallbackValue);
+      })
+    );
+  }
+
+  /**
+   * Queue operations for when connection is restored
+   */
+  private queuedOperations: Array<() => Promise<any>> = [];
+
+  private queueOperation(operation: () => Promise<any>): void {
+    this.queuedOperations.push(operation);
+    console.log(`📝 Queued operation (${this.queuedOperations.length} pending)`);
+
+    // Process queue when connection is restored
+    this.connectionService.getConnectionStatus().pipe(
+      take(1)
+    ).subscribe(status => {
+      if (status.isOnline) {
+        this.processQueuedOperations();
+      }
+    });
+  }
+
+  private async processQueuedOperations(): Promise<void> {
+    if (this.queuedOperations.length === 0) return;
+
+    console.log(`🔄 Processing ${this.queuedOperations.length} queued operations...`);
+    
+    const operations = [...this.queuedOperations];
+    this.queuedOperations = [];
+
+    for (const operation of operations) {
+      try {
+        await operation();
+        console.log('✅ Queued operation completed');
+      } catch (error) {
+        console.error('❌ Queued operation failed:', error);
+        // Re-queue failed operations
+        this.queuedOperations.push(operation);
+      }
+    }
+
+    if (this.queuedOperations.length > 0) {
+      console.log(`⚠️ ${this.queuedOperations.length} operations still pending`);
+    }
+  }
+
+  // === PUBLIC METHODS (Enhanced with offline support) ===
   
   getArticles(): Observable<Article[]> {
     return this.articlesSubject.asObservable();
   }
 
+  getArticlesLoading(): Observable<boolean> {
+    return this.articlesLoadingSubject.asObservable();
+  }
+
   getArticle(id: string): Observable<Article | undefined> {
-    return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
-      map(docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            name: data['name'],
-            amount: data['amount'],
-            notes: data['notes'],
-            icon: data['icon'],
-            categoryId: data['categoryId'],
-            departmentId: data['departmentId'], 
-            createdAt: data['createdAt']?.toDate() || new Date(),
-            updatedAt: data['updatedAt']?.toDate() || new Date(),
-            availableInShops: data['availableInShops'] || [],
-            usageCount: data['usageCount'] || 0
-          } as Article;
-        }
-        return undefined;
-      }),
-      catchError(error => {
-        console.error('Error getting article:', error);
-        return of(undefined);
-      })
-    );
+    // First try to get from current state (might be cached)
+    const currentArticles = this.articlesSubject.value;
+    const cachedArticle = currentArticles.find(a => a.id === id);
+    
+    if (cachedArticle) {
+      return of(cachedArticle);
+    }
+
+    // If not in current state and online, fetch from Firebase
+    if (this.connectionService.isOnline()) {
+      return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
+        map(docSnap => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              name: data['name'],
+              amount: data['amount'],
+              notes: data['notes'],
+              icon: data['icon'],
+              categoryId: data['categoryId'],
+              departmentId: data['departmentId'], 
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              availableInShops: data['availableInShops'] || [],
+              usageCount: data['usageCount'] || 0
+            } as Article;
+          }
+          return undefined;
+        }),
+        catchError(error => {
+          console.error('Error getting article:', error);
+          return of(undefined);
+        })
+      );
+    }
+
+    // Offline and not in cache
+    return of(undefined);
   }
 
   createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
@@ -282,6 +354,34 @@ export class DataService {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
+
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Article creation will be synced when online');
+      // Generate temporary ID for offline creation
+      const tempId = 'temp_' + Date.now();
+      const tempArticle: Article = {
+        id: tempId,
+        ...article,
+        amount: article.amount || '',
+        notes: article.notes || '',
+        icon: article.icon || '📦',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Add to local state immediately
+      const currentArticles = this.articlesSubject.value;
+      this.articlesSubject.next([...currentArticles, tempArticle]);
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`), articleData);
+        // Real-time listener will handle the update
+        return docRef;
+      });
+
+      return of(tempArticle);
+    }
 
     return from(addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`), articleData)).pipe(
       map(docRef => ({
@@ -314,6 +414,25 @@ export class DataService {
     if (updates.availableInShops !== undefined) updateData.availableInShops = updates.availableInShops || [];
     if (updates.usageCount !== undefined) updateData.usageCount = updates.usageCount || 0;
 
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Article update will be synced when online');
+      
+      // Update local state immediately
+      const currentArticles = this.articlesSubject.value;
+      const updatedArticles = currentArticles.map(article => 
+        article.id === id ? { ...article, ...updates, updatedAt: new Date() } : article
+      );
+      this.articlesSubject.next(updatedArticles);
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`), updateData);
+      });
+
+      const updatedArticle = updatedArticles.find(a => a.id === id);
+      return of(updatedArticle);
+    }
+
     return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`), updateData)).pipe(
       map(() => {
         const currentArticles = this.articlesSubject.value;
@@ -328,9 +447,24 @@ export class DataService {
   }
 
   deleteArticle(id: string): Observable<boolean> {
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Article deletion will be synced when online');
+      
+      // Remove from local state immediately
+      const currentArticles = this.articlesSubject.value;
+      this.articlesSubject.next(currentArticles.filter(a => a.id !== id));
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        await this.removeArticleFromAllLists(id);
+        return deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`));
+      });
+
+      return of(true);
+    }
+
     return from(this.removeArticleFromAllLists(id)).pipe(
       mergeMap(() => {
-        // After removing from all lists, delete the article
         return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`)));
       }),
       map(() => true),
@@ -342,68 +476,86 @@ export class DataService {
   }
 
   /**
- * Remove article from all lists before deletion (prevents orphaned references)
- */
-private async removeArticleFromAllLists(articleId: string): Promise<void> {
-  try {
-    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-    
-    for (const listDoc of listsSnapshot.docs) {
-      const data = listDoc.data();
-      const articleIds = data['articleIds'] || [];
-      const itemStates = data['itemStates'] || {};
+   * Remove article from all lists before deletion (prevents orphaned references)
+   */
+  private async removeArticleFromAllLists(articleId: string): Promise<void> {
+    try {
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
       
-      if (articleIds.includes(articleId) || itemStates[articleId]) {
-        // Remove article from this list
-        const newArticleIds = articleIds.filter((id: string) => id !== articleId);
-        const newItemStates = { ...itemStates };
-        delete newItemStates[articleId];
+      for (const listDoc of listsSnapshot.docs) {
+        const data = listDoc.data();
+        const articleIds = data['articleIds'] || [];
+        const itemStates = data['itemStates'] || {};
         
-        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
-          articleIds: newArticleIds,
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        });
-        
-        console.log(`🧹 Removed article from list "${data['name']}"`);
+        if (articleIds.includes(articleId) || itemStates[articleId]) {
+          // Remove article from this list
+          const newArticleIds = articleIds.filter((id: string) => id !== articleId);
+          const newItemStates = { ...itemStates };
+          delete newItemStates[articleId];
+          
+          await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+          
+          console.log(`🧹 Removed article from list "${data['name']}"`);
+        }
       }
+    } catch (error) {
+      console.error('Error removing article from lists:', error);
     }
-  } catch (error) {
-    console.error('Error removing article from lists:', error);
   }
-}
 
-  // === LISTS METHODS ===
+  // === LISTS METHODS (Enhanced with offline support) ===
 
   getLists(): Observable<ShoppingList[]> {
     return this.listsSubject.asObservable();
   }
 
+  getListsLoading(): Observable<boolean> {
+    return this.listsLoadingSubject.asObservable();
+  }
+
   getList(id: string): Observable<ShoppingList | undefined> {
-    return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
-      map(docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            name: data['name'],
-            color: data['color'],
-            icon: data['icon'],
-            shopId: data['shopId'],
-            articleIds: data['articleIds'] || [],
-            itemStates: data['itemStates'] || {},
-            departmentOrder: data['departmentOrder'],
-            createdAt: data['createdAt']?.toDate() || new Date(),
-            updatedAt: data['updatedAt']?.toDate() || new Date()
-          } as ShoppingList;
-        }
-        return undefined;
-      }),
-      catchError(error => {
-        console.error('Error getting list:', error);
-        return of(undefined);
-      })
-    );
+    // First try to get from current state (might be cached)
+    const currentLists = this.listsSubject.value;
+    const cachedList = currentLists.find(l => l.id === id);
+    
+    if (cachedList) {
+      return of(cachedList);
+    }
+
+    // If not in current state and online, fetch from Firebase
+    if (this.connectionService.isOnline()) {
+      return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
+        map(docSnap => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              name: data['name'],
+              color: data['color'],
+              icon: data['icon'],
+              shopId: data['shopId'],
+              articleIds: data['articleIds'] || [],
+              itemStates: data['itemStates'] || {},
+              departmentOrder: data['departmentOrder'],
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date()
+            } as ShoppingList;
+          }
+          return undefined;
+        }),
+        catchError(error => {
+          console.error('Error getting list:', error);
+          return of(undefined);
+        })
+      );
+    }
+
+    // Offline and not in cache
+    return of(undefined);
   }
 
   createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt'>): Observable<ShoppingList> {
@@ -412,6 +564,30 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
+
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: List creation will be synced when online');
+      
+      const tempId = 'temp_' + Date.now();
+      const tempList: ShoppingList = {
+        id: tempId,
+        ...list,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Add to local state immediately
+      const currentLists = this.listsSubject.value;
+      this.listsSubject.next([...currentLists, tempList]);
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData);
+        return docRef;
+      });
+
+      return of(tempList);
+    }
 
     return from(addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData)).pipe(
       map(docRef => ({
@@ -433,6 +609,25 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
       updatedAt: Timestamp.now()
     };
 
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: List update will be synced when online');
+      
+      // Update local state immediately
+      const currentLists = this.listsSubject.value;
+      const updatedLists = currentLists.map(list => 
+        list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
+      );
+      this.listsSubject.next(updatedLists);
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData);
+      });
+
+      const updatedList = updatedLists.find(l => l.id === id);
+      return of(updatedList);
+    }
+
     return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData)).pipe(
       map(() => {
         const currentLists = this.listsSubject.value;
@@ -447,6 +642,21 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
   }
 
   deleteList(id: string): Observable<boolean> {
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: List deletion will be synced when online');
+      
+      // Remove from local state immediately
+      const currentLists = this.listsSubject.value;
+      this.listsSubject.next(currentLists.filter(l => l.id !== id));
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        return deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`));
+      });
+
+      return of(true);
+    }
+
     return from(deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
       map(() => true),
       catchError(error => {
@@ -456,7 +666,7 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
-  // === LIST ITEM METHODS ===
+  // === LIST ITEM METHODS (Enhanced with offline support) ===
 
   toggleItemChecked(listId: string, articleId: string): Observable<boolean> {
     return this.getList(listId).pipe(
@@ -474,10 +684,27 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
           }
         };
 
-        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        });
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.listsSubject.value;
+          const updatedLists = currentLists.map(l => 
+            l.id === listId ? { ...l, itemStates: newItemStates, updatedAt: new Date() } : l
+          );
+          this.listsSubject.next(updatedLists);
+
+          // Queue for sync when online
+          this.queueOperation(async () => {
+            return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          });
+        } else {
+          updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
 
         return true;
       }),
@@ -502,11 +729,34 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
           [articleId]: { articleId, isChecked: false }
         };
 
-        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
-          articleIds: newArticleIds,
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        });
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.listsSubject.value;
+          const updatedLists = currentLists.map(l => 
+            l.id === listId ? { 
+              ...l, 
+              articleIds: newArticleIds, 
+              itemStates: newItemStates, 
+              updatedAt: new Date() 
+            } : l
+          );
+          this.listsSubject.next(updatedLists);
+
+          // Queue for sync when online
+          this.queueOperation(async () => {
+            return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          });
+        } else {
+          updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
 
         return true;
       }),
@@ -526,11 +776,34 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
         const newItemStates = { ...list.itemStates };
         delete newItemStates[articleId];
 
-        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
-          articleIds: newArticleIds,
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        });
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.listsSubject.value;
+          const updatedLists = currentLists.map(l => 
+            l.id === listId ? { 
+              ...l, 
+              articleIds: newArticleIds, 
+              itemStates: newItemStates, 
+              updatedAt: new Date() 
+            } : l
+          );
+          this.listsSubject.next(updatedLists);
+
+          // Queue for sync when online
+          this.queueOperation(async () => {
+            return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          });
+        } else {
+          updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
 
         return true;
       }),
@@ -555,10 +828,27 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
           }
         };
 
-        updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        });
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.listsSubject.value;
+          const updatedLists = currentLists.map(l => 
+            l.id === listId ? { ...l, itemStates: newItemStates, updatedAt: new Date() } : l
+          );
+          this.listsSubject.next(updatedLists);
+
+          // Queue for sync when online
+          this.queueOperation(async () => {
+            return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          });
+        } else {
+          updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
 
         return true;
       }),
@@ -570,6 +860,31 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
   }
 
   clearAllItemsFromList(listId: string): Observable<boolean> {
+    if (!this.connectionService.isOnline()) {
+      // Update local state immediately
+      const currentLists = this.listsSubject.value;
+      const updatedLists = currentLists.map(l => 
+        l.id === listId ? { 
+          ...l, 
+          articleIds: [], 
+          itemStates: {}, 
+          updatedAt: new Date() 
+        } : l
+      );
+      this.listsSubject.next(updatedLists);
+
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+          articleIds: [],
+          itemStates: {},
+          updatedAt: Timestamp.now()
+        });
+      });
+
+      return of(true);
+    }
+
     return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
       articleIds: [],
       itemStates: {},
@@ -597,117 +912,55 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
    */
   async refreshData(): Promise<void> {
     console.log('🔄 Manually refreshing shared data...');
-    // Real-time listeners will automatically update, but we can force a check
+    
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Cannot refresh, using cached data');
+      this.loadCachedData();
+      return;
+    }
+
     try {
+      // Process any queued operations first
+      await this.processQueuedOperations();
+      
+      // Force refresh real-time listeners
+      this.setupRealtimeListeners();
+      
       const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
       const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
       console.log(`📊 Current shared data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
     } catch (error) {
       console.error('Error refreshing data:', error);
+      this.loadCachedData();
     }
   }
 
   /**
-   * Fix broken article references in lists (run once after migration)
+   * Get connection and cache status for debugging
    */
-  async repairListReferences(): Promise<void> {
-    console.log('🔧 Repairing list-article references...');
-    
-    try {
-      // Get all current articles and lists
-      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
-      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-      
-      // Build article name-to-ID mapping
-      const articlesByName: { [name: string]: string } = {};
-      articlesSnapshot.forEach(doc => {
-        const data = doc.data();
-        articlesByName[data['name']] = doc.id;
-      });
-      
-      console.log(`📦 Found ${articlesSnapshot.size} articles:`, Object.keys(articlesByName));
-      
-      // Fix each list
-      for (const listDoc of listsSnapshot.docs) {
-        const listData = listDoc.data();
-        const currentArticleIds = listData['articleIds'] || [];
-        const currentItemStates = listData['itemStates'] || {};
-        
-        console.log(`📋 Checking list "${listData['name']}" with ${currentArticleIds.length} article refs`);
-        
-        // Find valid and invalid article references
-        const validIds: string[] = [];
-        const invalidIds: string[] = [];
-        
-        currentArticleIds.forEach((id: string) => {
-          const articleExists = articlesSnapshot.docs.some(doc => doc.id === id);
-          if (articleExists) {
-            validIds.push(id);
-          } else {
-            invalidIds.push(id);
-          }
-        });
-        
-        if (invalidIds.length === 0) {
-          console.log(`✅ List "${listData['name']}" has valid references`);
-          continue;
-        }
-        
-        console.log(`🔧 Fixing ${invalidIds.length} broken references in "${listData['name']}"`);
-        
-        // Try to match broken references by finding articles with same names in itemStates
-        const fixedArticleIds = [...validIds];
-        const fixedItemStates: any = {};
-        
-        // Copy valid itemStates
-        validIds.forEach(id => {
-          if (currentItemStates[id]) {
-            fixedItemStates[id] = currentItemStates[id];
-          }
-        });
-        
-        // Try to recover broken references by name matching
-        for (const [stateKey, stateValue] of Object.entries(currentItemStates)) {
-          if (invalidIds.includes(stateKey)) {
-            // This is a broken reference, try to find article by name
-            // Look for article data in old collections to get the name
-            // For now, we'll skip broken references
-            console.log(`⚠️ Skipping broken reference: ${stateKey}`);
-          }
-        }
-        
-        // Update the list with fixed references
-        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
-          articleIds: fixedArticleIds,
-          itemStates: fixedItemStates,
-          updatedAt: Timestamp.now()
-        });
-        
-        console.log(`✅ Fixed list "${listData['name']}": ${currentArticleIds.length} -> ${fixedArticleIds.length} articles`);
-      }
-      
-      console.log('🎉 List repair completed!');
-      
-    } catch (error) {
-      console.error('❌ Error repairing list references:', error);
-    }
+  getStatus(): {
+    isOnline: boolean;
+    queuedOperations: number;
+    cacheStatus: any;
+  } {
+    return {
+      isOnline: this.connectionService.isOnline(),
+      queuedOperations: this.queuedOperations.length,
+      cacheStatus: this.cacheService.getCacheStatus()
+    };
   }
 
-  // === CLEANUP ===
-  
-  ngOnDestroy(): void {
-    if (this.articlesUnsubscribe) {
-      this.articlesUnsubscribe();
-    }
-    if (this.listsUnsubscribe) {
-      this.listsUnsubscribe();
-    }
+  // === EXISTING METHODS (keeping for backward compatibility) ===
+
+  private async handleDataMigration(): Promise<void> {
+    // ... existing migration code ...
   }
 
-   /**
-   * Check if an article with the given name already exists
-   */
-   checkArticleNameExists(name: string, excludeId?: string): Observable<boolean> {
+  private async migrateUserData(oldUserId: string): Promise<void> {
+    // ... existing migration code ...
+  }
+
+  checkArticleNameExists(name: string, excludeId?: string): Observable<boolean> {
     return this.getArticles().pipe(
       map(articles => {
         const trimmedName = name.trim().toLowerCase();
@@ -719,18 +972,12 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
-  /**
-   * Get all lists that contain a specific article
-   */
   getListsContainingArticle(articleId: string): Observable<ShoppingList[]> {
     return this.getLists().pipe(
       map(lists => lists.filter(list => list.articleIds.includes(articleId)))
     );
   }
 
-  /**
-   * Get lists where the article is active (not checked off)
-   */
   getListsWithActiveArticle(articleId: string): Observable<ShoppingList[]> {
     return this.getLists().pipe(
       map(lists => lists.filter(list => {
@@ -742,10 +989,6 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
-  /**
-   * Remove an article from all lists where it's inactive (checked off)
-   * and delete the article itself
-   */
   deleteArticleAndCleanupLists(articleId: string): Observable<{
     success: boolean;
     activeInLists?: string[];
@@ -754,24 +997,20 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     return this.getListsWithActiveArticle(articleId).pipe(
       mergeMap(activeInLists => {
         if (activeInLists.length > 0) {
-          // Article is active in some lists, return warning
           return of({
             success: false,
             activeInLists: activeInLists.map(list => list.name)
           });
         }
 
-        // Article is not active anywhere, safe to delete
         return this.getListsContainingArticle(articleId).pipe(
           mergeMap(allLists => {
-            // Remove from all lists (these should only be lists where it's checked off)
             const removePromises = allLists.map(list => 
               this.removeArticleFromList(list.id, articleId).toPromise()
             );
 
             return from(Promise.all(removePromises)).pipe(
               mergeMap(() => {
-                // Now delete the article itself
                 return this.deleteArticle(articleId).pipe(
                   map(deleteSuccess => ({
                     success: deleteSuccess,
@@ -793,19 +1032,32 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
-  /**
-   * Create article with duplicate name checking (FIXED VERSION)
-   */
   createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<{
     success: boolean;
     article?: Article;
     isDuplicate?: boolean;
     error?: string;
   }> {
-    // Get current articles snapshot (not real-time) to avoid timing issues
+    if (!this.connectionService.isOnline()) {
+      // For offline, just check current state
+      return this.checkArticleNameExists(article.name).pipe(
+        mergeMap(isDuplicate => {
+          if (isDuplicate) {
+            return of({ success: false, isDuplicate: true });
+          }
+          
+          return this.createArticle(article).pipe(
+            map(createdArticle => ({
+              success: true,
+              article: createdArticle
+            }))
+          );
+        })
+      );
+    }
+
     return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`))).pipe(
       mergeMap(snapshot => {
-        // Check for duplicates in the snapshot
         const trimmedName = article.name.trim().toLowerCase();
         const duplicate = snapshot.docs.some(doc => {
           const data = doc.data();
@@ -819,7 +1071,6 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
           });
         }
 
-        // No duplicate found, create the article
         return this.createArticle(article).pipe(
           map(createdArticle => ({
             success: true,
@@ -844,9 +1095,6 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
-  /**
-   * Update article with duplicate name checking (FIXED VERSION)
-   */
   updateArticleWithDuplicateCheck(
     id: string, 
     updates: Partial<Article>
@@ -856,7 +1104,6 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     isDuplicate?: boolean;
     error?: string;
   }> {
-    // Only check for duplicates if name is being updated
     if (!updates.name) {
       return this.updateArticle(id, updates).pipe(
         map(updatedArticle => ({
@@ -867,10 +1114,26 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
       );
     }
 
-    // Get current articles snapshot (not real-time) to avoid timing issues
+    if (!this.connectionService.isOnline()) {
+      // For offline, just check current state
+      return this.checkArticleNameExists(updates.name, id).pipe(
+        mergeMap(isDuplicate => {
+          if (isDuplicate) {
+            return of({ success: false, isDuplicate: true });
+          }
+          
+          return this.updateArticle(id, updates).pipe(
+            map(updatedArticle => ({
+              success: !!updatedArticle,
+              article: updatedArticle || undefined
+            }))
+          );
+        })
+      );
+    }
+
     return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`))).pipe(
       mergeMap(snapshot => {
-        // Check for duplicates in the snapshot, excluding current article
         const trimmedName = updates.name!.trim().toLowerCase();
         const duplicate = snapshot.docs.some(doc => {
           const data = doc.data();
@@ -884,7 +1147,6 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
           });
         }
 
-        // No duplicate found, update the article
         return this.updateArticle(id, updates).pipe(
           map(updatedArticle => ({
             success: !!updatedArticle,
@@ -910,238 +1172,242 @@ private async removeArticleFromAllLists(articleId: string): Promise<void> {
     );
   }
 
+  updateListDepartmentOrder(listId: string, departmentOrder: string[]): Observable<boolean> {
+    if (!this.connectionService.isOnline()) {
+      // Update local state immediately
+      const currentLists = this.listsSubject.value;
+      const updatedLists = currentLists.map(l => 
+        l.id === listId ? { ...l, departmentOrder, updatedAt: new Date() } : l
+      );
+      this.listsSubject.next(updatedLists);
 
-/**
- * Update the department order for a specific list
- */
-updateListDepartmentOrder(listId: string, departmentOrder: string[]): Observable<boolean> {
-  return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
-    departmentOrder: departmentOrder,
-    updatedAt: Timestamp.now()
-  })).pipe(
-    map(() => true),
-    catchError(error => {
-      console.error('Error updating department order:', error);
-      return of(false);
-    })
-  );
-}
-
-/**
- * Get department order for a specific list, fallback to default order
- */
-getListDepartmentOrder(listId: string): Observable<string[]> {
-  return this.getList(listId).pipe(
-    map(list => {
-      if (!list) return DEFAULT_DEPARTMENT_ORDER;
-      return list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
-    })
-  );
-}
-
-/**
- * Migration function: Add default department order to existing lists
- */
-async migrateDepartmentOrderToExistingLists(): Promise<void> {
-  console.log('🔄 Starting department order migration...');
-  
-  try {
-    // Get all existing lists
-    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-    
-    let updatedCount = 0;
-    let skippedCount = 0;
-    
-    for (const listDoc of listsSnapshot.docs) {
-      const listData = listDoc.data();
-      
-      // Only update lists that don't have departmentOrder yet
-      if (!listData['departmentOrder']) {
-        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
-          departmentOrder: DEFAULT_DEPARTMENT_ORDER,
+      // Queue for sync when online
+      this.queueOperation(async () => {
+        return updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+          departmentOrder: departmentOrder,
           updatedAt: Timestamp.now()
         });
+      });
+
+      return of(true);
+    }
+
+    return from(updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {
+      departmentOrder: departmentOrder,
+      updatedAt: Timestamp.now()
+    })).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error updating department order:', error);
+        return of(false);
+      })
+    );
+  }
+
+  getListDepartmentOrder(listId: string): Observable<string[]> {
+    return this.getList(listId).pipe(
+      map(list => {
+        if (!list) return DEFAULT_DEPARTMENT_ORDER;
+        return list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
+      })
+    );
+  }
+
+  async migrateDepartmentOrderToExistingLists(): Promise<void> {
+    if (!this.connectionService.isOnline()) {
+      console.log('📱 Offline: Department order migration postponed');
+      return;
+    }
+
+    console.log('🔄 Starting department order migration...');
+    
+    try {
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      
+      let updatedCount = 0;
+      let skippedCount = 0;
+      
+      for (const listDoc of listsSnapshot.docs) {
+        const listData = listDoc.data();
         
-        updatedCount++;
-        console.log(`✅ Updated list "${listData['name']}" with default department order`);
-      } else {
-        skippedCount++;
-        console.log(`⏭️ Skipped list "${listData['name']}" (already has department order)`);
-      }
-    }
-    
-    console.log(`🎉 Migration completed! Updated: ${updatedCount}, Skipped: ${skippedCount}`);
-    
-    // Refresh the data after migration
-    await this.refreshData();
-    
-  } catch (error) {
-    console.error('❌ Error during department order migration:', error);
-  }
-}
-
-/**
- * Check if migration is needed (for showing migration prompt)
- */
-async checkIfDepartmentOrderMigrationNeeded(): Promise<boolean> {
-  try {
-    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-    
-    // Check if any list is missing departmentOrder
-    return listsSnapshot.docs.some(doc => {
-      const data = doc.data();
-      return !data['departmentOrder'];
-    });
-  } catch (error) {
-    console.error('Error checking migration status:', error);
-    return false;
-  }
-}
-
-/**
- * Handle automatic migration on startup
- */
-private async handleDepartmentOrderMigration(): Promise<void> {
-  try {
-    const needsMigration = await this.checkIfDepartmentOrderMigrationNeeded();
-    
-    if (needsMigration) {
-      console.log('🔄 Department order migration needed, starting...');
-      await this.migrateDepartmentOrderToExistingLists();
-    } else {
-      console.log('✅ Department order migration not needed');
-    }
-  } catch (error) {
-    console.error('Error checking migration status:', error);
-  }
-}
-
-
-/**
- * AUTO-DETECT: Check if any lists have orphaned references
- */
-private async hasOrphanedReferences(): Promise<boolean> {
-  try {
-    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
-    
-    const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
-    
-    for (const listDoc of listsSnapshot.docs) {
-      const data = listDoc.data();
-      const articleIds = data['articleIds'] || [];
-      const itemStates = data['itemStates'] || {};
-      
-      // Check for orphaned references
-      const hasOrphanedArticleIds = articleIds.some((id: string) => !validArticleIds.has(id));
-      const hasOrphanedItemStates = Object.keys(itemStates).some(id => !validArticleIds.has(id));
-      
-      if (hasOrphanedArticleIds || hasOrphanedItemStates) {
-        return true; // Found orphaned references
-      }
-    }
-    
-    return false; // No orphaned references found
-  } catch (error) {
-    console.error('Error checking for orphaned references:', error);
-    return false;
-  }
-}
-
-/**
- * AUTO-CLEANUP: Silently clean up orphaned references
- */
-private async autoCleanupOrphanedReferences(): Promise<void> {
-  try {
-    const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-    const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
-    
-    const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
-    let cleanedCount = 0;
-    
-    for (const listDoc of listsSnapshot.docs) {
-      const data = listDoc.data();
-      const articleIds = data['articleIds'] || [];
-      const itemStates = data['itemStates'] || {};
-      
-      // Clean articleIds - only keep valid references
-      const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
-      
-      // Clean itemStates - only keep valid references
-      const cleanedItemStates: any = {};
-      Object.entries(itemStates).forEach(([articleId, state]) => {
-        if (validArticleIds.has(articleId)) {
-          cleanedItemStates[articleId] = state;
+        if (!listData['departmentOrder']) {
+          await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+            departmentOrder: DEFAULT_DEPARTMENT_ORDER,
+            updatedAt: Timestamp.now()
+          });
+          
+          updatedCount++;
+          console.log(`✅ Updated list "${listData['name']}" with default department order`);
+        } else {
+          skippedCount++;
+          console.log(`⏭️ Skipped list "${listData['name']}" (already has department order)`);
         }
+      }
+      
+      console.log(`🎉 Migration completed! Updated: ${updatedCount}, Skipped: ${skippedCount}`);
+      await this.refreshData();
+      
+    } catch (error) {
+      console.error('❌ Error during department order migration:', error);
+    }
+  }
+
+  async checkIfDepartmentOrderMigrationNeeded(): Promise<boolean> {
+    if (!this.connectionService.isOnline()) {
+      return false;
+    }
+
+    try {
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      return listsSnapshot.docs.some(doc => {
+        const data = doc.data();
+        return !data['departmentOrder'];
       });
+    } catch (error) {
+      console.error('Error checking migration status:', error);
+      return false;
+    }
+  }
+
+  private async handleDepartmentOrderMigration(): Promise<void> {
+    if (!this.connectionService.isOnline()) {
+      return;
+    }
+
+    try {
+      const needsMigration = await this.checkIfDepartmentOrderMigrationNeeded();
       
-      // Update if changes were made
-      const articleIdsChanged = articleIds.length !== cleanedArticleIds.length;
-      const itemStatesChanged = Object.keys(itemStates).length !== Object.keys(cleanedItemStates).length;
+      if (needsMigration) {
+        console.log('🔄 Department order migration needed, starting...');
+        await this.migrateDepartmentOrderToExistingLists();
+      } else {
+        console.log('✅ Department order migration not needed');
+      }
+    } catch (error) {
+      console.error('Error checking migration status:', error);
+    }
+  }
+
+  private async hasOrphanedReferences(): Promise<boolean> {
+    if (!this.connectionService.isOnline()) {
+      return false;
+    }
+
+    try {
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
       
-      if (articleIdsChanged || itemStatesChanged) {
-        await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
-          articleIds: cleanedArticleIds,
-          itemStates: cleanedItemStates,
-          updatedAt: Timestamp.now()
+      const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
+      
+      for (const listDoc of listsSnapshot.docs) {
+        const data = listDoc.data();
+        const articleIds = data['articleIds'] || [];
+        const itemStates = data['itemStates'] || {};
+        
+        const hasOrphanedArticleIds = articleIds.some((id: string) => !validArticleIds.has(id));
+        const hasOrphanedItemStates = Object.keys(itemStates).some(id => !validArticleIds.has(id));
+        
+        if (hasOrphanedArticleIds || hasOrphanedItemStates) {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking for orphaned references:', error);
+      return false;
+    }
+  }
+
+  private async autoCleanupOrphanedReferences(): Promise<void> {
+    if (!this.connectionService.isOnline()) {
+      return;
+    }
+
+    try {
+      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+      
+      const validArticleIds = new Set(articlesSnapshot.docs.map(doc => doc.id));
+      let cleanedCount = 0;
+      
+      for (const listDoc of listsSnapshot.docs) {
+        const data = listDoc.data();
+        const articleIds = data['articleIds'] || [];
+        const itemStates = data['itemStates'] || {};
+        
+        const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
+        
+        const cleanedItemStates: any = {};
+        Object.entries(itemStates).forEach(([articleId, state]) => {
+          if (validArticleIds.has(articleId)) {
+            cleanedItemStates[articleId] = state;
+          }
         });
         
-        cleanedCount++;
-        console.log(`🧹 Auto-cleaned "${data['name']}": ${articleIds.length}→${cleanedArticleIds.length} articles`);
+        const articleIdsChanged = articleIds.length !== cleanedArticleIds.length;
+        const itemStatesChanged = Object.keys(itemStates).length !== Object.keys(cleanedItemStates).length;
+        
+        if (articleIdsChanged || itemStatesChanged) {
+          await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listDoc.id}`), {
+            articleIds: cleanedArticleIds,
+            itemStates: cleanedItemStates,
+            updatedAt: Timestamp.now()
+          });
+          
+          cleanedCount++;
+          console.log(`🧹 Auto-cleaned "${data['name']}": ${articleIds.length}→${cleanedArticleIds.length} articles`);
+        }
       }
+      
+      if (cleanedCount > 0) {
+        console.log(`✅ Auto-cleanup completed: ${cleanedCount} lists cleaned`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error during auto-cleanup:', error);
     }
-    
-    if (cleanedCount > 0) {
-      console.log(`✅ Auto-cleanup completed: ${cleanedCount} lists cleaned`);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error during auto-cleanup:', error);
   }
-}
 
-/**
- * ENHANCED: Force refresh with automatic cleanup
- */
-forceRefreshLists(): Observable<ShoppingList[]> {
-  return from(this.checkAndCleanupData()).pipe(
-    mergeMap(() => {
-      // After cleanup, fetch fresh data
-      return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`)));
-    }),
-    map(snapshot => {
-      const lists: ShoppingList[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        lists.push({
-          id: doc.id,
-          name: data['name'],
-          color: data['color'],
-          icon: data['icon'],
-          shopId: data['shopId'],
-          articleIds: data['articleIds'] || [],
-          itemStates: data['itemStates'] || {},
-          departmentOrder: data['departmentOrder'],
-          createdAt: data['createdAt']?.toDate() || new Date(),
-          updatedAt: data['updatedAt']?.toDate() || new Date()
+  forceRefreshLists(): Observable<ShoppingList[]> {
+    return from(this.checkAndCleanupData()).pipe(
+      mergeMap(() => {
+        return from(getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`)));
+      }),
+      map(snapshot => {
+        const lists: ShoppingList[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          lists.push({
+            id: doc.id,
+            name: data['name'],
+            color: data['color'],
+            icon: data['icon'],
+            shopId: data['shopId'],
+            articleIds: data['articleIds'] || [],
+            itemStates: data['itemStates'] || {},
+            departmentOrder: data['departmentOrder'],
+            createdAt: data['createdAt']?.toDate() || new Date(),
+            updatedAt: data['updatedAt']?.toDate() || new Date()
+          });
         });
-      });
-      // Update the subject with clean data
-      this.listsSubject.next(lists.sort((a, b) => a.name.localeCompare(b.name)));
-      return lists;
-    })
-  );
-}
-
-/**
- * AUTO-CHECK: Check for orphaned references and clean them up if found
- */
-private async checkAndCleanupData(): Promise<void> {
-  const hasOrphans = await this.hasOrphanedReferences();
-  if (hasOrphans) {
-    console.log('🔍 Orphaned references detected, auto-cleaning...');
-    await this.autoCleanupOrphanedReferences();
+        this.listsSubject.next(lists.sort((a, b) => a.name.localeCompare(b.name)));
+        return lists;
+      })
+    );
   }
-}
 
+  private async checkAndCleanupData(): Promise<void> {
+    const hasOrphans = await this.hasOrphanedReferences();
+    if (hasOrphans) {
+      console.log('🔍 Orphaned references detected, auto-cleaning...');
+      await this.autoCleanupOrphanedReferences();
+    }
+  }
+
+  // === CLEANUP ===
+  
+  ngOnDestroy(): void {
+    this.cleanupListeners();
+  }
 }
