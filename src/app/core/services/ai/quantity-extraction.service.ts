@@ -344,12 +344,34 @@ export class QuantityExtractionService {
   
     // Existing comma logic first
     if (cleanInput.includes(',') || cleanInput.includes(';')) {
-      const items = cleanInput.split(/[,;]/).map(item => {
-        const extraction = this.extractQuantity(item.trim());
+      let parts = cleanInput.split(/[,;]/).map(part => part.trim());
+      
+      // POST-PROCESS: Check each comma-separated part for conjunctions
+      const finalParts: string[] = [];
+      const conjunctions = ['und', 'sowie', 'außerdem'];
+      
+      parts.forEach(part => {
+        const hasConjunction = conjunctions.some(conj => part.toLowerCase().includes(` ${conj} `));
+        
+        if (hasConjunction) {
+          // Further split this part by conjunctions
+          const subParts = part.split(new RegExp(`\\s+(${conjunctions.join('|')})\\s+`, 'gi'))
+            .filter((subPart, index) => index % 2 === 0) // Remove conjunction words
+            .map(subPart => subPart.trim())
+            .filter(subPart => subPart.length > 0);
+          
+          finalParts.push(...subParts);
+        } else {
+          finalParts.push(part);
+        }
+      });
+      
+      const items = finalParts.map(item => {
+        const extraction = this.extractQuantity(item);
         return {
           itemName: extraction.itemName,
           quantity: extraction.quantity,
-          originalText: item.trim(),
+          originalText: item,
           confidence: 'high' as const
         };
       });
