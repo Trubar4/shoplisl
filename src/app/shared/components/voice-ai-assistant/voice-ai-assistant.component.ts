@@ -310,9 +310,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.isProcessing = true;
 
     try {
-      // FIXED: Recipe detection with proper context preservation
-      if (this.isRecipeInput(lowerInput, userMessage)) {
-        console.log('🍳 Recipe detected - preserving context');
+      if (this.isRecipeInput(lowerInput, userMessage) || this.aiService.quantityExtraction.hasMultipleItems(userMessage)) {
+        console.log('🍳 Multi-item input detected (recipe or space-separated)');
         await this.processRecipeWithContextPreservation(userMessage);
         return;
       }

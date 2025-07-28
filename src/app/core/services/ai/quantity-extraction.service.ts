@@ -319,65 +319,109 @@ export class QuantityExtractionService {
   /**
    * 🎯 Enhanced: Parse comma-separated items with text number support
    */
-  parseMultipleItems(input: string): MultiItemParseResult {
-    console.log('🎯 PARSING MULTIPLE ITEMS:', input);
-    
-    const result: MultiItemParseResult = {
-      command: 'unrecognized',
-      items: [],
-      originalInput: input,
-      parseErrors: []
-    };
+  parseMultipleItems(input: string) {
+    const cleanInput = input
+      .replace(/^(füge|hinzu|erstelle|liste|rezept:?)\s*/gi, '')
+      .replace(/\s+(hinzu|zu|in)(\s+\w+)?\s*$/gi, '')
+      .trim();
   
-    // Clean the input
-    const cleanInput = input.trim();
-    console.log('🎯 CLEAN INPUT:', cleanInput);
-  
-    // Find matching command pattern
-    let commandMatch = null;
-    let commandType: 'add_items' | 'create_list_with_items' = 'add_items';
-    let itemsText = '';
+    // Extract list name from original input
     let listName: string | undefined;
+    let command: 'add_items' | 'create_list_with_items' = 'add_items';
   
-    for (const cmdPattern of this.COMMAND_PATTERNS) {
-      const match = cleanInput.match(cmdPattern.pattern);
-      if (match) {
-        commandMatch = match;
-        commandType = cmdPattern.type;
-        itemsText = match[cmdPattern.itemsGroup].trim();
-        listName = cmdPattern.listGroup !== null ? match[cmdPattern.listGroup].trim() : undefined;
-        console.log('🎯 MATCHED PATTERN:', cmdPattern.type, 'Items text:', itemsText);
-        break;
+    // Check for list creation patterns
+    const createListMatch = input.match(/erstelle\s+liste\s+(.+?)\s+mit\s+(.+)/i);
+    if (createListMatch) {
+      listName = createListMatch[1].trim();
+      command = 'create_list_with_items';
+    } else {
+      // Check for "zu [listname] hinzu" pattern
+      const addToListMatch = input.match(/zu\s+(.+?)\s+hinzu/i);
+      if (addToListMatch) {
+        listName = addToListMatch[1].trim();
       }
     }
   
-    if (!commandMatch) {
-      console.log('🎯 NO COMMAND PATTERN MATCHED');
-      return result;
+    // Existing comma logic first
+    if (cleanInput.includes(',') || cleanInput.includes(';')) {
+      const items = cleanInput.split(/[,;]/).map(item => {
+        const extraction = this.extractQuantity(item.trim());
+        return {
+          itemName: extraction.itemName,
+          quantity: extraction.quantity,
+          originalText: item.trim(),
+          confidence: 'high' as const
+        };
+      });
+      
+      return {
+        command,
+        items: items,
+        listName,
+        originalInput: input,
+        parseErrors: []
+      };
     }
   
-    // Set command type and list name
-    result.command = commandType;
-    result.listName = listName;
+    // NEW: Space-separated with quantities
+    const quantityPattern = /(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|el|tl|prise|stück|stk|pack|dose|flasche|becher|gramm|liter)?\s+([a-zA-ZäöüÄÖÜß][a-zA-ZäöüÄÖÜß\s]*?)(?=\s+\d|$)/gi;
+    const matches = [...cleanInput.matchAll(quantityPattern)];
+    
+    if (matches.length >= 2) {
+      const items = matches.map(match => ({
+        itemName: match[3].trim(),
+        quantity: `${match[1]}${match[2] ? ' ' + match[2] : ''}`,
+        originalText: match[0],
+        confidence: 'high' as const
+      }));
+      
+      return {
+        command,
+        items: items,
+        listName,
+        originalInput: input,
+        parseErrors: []
+      };
+    }
   
-    // Split items by comma and parse each one
-    const itemTokens = this.splitCommaItems(itemsText);
-    console.log('🎯 SPLIT TOKENS:', itemTokens);
-  
-    for (const token of itemTokens) {
-      console.log('🎯 PROCESSING TOKEN:', token);
-      const parsedItem = this.parseSingleItemFromToken(token);
-      if (parsedItem) {
-        result.items.push(parsedItem);
-        console.log('🎯 PARSED ITEM:', parsedItem);
-      } else {
-        result.parseErrors.push(`Konnte "${token}" nicht interpretieren`);
-        console.log('🎯 PARSE ERROR for token:', token);
+    // NEW: Natural language patterns
+    const conjunctions = ['und', 'sowie', 'außerdem'];
+    const hasConjunctions = conjunctions.some(conj => cleanInput.toLowerCase().includes(` ${conj} `));
+    
+    if (hasConjunctions) {
+      const parts = cleanInput.split(new RegExp(`\\s+(${conjunctions.join('|')})\\s+`, 'gi'))
+        .filter((part, index) => index % 2 === 0)
+        .filter(part => part.trim().length > 0);
+      
+      if (parts.length >= 2) {
+        const items = parts.map(part => {
+          const extraction = this.extractQuantity(part.trim());
+          return {
+            itemName: extraction.itemName,
+            quantity: extraction.quantity,
+            originalText: part.trim(),
+            confidence: 'medium' as const
+          };
+        });
+        
+        return {
+          command,
+          items: items,
+          listName,
+          originalInput: input,
+          parseErrors: []
+        };
       }
     }
   
-    console.log('🎯 FINAL PARSE RESULT:', result);
-    return result;
+    // Fallback to existing logic
+    return {
+      command: 'unrecognized' as const,
+      items: [],
+      listName: undefined,
+      originalInput: input,
+      parseErrors: ['No multiple items detected']
+    };
   }
 
   /**
@@ -591,34 +635,35 @@ private isDecimalComma(before: string, after: string): boolean {
    * Validate if input contains multiple items (comma-separated)
    */
   hasMultipleItems(input: string): boolean {
-    // Quick check for semicolons (AI response format)
-    if (input.includes(';')) {
-      return input.split(/\s*;\s*/).length > 1;
+    // Remove command words to focus on content
+    const cleanInput = input
+      .replace(/^(füge|hinzu|erstelle|liste|rezept:?)\s*/gi, '')
+      .replace(/\s+(hinzu|zu|in)(\s+\w+)?\s*$/gi, '')
+      .trim();
+    
+    // Method 1: Comma/semicolon separated (existing)
+    if (cleanInput.includes(',') || cleanInput.includes(';')) {
+      return cleanInput.split(/[,;]/).length > 1;
     }
     
-    // For commas, use smart detection
-    if (input.includes(',')) {
-      // Find all comma positions
-      const commas: number[] = [];
-      for (let i = 0; i < input.length; i++) {
-        if (input[i] === ',') {
-          commas.push(i);
-        }
-      }
+    // Method 2: NEW - Space-separated with quantities
+    const quantityPattern = /(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|el|tl|prise|stück|stk|pack|dose|flasche|becher|gramm|liter)?\s+([a-zA-ZäöüÄÖÜß][a-zA-ZäöüÄÖÜß\s]*?)(?=\s+\d|$)/gi;
+    const matches = [...cleanInput.matchAll(quantityPattern)];
+    
+    if (matches.length >= 2) {
+      return true;
+    }
+    
+    // Method 3: NEW - Natural language patterns
+    const conjunctions = ['und', 'sowie', 'außerdem', 'dann', 'danach', 'noch'];
+    const hasConjunctions = conjunctions.some(conj => cleanInput.toLowerCase().includes(` ${conj} `));
+    
+    if (hasConjunctions) {
+      const parts = cleanInput.split(new RegExp(`\\s+(${conjunctions.join('|')})\\s+`, 'gi'))
+        .filter((part, index) => index % 2 === 0)
+        .filter(part => part.trim().length > 0);
       
-      // Check if any comma is a separator (not decimal)
-      let separatorCount = 0;
-      
-      for (const commaPos of commas) {
-        const before = input.substring(Math.max(0, commaPos - 3), commaPos);
-        const after = input.substring(commaPos + 1, Math.min(input.length, commaPos + 4));
-        
-        if (!this.isDecimalComma(before, after)) {
-          separatorCount++;
-        }
-      }
-      
-      return separatorCount > 0;
+      return parts.length >= 2;
     }
     
     return false;

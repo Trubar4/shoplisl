@@ -29,7 +29,7 @@ export class AIService {
   private conversationContext: ConversationContext = {};
 
   constructor(
-    private quantityExtraction: QuantityExtractionService,
+    public quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: DisambiguationService,
     public aiResponse: AIResponseService,
@@ -67,6 +67,7 @@ export class AIService {
         return {
           command: 'add_items' as const,
           items: items,
+          listName: undefined, // ADD THIS LINE
           originalInput: input,
           parseErrors: []
         };
@@ -312,10 +313,10 @@ export class AIService {
     console.log('🤖 DEBUG: isRecipeCommand?', this.isRecipeCommand(input));
 
     try {
-      // FIXED: Recipe command detection and processing
-      if (this.isRecipeCommand(input)) {
-        console.log('🍳 Recipe command detected');
-        return await this.processRecipeCommand(input);
+      // CONSOLIDATED: Check for multi-item input (recipes OR space-separated)
+      if (this.quantityExtraction.hasMultipleItems(input) || this.isRecipeCommand(input)) {
+        console.log('🎯 Multi-item detected (recipe or space-separated)');
+        return await this.processEnhancedCommandWithMultiItems(input);
       }
       
       // FIXED: Continuation keywords
@@ -754,31 +755,31 @@ private processRecipeItem(item: string): string | null {
     console.log('🎯 PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS:', input);
     
     const multiItemResult = this.quantityExtraction.parseMultipleItems(input);
-    
+  
     if (multiItemResult.command === 'unrecognized' || multiItemResult.items.length === 0) {
       console.log('🎯 No multi-items found, using single item processing');
       return this.processEnhancedCommand(input);
     }
-
+  
     console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', {
       command: multiItemResult.command,
       itemCount: multiItemResult.items.length,
-      listName: multiItemResult.listName,
+      listName: multiItemResult.listName, // This now exists
       items: multiItemResult.items
     });
-
+  
     // CRITICAL FIX: Preserve conversation context for target list
     const existingContext = this.getConversationContext();
-    let targetListName = multiItemResult.listName;
+    let targetListName = multiItemResult.listName; // This now exists
     let targetListId = null;
-
+  
     // If no list specified but we have conversation context, use it
     if (!targetListName && existingContext.waitingForArticles) {
       targetListName = existingContext.waitingForArticles.listName;
       targetListId = existingContext.waitingForArticles.listId;
       console.log('🎯 Using target list from context:', targetListName);
     }
-
+  
     const multiAction: MultiItemPendingAction = {
       type: multiItemResult.command === 'create_list_with_items' ? 'create_list_with_multiple_items' : 'add_multiple_items',
       originalInput: input,
@@ -791,7 +792,7 @@ private processRecipeItem(item: string): string | null {
       suggestedDepartment: this.disambiguation.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
       conversationListId: targetListId || undefined
     };
-
+  
     console.log('🎯 Starting multi-item processing with context:', multiAction);
     return this.disambiguation.processMultiItemSequentially(multiAction);
   }
@@ -803,9 +804,9 @@ private processRecipeItem(item: string): string | null {
   private async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
     console.log('🎯 PROCESSING ENHANCED COMMAND:', input);
     
-    // Check for comma-separated items first
-    if (this.quantityExtraction.hasMultipleItems(input)) {
-      console.log('🎯 Detected comma-separated items, using multi-item processing');
+    // ENHANCED: Check for any multi-item format
+    if (this.quantityExtraction.hasMultipleItems(input) || this.isRecipeCommand(input)) {
+      console.log('🎯 Detected multi-item input, using enhanced processing');
       return this.processEnhancedCommandWithMultiItems(input);
     }
     
