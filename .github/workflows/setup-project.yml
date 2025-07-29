@@ -56,7 +56,7 @@ jobs:
         ng generate module features/shops --routing=true
         
         # Services
-        ng generate service core/services/data
+        ng generate service core/services/data.service
         ng generate service core/services/firebase
         ng generate service core/services/offline
         

@@ -9,7 +9,7 @@ import { CacheStatusComponent } from './shared/components/cache-status/cache-sta
 import { LoggerService } from './core/services/logger.service';
 import { ConnectionService } from './core/services/connection.service';
 import { OfflineCacheService } from './core/services/offline-cache.service';
-import { DataService } from './core/services/data';
+import { DataService } from './core/services/data.service';
 
 @Component({
   selector: 'app-root',

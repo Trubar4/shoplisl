@@ -10,7 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ShoppingList, Department, DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 
 interface DepartmentWithVisibility extends Department {

@@ -15,7 +15,7 @@ import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
 import { DisambiguationService } from './disambiguation.service';
 import { AIResponseService } from './ai-response.service';
-import { DataService } from '../data';
+import { DataService } from '../data.service';
 import { ShoppingList, ConversationContext } from '../../models';
 import { environment } from '../../../../environments/environment';
 import { SmartSuggestionsService } from './smart-suggestions.service';

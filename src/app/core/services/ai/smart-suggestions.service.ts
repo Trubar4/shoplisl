@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
-import { DataService } from '../data';
+import { DataService } from '../data.service';
 import { environment } from '../../../../environments/environment';
 import { LoggerService } from '../logger.service';
 

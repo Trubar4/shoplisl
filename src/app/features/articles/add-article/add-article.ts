@@ -8,7 +8,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 import { ArticleFormComponent, ArticleFormData } from '../../../shared/components/article-form/article-form.component';
 
 @Component({

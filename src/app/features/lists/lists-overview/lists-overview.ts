@@ -14,7 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 
 import { ShoppingList } from '../../../core/models';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 
 import { ConnectionService } from '../../../core/services/connection.service';
 

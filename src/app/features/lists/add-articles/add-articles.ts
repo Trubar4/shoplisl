@@ -12,7 +12,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 
 import { ShoppingList, Article } from '../../../core/models';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 
 interface ArticleWithToggle extends Article {
   isInList: boolean;

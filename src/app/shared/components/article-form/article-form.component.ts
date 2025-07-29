@@ -16,7 +16,7 @@ import { takeUntil } from 'rxjs/operators';
 
 import { Article, Department, ShoppingList } from '../../../core/models';
 import { DepartmentService } from '../../../core/services/department.service';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 
 export interface ArticleFormData {
   name: string;

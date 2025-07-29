@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 
 import { ShoppingList } from '../../../core/models';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 
 @Component({
   selector: 'app-add-list',

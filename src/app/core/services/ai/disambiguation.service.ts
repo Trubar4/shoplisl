@@ -15,7 +15,7 @@ import {
   DisambiguationError
 } from './ai-models';
 import { Article, ShoppingList } from '../../models';
-import { DataService } from '../data';
+import { DataService } from '../data.service';
 import { DepartmentService } from '../department.service';
 import { SmartSuggestionsService } from './smart-suggestions.service'; 
 import { LoggerService } from '../logger.service';

@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'general';
+export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'sync' | 'cache' | 'general';
 
 interface LogConfig {
   enabled: boolean;
@@ -16,16 +16,17 @@ interface LogConfig {
 })
 export class LoggerService {
   private config: LogConfig = {
-    enabled: !environment.production, // Disable in production by default
-    level: 'info', // Only show info and above by default
-    topics: new Set(['ai', 'recipe']) // Only show AI and recipe by default
+    enabled: !environment.production,
+    level: environment.production ? 'warn' : 'info', // Less verbose in production
+    topics: environment.production 
+      ? new Set(['data']) // Only essential data logs in production
+      : new Set(['ai', 'recipe', 'data']) // More topics in development
   };
 
   constructor() {
-    // Auto-setup console access in browser
     if (typeof window !== 'undefined') {
       (window as any).logger = this;
-      if (this.config.enabled) {
+      if (this.config.enabled && !environment.production) {
         console.log('🔧 Logger initialized. Use logger.showConfig() to see settings');
       }
     }
@@ -38,6 +39,8 @@ export class LoggerService {
     'disambiguation': '🎯',
     'voice': '🎤',
     'data': '📱',
+    'sync': '🔄',
+    'cache': '💾',
     'general': '💬'
   };
 
@@ -48,7 +51,6 @@ export class LoggerService {
     'debug': 3
   };
 
-  // Public methods to control logging
   setEnabled(enabled: boolean): void {
     this.config.enabled = enabled;
     console.log(`🔧 Logging ${enabled ? 'enabled' : 'disabled'}`);
@@ -70,7 +72,7 @@ export class LoggerService {
   }
 
   enableAllTopics(): void {
-    this.config.topics = new Set(['ai', 'recipe', 'context', 'disambiguation', 'voice', 'data', 'general']);
+    this.config.topics = new Set(['ai', 'recipe', 'context', 'disambiguation', 'voice', 'data', 'sync', 'cache', 'general']);
     console.log('🔧 All logging topics enabled');
   }
 
@@ -87,7 +89,6 @@ export class LoggerService {
     });
   }
 
-  // Logging methods
   error(topic: LogTopic, message: string, data?: any): void {
     this.log('error', topic, message, data);
   }
@@ -105,13 +106,8 @@ export class LoggerService {
   }
 
   private log(level: LogLevel, topic: LogTopic, message: string, data?: any): void {
-    // Check if logging is enabled
     if (!this.config.enabled) return;
-    
-    // Check if this level should be logged
     if (this.levelPriority[level] > this.levelPriority[this.config.level]) return;
-    
-    // Check if this topic should be logged
     if (!this.config.topics.has(topic)) return;
 
     const emoji = this.topicEmojis[topic];
@@ -133,14 +129,12 @@ export class LoggerService {
     }
   }
 
-  // Convenience method for existing prefixed logs
   legacy(originalLog: string): void {
     if (!this.config.enabled) return;
     console.log(originalLog);
   }
 }
 
-// Global logger instance that can be used in console
 declare global {
   interface Window {
     logger: LoggerService;

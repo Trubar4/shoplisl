@@ -16,7 +16,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ShoppingList, Article, Department } from '../../../core/models';
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 
@@ -93,26 +93,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog
   ) {
-    console.log('🔍 NAVIGATION: Entering list-detail for:', this.listId);
-
-    // Direct access to check what's in the service
-    if ((window as any).dataService) {
-      const directLists = (window as any).dataService.listsSubject.value;
-      console.log('🔍 DIRECT ACCESS - lists count:', directLists.length);
-    }
-
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     
     this.list$ = this.dataService.getLists().pipe(
-      map(lists => {
-        console.log('🔍 LIST-DETAIL: Processing lists, looking for:', this.listId);
-        console.log('🔍 LIST-DETAIL: Available lists:', lists.map(l => l.name));
-        const found = lists.find(list => list.id === this.listId);
-        if (found) {
-          console.log('🔍 LIST-DETAIL: Found list with itemStates keys:', Object.keys(found.itemStates || {}).length);
-        }
-        return found;
-      })
+      map(lists => lists.find(list => list.id === this.listId))
     );
 
     // Setup completion monitoring
@@ -182,19 +166,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    console.log('🔍 LIST-DETAIL: Component initializing for listId:', this.listId);
-    
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'edit') this.currentMode = 'edit';
     
     this.setupDepartmentGroups();
+
     this.setupCompletionMonitoring();
     
     this.list$.subscribe({
       next: (list) => {
-        console.log('🔍 LIST-DETAIL: Received list data:', list?.name, 'Items:', list?.articleIds?.length);
-        console.log('🔍 LIST-DETAIL: ItemStates preview:', Object.keys(list?.itemStates || {}).slice(0, 3));
-        
         this.currentList = list || null;
         this.departmentIconFilterCache = '';
         
@@ -370,8 +350,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   // Public methods
   onBack(): void {
-    console.log('🔍 NAVIGATION: Going back from list');
-    
     // Force theme reset before navigation
     this.resetToDefaultTheme();
     

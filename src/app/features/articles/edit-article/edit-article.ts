@@ -9,7 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { DataService } from '../../../core/services/data';
+import { DataService } from '../../../core/services/data.service';
 import { Article, ShoppingList } from '../../../core/models';
 import { ArticleFormComponent, ArticleFormData } from '../../../shared/components/article-form/article-form.component';
 
