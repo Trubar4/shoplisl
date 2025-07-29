@@ -67,6 +67,11 @@ export class DataService {
     // Initialize subjects first
     this.articlesSubject = new BehaviorSubject<Article[]>([]);
     this.listsSubject = new BehaviorSubject<ShoppingList[]>([]);
+
+    this.listsSubject.subscribe(lists => {
+      console.log('🔍 LISTS SUBJECT UPDATED:', lists.length, 'lists');
+    });
+
     this.articlesLoadingSubject = new BehaviorSubject<boolean>(false);
     this.listsLoadingSubject = new BehaviorSubject<boolean>(false);
     
@@ -216,24 +221,34 @@ export class DataService {
   private loadCachedData(): void {
     console.log('💾 Loading data from cache...');
     
-    // Load articles from cache
-    const articlesCache = this.cacheService.getCachedArticles();
-    if (articlesCache.data) {
-      console.log(`📦 Loaded ${articlesCache.data.length} articles from cache (${this.cacheService.formatAge(articlesCache.status.age)})`);
-      this.articlesSubject.next(articlesCache.data);
+    // Only load from cache if subjects are empty (prevent overwriting local changes)
+    const currentArticles = this.articlesSubject.value;
+    const currentLists = this.listsSubject.value;
+    
+    if (currentArticles.length === 0) {
+      const articlesCache = this.cacheService.getCachedArticles();
+      if (articlesCache.data) {
+        console.log(`📦 Loaded ${articlesCache.data.length} articles from cache (${this.cacheService.formatAge(articlesCache.status.age)})`);
+        this.articlesSubject.next(articlesCache.data);
+      } else {
+        console.log('❌ No articles in cache');
+        this.articlesSubject.next([]);
+      }
     } else {
-      console.log('❌ No articles in cache');
-      this.articlesSubject.next([]);
+      console.log(`🔄 Keeping ${currentArticles.length} articles in memory (has local changes)`);
     }
-
-    // Load lists from cache  
-    const listsCache = this.cacheService.getCachedLists();
-    if (listsCache.data) {
-      console.log(`📋 Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
-      this.listsSubject.next(listsCache.data);
+  
+    if (currentLists.length === 0) {
+      const listsCache = this.cacheService.getCachedLists();
+      if (listsCache.data) {
+        console.log(`📋 Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
+        this.listsSubject.next(listsCache.data);
+      } else {
+        console.log('❌ No lists in cache');
+        this.listsSubject.next([]);
+      }
     } else {
-      console.log('❌ No lists in cache');
-      this.listsSubject.next([]);
+      console.log(`🔄 Keeping ${currentLists.length} lists in memory (has local changes)`);
     }
   }
 
@@ -654,6 +669,7 @@ export class DataService {
   // === LISTS METHODS (Enhanced with offline support) ===
 
   getLists(): Observable<ShoppingList[]> {
+    console.log('🔍 GET-LISTS CALLED - current subject has:', this.listsSubject.value.length, 'lists');
     return this.listsSubject.asObservable();
   }
 
@@ -833,11 +849,14 @@ export class DataService {
   // === LIST ITEM METHODS (Enhanced with offline support) ===
 
   toggleItemChecked(listId: string, articleId: string): Observable<boolean> {
+    console.log('🔍 TOGGLE-ITEM-CHECKED CALLED:', listId, articleId);
     return this.getList(listId).pipe(
       map(list => {
         if (!list) return false;
         
         const currentState = list.itemStates[articleId]?.isChecked || false;
+        console.log(`🔍 TOGGLE: ${articleId} currently ${currentState ? 'CHECKED' : 'UNCHECKED'}`);
+        
         const newItemStates = {
           ...list.itemStates,
           [articleId]: {
@@ -849,6 +868,8 @@ export class DataService {
         };
   
         if (!this.connectionService.isOnline()) {
+          console.log('🔍 TOGGLE: Offline - updating local state');
+          
           // Update local state immediately AND persist it in the subject
           const currentLists = this.listsSubject.value;
           const updatedLists = currentLists.map(l => 
@@ -859,11 +880,23 @@ export class DataService {
             } : l
           );
           
+          console.log('🔍 TOGGLE: Before update - lists count:', currentLists.length);
+          console.log('🔍 TOGGLE: After update - lists count:', updatedLists.length);
+          
+          // Find the specific list to verify the change
+          const updatedList = updatedLists.find(l => l.id === listId);
+          if (updatedList) {
+            const newState = updatedList.itemStates[articleId]?.isChecked;
+            console.log(`🔍 TOGGLE: Verified new state for ${articleId}: ${newState ? 'CHECKED' : 'UNCHECKED'}`);
+          }
+          
           // CRITICAL: Update the subject so components see the change
           this.listsSubject.next(updatedLists);
+          console.log('🔍 TOGGLE: Subject updated');
           
           // ALSO: Update the cache so changes persist across navigation
           this.cacheService.cacheLists(updatedLists);
+          console.log('🔍 TOGGLE: Cache updated');
   
           // Queue for sync when online
           this.queueOperation(async () => {
@@ -872,6 +905,8 @@ export class DataService {
               updatedAt: Timestamp.now()
             });
           });
+  
+          return true;
         } else {
           // Online - update Firebase directly
           updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${listId}`), {

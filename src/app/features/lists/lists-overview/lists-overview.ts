@@ -16,6 +16,8 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { ShoppingList } from '../../../core/models';
 import { DataService } from '../../../core/services/data';
 
+import { ConnectionService } from '../../../core/services/connection.service';
+
 @Component({
   selector: 'app-lists-overview',
   standalone: true,
@@ -61,7 +63,8 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   constructor(
     private dataService: DataService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private connectionService: ConnectionService
   ) {
     // Setup filtered and sorted lists observable
     this.lists$ = combineLatest([
@@ -94,8 +97,10 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Force refresh when component loads
-    this.dataService.forceRefreshLists().subscribe();
+    // Only force refresh when online - preserve offline changes when offline
+    if (this.connectionService?.isOnline()) {
+      this.dataService.forceRefreshLists().subscribe();
+    }
     
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
