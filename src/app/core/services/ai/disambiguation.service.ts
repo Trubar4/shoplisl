@@ -788,51 +788,42 @@ public suggestIcon(itemName: string): string {
       };
     }
     
-    // CRITICAL FIX: Get all article IDs that need to be added
     const articleIds = processedItems.map(p => p.articleId!);
     console.log('🎯 Article IDs to add:', articleIds);
     
     try {
-      // CRITICAL FIX: Determine target list with better logic
       let targetList: any = null;
       
-      console.log('🎯 Determining target list...');
-      console.log('🎯 - action.listName:', action.listName);
-      console.log('🎯 - conversationListId:', (action as any).conversationListId);
-      
-      // Try by conversation list ID first (most reliable)
+      // CRITICAL FIX: Better target list detection
       if ((action as any).conversationListId) {
-        console.log('🎯 Searching by conversation list ID:', (action as any).conversationListId);
-        const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+        const lists = await this.dataService.getLists().pipe(
+          take(1),
+          timeout(5000)
+        ).toPromise();
         targetList = lists?.find(list => list.id === (action as any).conversationListId);
         if (targetList) {
           console.log('✅ Found target list by conversation ID:', targetList.name);
         }
       }
       
-      // Try by list name if ID search failed
       if (!targetList && action.listName) {
-        console.log('🎯 Searching by list name:', action.listName);
         targetList = await this.findListByName(action.listName);
         if (targetList) {
           console.log('✅ Found target list by name:', targetList.name);
         }
       }
       
-      // Get first available list as fallback
       if (!targetList) {
-        console.log('🎯 No specific target list found, getting available lists...');
-        const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-        console.log('🎯 Available lists:', lists?.map(l => ({ id: l.id, name: l.name })));
+        const lists = await this.dataService.getLists().pipe(
+          take(1), 
+          timeout(5000)
+        ).toPromise();
         
         if (lists && lists.length === 1) {
-          // Only one list available - use it
           targetList = lists[0];
           console.log('🎯 Using only available list:', targetList.name);
         } else if (lists && lists.length > 1) {
           // Multiple lists - need user selection
-          console.log('🎯 Multiple lists available - requesting selection');
-          
           const listOptions = await this.getListSelectionOptions();
           
           return {
@@ -856,41 +847,37 @@ public suggestIcon(itemName: string): string {
         }
       }
       
-      // CRITICAL FIX: Add all articles to the target list at once
+      // CRITICAL FIX: Add all articles to the target list with timeout
       if (targetList && articleIds.length > 0) {
         console.log(`🎯 Adding ${articleIds.length} articles to list "${targetList.name}"`);
         
-        // Get current list state
         const updatedArticleIds = [...(targetList.articleIds || [])];
         const updatedItemStates = { ...(targetList.itemStates || {}) };
         
-        // Add each processed item
         for (const processedItem of processedItems) {
           const articleId = processedItem.articleId!;
           
-          // Add to article IDs if not already present
           if (!updatedArticleIds.includes(articleId)) {
             updatedArticleIds.push(articleId);
-            console.log('🎯 Added article ID to list:', articleId);
           }
           
-          // Set item state
           updatedItemStates[articleId] = {
             articleId: articleId,
-            isChecked: false, // ACTIVE state
+            isChecked: false,
             amount: processedItem.quantity || processedItem.item.quantity || ''
           };
-          console.log('🎯 Set item state for:', articleId, updatedItemStates[articleId]);
         }
         
         console.log('🎯 Final update - Article IDs:', updatedArticleIds.length);
-        console.log('🎯 Final update - Item states:', Object.keys(updatedItemStates).length);
         
-        // CRITICAL FIX: Update the list with all new articles in one operation
+        // CRITICAL FIX: Add timeout to prevent hanging
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
-        }).toPromise();
+        }).pipe(
+          take(1),
+          timeout(8000) // Longer timeout for multi-item operations
+        ).toPromise();
         
         if (!updateResult) {
           console.error('❌ Failed to update list with new articles');
@@ -902,7 +889,7 @@ public suggestIcon(itemName: string): string {
         
         console.log('✅ Successfully added all articles to list');
         
-        // Build comprehensive summary message
+        // Build summary message
         let message = '';
         
         if (processedItems.length > 0) {
@@ -926,7 +913,7 @@ public suggestIcon(itemName: string): string {
           message += `${message ? '\n\n' : ''}❌ ${failedItems.length} Artikel fehlgeschlagen:\n${failedSummary.join(', ')}`;
         }
         
-        // CRITICAL FIX: Set up proper conversation context for continued interaction
+        // CRITICAL FIX: Set up proper conversation context
         const conversationContext = {
           lastAction: {
             type: 'article_added' as const,
@@ -1272,7 +1259,10 @@ public suggestIcon(itemName: string): string {
         console.log('🎯 Using conversation list ID from pending action:', targetListId);
         
         // Find list by ID to get the name
-        const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+        const lists = await this.dataService.getLists().pipe(
+          take(1),
+          timeout(5000)
+        ).toPromise();
         const conversationList = lists?.find(list => list.id === targetListId);
         if (conversationList) {
           targetListName = conversationList.name;
@@ -1284,10 +1274,11 @@ public suggestIcon(itemName: string): string {
       if (!targetListName && !targetListId) {
         console.log('🎯 No target list found in action, checking conversation context...');
         
-        // Get conversation context from data service (assumes we can access it)
-        // Note: This might need adjustment based on how conversation context is accessible
         try {
-          const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+          const lists = await this.dataService.getLists().pipe(
+            take(1),
+            timeout(5000)
+          ).toPromise();
           if (lists && lists.length === 1) {
             // Only one list available - use it as fallback
             targetListName = lists[0].name;
