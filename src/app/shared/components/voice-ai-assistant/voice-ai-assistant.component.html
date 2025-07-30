@@ -222,7 +222,7 @@
           </button>
           
           <!-- FIXED: "Beenden" button with full descriptive text -->
-          <button *ngIf="isInActiveConversation()" 
+          <button *ngIf="activeConversationStatus" 
               mat-raised-button 
               (click)="finishAddingArticles()" 
               matTooltip="Hinzufügen weiterer Artikel beenden"

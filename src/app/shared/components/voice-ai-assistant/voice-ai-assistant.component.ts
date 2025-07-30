@@ -20,6 +20,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { LoggerService } from '../../../core/services/logger.service';
+import { environment } from '../../../../environments/environment';
 
 // Application services
 import { 
@@ -63,6 +65,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   isProcessing = false;
   isRecording = false;
   private isSpeaking = false;
+  private isProcessingMessage = false;
   
   // Input tracking & audio feedback
   private lastInputSource: 'voice' | 'text' = 'text';
@@ -75,7 +78,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   // Lifecycle management
   private destroy$ = new Subject<void>();
 
-  private isProcessingMessage = false;
+  private _cachedActiveConversation: boolean = false;
+  private _lastContextCheck: number = 0;
+  private _lastLoggedState: boolean | null = null;
+  private readonly CONTEXT_CACHE_DURATION = 500; // 500ms cache for conversation check
+  private verboseLogging = false; // Set to true only when debugging
+  private _cachedContext: ConversationContext = {};
+  private _lastContextSync: number = 0;
+  private readonly CONTEXT_SYNC_CACHE_DURATION = 1000; // 1 second cache for context sync
+
 
   constructor(
     public aiService: AIService,
@@ -84,7 +95,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private logger: LoggerService
   ) {
     this.synthesis = window.speechSynthesis;
     
@@ -97,11 +109,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   ngOnInit(): void {
     this.initializeChat();
     this.setupPWAViewport();
-    this.setupMessageScrolling(); // This will now include enhanced scrolling
+    this.setupMessageScrolling();
     this.checkRestoredContext();
     this.logChatStatus();
     
-    // CRITICAL: Initial scroll to bottom
+    // ADDED: Configure logger for less noise
+    this.logger.disableTopic('context'); // Disable context logging by default
+    
+    // Enable context logging only when needed (for debugging)
+    // this.logger.enableTopic('context'); // Uncomment for debugging
+    
     setTimeout(() => this.scrollToBottom(true), 10);
   }
 
@@ -183,24 +200,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     const chatContext = this.chatPersistence.getConversationContext();
     const aiContext = this.aiService.getConversationContext();
     
-    /*console.log('🔄 SYNC: Syncing contexts bidirectionally');
-    console.log('🔄 SYNC: Chat context:', chatContext);
-    console.log('🔄 SYNC: AI context:', aiContext);*/
-    
     // Determine which context is more recent/complete
     let sourceContext: ConversationContext | null = null;
     let targetService: 'chat' | 'ai' | null = null;
     
     if (chatContext?.waitingForArticles && !aiContext.waitingForArticles) {
-      // Chat has active context, AI doesn't - sync to AI
       sourceContext = chatContext;
       targetService = 'ai';
     } else if (aiContext.waitingForArticles && !chatContext?.waitingForArticles) {
-      // AI has active context, Chat doesn't - sync to Chat
       sourceContext = aiContext;
       targetService = 'chat';
     } else if (chatContext?.lastAction && aiContext.lastAction) {
-      // Both have contexts - use the most recent
       const chatTime = chatContext.lastAction.timestamp.getTime();
       const aiTime = aiContext.lastAction.timestamp.getTime();
       
@@ -219,9 +229,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       targetService = 'chat';
     }
     
-    // Perform synchronization
+    // Perform synchronization (only log significant changes)
     if (sourceContext && targetService) {
-      console.log(`🔄 SYNC: Syncing ${targetService === 'ai' ? 'chat -> AI' : 'AI -> chat'}`);
+      // Only log in development and when there's a meaningful change
+      if (!environment.production && sourceContext.waitingForArticles) {
+        console.log(`🔄 SYNC: Context synced (${targetService === 'ai' ? 'chat -> AI' : 'AI -> chat'})`);
+      }
       
       if (targetService === 'ai') {
         this.aiService.setConversationContext(sourceContext);
@@ -229,9 +242,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         this.chatPersistence.setConversationContext(sourceContext);
       }
       
-      //console.log('🔄 SYNC: Synchronization completed');
-    } else {
-      //console.log('🔄 SYNC: No synchronization needed');
+      this.invalidateConversationCache();
+      this._lastContextSync = 0; // Force context recache on next access
     }
   }
 
@@ -239,34 +251,32 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
    * FIXED: Enhanced context check with proper fallbacks
    */
   private getCurrentActiveContext(): ConversationContext {
-    // Always sync first
-    this.syncContextBidirectional();
+    const now = Date.now();
     
-    const chatContext = this.chatPersistence.getConversationContext();
-    const aiContext = this.aiService.getConversationContext();
+    // Only sync contexts if cache is expired
+    if (now - this._lastContextSync > this.CONTEXT_SYNC_CACHE_DURATION) {
+      this.syncContextBidirectional();
+      
+      const chatContext = this.chatPersistence.getConversationContext();
+      const aiContext = this.aiService.getConversationContext();
+      
+      // Cache the most complete context
+      if (chatContext?.waitingForArticles) {
+        this._cachedContext = chatContext;
+      } else if (aiContext.waitingForArticles) {
+        this._cachedContext = aiContext;
+      } else if (chatContext?.lastAction) {
+        this._cachedContext = chatContext;
+      } else if (aiContext.lastAction) {
+        this._cachedContext = aiContext;
+      } else {
+        this._cachedContext = {};
+      }
+      
+      this._lastContextSync = now;
+    }
     
-    //console.log('🔍 Getting active context - Chat:', chatContext, 'AI:', aiContext);
-    
-    // Return the most complete context
-    if (chatContext?.waitingForArticles) {
-      console.log('🔍 Using chat context (has waitingForArticles)');
-      return chatContext;
-    }
-    if (aiContext.waitingForArticles) {
-      console.log('🔍 Using AI context (has waitingForArticles)');
-      return aiContext;
-    }
-    if (chatContext?.lastAction) {
-      console.log('🔍 Using chat context (has lastAction)');
-      return chatContext;
-    }
-    if (aiContext.lastAction) {
-      console.log('🔍 Using AI context (has lastAction)');
-      return aiContext;
-    }
-    
-    //console.log('🔍 No active context found');
-    return {};
+    return this._cachedContext;
   }
 
   // ========================================
@@ -389,6 +399,15 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     }
   }
 
+  private invalidateConversationCache(): void {
+    this._lastContextCheck = 0;
+    this._lastContextSync = 0; // Also invalidate context sync cache
+  }
+
+  get activeConversationStatus(): boolean {
+    return this.isInActiveConversation();
+  }
+
   /**
    * FIXED: Clear contexts in both services
    */
@@ -396,6 +415,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     console.log('🗑️ Clearing all contexts');
     this.chatPersistence.clearConversationContext();
     this.aiService.clearConversationContext();
+    
+    // ADDED: Invalidate cache when contexts are cleared
+    this.invalidateConversationCache();
+  }
+
+  toggleVerboseLogging(): void {
+    this.verboseLogging = !this.verboseLogging;
+    console.log(`🔧 Verbose logging ${this.verboseLogging ? 'enabled' : 'disabled'}`);
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
@@ -548,10 +575,31 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     return 'Keine aktive Unterhaltung';
   }
 
-  isInActiveConversation(): boolean {
+
+isInActiveConversation(): boolean {
+  const now = Date.now();
+  
+  // Only recalculate if cache is expired
+  if (now - this._lastContextCheck > this.CONTEXT_CACHE_DURATION) {
     const activeContext = this.getCurrentActiveContext();
-    return !!activeContext.waitingForArticles;
+    const newState = !!(activeContext.waitingForArticles?.listId && activeContext.waitingForArticles?.listName);
+    
+    // Only log if state actually changed
+    if (this._lastLoggedState !== newState && !environment.production && this.verboseLogging) {
+      console.log('🔄 CONTEXT: Active conversation state changed', {
+        hasActiveContext: newState,
+        waitingForArticles: activeContext.waitingForArticles,
+        previousState: this._lastLoggedState
+      });
+      this._lastLoggedState = newState;
+    }
+    
+    this._cachedActiveConversation = newState;
+    this._lastContextCheck = now;
   }
+  
+  return this._cachedActiveConversation;
+}
 
   /**
    * FIXED: Get current target list with proper context handling
