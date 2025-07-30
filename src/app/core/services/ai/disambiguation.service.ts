@@ -1,7 +1,7 @@
 // src/app/core/services/ai/disambiguation.service.ts - ENHANCED SUGGESTIONS VERSION
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { take } from 'rxjs/operators';
+import { take, timeout } from 'rxjs/operators';
 import {
   DisambiguationOption,
   PendingAction,
@@ -1097,22 +1097,25 @@ public suggestIcon(itemName: string): string {
   async handleListSelection(pendingAction: PendingAction, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
     try {
       const listId = selectedOption.id.replace('list_', '');
-      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+      const lists = await this.dataService.getLists().pipe(
+        take(1),
+        timeout(5000)
+      ).toPromise();
+      
       const targetList = lists?.find(list => list.id === listId);
-
+  
       if (!targetList) {
         return {
           success: false,
           message: '❌ Ausgewählte Liste nicht gefunden.'
         };
       }
-
+  
       const articleData = pendingAction.articleToAdd!;
-
+  
       // Handle multiple articles
       const multipleArticleIds = (pendingAction as any).multipleArticleIds;
       if (multipleArticleIds && Array.isArray(multipleArticleIds)) {
-        // Add multiple existing articles to list
         const updatedArticleIds = [...targetList.articleIds];
         const updatedItemStates = { ...targetList.itemStates };
         
@@ -1127,26 +1130,35 @@ public suggestIcon(itemName: string): string {
             amount: ''
           };
         }
-
+  
+        // CRITICAL FIX: Add timeout and proper error handling
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
-        }).toPromise();
-
+        }).pipe(
+          take(1),
+          timeout(5000)
+        ).toPromise();
+  
         if (updateResult) {
           const processedItems = (pendingAction as any).processedItems || [];
           const itemSummary = processedItems
             .map((p: any) => `"${p.item?.itemName || p.originalText}"${p.item?.quantity ? ` (${p.item.quantity})` : ''}`)
             .join(', ');
-
+  
           return {
             success: true,
             message: `✅ ${multipleArticleIds.length} Artikel zur Liste "${targetList.name}" hinzugefügt:\n${itemSummary}`,
             listId: targetList.id
           };
+        } else {
+          return {
+            success: false,
+            message: '❌ Fehler beim Hinzufügen der Artikel zur Liste.'
+          };
         }
       }
-
+  
       // Single article handling
       let articleId = articleData.id;
       if (!articleId) {
@@ -1155,50 +1167,60 @@ public suggestIcon(itemName: string): string {
           amount: articleData.amount || '',
           departmentId: articleData.departmentId || 'miscellaneous',
           icon: articleData.icon || '📦'
-        }).toPromise();
+        }).pipe(
+          take(1),
+          timeout(5000)
+        ).toPromise();
         
         if (!newArticle) {
-          throw new Error('Failed to create article');
+          return {
+            success: false,
+            message: '❌ Fehler beim Erstellen des Artikels.'
+          };
         }
         articleId = newArticle.id;
       }
-
+  
       // Add article to selected list
       const updatedArticleIds = [...targetList.articleIds];
       if (!updatedArticleIds.includes(articleId)) {
         updatedArticleIds.push(articleId);
       }
-
+  
       const updatedItemStates = { ...targetList.itemStates };
       updatedItemStates[articleId] = {
         articleId: articleId,
         isChecked: false,
         amount: articleData.amount || ''
       };
-
+  
+      // CRITICAL FIX: Add timeout and proper error handling
       const updateResult = await this.dataService.updateList(targetList.id, {
         articleIds: updatedArticleIds,
         itemStates: updatedItemStates
-      }).toPromise();
-
+      }).pipe(
+        take(1),
+        timeout(5000)
+      ).toPromise();
+  
       if (updateResult) {
         return {
           success: true,
           message: `✅ "${articleData.name}"${articleData.amount ? ` (${articleData.amount})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
           listId: targetList.id
         };
+      } else {
+        return {
+          success: false,
+          message: '❌ Fehler beim Hinzufügen zur ausgewählten Liste.'
+        };
       }
-
-      return {
-        success: false,
-        message: '❌ Fehler beim Hinzufügen zur ausgewählten Liste.'
-      };
-
+  
     } catch (error) {
       console.error('List selection error:', error);
       return {
         success: false,
-        message: '❌ Fehler beim Hinzufügen zur ausgewählten Liste.'
+        message: `❌ Fehler beim Hinzufügen zur Liste: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
       };
     }
   }
@@ -1315,7 +1337,9 @@ public suggestIcon(itemName: string): string {
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
-        }).toPromise();
+        }).pipe(
+          timeout(5000) // CRITICAL: Add timeout
+        ).toPromise();
         
         if (updateResult) {
           const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
@@ -1696,7 +1720,12 @@ public suggestIcon(itemName: string): string {
 
   private async findListByName(listName: string): Promise<ShoppingList | null> {
     try {
-      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
+      // CRITICAL FIX: Add timeout to prevent hanging
+      const lists = await this.dataService.getLists().pipe(
+        take(1),
+        timeout(5000) // 5 second timeout
+      ).toPromise();
+      
       if (!lists) return null;
       
       const normalizedQuery = listName.toLowerCase().trim();

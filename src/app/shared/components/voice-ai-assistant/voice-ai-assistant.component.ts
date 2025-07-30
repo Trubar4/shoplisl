@@ -845,124 +845,105 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
 
   selectDisambiguationOption(option: any): void {
     console.log('🎯 Disambiguation option selected:', option);
-
-    console.log('🎯 DEBUG: Context BEFORE disambiguation:', this.getCurrentActiveContext());
   
-    
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) {
       console.error('🎯 No disambiguation available!');
       return;
     }
   
-    // FIXED: Properly extract pendingAction from disambiguation
     const pendingAction = disambiguation.pendingAction;
     
-    // Handle skip option
     if (option.type === 'skip') {
-      console.log('⏭️ Processing skip option');
       this.handleSkipArticle(pendingAction, option);
       return;
     }
     
-    // Clear disambiguation and add choice message
     this.chatPersistence.setDisambiguation(null);
     
     const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
-    
-    // CRITICAL: Scroll after choice message
     this.scrollToBottom(true);
     
     this.isProcessing = true;
   
-    // CRITICAL FIX: Preserve conversation context more thoroughly
+    // CRITICAL FIX: Add timeout safeguard
+    const timeoutId = setTimeout(() => {
+      console.error('🚨 Disambiguation operation timed out after 10 seconds');
+      this.isProcessing = false;
+      this.chatPersistence.addMessage('❌ Operation timed out. Please try again.', 'error');
+      this.scrollToBottom(true);
+    }, 10000);
+  
     const currentContext = this.getCurrentActiveContext();
-    console.log('🎯 Current context before disambiguation:', currentContext);
     
-    // ENHANCED: Ensure pending action has conversation context info
     if (currentContext.waitingForArticles && !pendingAction.listName) {
-      console.log('🎯 Enhancing pending action with conversation context');
       pendingAction.listName = currentContext.waitingForArticles.listName;
       (pendingAction as any).conversationListId = currentContext.waitingForArticles.listId;
     }
   
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
-        console.log('🎯 Disambiguation result:', result);
-        console.log('🎯 DEBUG: Context AFTER disambiguation result:', result.conversationContext);
-        console.log('🎯 DEBUG: AI context after disambiguation:', this.aiService.getConversationContext());
-            
-        // CRITICAL FIX: Enhanced context preservation logic
-        if (result.success) {
-          // If result doesn't have conversation context but we should maintain it
-          if (!result.conversationContext && currentContext.waitingForArticles) {
-            console.log('🎯 Restoring conversation context from current context');
-            
-            // Create preserved context based on current context and result
-            const preservedContext = {
-              lastAction: {
-                type: 'article_added' as const,
-                listId: currentContext.waitingForArticles.listId,
-                listName: currentContext.waitingForArticles.listName,
-                articleName: pendingAction.itemName,
-                timestamp: new Date()
-              },
-              waitingForArticles: {
-                listId: currentContext.waitingForArticles.listId,
-                listName: currentContext.waitingForArticles.listName,
-                prompt: 'Conversation context preserved after disambiguation'
-              }
-            };
-            
-            result.conversationContext = preservedContext;
-            result.followUpPrompt = result.followUpPrompt || 
-              `Möchtest du noch weitere Artikel zu "${currentContext.waitingForArticles.listName}" hinzufügen?`;
-          }
+        clearTimeout(timeoutId); // CRITICAL: Clear timeout on success
+        
+        if (result.success && !result.conversationContext && currentContext.waitingForArticles) {
+          const preservedContext = {
+            lastAction: {
+              type: 'article_added' as const,
+              listId: currentContext.waitingForArticles.listId,
+              listName: currentContext.waitingForArticles.listName,
+              articleName: pendingAction.itemName,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: currentContext.waitingForArticles.listId,
+              listName: currentContext.waitingForArticles.listName,
+              prompt: 'Conversation context preserved after disambiguation'
+            }
+          };
           
-          // If result has list ID but no conversation context, create it
-          if (result.listId && !result.conversationContext) {
-            console.log('🎯 Creating conversation context from result list ID');
-            
-            // Extract list name from success message or use fallback
-            const listNameMatch = result.message.match(/zur Liste "([^"]+)" hinzugefügt/);
-            const listName = listNameMatch ? listNameMatch[1] : 
-                            (currentContext.waitingForArticles?.listName || 'Liste');
-            
-            result.conversationContext = {
-              lastAction: {
-                type: 'article_added' as const,
-                listId: result.listId,
-                listName: listName,
-                articleName: pendingAction.itemName,
-                timestamp: new Date()
-              },
-              waitingForArticles: {
-                listId: result.listId,
-                listName: listName,
-                prompt: 'Conversation context created from result'
-              }
-            };
-            
-            result.followUpPrompt = result.followUpPrompt || 
-              `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`;
-          }
+          result.conversationContext = preservedContext;
+          result.followUpPrompt = result.followUpPrompt || 
+            `Möchtest du noch weitere Artikel zu "${currentContext.waitingForArticles.listName}" hinzufügen?`;
+        }
+        
+        if (result.listId && !result.conversationContext) {
+          const listNameMatch = result.message.match(/zur Liste "([^"]+)" hinzugefügt/);
+          const listName = listNameMatch ? listNameMatch[1] : 
+                          (currentContext.waitingForArticles?.listName || 'Liste');
+          
+          result.conversationContext = {
+            lastAction: {
+              type: 'article_added' as const,
+              listId: result.listId,
+              listName: listName,
+              articleName: pendingAction.itemName,
+              timestamp: new Date()
+            },
+            waitingForArticles: {
+              listId: result.listId,
+              listName: listName,
+              prompt: 'Conversation context created from result'
+            }
+          };
+          
+          result.followUpPrompt = result.followUpPrompt || 
+            `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`;
         }
         
         this.handleAIResult(result);
       })
       .catch((error: any) => {
+        clearTimeout(timeoutId); // CRITICAL: Clear timeout on error
         console.error('🎯 Disambiguation error:', error);
         this.chatPersistence.addMessage(
           `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
         );
-        // CRITICAL: Scroll after error
         this.scrollToBottom(true);
       })
       .finally(() => {
-        this.isProcessing = false;
-        // CRITICAL: Final scroll
+        this.isProcessing = false; // CRITICAL: Always reset processing state
         setTimeout(() => this.scrollToBottom(true), 100);
       });
   }
