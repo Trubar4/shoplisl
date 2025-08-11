@@ -280,6 +280,15 @@ export class QuantityExtractionService {
       .trim();
     
     console.log('🔍 CLEANED INPUT:', cleanedInput);
+
+    // TEMP DEBUG: Test specific patterns
+    if (cleanedInput.includes('Flaschen')) {
+      console.log('🔍 DEBUG: Input contains "Flaschen"');
+      console.log('🔍 DEBUG: Testing pattern 2 (unit_start)');
+      const testPattern = /^(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)$/i;
+      const testMatch = cleanedInput.match(testPattern);
+      console.log('🔍 DEBUG: Pattern 2 match result:', testMatch);
+    }
     
     for (let i = 0; i < this.QUANTITY_PATTERNS.length; i++) {
       const { pattern, type, itemGroup, quantityGroup, unitGroup } = this.QUANTITY_PATTERNS[i];

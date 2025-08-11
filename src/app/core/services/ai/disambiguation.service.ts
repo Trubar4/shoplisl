@@ -685,14 +685,14 @@ public suggestIcon(itemName: string): string {
       
       if (selectedArticle) {
         articleId = selectedArticle.id;
-        // REMOVED: Don't update article amount here - just use the selected article
+        console.log('🎯 Using existing article:', selectedArticle.name, 'with quantity:', currentItem.quantity);
       } else {
-        // SIMPLIFIED: Use basic suggestions instead of async smart suggestions
+        // Create new article
         const articleData = {
           name: currentItem.itemName,
           amount: currentItem.quantity || '',
-          departmentId: this.suggestDepartment(currentItem.itemName), // Use sync method
-          icon: this.suggestIcon(currentItem.itemName) // Use sync method
+          departmentId: this.suggestDepartment(currentItem.itemName),
+          icon: this.suggestIcon(currentItem.itemName)
         };
         
         const newArticle = await this.dataService.createArticle(articleData).toPromise();
@@ -700,25 +700,47 @@ public suggestIcon(itemName: string): string {
           throw new Error(`Failed to create article: ${currentItem.itemName}`);
         }
         articleId = newArticle.id;
+        console.log('✅ Created new article:', newArticle.name, articleId);
       }
   
-      // SIMPLIFIED: Add to list without fetching the full list first
-      const success = await this.dataService.addArticleToList(targetListId, articleId).toPromise();
-      
-      if (!success) {
+      // ATOMIC UPDATE: Add article with correct amount in one operation
+      console.log('🎯 Adding article with amount atomically');
+  
+      const targetList = await this.findListById(targetListId);
+      if (!targetList) {
+        throw new Error(`Target list not found: ${targetListId}`);
+      }
+  
+      const updatedArticleIds = [...targetList.articleIds];
+      if (!updatedArticleIds.includes(articleId)) {
+        updatedArticleIds.push(articleId);
+      }
+  
+      const updatedItemStates = { ...targetList.itemStates };
+      updatedItemStates[articleId] = {
+        articleId: articleId,
+        isChecked: false,  // Always unchecked when adding
+        amount: currentItem.quantity || ''  // Set amount immediately
+      };
+  
+      const updateResult = await this.dataService.updateList(targetList.id, {
+        articleIds: updatedArticleIds,
+        itemStates: updatedItemStates
+      }).pipe(
+        take(1)
+      ).toPromise();
+  
+      if (!updateResult) {
         throw new Error(`Failed to add article to list: ${targetListName}`);
       }
   
-      // SIMPLIFIED: Set amount separately if needed
-      if (currentItem.quantity) {
-        await this.dataService.updateListItemAmount(targetListId, articleId, currentItem.quantity).toPromise();
-      }
+      console.log('✅ Successfully added article atomically with quantity:', currentItem.quantity);
   
       const processedItem: any = {
         item: currentItem,
         articleId,
         disambiguationResolved: true,
-        quantity: currentItem.quantity,
+        quantity: currentItem.quantity || '',
         originalText: currentItem.itemName,
         addedToList: true,
         addedToListId: targetListId,
@@ -728,10 +750,11 @@ public suggestIcon(itemName: string): string {
       action.processedItems.push(processedItem);
       action.currentItemIndex++;
   
-      // IMMEDIATE: Continue to next item without setTimeout
       return this.processMultiItemSequentially(action);
   
     } catch (error) {
+      console.error('🎯 ERROR PROCESSING CURRENT ITEM:', error);
+      
       const failedItem: any = {
         item: currentItem,
         failed: true,
@@ -742,7 +765,6 @@ public suggestIcon(itemName: string): string {
       action.processedItems.push(failedItem);
       action.currentItemIndex++;
       
-      // IMMEDIATE: Continue even on error
       return this.processMultiItemSequentially(action);
     }
   }
@@ -970,8 +992,7 @@ public suggestIcon(itemName: string): string {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
         }).pipe(
-          take(1),
-          timeout(5000)
+          take(1)
         ).toPromise();
   
         if (updateResult) {
@@ -1033,8 +1054,7 @@ public suggestIcon(itemName: string): string {
         articleIds: updatedArticleIds,
         itemStates: updatedItemStates
       }).pipe(
-        take(1),
-        timeout(5000)
+        take(1)
       ).toPromise();
   
       if (updateResult) {
@@ -1176,7 +1196,7 @@ public suggestIcon(itemName: string): string {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
         }).pipe(
-          timeout(5000) // CRITICAL: Add timeout
+          take(1)
         ).toPromise();
         
         if (updateResult) {
@@ -1244,7 +1264,9 @@ public suggestIcon(itemName: string): string {
             const updateResult = await this.dataService.updateList(targetList.id, {
               articleIds: updatedArticleIds,
               itemStates: updatedItemStates
-            }).toPromise();
+            }).pipe(
+              take(1)
+            ).toPromise();
             
             if (updateResult) {
               const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
@@ -1393,7 +1415,9 @@ public suggestIcon(itemName: string): string {
         const updateResult = await this.dataService.updateList(targetList.id, {
           articleIds: updatedArticleIds,
           itemStates: updatedItemStates
-        }).toPromise();
+        }).pipe(
+          take(1)
+        ).toPromise();
         
         if (updateResult) {
           const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
@@ -1460,7 +1484,9 @@ public suggestIcon(itemName: string): string {
             const updateResult = await this.dataService.updateList(targetList.id, {
               articleIds: updatedArticleIds,
               itemStates: updatedItemStates
-            }).toPromise();
+            }).pipe(
+              take(1)
+            ).toPromise();
             
             if (updateResult) {
               const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';

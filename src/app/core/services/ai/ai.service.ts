@@ -997,42 +997,72 @@ private processRecipeItem(item: string): string | null {
     const quantityExtraction = this.quantityExtraction.extractQuantity(input);
     console.log('🗣️ Single item extraction:', quantityExtraction);
     
-    const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
-    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-    
-    if (existingOptions.length > 0) {
-      // Show disambiguation with skip option
-      const enhancedOptions = [
-        ...disambiguationOptions,
-        {
-          id: 'skip_item',
-          displayName: `"${quantityExtraction.itemName}" überspringen`,
-          type: 'skip' as const,
-          confidence: 1.0,
-          icon: '⏭️'
-        }
-      ];
-      
-      const pendingAction: PendingAction = {
-        type: 'add_item',
-        originalInput: input,
-        itemName: quantityExtraction.itemName,
-        extractedQuantity: quantityExtraction.quantity,
-        listName: listName,
-        suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName)
-      };
-      
+    // CRITICAL FIX: Validate that we extracted a meaningful item name
+    if (!quantityExtraction.itemName || quantityExtraction.itemName.trim().length < 2) {
+      console.error('🗣️ Invalid item name extracted:', quantityExtraction);
       return {
-        success: true,
-        message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
-        needsUserInput: true,
-        disambiguationOptions: enhancedOptions,
-        pendingAction: pendingAction
+        success: false,
+        message: `❌ Ungültiger Artikelname: "${input}". Bitte versuche es erneut.`
       };
     }
     
-    // No disambiguation needed - create article directly
-    return await this.createArticleInConversationContext(quantityExtraction, listId, listName);
+    try {
+      const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
+      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+      
+      if (existingOptions.length > 0) {
+        console.log('🗣️ Disambiguation needed for:', quantityExtraction.itemName);
+        
+        // Show disambiguation with skip option
+        const enhancedOptions = [
+          ...disambiguationOptions,
+          {
+            id: 'skip_item',
+            displayName: `"${quantityExtraction.itemName}" überspringen`,
+            type: 'skip' as const,
+            confidence: 1.0,
+            icon: '⏭️'
+          }
+        ];
+        
+        const pendingAction: PendingAction = {
+          type: 'add_item',
+          originalInput: input,
+          itemName: quantityExtraction.itemName,
+          extractedQuantity: quantityExtraction.quantity,
+          listName: listName,
+          suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName),
+          conversationListId: listId // CRITICAL: Add conversation list ID
+        } as any;
+        
+        return {
+          success: true,
+          message: this.aiResponse.getDisambiguationMessage(quantityExtraction.itemName),
+          needsUserInput: true,
+          disambiguationOptions: enhancedOptions,
+          pendingAction: pendingAction
+        };
+      }
+      
+      // No disambiguation needed - create article directly
+      console.log('🗣️ No disambiguation needed - creating article directly');
+      return await this.createArticleInConversationContext(quantityExtraction, listId, listName);
+      
+    } catch (error) {
+      console.error('🗣️ ERROR in contextual article addition:', error);
+      console.error('🗣️ Context details:', { 
+        input,
+        quantityExtraction, 
+        listId, 
+        listName,
+        conversationContext: this.conversationContext
+      });
+      
+      return {
+        success: false,
+        message: `❌ Fehler beim Hinzufügen von "${quantityExtraction.itemName}": ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      };
+    }
   }
 
   // ========================================
@@ -1549,11 +1579,21 @@ private extractIngredientsFromAIResponse(response: string): string {
     listId: string, 
     listName: string
   ): Promise<AIExecutionResult> {
+    console.log('🗣️ Creating article in conversation context:', {
+      itemName: quantityExtraction.itemName,
+      quantity: quantityExtraction.quantity,
+      listId,
+      listName
+    });
+    
     try {
+      // ENHANCED: Get suggestions properly
       const [departmentId, icon] = await Promise.all([
         this.suggestDepartment(quantityExtraction.itemName),
         this.suggestIcon(quantityExtraction.itemName)
       ]);
+      
+      console.log('🗣️ Using suggestions:', { departmentId, icon });
       
       const articleData = {
         name: quantityExtraction.itemName,
@@ -1562,78 +1602,95 @@ private extractIngredientsFromAIResponse(response: string): string {
         icon
       };
       
+      // Create the article
       const newArticle = await this.dataService.createArticle(articleData).toPromise();
       
-      if (newArticle) {
-        const targetList = await this.findListById(listId);
-        
-        if (targetList) {
-          const updatedArticleIds = [...targetList.articleIds];
-          if (!updatedArticleIds.includes(newArticle.id)) {
-            updatedArticleIds.push(newArticle.id);
-          }
-  
-          const updatedItemStates = { ...targetList.itemStates };
-          updatedItemStates[newArticle.id] = {
-            articleId: newArticle.id,
-            isChecked: false,
-            amount: quantityExtraction.quantity || ''
-          };
-  
-          const updateResult = await this.dataService.updateList(targetList.id, {
-            articleIds: updatedArticleIds,
-            itemStates: updatedItemStates
-          }).toPromise();
-          
-          if (updateResult) {
-            this.setConversationContext({
-              lastAction: {
-                type: 'article_added',
-                listId: targetList.id,
-                listName: targetList.name,
-                articleName: newArticle.name,
-                timestamp: new Date()
-              },
-              waitingForArticles: {
-                listId: targetList.id,
-                listName: targetList.name,
-                prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-              }
-            });
-  
-            const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(newArticle.name, targetList.name);
-            
-            return {
-              success: true,
-              message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zu "${targetList.name}" hinzugefügt.`,
-              listId: targetList.id,
-              conversationContext: this.getConversationContext(),
-              followUpPrompt
-            };
-          } else {
-            return {
-              success: false,
-              message: `❌ Fehler beim Aktualisieren der Liste "${targetList.name}".`
-            };
-          }
-        } else {
-          return {
-            success: false,
-            message: `❌ Liste mit ID "${listId}" nicht gefunden.`
-          };
-        }
-      } else {
-        return {
-          success: false,
-          message: `❌ Fehler beim Erstellen des Artikels "${quantityExtraction.itemName}".`
-        };
+      if (!newArticle) {
+        throw new Error(`Failed to create article: ${quantityExtraction.itemName}`);
       }
       
+      console.log('🗣️ Created article:', newArticle);
+      
+      // CRITICAL FIX: Use the optimized addArticleToList method
+      const addSuccess = await this.dataService.addArticleToList(listId, newArticle.id).toPromise();
+      
+      if (!addSuccess) {
+        // Fallback: Try to find the list and update manually
+        console.warn('🗣️ Direct addArticleToList failed, trying manual update');
+        
+        const targetList = await this.findListById(listId);
+        
+        if (!targetList) {
+          throw new Error(`Target list not found: ${listId}`);
+        }
+  
+        const updatedArticleIds = [...targetList.articleIds];
+        if (!updatedArticleIds.includes(newArticle.id)) {
+          updatedArticleIds.push(newArticle.id);
+        }
+  
+        const updatedItemStates = { ...targetList.itemStates };
+        updatedItemStates[newArticle.id] = {
+          articleId: newArticle.id,
+          isChecked: false,
+          amount: quantityExtraction.quantity || ''
+        };
+  
+        const updateResult = await this.dataService.updateList(targetList.id, {
+          articleIds: updatedArticleIds,
+          itemStates: updatedItemStates
+        }).toPromise();
+        
+        if (!updateResult) {
+          throw new Error(`Failed to update list: ${listName}`);
+        }
+      } else {
+        // ENHANCED: Set the amount separately if needed
+        if (quantityExtraction.quantity) {
+          await this.dataService.updateListItemAmount(listId, newArticle.id, quantityExtraction.quantity).toPromise();
+        }
+      }
+      
+      console.log('🗣️ Successfully added article to list');
+      
+      // CRITICAL: Maintain conversation context
+      this.setConversationContext({
+        lastAction: {
+          type: 'article_added',
+          listId: listId,
+          listName: listName,
+          articleName: newArticle.name,
+          timestamp: new Date()
+        },
+        waitingForArticles: {
+          listId: listId,
+          listName: listName,
+          prompt: 'Möchtest du noch weitere Artikel hinzufügen?'
+        }
+      });
+  
+      const followUpPrompt = this.aiResponse.getArticleAddedFollowUpPrompt(newArticle.name, listName);
+      
+      return {
+        success: true,
+        message: `✅ "${newArticle.name}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} wurde zu "${listName}" hinzugefügt.`,
+        listId: listId,
+        conversationContext: this.getConversationContext(),
+        followUpPrompt
+      };
+      
     } catch (error) {
-      console.error('Error creating article in conversation context:', error);
+      console.error('🗣️ ERROR creating article in conversation context:', error);
+      console.error('🗣️ Full context:', { 
+        quantityExtraction, 
+        listId, 
+        listName,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
       return {
         success: false,
-        message: '❌ Fehler beim Hinzufügen des Artikels.'
+        message: `❌ Fehler beim Hinzufügen von "${quantityExtraction.itemName}": ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
       };
     }
   }

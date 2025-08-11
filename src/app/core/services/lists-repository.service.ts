@@ -214,7 +214,11 @@ export class ListsRepositoryService {
           
         const newItemStates = {
           ...list.itemStates,
-          [articleId]: { articleId, isChecked: false }
+          [articleId]: { 
+            articleId, 
+            isChecked: false,
+            amount: list.itemStates[articleId]?.amount || ''  // PRESERVE existing amount
+          }
         };
 
         if (!this.connectionService.isOnline()) {
