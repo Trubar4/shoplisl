@@ -881,7 +881,13 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       pendingAction.listName = currentContext.waitingForArticles.listName;
       (pendingAction as any).conversationListId = currentContext.waitingForArticles.listId;
     }
-  
+    
+    console.log('🎯 About to call handleDisambiguationChoice with:', {
+      pendingAction: pendingAction,
+      selectedOption: option,
+      currentContext: currentContext
+    });
+
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
         clearTimeout(timeoutId); // CRITICAL: Clear timeout on success

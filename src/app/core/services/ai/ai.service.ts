@@ -752,7 +752,7 @@ private processRecipeItem(item: string): string | null {
   // ========================================
 
   private async processEnhancedCommandWithMultiItems(input: string): Promise<AIExecutionResult> {
-    console.log('🎯 PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS:', input);
+    console.log('🎯 PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS (LIST-FIRST):', input);
     
     const multiItemResult = this.quantityExtraction.parseMultipleItems(input);
   
@@ -761,39 +761,97 @@ private processRecipeItem(item: string): string | null {
       return this.processEnhancedCommand(input);
     }
   
-    console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', {
-      command: multiItemResult.command,
-      itemCount: multiItemResult.items.length,
-      listName: multiItemResult.listName, // This now exists
-      items: multiItemResult.items
-    });
+    // CRITICAL FIX: Determine target list FIRST, before processing any articles
+    let targetListId: string | undefined;
+    let targetListName: string | undefined;
   
-    // CRITICAL FIX: Preserve conversation context for target list
+    // Step 1: Check conversation context for target list
     const existingContext = this.getConversationContext();
-    let targetListName = multiItemResult.listName; // This now exists
-    let targetListId = null;
-  
-    // If no list specified but we have conversation context, use it
-    if (!targetListName && existingContext.waitingForArticles) {
+    if (existingContext.waitingForArticles) {
       targetListName = existingContext.waitingForArticles.listName;
       targetListId = existingContext.waitingForArticles.listId;
       console.log('🎯 Using target list from context:', targetListName);
     }
   
+    // Step 2: Check command for explicit list name
+    if (!targetListName && multiItemResult.listName) {
+      targetListName = multiItemResult.listName;
+      console.log('🎯 Using target list from command:', targetListName);
+    }
+  
+    // Step 3: If no target list identified, ask user to select one NOW
+    if (!targetListName || !targetListId) {
+      console.log('🎯 No target list identified - asking user to select first');
+      
+      const listOptions = await this.disambiguation.getListSelectionOptions();
+      
+      if (listOptions.length === 0) {
+        return {
+          success: false,
+          message: this.aiResponse.getNoListsFoundMessage()
+        };
+      }
+  
+      if (listOptions.length === 1) {
+        // Use the only available list
+        targetListName = listOptions[0].name;
+        targetListId = listOptions[0].id;
+        console.log('🎯 Using only available list:', targetListName);
+      } else {
+        // CRITICAL: Ask for list selection BEFORE processing articles
+        const listSelectionAction: PendingAction = {
+          type: 'select_list_for_multi_items',
+          originalInput: input,
+          itemName: `${multiItemResult.items.length} Artikel`,
+          extractedQuantity: '',
+          listName: undefined,
+          suggestedDepartment: 'miscellaneous',
+          multiItemData: {
+            items: multiItemResult.items,
+            command: multiItemResult.command,
+            originalInput: input
+          }
+        } as any;
+  
+        return {
+          success: true,
+          message: `🎯 ${multiItemResult.items.length} Artikel erkannt. Zu welcher Liste sollen sie hinzugefügt werden?`,
+          needsUserInput: true,
+          disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
+          pendingAction: listSelectionAction
+        };
+      }
+    }
+  
+    // Step 4: Now we have a confirmed target list - find it by name if needed
+    if (targetListName && !targetListId) {
+      const targetList = await this.findListByName(targetListName);
+      if (targetList) {
+        targetListId = targetList.id;
+      } else {
+        return {
+          success: false,
+          message: `❌ Liste "${targetListName}" nicht gefunden.`
+        };
+      }
+    }
+  
+    // Step 5: Process articles one by one with confirmed target list
     const multiAction: MultiItemPendingAction = {
       type: multiItemResult.command === 'create_list_with_items' ? 'create_list_with_multiple_items' : 'add_multiple_items',
       originalInput: input,
       itemName: multiItemResult.items[0]?.itemName || '',
       extractedQuantity: multiItemResult.items[0]?.quantity || '',
       items: multiItemResult.items,
-      listName: targetListName,
+      listName: targetListName!,
       currentItemIndex: 0,
       processedItems: [],
       suggestedDepartment: this.disambiguation.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
-      conversationListId: targetListId || undefined
-    };
+      conversationListId: targetListId!,
+      confirmedTargetListId: targetListId!,
+      confirmedTargetListName: targetListName!
+    } as any;
   
-    console.log('🎯 Starting multi-item processing with context:', multiAction);
     return this.disambiguation.processMultiItemSequentially(multiAction);
   }
 
