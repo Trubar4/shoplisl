@@ -6,7 +6,10 @@ import {
   PendingAction,
   MultiItemPendingAction,
   ApiKeyStatus,
-  isMultiItemPendingAction
+  ListSelectionOption,
+  isMultiItemPendingAction,
+  AIServiceError,
+  ParsingError
 } from './ai-models';
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
@@ -36,7 +39,7 @@ export class AIService {
     private continuationHandling: ContinuationHandlingService,
     private smartSuggestions: SmartSuggestionsService
   ) {
-    this.ensureRequiredMethods();
+    this.validateServiceDependencies();
   }
 
   // ========================================
@@ -48,173 +51,425 @@ export class AIService {
     console.log('🗣️ Current context:', this.getConversationContext());
 
     try {
-      // Check for recipe commands
-      if (this.recipeProcessing.isRecipeCommand(input)) {
-        console.log('🎯 Recipe command detected');
-        return await this.recipeProcessing.processRecipeCommand(
-          input,
-          (cmd) => this.commandProcessing.processEnhancedCommandWithMultiItems(cmd)
-        );
-      }
-
-     // Check for + prefix commands (add article shorthand)
-      if (input.trim().startsWith('+')) {
-        console.log('🎯 Plus-prefix command detected');
-        const itemText = input.trim().substring(1).trim();
-        
-        if (itemText.length > 0) {
-          // CRITICAL FIX: Check for multiple items first
-          if (itemText.includes(',')) {
-            console.log('🎯 Plus command with multiple items detected');
-            const enhancedCommand = `Füge ${itemText} hinzu`;
-            return await this.commandProcessing.processEnhancedCommandWithMultiItems(enhancedCommand);
-          } else {
-            // Single item - but we want list selection FIRST
-            console.log('🎯 Plus command with single item - checking lists first');
-            
-            // Get list options first
-            const listOptions = await this.disambiguation.getListSelectionOptions();
-            
-            if (listOptions.length === 0) {
-              return {
-                success: false,
-                message: this.aiResponse.getNoListsFoundMessage()
-              };
-            }
-            
-            if (listOptions.length === 1) {
-              // Only one list - proceed with normal flow
-              const enhancedCommand = `Füge ${itemText} zu ${listOptions[0].name} hinzu`;
-              console.log('🎯 Using only available list:', enhancedCommand);
-              
-              if (this.hasApiKey()) {
-                return await this.commandProcessing.processEnhancedCommand(enhancedCommand);
-              } else {
-                return await this.commandProcessing.processBasicCommand(enhancedCommand);
-              }
-            } else {
-              // Multiple lists - ask for selection FIRST
-              const quantityExtraction = this.quantityExtraction.extractQuantity(itemText);
-              
-              const listSelectionAction: PendingAction = {
-                type: 'select_list',
-                originalInput: `+${itemText}`,
-                itemName: quantityExtraction.itemName,
-                extractedQuantity: quantityExtraction.quantity,
-                listName: undefined,
-                suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName),
-                articleToAdd: {
-                  name: quantityExtraction.itemName,
-                  amount: quantityExtraction.quantity || '',
-                  departmentId: this.disambiguation.suggestDepartment(quantityExtraction.itemName),
-                  icon: this.disambiguation.suggestIcon(quantityExtraction.itemName)
-                }
-              };
-              
-              return {
-                success: true,
-                message: `🎯 Zu welcher Liste soll "${quantityExtraction.itemName}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} hinzugefügt werden?`,
-                needsUserInput: true,
-                disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
-                pendingAction: listSelectionAction
-              };
-            }
-          }
-        } else {
-          return {
-            success: false,
-            message: '❌ Kein Artikel nach "+" angegeben.\n\n💡 Beispiel: "+Brot" fügt Brot zu einer Liste hinzu.'
-          };
-        }
-      }
-
-      // Check for multi-item input
-      if (this.quantityExtraction.hasMultipleItems(input)) {
-        console.log('🎯 Multi-item detected');
-        return await this.commandProcessing.processEnhancedCommandWithMultiItems(input);
-      }
-      
-      // Check for continuation keywords
-      if (this.continuationHandling.isContinuationKeyword(input)) {
-        console.log('🗣️ Continuation keyword detected');
-        return await this.continuationHandling.handleContinuationCommand(
-          input,
-          (cmd) => this.commandProcessing.processEnhancedCommand(cmd)
-        );
-      }
-      
-      // Handle API key commands
-      if (input.toLowerCase().includes('api key')) {
-        return this.handleApiKeyCommand(input);
-      }
-      
-      // Handle help commands
-      if (input.toLowerCase().includes('hilfe') || input.toLowerCase().includes('help')) {
-        this.clearConversationContext();
-        return {
-          success: true,
-          message: this.aiResponse.getEnhancedHelpMessage(this.hasApiKey())
-        };
-      }
-      
-      // Handle system test commands
-      if (input.toLowerCase().includes('test')) {
-        return {
-          success: true,
-          message: this.aiResponse.getSystemStatusMessage(this.hasApiKey())
-        };
-      }
-  
-      // Handle show lists command
-      if (input.toLowerCase().includes('zeige') && input.toLowerCase().includes('liste')) {
-        this.clearConversationContext();
-        return await this.commandProcessing.handleShowListsCommand();
-      }
-  
-      // Handle negative responses in conversation
-      if (this.contextManager.isWaitingForArticles() && 
-          this.continuationHandling.isNegativeResponse(input)) {
-        return this.continuationHandling.handleNegativeResponse();
-      }
-  
-      // Handle contextual article addition
-      if (this.continuationHandling.shouldProcessAsContextual(input)) {
-        console.log('🗣️ Processing simple article in context');
-        return await this.continuationHandling.handleContextualArticleAddition(
-          input,
-          (extraction, listId, listName) => 
-            this.commandProcessing.createArticleInConversationContext(extraction, listId, listName),
-          (cmd) => this.commandProcessing.processEnhancedCommandWithMultiItems(cmd),
-          (input) => this.quantityExtraction.extractQuantity(input)
-        );
-      }
-  
-      // Process new commands
-      this.clearConversationContext();
-      
-      if (this.hasApiKey()) {
-        return await this.commandProcessing.processEnhancedCommand(input);
-      } else {
-        return await this.commandProcessing.processBasicCommand(input);
-      }
-      
+      return await this.routeCommand(input.trim());
     } catch (error) {
-      console.error('AI Service error:', error);
-      this.clearConversationContext();
-      return {
-        success: false,
-        message: `❌ Ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      return this.handleCommandError(error, input);
     }
   }
 
-  public get quantityExtractionService(): QuantityExtractionService {
-    return this.quantityExtraction;
+  // ========================================
+  // COMMAND ROUTING
+  // ========================================
+
+  private async routeCommand(input: string): Promise<AIExecutionResult> {
+    // Recipe commands
+    if (this.isRecipeCommand(input)) {
+      return this.handleRecipeCommand(input);
+    }
+
+    // Plus prefix commands
+    if (this.isPlusCommand(input)) {
+      return this.handlePlusCommand(input);
+    }
+
+    // Multi-item commands
+    if (this.isMultiItemCommand(input)) {
+      return this.handleMultiItemCommand(input);
+    }
+
+    // Continuation commands
+    if (this.isContinuationCommand(input)) {
+      return this.handleContinuationCommand(input);
+    }
+
+    // API key commands
+    if (this.isApiKeyCommand(input)) {
+      return this.handleApiKeyCommand(input);
+    }
+
+    // Help commands
+    if (this.isHelpCommand(input)) {
+      return this.handleHelpCommand();
+    }
+
+    // Test commands
+    if (this.isTestCommand(input)) {
+      return this.handleTestCommand();
+    }
+
+    // Show lists commands
+    if (this.isShowListsCommand(input)) {
+      return this.handleShowListsCommand();
+    }
+
+    // Negative responses
+    if (this.isNegativeResponse(input)) {
+      return this.handleNegativeResponse();
+    }
+
+    // Contextual commands
+    if (this.isContextualCommand(input)) {
+      return this.handleContextualCommand(input);
+    }
+
+    // Standard processing
+    return this.handleStandardCommand(input);
   }
-  
-  public get aiResponseService(): AIResponseService {
-    return this.aiResponse;
+
+  // ========================================
+  // COMMAND DETECTION METHODS
+  // ========================================
+
+  private isRecipeCommand(input: string): boolean {
+    return this.recipeProcessing.isRecipeCommand(input);
+  }
+
+  private isPlusCommand(input: string): boolean {
+    return input.startsWith('+');
+  }
+
+  private isMultiItemCommand(input: string): boolean {
+    return this.quantityExtraction.hasMultipleItems(input);
+  }
+
+  private isContinuationCommand(input: string): boolean {
+    return this.continuationHandling.isContinuationKeyword(input);
+  }
+
+  private isApiKeyCommand(input: string): boolean {
+    return input.toLowerCase().includes('api key');
+  }
+
+  private isHelpCommand(input: string): boolean {
+    const lower = input.toLowerCase();
+    return lower.includes('hilfe') || lower.includes('help');
+  }
+
+  private isTestCommand(input: string): boolean {
+    return input.toLowerCase().includes('test');
+  }
+
+  private isShowListsCommand(input: string): boolean {
+    const lower = input.toLowerCase();
+    return lower.includes('zeige') && lower.includes('liste');
+  }
+
+  private isNegativeResponse(input: string): boolean {
+    return this.contextManager.isWaitingForArticles() && 
+           this.continuationHandling.isNegativeResponse(input);
+  }
+
+  private isContextualCommand(input: string): boolean {
+    return this.continuationHandling.shouldProcessAsContextual(input);
+  }
+
+  // ========================================
+  // COMMAND HANDLERS
+  // ========================================
+
+  private async handleRecipeCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 Recipe command detected');
+    return await this.recipeProcessing.processRecipeCommand(
+      input,
+      (cmd) => this.commandProcessing.processEnhancedCommandWithMultiItems(cmd)
+    );
+  }
+
+  private async handlePlusCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 Plus-prefix command detected');
+    const itemText = input.substring(1).trim();
+    
+    if (!itemText) {
+      return this.createPlusCommandErrorResult();
+    }
+
+    if (this.isMultiItemPlusCommand(itemText)) {
+      return this.handleMultiItemPlusCommand(itemText);
+    }
+
+    return this.handleSingleItemPlusCommand(itemText);
+  }
+
+  private async handleMultiItemPlusCommand(itemText: string): Promise<AIExecutionResult> {
+    console.log('🎯 Plus command with multiple items detected');
+    const enhancedCommand = `Füge ${itemText} hinzu`;
+    return await this.commandProcessing.processEnhancedCommandWithMultiItems(enhancedCommand);
+  }
+
+  private async handleSingleItemPlusCommand(itemText: string): Promise<AIExecutionResult> {
+    console.log('🎯 Plus command with single item - checking lists first');
+    
+    const listOptions: ListSelectionOption[] = await this.disambiguation.getListSelectionOptions();
+    
+    if (listOptions.length === 0) {
+      return this.createNoListsResult();
+    }
+
+    if (listOptions.length === 1) {
+      return this.handleSingleListPlusCommand(itemText, listOptions[0].name);
+    }
+
+    return this.handleMultipleListsPlusCommand(itemText, listOptions);
+  }
+
+  private async handleSingleListPlusCommand(itemText: string, listName: string): Promise<AIExecutionResult> {
+    const enhancedCommand = `Füge ${itemText} zu ${listName} hinzu`;
+    console.log('🎯 Using only available list:', enhancedCommand);
+    
+    if (this.hasApiKey()) {
+      return await this.commandProcessing.processEnhancedCommand(enhancedCommand);
+    } else {
+      return await this.commandProcessing.processBasicCommand(enhancedCommand);
+    }
+  }
+
+  private handleMultipleListsPlusCommand(itemText: string, listOptions: ListSelectionOption[]): AIExecutionResult {
+    const quantityExtraction = this.quantityExtraction.extractQuantity(itemText);
+    
+    const listSelectionAction: PendingAction = {
+      type: 'select_list',
+      originalInput: `+${itemText}`,
+      itemName: quantityExtraction.itemName,
+      extractedQuantity: quantityExtraction.quantity,
+      listName: undefined,
+      suggestedDepartment: this.disambiguation.suggestDepartment(quantityExtraction.itemName),
+      articleToAdd: {
+        name: quantityExtraction.itemName,
+        amount: quantityExtraction.quantity || '',
+        departmentId: this.disambiguation.suggestDepartment(quantityExtraction.itemName),
+        icon: this.disambiguation.suggestIcon(quantityExtraction.itemName)
+      }
+    };
+    
+    return {
+      success: true,
+      message: `🎯 Zu welcher Liste soll "${quantityExtraction.itemName}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} hinzugefügt werden?`,
+      needsUserInput: true,
+      disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
+      pendingAction: listSelectionAction
+    };
+  }
+
+  private async handleMultiItemCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🎯 Multi-item detected');
+    return await this.commandProcessing.processEnhancedCommandWithMultiItems(input);
+  }
+
+  private async handleContinuationCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🗣️ Continuation keyword detected');
+    return await this.continuationHandling.handleContinuationCommand(
+      input,
+      (cmd) => this.commandProcessing.processEnhancedCommand(cmd)
+    );
+  }
+
+  private handleApiKeyCommand(input: string): AIExecutionResult {
+    const keyPattern = /(?:set\s+)?api\s+key[:\s]+([a-zA-Z0-9_-]+)/i;
+    const match = input.match(keyPattern);
+    
+    if (match && match[1]) {
+      const apiKey = match[1].trim();
+      
+      if (this.groqApi.validateApiKey(apiKey)) {
+        this.setApiKey(apiKey);
+        return {
+          success: true,
+          message: this.aiResponse.getApiKeySuccessMessage()
+        };
+      } else {
+        return {
+          success: false,
+          message: this.aiResponse.getApiKeyErrorMessage()
+        };
+      }
+    }
+    
+    const hasKey = this.hasApiKey();
+    return {
+      success: true,
+      message: this.aiResponse.getApiKeyInstructions(hasKey)
+    };
+  }
+
+  private handleHelpCommand(): AIExecutionResult {
+    this.clearConversationContext();
+    return {
+      success: true,
+      message: this.aiResponse.getEnhancedHelpMessage(this.hasApiKey())
+    };
+  }
+
+  private handleTestCommand(): AIExecutionResult {
+    return {
+      success: true,
+      message: this.aiResponse.getSystemStatusMessage(this.hasApiKey())
+    };
+  }
+
+  private async handleShowListsCommand(): Promise<AIExecutionResult> {
+    this.clearConversationContext();
+    return await this.commandProcessing.handleShowListsCommand();
+  }
+
+  private handleNegativeResponse(): AIExecutionResult {
+    return this.continuationHandling.handleNegativeResponse();
+  }
+
+  private async handleContextualCommand(input: string): Promise<AIExecutionResult> {
+    console.log('🗣️ Processing simple article in context');
+    return await this.continuationHandling.handleContextualArticleAddition(
+      input,
+      (extraction, listId, listName) => 
+        this.commandProcessing.createArticleInConversationContext(extraction, listId, listName),
+      (cmd) => this.commandProcessing.processEnhancedCommandWithMultiItems(cmd),
+      (input) => this.quantityExtraction.extractQuantity(input)
+    );
+  }
+
+  private async handleStandardCommand(input: string): Promise<AIExecutionResult> {
+    this.clearConversationContext();
+    
+    if (this.hasApiKey()) {
+      return await this.commandProcessing.processEnhancedCommand(input);
+    } else {
+      return await this.commandProcessing.processBasicCommand(input);
+    }
+  }
+
+  // ========================================
+  // ERROR HANDLING & TYPES
+  // ========================================
+
+  private handleCommandError(error: unknown, input: string): AIExecutionResult {
+    console.error('AI Service error:', error);
+    this.clearConversationContext();
+    
+    if (error instanceof AIServiceError) {
+      return {
+        success: false,
+        message: `❌ ${error.message}`,
+        error: error.code
+      };
+    }
+
+    if (error instanceof ParsingError) {
+      return {
+        success: false,
+        message: `❌ Parsing-Fehler: ${error.message}`,
+        error: 'PARSING_ERROR'
+      };
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+    return {
+      success: false,
+      message: `❌ Ein Fehler ist aufgetreten: ${errorMessage}`,
+      error: error instanceof Error ? error.name : 'UNKNOWN_ERROR'
+    };
+  }
+
+  // ========================================
+  // HELPER METHODS
+  // ========================================
+
+  private isMultiItemPlusCommand(itemText: string): boolean {
+    return itemText.includes(',');
+  }
+
+  private createPlusCommandErrorResult(): AIExecutionResult {
+    return {
+      success: false,
+      message: '❌ Kein Artikel nach "+" angegeben.\n\n💡 Beispiel: "+Brot" fügt Brot zu einer Liste hinzu.'
+    };
+  }
+
+  private createNoListsResult(): AIExecutionResult {
+    return {
+      success: false,
+      message: this.aiResponse.getNoListsFoundMessage()
+    };
+  }
+
+  // ========================================
+  // SERVICE VALIDATION & INTERFACES
+  // ========================================
+
+  private validateServiceDependencies(): void {
+    this.validateQuantityExtractionService();
+    this.validateCommandParserService();
+    this.validateOtherServices();
+  }
+
+  private validateQuantityExtractionService(): void {
+    const service = this.quantityExtraction;
+    
+    if (typeof service.hasMultipleItems !== 'function') {
+      throw new AIServiceError(
+        'QuantityExtractionService missing hasMultipleItems method',
+        'MISSING_METHOD'
+      );
+    }
+
+    if (typeof service.parseMultipleItems !== 'function') {
+      throw new AIServiceError(
+        'QuantityExtractionService missing parseMultipleItems method',
+        'MISSING_METHOD'
+      );
+    }
+
+    if (typeof service.extractQuantity !== 'function') {
+      throw new AIServiceError(
+        'QuantityExtractionService missing extractQuantity method',
+        'MISSING_METHOD'
+      );
+    }
+  }
+
+  private validateCommandParserService(): void {
+    const service = this.commandParser;
+    
+    if (typeof service.parseIntent !== 'function') {
+      throw new AIServiceError(
+        'CommandParserService missing parseIntent method',
+        'MISSING_METHOD'
+      );
+    }
+
+    if (typeof service.extractColor !== 'function') {
+      throw new AIServiceError(
+        'CommandParserService missing extractColor method',
+        'MISSING_METHOD'
+      );
+    }
+
+    if (typeof service.cleanItemName !== 'function') {
+      throw new AIServiceError(
+        'CommandParserService missing cleanItemName method',
+        'MISSING_METHOD'
+      );
+    }
+  }
+
+  private validateOtherServices(): void {
+    const requiredServices: Array<{service: object; name: string}> = [
+      { service: this.disambiguation, name: 'DisambiguationService' },
+      { service: this.aiResponse, name: 'AIResponseService' },
+      { service: this.commandProcessing, name: 'CommandProcessingService' },
+      { service: this.recipeProcessing, name: 'RecipeProcessingService' },
+      { service: this.contextManager, name: 'ContextManagementService' },
+      { service: this.groqApi, name: 'GroqApiService' },
+      { service: this.continuationHandling, name: 'ContinuationHandlingService' },
+      { service: this.smartSuggestions, name: 'SmartSuggestionsService' }
+    ];
+
+    for (const { service, name } of requiredServices) {
+      if (!service) {
+        throw new AIServiceError(
+          `${name} is not properly injected`,
+          'SERVICE_INJECTION_ERROR'
+        );
+      }
+    }
   }
 
   // ========================================
@@ -229,10 +484,8 @@ export class AIService {
     console.log('🎯 Pending action:', pendingAction);
     console.log('🎯 Selected option:', selectedOption);
     
-    // Handle disambiguation choice
     const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
     
-    // Restore and enhance context after successful addition
     if (result.success && result.listId && result.message.includes('hinzugefügt')) {
       const messageMatch = result.message.match(/"([^"]+)" wurde (?:erstellt und )?zur Liste "([^"]+)" hinzugefügt/);
       const articleName = messageMatch?.[1] || pendingAction.itemName;
@@ -283,137 +536,11 @@ export class AIService {
     return this.groqApi.getApiKeyStatus();
   }
 
-  // ========================================
-  // PRIVATE METHODS
-  // ========================================
-
-  private handleApiKeyCommand(input: string): AIExecutionResult {
-    const keyPattern = /(?:set\s+)?api\s+key[:\s]+([a-zA-Z0-9_-]+)/i;
-    const match = input.match(keyPattern);
-    
-    if (match && match[1]) {
-      const apiKey = match[1].trim();
-      
-      if (this.groqApi.validateApiKey(apiKey)) {
-        this.setApiKey(apiKey);
-        return {
-          success: true,
-          message: this.aiResponse.getApiKeySuccessMessage()
-        };
-      } else {
-        return {
-          success: false,
-          message: this.aiResponse.getApiKeyErrorMessage()
-        };
-      }
-    }
-    
-    const hasKey = this.hasApiKey();
-    return {
-      success: true,
-      message: this.aiResponse.getApiKeyInstructions(hasKey)
-    };
+  public get quantityExtractionService(): QuantityExtractionService {
+    return this.quantityExtraction;
   }
-
-  // ========================================
-  // INITIALIZATION
-  // ========================================
-
-  private ensureRequiredMethods(): void {
-    // Ensure quantityExtraction has required methods
-    if (!this.quantityExtraction.hasMultipleItems) {
-      this.quantityExtraction.hasMultipleItems = (input: string) => {
-        return input.includes(',') && input.split(',').length > 1;
-      };
-    }
-
-    if (!this.quantityExtraction.parseMultipleItems) {
-      this.quantityExtraction.parseMultipleItems = (input: string) => {
-        const items = input.split(',').map(item => {
-          const extraction = this.quantityExtraction.extractQuantity(item.trim());
-          return {
-            itemName: extraction.itemName,
-            quantity: extraction.quantity,
-            originalText: item.trim(),
-            confidence: 'high' as const
-          };
-        });
-        
-        return {
-          command: 'add_items' as const,
-          items: items,
-          listName: undefined,
-          originalInput: input,
-          parseErrors: []
-        };
-      };
-    }
-    
-    // Ensure commandParser has required methods
-    if (!this.commandParser.parseIntent) {
-      this.commandParser.parseIntent = (input: string, cleanItemName?: string) => {
-        const lowerInput = input.toLowerCase();
-        const itemName = cleanItemName || '';
-        
-        if (lowerInput.includes('erstelle') && lowerInput.includes('liste')) {
-          const listMatch = input.match(/erstelle\s+liste\s+(.+?)(?:\s+mit|$)/i);
-          return {
-            type: 'create_list' as const,
-            listName: listMatch?.[1]?.trim(),
-            itemName: itemName,
-            originalInput: input,
-            confidence: 0.9
-          };
-        }
-        
-        if (lowerInput.includes('füge') && lowerInput.includes('hinzu')) {
-          const listMatch = input.match(/zu\s+(.+?)\s+hinzu/i);
-          return {
-            type: 'add_item' as const,
-            listName: listMatch?.[1]?.trim(),
-            itemName: itemName,
-            originalInput: input,
-            confidence: 0.8
-          };
-        }
-        
-        return {
-          type: 'add_item' as const,
-          listName: undefined,
-          itemName: itemName || input,
-          originalInput: input,
-          confidence: 0.3
-        };
-      };
-    }
-    
-    if (!this.commandParser.extractColor) {
-      this.commandParser.extractColor = (input: string) => {
-        const colorMatch = input.match(/in\s+(rot|blau|grün|gelb|orange|lila|schwarz|weiß)/i);
-        const colorMap: Record<string, string> = {
-          'rot': '#f44336',
-          'blau': '#2196f3',
-          'grün': '#4caf50',
-          'gelb': '#ffeb3b',
-          'orange': '#ff9800',
-          'lila': '#9c27b0',
-          'schwarz': '#424242',
-          'weiß': '#ffffff'
-        };
-        
-        if (colorMatch) {
-          return {
-            colorName: colorMatch[1],
-            colorHex: colorMap[colorMatch[1].toLowerCase()],
-            cleanInput: input.replace(colorMatch[0], '').trim()
-          };
-        }
-        
-        return {
-          cleanInput: input
-        };
-      };
-    }
+  
+  public get aiResponseService(): AIResponseService {
+    return this.aiResponse;
   }
-
 }
