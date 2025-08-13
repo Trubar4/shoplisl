@@ -320,7 +320,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.isProcessing = true;
 
     try {
-      if (this.isRecipeInput(lowerInput, userMessage) || this.aiService.quantityExtraction.hasMultipleItems(userMessage)) {
+      if (this.isRecipeInput(lowerInput, userMessage) || this.aiService.quantityExtractionService.hasMultipleItems(userMessage)) {
         console.log('🍳 Multi-item input detected (recipe or space-separated)');
         await this.processRecipeWithContextPreservation(userMessage);
         return;
@@ -1545,7 +1545,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
 
   showContextualHelp(): void {
     const hasApiKey = this.aiService.hasApiKey();
-    const helpMessage = this.aiService.aiResponse.getEnhancedHelpMessage(hasApiKey);
+    const helpMessage = this.aiService.aiResponseService.getEnhancedHelpMessage(hasApiKey);
     this.chatPersistence.addMessage(helpMessage, 'assistant');
   }
 

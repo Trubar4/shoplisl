@@ -1,4 +1,4 @@
-// src/app/core/services/ai/ai.service.ts - REFACTORED VERSION
+// src/app/core/services/ai/ai.service.ts
 import { Injectable } from '@angular/core';
 import {
   AIExecutionResult,
@@ -25,10 +25,10 @@ import { ConversationContext } from '../../models';
 })
 export class AIService {
   constructor(
-    public quantityExtraction: QuantityExtractionService,
+    private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: DisambiguationService,
-    public aiResponse: AIResponseService,
+    private aiResponse: AIResponseService,
     private commandProcessing: CommandProcessingService,
     private recipeProcessing: RecipeProcessingService,
     private contextManager: ContextManagementService,
@@ -96,7 +96,7 @@ export class AIService {
               // Multiple lists - ask for selection FIRST
               const quantityExtraction = this.quantityExtraction.extractQuantity(itemText);
               
-              const listSelectionAction: any = {
+              const listSelectionAction: PendingAction = {
                 type: 'select_list',
                 originalInput: `+${itemText}`,
                 itemName: quantityExtraction.itemName,
@@ -209,6 +209,14 @@ export class AIService {
     }
   }
 
+  public get quantityExtractionService(): QuantityExtractionService {
+    return this.quantityExtraction;
+  }
+  
+  public get aiResponseService(): AIResponseService {
+    return this.aiResponse;
+  }
+
   // ========================================
   // PUBLIC API - DISAMBIGUATION
   // ========================================
@@ -221,15 +229,14 @@ export class AIService {
     console.log('🎯 Pending action:', pendingAction);
     console.log('🎯 Selected option:', selectedOption);
     
-    // Preserve conversation context during regular disambiguation
-    const existingContext = this.getConversationContext();
+    // Handle disambiguation choice
     const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
     
     // Restore and enhance context after successful addition
     if (result.success && result.listId && result.message.includes('hinzugefügt')) {
       const messageMatch = result.message.match(/"([^"]+)" wurde (?:erstellt und )?zur Liste "([^"]+)" hinzugefügt/);
-      const articleName = messageMatch ? messageMatch[1] : pendingAction.itemName;
-      const listName = messageMatch ? messageMatch[2] : (pendingAction.listName || 'Unbekannt');
+      const articleName = messageMatch?.[1] || pendingAction.itemName;
+      const listName = messageMatch?.[2] || pendingAction.listName || 'Unbekannt';
       
       this.contextManager.updateContextForArticleAdded(result.listId, listName, articleName);
       
@@ -383,7 +390,7 @@ export class AIService {
     if (!this.commandParser.extractColor) {
       this.commandParser.extractColor = (input: string) => {
         const colorMatch = input.match(/in\s+(rot|blau|grün|gelb|orange|lila|schwarz|weiß)/i);
-        const colorMap: any = {
+        const colorMap: Record<string, string> = {
           'rot': '#f44336',
           'blau': '#2196f3',
           'grün': '#4caf50',
@@ -407,14 +414,6 @@ export class AIService {
         };
       };
     }
-
-    this.ensureAIResponseMethods();
   }
 
-  private ensureAIResponseMethods(): void {
-    // Initialize all required AI response methods
-    // (keeping the existing implementation from the original file)
-    // This is just a placeholder - the actual methods are already defined
-    // in the AIResponseService
-  }
 }
