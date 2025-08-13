@@ -1,0 +1,309 @@
+// src/app/core/services/ai/groq-api.service.ts
+import { Injectable } from '@angular/core';
+import { ApiKeyStatus } from './ai-models';
+import { environment } from '../../../../environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class GroqApiService {
+  private readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+  private readonly MODEL = 'llama-3.1-8b-instant';
+
+  constructor() {
+    this.logApiKeyStatus();
+  }
+
+  // ========================================
+  // API KEY MANAGEMENT
+  // ========================================
+
+  private getSecureApiKey(): string {
+    const localStorageKey = localStorage.getItem('groq-api-key');
+    const environmentKey = environment?.groqApiKey;
+    const key = localStorageKey || environmentKey || '';
+    console.log('🔑 API Key source:', localStorageKey ? 'localStorage' : environmentKey ? 'environment' : 'none');
+    return key;
+  }
+
+  setApiKey(apiKey: string): void {
+    if (apiKey && apiKey.trim()) {
+      localStorage.setItem('groq-api-key', apiKey.trim());
+      console.log('🔑 API key saved to localStorage');
+      this.logApiKeyStatus();
+    }
+  }
+
+  hasApiKey(): boolean {
+    const key = this.getSecureApiKey();
+    console.log('🔑 Checking API key:', key ? `Found ${key.length} chars` : 'Not found');
+    return !!key && key.length > 20;
+  }
+
+  getApiKeyStatus(): ApiKeyStatus {
+    const finalKey = this.getSecureApiKey();
+    const hasKey = !!finalKey;
+    const source = localStorage.getItem('groq-api-key') ? 'localStorage' : 
+                  environment?.groqApiKey ? 'environment' : 'none';
+    
+    return {
+      configured: hasKey,
+      source: source as 'localStorage' | 'environment' | 'none',
+      length: hasKey ? finalKey.length : 0
+    };
+  }
+
+  private logApiKeyStatus(): void {
+    const status = this.getApiKeyStatus();
+    console.log('🔑 API Key Status:', status);
+  }
+
+  validateApiKey(apiKey: string): boolean {
+    return apiKey.startsWith('gsk_') && apiKey.length > 20;
+  }
+
+  // ========================================
+  // API CALLS
+  // ========================================
+
+  async callGroqAPI(prompt: string, temperature: number = 0.1, maxTokens: number = 2000): Promise<string> {
+    const apiKey = this.getSecureApiKey();
+    
+    if (!apiKey) {
+      throw new Error('No API key configured');
+    }
+    
+    const requestBody = {
+      model: this.MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: temperature,
+      max_tokens: maxTokens
+    };
+    
+    console.log('🔑 API Request:', {
+      model: requestBody.model,
+      temperature: requestBody.temperature,
+      max_tokens: requestBody.max_tokens,
+      prompt_length: prompt.length
+    });
+    
+    try {
+      const response = await fetch(this.GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+  
+      console.log('🔑 API Response Status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔑 API Error Response:', errorText);
+        throw new Error(`Groq API Fehler: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || '';
+      
+    } catch (error) {
+      console.error('🔑 Groq API call failed:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // SPECIALIZED API CALLS
+  // ========================================
+
+  async standardizeRecipeIngredients(
+    rawRecipeText: string, 
+    targetList?: string
+  ): Promise<string> {
+    console.log('🍳 Standardizing recipe ingredients with AI:', rawRecipeText.substring(0, 100));
+    
+    const cleanedText = this.cleanRawRecipeText(rawRecipeText);
+    
+    const prompt = `Konvertiere diese deutsche Zutatenliste in ein standardisiertes Format.
+  
+  EINGABE: ${cleanedText}
+  
+  REGELN:
+  - Nur echte Zutaten mit Mengen extrahieren
+  - Format: "MENGE EINHEIT ZUTAT" (z.B. "2 EL Öl", nicht "Öl 2 EL")
+  - Deutsche Dezimalzahlen: 0,3 nicht 0.3
+  - Deutsche Einheiten: g, kg, ml, l, EL, TL, Prise, Stück
+  - Behalte Kommas in Dezimalzahlen: "0,3 TL Natron"
+  - WICHTIG: Gib ALLE Zutaten in EINER Zeile aus, getrennt durch Semikolon
+  
+  BEISPIELE:
+  "Öl 2 EL" → "2 EL Öl"
+  "Natron 0,3 TL" → "0,3 TL Natron"
+  "Mehl 500g" → "500g Mehl"
+  
+  AUSGABEFORMAT: Alle Zutaten in einer Zeile mit Semikolon getrennt:
+  "0,5kg Mehl; 2 Eier; 250ml Milch; 0,3 TL Öl"
+  
+  ANTWORTE NUR mit einer Zeile im oben gezeigten Format:`;
+  
+    try {
+      const response = await this.callGroqAPI(prompt);
+      let cleanResponse = this.extractIngredientsFromAIResponse(response);
+      
+      console.log('🍳 AI raw response:', response.substring(0, 200));
+      console.log('🍳 Extracted ingredients:', cleanResponse);
+      
+      if (!cleanResponse || cleanResponse.length < 5) {
+        throw new Error('Invalid AI response');
+      }
+      
+      const finalCommand = `Füge ${cleanResponse} hinzu`;
+      console.log('🍳 Final standardized command:', finalCommand);
+      return finalCommand;
+      
+    } catch (error) {
+      console.error('🍳 AI standardization failed:', error);
+      throw error;
+    }
+  }
+
+  async getSmartSuggestions(
+    itemName: string, 
+    existingArticles?: any[]
+  ): Promise<{
+    departmentId: string;
+    icon: string;
+  } | null> {
+    if (!this.hasApiKey()) {
+      return null;
+    }
+  
+    try {
+      const iconCounts = new Map<string, number>();
+      
+      existingArticles?.forEach(article => {
+        if (article.icon) iconCounts.set(article.icon, (iconCounts.get(article.icon) || 0) + 1);
+      });
+  
+      const topIcons = Array.from(iconCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([icon]) => icon)
+        .join(' ');
+  
+      const prompt = `Item: "${itemName}"
+  Departments: fruit-vegetables, dairy-products, bread, meat-fish, beverages-alcohol, household-goods, miscellaneous
+  User icons: ${topIcons || '🥛🍞🧀🍎🥩'}
+  Format: {"dept":"beverages-alcohol","icon":"🍺"}`;
+  
+      console.log('🎯🤖 Getting AI suggestions for:', itemName);
+      const response = await this.callGroqAPI(prompt, 0.1, 100);
+      const result = JSON.parse(response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      
+      if (result.dept && result.icon) {
+        console.log('✅🤖 AI suggestions:', result);
+        return { departmentId: result.dept, icon: result.icon };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('🎯❌ AI suggestions failed:', error);
+      return null;
+    }
+  }
+
+  // ========================================
+  // HELPER METHODS
+  // ========================================
+
+  private cleanRawRecipeText(rawText: string): string {
+    return rawText
+      .replace(/\s+/g, ' ')
+      .replace(/[•◦▪▫]/g, '')
+      .replace(/[-–—]{2,}/g, '')
+      .replace(/[*]{2,}/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private extractIngredientsFromAIResponse(response: string): string {
+    console.log('🍳 Extracting ingredients from AI response');
+    console.log('🍳 Raw AI response:', response);
+    
+    // Handle single ingredient responses with explanations
+    const singleItemPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)(?:\s*→.*|\s*\n|\s*Da es nur|\s*ist die Ausgabe|$)/i;
+    const singleMatch = response.match(singleItemPattern);
+    
+    if (singleMatch) {
+      const cleanSingle = singleMatch[1].trim();
+      console.log('🍳 Detected single ingredient:', cleanSingle);
+      
+      // Verify it looks like a real ingredient
+      if (/\d+/.test(cleanSingle) && 
+          (/\b(g|kg|ml|l|el|tl|gramm|liter|prise|stück|flaschen|pack|dose)\b/i.test(cleanSingle) ||
+           /\b(milch|öl|mehl|ei|zucker|salz|butter|sekt|wein|bier)\b/i.test(cleanSingle))) {
+        return cleanSingle;
+      }
+    }
+    
+    // Look for clean semicolon-separated list
+    const multiItemPattern = /^([^→\n]*(?:[0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+\s*;\s*){1,}[0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+[^→\n]*)/m;
+    const multiMatch = response.match(multiItemPattern);
+    
+    if (multiMatch) {
+      const cleanMulti = multiMatch[1]
+        .replace(/[""]/g, '')
+        .replace(/\s*→.*$/gm, '')
+        .replace(/^\s*-\s*/, '')
+        .trim();
+      
+      if (cleanMulti.includes(';') && cleanMulti.length > 10) {
+        console.log('🍳 Found clean semicolon list:', cleanMulti);
+        return cleanMulti;
+      }
+    }
+    
+    // Clean common corruption patterns
+    let cleaned = response
+      .replace(/→.*$/gm, '')
+      .replace(/\n.*?Da es nur.*$/gmi, '')
+      .replace(/\n.*?ist die Ausgabe.*$/gmi, '')
+      .replace(/\n.*?hier ist.*$/gmi, '')
+      .replace(/\n.*?ich kann.*$/gmi, '')
+      .replace(/\n.*?konvertiert.*$/gmi, '')
+      .replace(/\n{2,}/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    
+    console.log('🍳 Cleaned response:', cleaned);
+    
+    // Try to extract just the ingredient part again
+    const finalPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+?)(?:\s|$)/;
+    const finalMatch = cleaned.match(finalPattern);
+    
+    if (finalMatch) {
+      const finalClean = finalMatch[1].trim();
+      console.log('🍳 Final extracted ingredient:', finalClean);
+      return finalClean;
+    }
+    
+    // Ultimate fallback
+    const firstLine = cleaned.split('\n')[0].trim();
+    if (firstLine.length > 0 && /\d+/.test(firstLine)) {
+      console.log('🍳 Fallback to first line:', firstLine);
+      return firstLine;
+    }
+    
+    console.log('🍳 Could not extract clean ingredients, returning original');
+    return response.trim();
+  }
+}

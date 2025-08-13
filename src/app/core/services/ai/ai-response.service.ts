@@ -138,7 +138,7 @@ export class AIResponseService {
       return '🤖 <strong>ShopLisl AI Assistent</strong><br><br>' +
         '✅ <strong>Verfügbare Befehle:</strong><br>' +
         '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
-        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge [Artikel] hinzu"<br><em>Mehrere Formate: Komma-getrennt, Mengen mit Leerzeichen, oder "und" verbunden</em></td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge [Artikel] hinzu" oder +[Artikel]<br><em>Mehrere Formate: Komma-getrennt, Mengen mit Leerzeichen, oder "und" verbunden</em></td></tr>' +
         '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
         '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🆕 "Erstelle Liste [Name] in [Farbe]"</td></tr>' +
         '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
@@ -146,11 +146,12 @@ export class AIResponseService {
         '</table><br>' +
         '<strong>🔄 Beispiele:</strong><br>' +
         '<table style="border-collapse: collapse; margin: 0; padding: 0; width: 100%;">' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "+Brot"</td></tr>' +
         '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge Milch, Brot, Bananen hinzu"</td></tr>' +
         '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
         '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Füge 500g Mehl 2 Eier 250ml Milch hinzu"</td></tr>' +
         '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
-        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Milch und Brot und Käse"</td></tr>' +
+        '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">➕ "Milch, Brot und Käse"</td></tr>' +
         '<tr><td style="height: 1px !important; background-color: #e0e0e0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;"></td></tr>' +
         '<tr><td style="vertical-align: top !important; line-height: 1.2 !important; padding: 8px 0;">🍽️ "Rezept: 500g Mehl, 2 Eier, 250ml Milch"</td></tr>' +
         '</table>';

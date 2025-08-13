@@ -1,6 +1,6 @@
 // src/app/core/services/ai/ai-models.ts
-import { Article, ShoppingList } from '../../models';
-import { ConversationContext } from '../../models';
+import { Article, ShoppingList, ConversationContext } from '../../models';
+export type { ConversationContext } from '../../models';
 
 // ========================================
 // CORE AI INTERFACES

@@ -1017,6 +1017,45 @@ public suggestIcon(itemName: string): string {
       // Single article handling
       let articleId = articleData.id;
       if (!articleId) {
+        // CRITICAL FIX: Check for disambiguation BEFORE creating new article
+        const disambiguationOptions = await this.getDisambiguationOptions(articleData.name);
+        const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+        
+        if (existingOptions.length > 0) {
+          console.log('🎯 Found existing articles after list selection, showing disambiguation');
+          
+          // Create new pending action with the selected list
+          const newPendingAction: PendingAction = {
+            type: 'add_item',
+            originalInput: pendingAction.originalInput,
+            itemName: articleData.name,
+            extractedQuantity: articleData.amount,
+            listName: targetList.name,
+            suggestedDepartment: articleData.departmentId || 'miscellaneous',
+            conversationListId: targetList.id
+          } as any;
+          
+          const enhancedOptions = [
+            ...disambiguationOptions,
+            {
+              id: 'skip_item',
+              displayName: `"${articleData.name}" überspringen`,
+              type: 'skip' as const,
+              confidence: 1.0,
+              icon: '⏭️'
+            }
+          ];
+          
+          return {
+            success: true,
+            message: `Für "${articleData.name}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?`,
+            needsUserInput: true,
+            disambiguationOptions: enhancedOptions,
+            pendingAction: newPendingAction
+          };
+        }
+        
+        // No existing articles found - create new one
         const newArticle = await this.dataService.createArticle({
           name: articleData.name,
           amount: articleData.amount || '',
