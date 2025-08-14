@@ -40,3 +40,8 @@ export type {
   DisambiguationState,
   ApiKeyStatus
 } from './ai-models';
+
+export { ArticleOperationsService } from './article-operations.service';
+export { ListOperationsService } from './list-operations.service';
+export { MultiItemProcessorService } from './multi-item-processor.service';
+export { ActionExecutorService } from './action-executor.service';
