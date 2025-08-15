@@ -19,6 +19,7 @@ import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
+import { DisambiguationService } from '../../../core/services/ai/disambiguation.service';
 
 type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
@@ -84,6 +85,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   showCelebrationAnimation = false;
   private previousCheckedCount = 0;
 
+  searchDisambiguation$ = new BehaviorSubject<any>(null);
+  private searchDisambiguationTimeout?: any;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -91,7 +95,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private departmentService: DepartmentService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private disambiguationService: DisambiguationService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     
@@ -171,6 +176,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     
     this.setupDepartmentGroups();
 
+    this.setupSearchDisambiguation();
+
     this.setupCompletionMonitoring();
     
     this.list$.subscribe({
@@ -208,6 +215,125 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         this.updateThemeColorMeta('#1a9edb');
       }, 0);
     }
+  }
+
+  private setupSearchDisambiguation(): void {
+    combineLatest([
+      this.searchQuery$.pipe(debounceTime(500), distinctUntilChanged()),
+      this.listArticles$,
+      this.allArticlesWithState$
+    ]).subscribe(([query, listArticles, allArticles]) => {
+      if (!query.trim()) {
+        // Clear disambiguation when search is empty
+        this.searchDisambiguation$.next(null);
+      } else if (this.currentMode === 'shopping' && listArticles.length === 0 && this.currentShoppingFilter === 'alle') {
+        this.handleNoSearchResults(query.trim(), allArticles);
+      } else {
+        this.searchDisambiguation$.next(null);
+      }
+    });
+  }
+  
+  private async handleNoSearchResults(query: string, allArticles: any[]): Promise<void> {
+    try {
+      // Check if we have similar articles in the database (not in current list)
+      const articlesNotInList = allArticles.filter(article => !article.isInList);
+      const hasMatches = articlesNotInList.some(article => 
+        article.name.toLowerCase().includes(query.toLowerCase())
+      );
+  
+      if (hasMatches || query.length >= 3) {
+        // Get disambiguation options using existing service
+        const options = await this.disambiguationService.getDisambiguationOptions(query);
+        
+        if (options.length > 0) {
+          this.searchDisambiguation$.next({
+            query,
+            options: options.filter(opt => opt.type !== 'skip'), // Remove skip options
+            message: `Für "${query}" wurden ähnliche Artikel gefunden:`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Search disambiguation error:', error);
+    }
+  }
+
+  getDepartmentNameGerman(departmentId: string): string {
+    return this.departmentService.getDepartmentName(departmentId, 'german');
+  }
+  
+  async onSelectSearchDisambiguation(option: any): Promise<void> {
+    const query = this.searchDisambiguation$.value?.query;
+    if (!query) return;
+  
+    try {
+      if (option.type === 'existing' && option.article) {
+        // Add existing article to current list
+        await this.addExistingArticleToList(option.article);
+      } else if (option.type === 'new') {
+        // Create new article with suggested department
+        await this.createAndAddNewArticle(query, option);
+      }
+      
+      // Clear search and disambiguation
+      this.searchQuery = '';
+      this.searchQuery$.next('');
+      this.searchDisambiguation$.next(null);
+      
+    } catch (error) {
+      console.error('Error selecting search disambiguation:', error);
+      this.snackBar.open('Fehler beim Hinzufügen des Artikels', '', { duration: 2000 });
+    }
+  }
+  
+  private async addExistingArticleToList(article: any): Promise<void> {
+    if (!this.currentList) return;
+  
+    const updatedArticleIds = [...this.currentList.articleIds];
+    if (!updatedArticleIds.includes(article.id)) {
+      updatedArticleIds.push(article.id);
+    }
+  
+    const updatedItemStates = { ...this.currentList.itemStates };
+    updatedItemStates[article.id] = {
+      articleId: article.id,
+      isChecked: false,
+      amount: article.amount || ''
+    };
+  
+    const success = await this.dataService.updateList(this.currentList.id, {
+      articleIds: updatedArticleIds,
+      itemStates: updatedItemStates
+    }).pipe(take(1)).toPromise();
+  
+    if (success) {
+      this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
+      // ADD: Force clear disambiguation after successful add
+      setTimeout(() => {
+        this.searchDisambiguation$.next(null);
+      }, 100);
+    }
+  }
+  
+  private async createAndAddNewArticle(itemName: string, option: any): Promise<void> {
+    // Create new article with suggested department and icon
+    const articleData = {
+      name: itemName,
+      amount: '',
+      departmentId: option.suggestedDepartmentId || 'miscellaneous',
+      icon: option.icon || '📦'
+    };
+  
+    const newArticle = await this.dataService.createArticle(articleData).pipe(take(1)).toPromise();
+    
+    if (newArticle) {
+      await this.addExistingArticleToList(newArticle);
+    }
+  }
+  
+  onClearSearchDisambiguation(): void {
+    this.searchDisambiguation$.next(null);
   }
 
   private resetToDefaultTheme(): void {
@@ -378,9 +504,14 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         // Auto-switch to show all items
         this.setShoppingFilter('alle');
         this.snackBar.open('Filter auf Alle gestellt', '', { 
-          duration: 2000,
+          duration: 400,
           verticalPosition: 'bottom'
         });
+        
+         // WAIT for filter change, THEN show disambiguation
+        setTimeout(() => {
+          this.handleNoSearchResults(this.searchQuery.trim(), []);
+        }, 100);
       }
     });
   }
@@ -493,6 +624,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   onSearchQueryChange(): void { 
     this.searchQuery$.next(this.searchQuery.trim());
     
+    // Clear disambiguation immediately when search changes
+    this.searchDisambiguation$.next(null);
+    
     // Clear existing auto-switch timer
     if (this.autoSwitchTimer) {
       clearTimeout(this.autoSwitchTimer);
@@ -501,7 +635,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     // Set new timer for 1.5 seconds after user stops typing
     this.autoSwitchTimer = setTimeout(() => {
       this.checkAndAutoSwitchFilter();
-    }, 1500);
+    }, 705);
   }
 
   onCreateNewArticle(): void {
@@ -547,6 +681,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.currentShoppingFilter = filter;
     this.shoppingFilter$.next(filter);
     this.isFabExpanded = false;
+    this.searchDisambiguation$.next(null); // ADD: Clear disambiguation
     this.cdr.detectChanges();
   }
 

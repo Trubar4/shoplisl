@@ -55,6 +55,46 @@
     </mat-form-field>
   </div>
 
+  <!-- Search Disambiguation Results-->
+  <div *ngIf="searchDisambiguation$ | async as disambiguation" class="search-disambiguation">
+    <div class="disambiguation-header">
+      <mat-icon>search</mat-icon>
+      <span>{{ disambiguation.message }}</span>
+      <button mat-icon-button (click)="onClearSearchDisambiguation()" class="clear-button">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <div class="disambiguation-options">
+      <div *ngFor="let option of disambiguation.options" 
+           class="disambiguation-option"
+           (click)="onSelectSearchDisambiguation(option)">
+        
+        <div class="option-icon">
+          <span>{{ option.icon || '📦' }}</span>
+        </div>
+        
+        <div class="option-details">
+          <div class="option-name">{{ option.displayName }}</div>
+          <div class="option-department" *ngIf="option.department">
+            <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag: </span>
+            {{ getDepartmentNameGerman(option.suggestedDepartmentId || option.article?.departmentId || option.department) }}
+          </div>
+          <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
+            {{ option.confidence > 0.9 ? 'Sehr ähnlich' : 'Ähnlich' }}
+          </div>
+        </div>
+        
+        <div class="option-action">
+          <span class="action-hint">
+            {{ option.type === 'existing' ? 'Hinzufügen' : 'Erstellen' }}
+          </span>
+          <mat-icon>add</mat-icon>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Shopping List -->
   <div class="content-container">
     <div class="articles-list" *ngIf="(departmentGroups$ | async)?.length; else emptyShoppingState">
