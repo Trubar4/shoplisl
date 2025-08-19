@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { ArticleOperationsService } from './article-operations.service';
 import { ListOperationsService } from './list-operations.service';
-import { DisambiguationService } from './disambiguation.service';
+import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
 import { AIResponseService } from './ai-response.service';
 import { ContextManagementService } from './context-management.service';
 import { DataService } from '../data.service';
@@ -16,7 +16,7 @@ export class ActionExecutorService {
   constructor(
     private articleOps: ArticleOperationsService,
     private listOps: ListOperationsService,
-    private disambiguation: DisambiguationService,
+    private disambiguation: SimplifiedDisambiguationService,
     private aiResponse: AIResponseService,
     private contextManager: ContextManagementService,
     private dataService: DataService

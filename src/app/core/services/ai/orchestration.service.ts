@@ -16,6 +16,7 @@ import { AICachingService } from './caching.service';
 import { AIErrorHandlerService, ErrorContext } from './error-handler.service';
 import { DepartmentIconMappingService } from './department-icon-mapping.service';
 import { LoggerService } from '../logger.service';
+import { PerformanceMonitorService } from './performance-monitor.service';
 
 export interface OrchestrationConfig {
   enableCaching: boolean;
@@ -58,6 +59,7 @@ export class AIOrchestrationService {
     private cachingService: AICachingService,
     private errorHandler: AIErrorHandlerService,
     private departmentIconMapping: DepartmentIconMappingService,
+    private performanceMonitor: PerformanceMonitorService,
     private logger: LoggerService
   ) {}
 
@@ -74,14 +76,10 @@ export class AIOrchestrationService {
     conversationContext?: EnhancedConversationContext
   ): Promise<AIExecutionResult> {
     const startTime = Date.now();
-    const context: ErrorContext = {
-      operation: 'processItemCompletely',
-      input: { itemName, targetList },
-      timestamp: new Date()
-    };
-  
+    
     try {
       this.metrics.totalOperations++;
+      this.performanceMonitor.startOperation('processItemCompletely');
   
       // Phase 1: Get all AI suggestions in parallel
       const suggestions = await this.getEnhancedSuggestionsParallel(itemName);
@@ -98,12 +96,22 @@ export class AIOrchestrationService {
         result = await this.handleDirectCreationFlow(itemName, suggestions, targetList, conversationContext);
       }
   
-      // Update metrics
+      // Update metrics and performance monitoring
       this.updateMetrics(startTime, true);
+      this.performanceMonitor.endOperation('processItemCompletely', result.success);
+      
       return result;
   
     } catch (error) {
       this.updateMetrics(startTime, false);
+      this.performanceMonitor.endOperation('processItemCompletely', false, false, error instanceof Error ? error.message : 'Unknown error');
+      
+      const context: ErrorContext = {
+        operation: 'processItemCompletely',
+        input: { itemName, targetList },
+        timestamp: new Date()
+      };
+      
       return this.errorHandler.handleAsExecutionResult(error, context);
     }
   }

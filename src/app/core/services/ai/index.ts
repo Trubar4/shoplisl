@@ -7,7 +7,6 @@ export { AIService } from './ai.service';
 // Sub-services
 export { QuantityExtractionService } from './quantity-extraction.service';
 export { CommandParserService } from './command-parser.service';
-export { DisambiguationService } from './disambiguation.service';
 export { AIResponseService } from './ai-response.service';
 
 // All types and interfaces
@@ -20,7 +19,6 @@ export * from './continuation-handling.service';
 export * from './command-processing.service';
 // Keep existing exports
 export * from './ai-response.service';
-export * from './disambiguation.service';
 export * from './quantity-extraction.service';
 export * from './command-parser.service';
 export * from './smart-suggestions.service';

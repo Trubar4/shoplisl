@@ -594,6 +594,13 @@ export class PerformanceDashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Add some test data for debugging
+    this.performanceMonitor.startOperation('test_operation');
+    setTimeout(() => {
+      this.performanceMonitor.endOperation('test_operation', true, false);
+      this.refreshData();
+    }, 100);
+    
     this.refreshData();
     this.startAutoRefresh();
   }

@@ -19,7 +19,7 @@ import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
-import { DisambiguationService } from '../../../core/services/ai/disambiguation.service';
+import { SimplifiedDisambiguationService } from '../../../core/services/ai/simplified-disambiguation.service';
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 
 type ViewMode = 'shopping' | 'edit';
@@ -97,7 +97,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
-    private disambiguationService: DisambiguationService
+    private disambiguationService: SimplifiedDisambiguationService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     

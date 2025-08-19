@@ -44,37 +44,39 @@ export class SimplifiedDisambiguationService {
   // ========================================
 
   async getDisambiguationOptions(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
-    return this.performanceMonitor.withTiming(
-      'getDisambiguationOptions',
-      async () => {
-        const context: ErrorContext = {
-          operation: 'getDisambiguationOptions',
-          input: { itemName, excludeId },
-          timestamp: new Date()
-        };
+    this.performanceMonitor.startOperation('getDisambiguationOptions');
+    
+    try {
+      // Validate input
+      const context: ErrorContext = {
+        operation: 'getDisambiguationOptions',
+        input: { itemName, excludeId },
+        timestamp: new Date()
+      };
   
-        try {
-          this.errorHandler.validateInput(itemName, [
-            ValidationRules.required('itemName'),
-            ValidationRules.minLength('itemName', 1),
-            ValidationRules.maxLength('itemName', 100)
-          ], context);
+      this.errorHandler.validateInput(itemName, [
+        ValidationRules.required('itemName'),
+        ValidationRules.minLength('itemName', 1),
+        ValidationRules.maxLength('itemName', 100)
+      ], context);
   
-          const cacheKey = this.cachingService.createDisambiguationKey(itemName, excludeId);
-          
-          const result = await this.cachingService.getOrSet(
-            cacheKey,
-            () => this.getDisambiguationOptionsFromSource(itemName, excludeId),
-            2 * 60 * 1000 // 2 minutes TTL
-          ).toPromise();
-          
-          return result || [];
-        } catch (error) {
-          console.error('Error in getDisambiguationOptions:', error);
-          return [];
-        }
-      }
-    );
+      const cacheKey = this.cachingService.createDisambiguationKey(itemName, excludeId);
+      
+      const result = await this.cachingService.getOrSet(
+        cacheKey,
+        () => this.getDisambiguationOptionsFromSource(itemName, excludeId),
+        2 * 60 * 1000 // 2 minutes TTL
+      ).toPromise();
+      
+      const finalResult = result || [];
+      this.performanceMonitor.endOperation('getDisambiguationOptions', true, !!result); // Cache hit if result existed
+      return finalResult;
+      
+    } catch (error) {
+      this.performanceMonitor.endOperation('getDisambiguationOptions', false, false, error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error in getDisambiguationOptions:', error);
+      return [];
+    }
   }
   
   private async getDisambiguationOptionsFromSource(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
@@ -105,14 +107,38 @@ export class SimplifiedDisambiguationService {
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
-  
+    this.performanceMonitor.startOperation('handleDisambiguationChoice');
+    
+    try {
+      console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
+      
+      const result = await this.handleDisambiguationChoiceInternal(pendingAction, selectedOption);
+      
+      this.performanceMonitor.endOperation('handleDisambiguationChoice', result.success);
+      return result;
+      
+    } catch (error) {
+      this.performanceMonitor.endOperation('handleDisambiguationChoice', false, false, error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error handling disambiguation choice:', error);
+      
+      return {
+        success: false,
+        message: `❌ Fehler beim Verarbeiten der Auswahl: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      };
+    }
+  }
+
+  private async handleDisambiguationChoiceInternal(
+    pendingAction: PendingAction | MultiItemPendingAction,
+    selectedOption: DisambiguationOption
+  ): Promise<AIExecutionResult> {
+    
     try {
       // Handle SKIP option first
       if (selectedOption.type === 'skip') {
         return this.handleSkipOption(pendingAction, selectedOption);
       }
-
+  
       // Handle list selection for multi-items
       if ((pendingAction as any).type === 'select_list_for_multi_items') {
         return this.handleListSelectionForMultiItems(pendingAction, selectedOption);
@@ -136,11 +162,8 @@ export class SimplifiedDisambiguationService {
       }
   
     } catch (error) {
-      console.error('Error handling disambiguation choice:', error);
-      return {
-        success: false,
-        message: `❌ Fehler beim Verarbeiten der Auswahl: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-      };
+      console.error('Error in handleDisambiguationChoiceInternal:', error);
+      throw error; // Re-throw to be caught by parent method
     }
   }
 

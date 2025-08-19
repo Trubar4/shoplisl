@@ -1,7 +1,8 @@
 // src/app/core/services/ai/multi-item-processor.service.ts
 import { Injectable } from '@angular/core';
 import { QuantityExtractionService } from './quantity-extraction.service';
-import { DisambiguationService } from './disambiguation.service';
+import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
+import { DepartmentIconMappingService } from './department-icon-mapping.service';
 import { ContextManagementService } from './context-management.service';
 import { ListOperationsService } from './list-operations.service';
 import { AIResponseService } from './ai-response.service';
@@ -20,7 +21,8 @@ export class MultiItemProcessorService {
   
   constructor(
     private quantityExtraction: QuantityExtractionService,
-    private disambiguation: DisambiguationService,
+    private disambiguation: SimplifiedDisambiguationService,
+    private departmentIconMapping: DepartmentIconMappingService,
     private contextManager: ContextManagementService,
     private listOps: ListOperationsService,
     private aiResponse: AIResponseService
@@ -206,7 +208,7 @@ export class MultiItemProcessorService {
       listName: targetListName,
       currentItemIndex: 0,
       processedItems: [],
-      suggestedDepartment: this.disambiguation.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
+      suggestedDepartment: this.departmentIconMapping.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
       conversationListId: targetListId,
       confirmedTargetListId: targetListId,
       confirmedTargetListName: targetListName
