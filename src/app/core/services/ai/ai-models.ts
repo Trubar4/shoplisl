@@ -292,8 +292,54 @@ export interface ProcessedItem {
   disambiguationResolved?: boolean;
   skipped?: boolean;
   failed?: boolean;
-  skipReason?: string;
+  skipReason?: SkipReason | string;
   error?: string;
   quantity?: string;
   originalText?: string;
+  addedToList?: boolean;
+  addedToListId?: string;
+  addedToListName?: string;
+}
+
+// Enhanced conversation context types
+export interface ConversationLastAction {
+  type: 'article_added' | 'list_created' | 'multi_items_processed';
+  listId: string;
+  listName: string;
+  articleName: string;
+  timestamp: Date;
+}
+
+export interface ConversationWaitingState {
+  listId: string;
+  listName: string;
+  prompt: string;
+}
+
+export interface EnhancedConversationContext {
+  lastAction?: ConversationLastAction;
+  waitingForArticles?: ConversationWaitingState;
+}
+
+// Target list information
+export interface TargetListInfo {
+  listName?: string;
+  listId?: string;
+}
+
+// Article data for operations
+export interface ArticleOperationData {
+  id?: string;
+  name: string;
+  amount?: string;
+  departmentId?: string;
+  icon?: string;
+}
+
+// Enhanced suggestions result
+export interface EnhancedSuggestions {
+  departmentId: string;
+  icon: string;
+  confidence?: number;
+  source: 'ai' | 'mapping' | 'fallback';
 }

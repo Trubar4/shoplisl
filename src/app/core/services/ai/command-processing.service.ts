@@ -131,7 +131,8 @@ export class CommandProcessingService {
     
     // Check for disambiguation first
     const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(quantityExtraction.itemName);
-    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    const existingOptions = disambiguationOptions.filter((opt: DisambiguationOption) => opt.type === 'existing');
+
     
     if (existingOptions.length > 0) {
       console.log('🗣️ Found existing articles, showing disambiguation');
@@ -267,7 +268,7 @@ export class CommandProcessingService {
     const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(action.itemName);
     console.log('🎯 Disambiguation options:', disambiguationOptions.length);
 
-    const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+    const existingOptions = disambiguationOptions.filter((opt: DisambiguationOption) => opt.type === 'existing');
     
     if (existingOptions.length > 0) {
       console.log('🎯 Found existing options, showing disambiguation');

@@ -10,6 +10,7 @@ import { DepartmentSortComponent } from './features/lists/department-sort/depart
 import { ArticleUploadComponent } from './core/services/article-upload.component';
 import { ListUploadComponent } from './core/services/list-upload.component';
 import { VoiceAIAssistantComponent } from './shared/components/voice-ai-assistant/voice-ai-assistant.component';
+import { PerformanceDashboardComponent } from './features/admin/performance-dashboard/performance-dashboard.component';
 
 
 export const routes: Routes = [
@@ -53,6 +54,10 @@ export const routes: Routes = [
   {
     path: 'admin/upload-list',
     component: ListUploadComponent
+  },
+  {
+    path: 'admin/performance',
+    component: PerformanceDashboardComponent
   },
   {
     path: 'lists/:id/departments',

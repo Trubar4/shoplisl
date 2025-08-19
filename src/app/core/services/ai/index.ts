@@ -45,3 +45,10 @@ export { ArticleOperationsService } from './article-operations.service';
 export { ListOperationsService } from './list-operations.service';
 export { MultiItemProcessorService } from './multi-item-processor.service';
 export { ActionExecutorService } from './action-executor.service';
+
+export * from './department-icon-mapping.service';
+export * from './simplified-disambiguation.service';
+export * from './caching.service';
+export * from './error-handler.service';
+export * from './orchestration.service';
+export * from './performance-monitor.service';

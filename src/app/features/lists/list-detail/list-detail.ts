@@ -20,6 +20,7 @@ import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 import { DisambiguationService } from '../../../core/services/ai/disambiguation.service';
+import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 
 type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
@@ -249,7 +250,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         if (options.length > 0) {
           this.searchDisambiguation$.next({
             query,
-            options: options.filter(opt => opt.type !== 'skip'), // Remove skip options
+            options: options.filter((opt: DisambiguationOption) => opt.type !== 'skip'),
             message: `Für "${query}" wurden ähnliche Artikel gefunden:`
           });
         }
