@@ -1642,6 +1642,23 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     return option.id || index.toString();
   }
 
+
+  async triggerRecovery() {
+    try {
+      const result = await this.aiService.triggerManualRecovery();
+      console.log('🔧 Recovery result:', result);
+      
+      // Optional: Show user feedback (you can integrate with your notification system)
+      if (result.success) {
+        console.log('✅ Recovery successful:', result.actions);
+      } else {
+        console.log('❌ Recovery failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Recovery error:', error);
+    }
+  }
+
   // Make Math available in template
   Math = Math;
 }

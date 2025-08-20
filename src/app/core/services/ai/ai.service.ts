@@ -23,11 +23,17 @@ import { GroqApiService } from './groq-api.service';
 import { ContinuationHandlingService } from './continuation-handling.service';
 import { SmartSuggestionsService } from './smart-suggestions.service';
 import { ConversationContext } from '../../models';
+import { AIOrchestrationService } from './orchestration.service';
+import { CircuitBreakerService } from './circuit-breaker.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AIService {
+  isAIHealthy = true;
+  aiStatusMessage = '🟢 AI Ready';
+  private healthCheckInterval: any;
+
   constructor(
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
@@ -39,9 +45,16 @@ export class AIService {
     private contextManager: ContextManagementService,
     private groqApi: GroqApiService,
     private continuationHandling: ContinuationHandlingService,
-    private smartSuggestions: SmartSuggestionsService
+    private smartSuggestions: SmartSuggestionsService,
+    private circuitBreaker: CircuitBreakerService,
+    private orchestration: AIOrchestrationService
   ) {
     this.validateServiceDependencies();
+    this.startHealthMonitoring();
+
+    if (typeof window !== 'undefined') {
+      (window as any).aiService = this;
+    }
   }
 
   // ========================================
@@ -545,4 +558,207 @@ export class AIService {
   public get aiResponseService(): AIResponseService {
     return this.aiResponse;
   }
+
+// ========================================
+  // HEALTH MONITORING METHODS
+  // ========================================
+
+  private startHealthMonitoring(): void {
+    // Check AI health every 60 seconds
+    this.healthCheckInterval = setInterval(() => {
+      this.checkAIHealth();
+    }, 60000);
+    
+    // Initial health check
+    this.checkAIHealth();
+  }
+
+  private checkAIHealth(): void {
+    try {
+      const metrics = this.circuitBreaker.getAllMetrics();
+      const openCircuits = metrics.filter(m => m.state === 'open').length;
+      const totalCircuits = metrics.length;
+      
+      if (totalCircuits === 0) {
+        // No circuits yet - system starting up
+        this.isAIHealthy = true;
+        this.aiStatusMessage = '🟢 AI Ready';
+        return;
+      }
+      
+      if (openCircuits === 0) {
+        this.isAIHealthy = true;
+        this.aiStatusMessage = '🟢 AI Ready';
+      } else if (openCircuits < totalCircuits / 2) {
+        this.isAIHealthy = true;
+        this.aiStatusMessage = '🟡 AI Limited';
+      } else {
+        this.isAIHealthy = false;
+        this.aiStatusMessage = '🔴 AI Unavailable';
+      }
+      
+      console.log(`🔍 AI Health Check: ${this.aiStatusMessage} (${openCircuits}/${totalCircuits} circuits open)`);
+    } catch (error) {
+      console.warn('Health monitoring error:', error);
+      this.isAIHealthy = true; // Assume healthy if check fails
+      this.aiStatusMessage = '🟢 AI Ready';
+    }
+  }
+
+  // ========================================
+  // PUBLIC API - HEALTH & TESTING
+  // ========================================
+
+  /**
+   * Get current AI system status
+   */
+  getAIStatus(): {
+    isHealthy: boolean;
+    statusMessage: string;
+    hasApiKey: boolean;
+    circuitBreakers: any[];
+  } {
+    return {
+      isHealthy: this.isAIHealthy,
+      statusMessage: this.aiStatusMessage,
+      hasApiKey: this.hasApiKey(),
+      circuitBreakers: this.circuitBreaker.getAllMetrics()
+    };
+  }
+
+  /**
+   * Test circuit breaker functionality
+   */
+  async testCircuitBreaker(): Promise<{
+    success: boolean;
+    message: string;
+    metrics: any[];
+    statusReport: string;
+  }> {
+    console.log('🧪 Testing circuit breaker functionality...');
+    
+    try {
+      // Get current metrics
+      const metrics = this.circuitBreaker.getAllMetrics();
+      
+      // Generate status report
+      const statusReport = this.circuitBreaker.generateStatusReport();
+      
+      // Test a simple service call
+      await this.executeCommand('test');
+      
+      return {
+        success: true,
+        message: '✅ Circuit breaker test completed successfully',
+        metrics,
+        statusReport
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `❌ Circuit breaker test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        metrics: [],
+        statusReport: 'Test failed'
+      };
+    }
+  }
+
+
+/**
+ * Get comprehensive system health report
+ */
+async getSystemHealthReport(): Promise<string> {
+  try {
+    // Since we're using regular orchestration, create a simple report
+    const status = this.getAIStatus();
+    const metrics = this.circuitBreaker.getAllMetrics();
+    
+    let report = `🚀 AI Service Health Report - ${new Date().toLocaleString()}\n`;
+    report += `================================\n\n`;
+    report += `📊 Status: ${status.statusMessage}\n`;
+    report += `🔑 API Key: ${status.hasApiKey ? 'Configured' : 'Not configured'}\n`;
+    report += `🔌 Circuit Breakers: ${metrics.length} active\n\n`;
+    
+    if (metrics.length > 0) {
+      report += `Circuit Details:\n`;
+      for (const metric of metrics) {
+        report += `- ${metric.serviceName}: ${metric.state} (${metric.totalRequests} requests, ${(metric.failureRate * 100).toFixed(1)}% failure rate)\n`;
+      }
+    } else {
+      report += `No circuit breaker metrics available yet.\n`;
+    }
+    
+    return report;
+  } catch (error) {
+    return `❌ Failed to generate health report: ${error instanceof Error ? error.message : 'Unknown error'}`;
+  }
+}
+
+/**
+ * Trigger manual recovery of AI services
+ */
+async triggerManualRecovery(): Promise<{
+  success: boolean;
+  message: string;
+  actions: string[];
+}> {
+  try {
+    const actions: string[] = [];
+    
+    // Reset all circuits
+    const metrics = this.circuitBreaker.getAllMetrics();
+    for (const metric of metrics) {
+      if (metric.state === 'open') {
+        this.circuitBreaker.resetCircuit(metric.serviceName);
+        actions.push(`Reset circuit: ${metric.serviceName}`);
+      }
+    }
+    
+    if (actions.length === 0) {
+      actions.push('No circuits needed resetting');
+    }
+    
+    // Force health check
+    this.checkAIHealth();
+    actions.push('Refreshed health status');
+    
+    return {
+      success: true,
+      message: 'Manual recovery completed successfully',
+      actions
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Manual recovery failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      actions: []
+    };
+  }
+}
+
+  /**
+   * Check if AI services show degradation warning
+   */
+  get showAIWarning(): boolean {
+    return !this.isAIHealthy;
+  }
+
+  /**
+   * Get user-friendly warning message
+   */
+  get aiWarningMessage(): string {
+    if (this.isAIHealthy) return '';
+    
+    return `${this.aiStatusMessage} - Some AI features may be limited. You can still add items manually.`;
+  }
+
+  // ========================================
+  // CLEANUP
+  // ========================================
+  ngOnDestroy(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+  }
+
 }

@@ -17,6 +17,8 @@ import { AIErrorHandlerService, ErrorContext } from './error-handler.service';
 import { DepartmentIconMappingService } from './department-icon-mapping.service';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
+import { CircuitBreakerService } from './circuit-breaker.service';
+
 
 export interface OrchestrationConfig {
   enableCaching: boolean;
@@ -60,7 +62,8 @@ export class AIOrchestrationService {
     private errorHandler: AIErrorHandlerService,
     private departmentIconMapping: DepartmentIconMappingService,
     private performanceMonitor: PerformanceMonitorService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private circuitBreaker: CircuitBreakerService
   ) {}
 
   // ========================================
@@ -75,7 +78,7 @@ export class AIOrchestrationService {
     targetList?: TargetListInfo,
     conversationContext?: EnhancedConversationContext
   ): Promise<AIExecutionResult> {
-    const startTime = Date.now();
+    const startTime = Date.now(); // ADD this line
     
     try {
       this.metrics.totalOperations++;
@@ -106,6 +109,7 @@ export class AIOrchestrationService {
       this.updateMetrics(startTime, false);
       this.performanceMonitor.endOperation('processItemCompletely', false, false, error instanceof Error ? error.message : 'Unknown error');
       
+      // ADD this context definition:
       const context: ErrorContext = {
         operation: 'processItemCompletely',
         input: { itemName, targetList },
@@ -124,13 +128,43 @@ export class AIOrchestrationService {
     targetList?: TargetListInfo,
     progressCallback?: (processed: number, total: number) => void
   ): Promise<AIExecutionResult> {
+    try {
+      const result = await this.circuitBreaker.execute(
+        'multi-item-processing',
+        () => this.processMultipleItemsInternal(items, targetList, progressCallback),
+        () => this.getFallbackMultipleItems(items),
+        {
+          failureThreshold: 5,
+          successThreshold: 3,
+          timeout: 30000,
+          resetTimeout: 60000,
+          retryAttempts: 1,
+          retryDelay: 2000,
+          enableFallback: true,
+          enableMetrics: true
+        }
+      ).toPromise();
+      
+      return result || this.getFallbackMultipleItems(items);
+    } catch (error) {
+      return this.errorHandler.handleMultiItemError(error, items, 0);
+    }
+  }
+  
+  
+  private async processMultipleItemsInternal(
+    items: string[],
+    targetList?: TargetListInfo,
+    progressCallback?: (processed: number, total: number) => void
+  ): Promise<AIExecutionResult> {
+    // MOVE your existing processMultipleItems logic here
     const context: ErrorContext = {
       operation: 'processMultipleItems',
       input: { items, targetList },
       metadata: { itemCount: items.length },
       timestamp: new Date()
     };
-
+  
     try {
       const results: AIExecutionResult[] = [];
       const batchSize = Math.min(this.config.maxConcurrentOperations, items.length);
@@ -162,12 +196,20 @@ export class AIOrchestrationService {
           progressCallback(Math.min(i + batchSize, items.length), items.length);
         }
       }
-
+  
       return this.consolidateMultipleResults(results, items.length);
-
+  
     } catch (error) {
       return this.errorHandler.handleMultiItemError(error, items, 0);
     }
+  }
+  
+  private getFallbackMultipleItems(items: string[]): AIExecutionResult {
+    return {
+      success: false,
+      message: `🔧 Batch processing temporarily unavailable for ${items.length} items.`,
+      suggestedAction: 'Process items individually or try again later.'
+    };
   }
 
   /**

@@ -22,6 +22,7 @@ import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
 import { AIErrorHandlerService, ErrorContext, ValidationRules } from './error-handler.service';
+import { CircuitBreakerService } from './circuit-breaker.service';
 
 @Injectable({
   providedIn: 'root'
@@ -36,18 +37,47 @@ export class SimplifiedDisambiguationService {
     private cachingService: AICachingService,
     private errorHandler: AIErrorHandlerService,
     private performanceMonitor: PerformanceMonitorService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private circuitBreaker: CircuitBreakerService
   ) {}
 
   // ========================================
   // MAIN DISAMBIGUATION METHODS
   // ========================================
 
+
   async getDisambiguationOptions(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
+    try {
+      const result = await this.circuitBreaker.execute(
+        'disambiguation-options',
+        () => this.getDisambiguationOptionsInternal(itemName, excludeId),
+        () => this.getFallbackDisambiguationOptions(itemName),
+        {
+          failureThreshold: 3,
+          successThreshold: 2,
+          timeout: 8000,
+          resetTimeout: 20000,
+          retryAttempts: 2,
+          retryDelay: 500,
+          enableFallback: true,
+          enableMetrics: true
+        }
+      ).toPromise();
+      
+      // Ensure we always return an array
+      return result || [];
+    } catch (error) {
+      this.logger.error('ai', 'Circuit breaker execution failed', error);
+      return this.getFallbackDisambiguationOptions(itemName);
+    }
+  }
+
+  private async getDisambiguationOptionsInternal(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
+    // MOVE your existing getDisambiguationOptions logic here
+    // This is what you currently have in getDisambiguationOptions
     this.performanceMonitor.startOperation('getDisambiguationOptions');
     
     try {
-      // Validate input
       const context: ErrorContext = {
         operation: 'getDisambiguationOptions',
         input: { itemName, excludeId },
@@ -65,11 +95,11 @@ export class SimplifiedDisambiguationService {
       const result = await this.cachingService.getOrSet(
         cacheKey,
         () => this.getDisambiguationOptionsFromSource(itemName, excludeId),
-        2 * 60 * 1000 // 2 minutes TTL
+        2 * 60 * 1000
       ).toPromise();
       
       const finalResult = result || [];
-      this.performanceMonitor.endOperation('getDisambiguationOptions', true, !!result); // Cache hit if result existed
+      this.performanceMonitor.endOperation('getDisambiguationOptions', true, !!result);
       return finalResult;
       
     } catch (error) {
@@ -77,6 +107,26 @@ export class SimplifiedDisambiguationService {
       console.error('Error in getDisambiguationOptions:', error);
       return [];
     }
+  }
+
+  private getFallbackDisambiguationOptions(itemName: string): DisambiguationOption[] {
+    this.logger.info('ai', `Using fallback disambiguation options for: ${itemName}`);
+    
+    // Basic fallback - always offer to create new
+    const departmentId = this.departmentIconMapping.suggestDepartment(itemName);
+    const icon = this.departmentIconMapping.suggestIcon(itemName);
+    const departmentName = this.departmentService.getDepartmentName(departmentId, 'german');
+    
+    return [{
+      id: 'new_article_fallback',
+      displayName: `"${itemName}" (neu erstellen)`,
+      type: 'new',
+      confidence: 0.5, // Lower confidence for fallback
+      icon: icon,
+      department: departmentName,
+      suggestedDepartmentId: departmentId,
+      preview: `${departmentName} ${icon} (Fallback)`
+    }];
   }
   
   private async getDisambiguationOptionsFromSource(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
@@ -107,12 +157,43 @@ export class SimplifiedDisambiguationService {
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
+    try {
+      const result = await this.circuitBreaker.execute(
+        'disambiguation-choice',
+        () => this.handleDisambiguationChoiceInternal(pendingAction, selectedOption),
+        () => this.getFallbackExecutionResult(pendingAction, selectedOption),
+        {
+          failureThreshold: 3,
+          successThreshold: 2,
+          timeout: 10000,
+          resetTimeout: 20000,
+          retryAttempts: 2,
+          retryDelay: 500,
+          enableFallback: true,
+          enableMetrics: true
+        }
+      ).toPromise();
+      
+      // Ensure we always return a result
+      return result || this.getFallbackExecutionResult(pendingAction, selectedOption);
+    } catch (error) {
+      this.logger.error('ai', 'Circuit breaker execution failed', error);
+      return this.getFallbackExecutionResult(pendingAction, selectedOption);
+    }
+  }
+
+  private async handleDisambiguationChoiceInternal(
+    pendingAction: PendingAction | MultiItemPendingAction,
+    selectedOption: DisambiguationOption
+  ): Promise<AIExecutionResult> {
+    // MOVE your existing handleDisambiguationChoice logic here
+    // This is what you currently have in handleDisambiguationChoice
     this.performanceMonitor.startOperation('handleDisambiguationChoice');
     
     try {
       console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
       
-      const result = await this.handleDisambiguationChoiceInternal(pendingAction, selectedOption);
+      const result = await this.handleDisambiguationChoiceOriginal(pendingAction, selectedOption);
       
       this.performanceMonitor.endOperation('handleDisambiguationChoice', result.success);
       return result;
@@ -128,11 +209,11 @@ export class SimplifiedDisambiguationService {
     }
   }
 
-  private async handleDisambiguationChoiceInternal(
+  private async handleDisambiguationChoiceOriginal(
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    
+    // PASTE your existing handleDisambiguationChoice implementation here
     try {
       // Handle SKIP option first
       if (selectedOption.type === 'skip') {
@@ -162,9 +243,22 @@ export class SimplifiedDisambiguationService {
       }
   
     } catch (error) {
-      console.error('Error in handleDisambiguationChoiceInternal:', error);
-      throw error; // Re-throw to be caught by parent method
+      console.error('Error in handleDisambiguationChoiceOriginal:', error);
+      throw error;
     }
+  }
+  
+  private getFallbackExecutionResult(
+    pendingAction: PendingAction | MultiItemPendingAction,
+    selectedOption: DisambiguationOption
+  ): AIExecutionResult {
+    this.logger.warn('ai', 'Using fallback execution result');
+    
+    return {
+      success: false,
+      message: '🔧 Service temporarily unavailable. Please try again in a moment.',
+      suggestedAction: 'Retry your request or use manual article creation.'
+    };
   }
 
   // ========================================

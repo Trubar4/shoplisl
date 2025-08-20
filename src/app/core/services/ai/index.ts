@@ -50,3 +50,7 @@ export * from './caching.service';
 export * from './error-handler.service';
 export * from './orchestration.service';
 export * from './performance-monitor.service';
+
+// Add only this line to index.ts:
+export { CircuitBreakerService } from './circuit-breaker.service';
+export type { CircuitState, CircuitBreakerConfig, CircuitBreakerMetrics } from './circuit-breaker.service';

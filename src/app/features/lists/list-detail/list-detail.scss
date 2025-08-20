@@ -158,6 +158,7 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      position: relative; 
 
       .article-header {
         display: flex;
@@ -172,6 +173,9 @@
 
           &.strikethrough {
             text-decoration: line-through;
+            text-decoration-color: #e53e3e; // Red color
+            text-decoration-thickness: 2px;
+            transition: text-decoration 0.3s ease;
           }
         }
       }
@@ -180,10 +184,6 @@
         font-size: 14px;
         color: #757575;
         line-height: 1.4;
-
-        &.strikethrough {
-          text-decoration: line-through;
-        }
       }
     }
 
@@ -192,6 +192,13 @@
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+
+      &.hidden-by-undo {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
 
       .article-amount {
         background-color: var(--list-primary-color, #1a9edb);
@@ -229,10 +236,6 @@
           background-color: #e0e0e0;
           color: #757575;
           cursor: default;
-        }
-
-        &.strikethrough {
-          text-decoration: line-through;
         }
       }
 
@@ -1204,5 +1207,168 @@
     }
   }
 }
+
+// Progressive completion states
+.article-item {
+  transition: opacity 0.3s ease, background-color 0.3s ease;
+
+  // Pending hide state - dimmed but interactive
+  &.pending-hide {
+    background-color: #f8f9fa;
+    opacity: 0.8;
+    cursor: pointer;
+    
+    .article-content {
+      position: relative;
+    }
+    
+    // Highlight that it's interactive
+    &:hover {
+      background-color: #f0f0f0;
+      opacity: 0.9;
+    }
+  }
+
+  // Fade out animation for items leaving view
+  &.fade-out {
+    opacity: 0;
+    transform: translateX(-10px);
+    pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  // Immediate strikethrough for checked items
+  .strikethrough {
+    text-decoration: line-through;
+    text-decoration-color: #666;
+    text-decoration-thickness: 2px;
+    transition: text-decoration 0.3s ease;
+  }
+
+  // Animated strikethrough for pending items
+  &.pending-strikethrough {
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 2px;
+      background-color: #e53e3e; // Red color
+      transform: translateY(-50%) scaleX(0);
+      transform-origin: left;
+      animation: strikethroughExpand 2s ease forwards; // 2 seconds duration
+      box-shadow: 0 0 1px rgba(229, 62, 62, 0.5); // Subtle glow
+    }
+  }
+
+  .undo-hint-button {
+    margin-top: 6px;
+    padding: 4px 12px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    background-color: white !important;
+    border: 1.5px solid var(--list-primary-color, #1a9edb) !important;
+    border-radius: 16px !important;
+    font-size: 12px !important;
+    color: var(--list-primary-color, #1a9edb) !important;
+    font-weight: 500 !important;
+    animation: fadeInUp 0.3s ease;
+    opacity: 1 !important; // Override any fading effects
+    align-self: flex-start;
+    
+    // Ensure button stays visible
+    .pending-hide & {
+      opacity: 1 !important;
+      background-color: white !important;
+    }
+  
+    .undo-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+      margin-right: 4px !important;
+    }
+  
+    span {
+      font-weight: 500;
+      white-space: nowrap;
+    }
+  
+    &:hover {
+      background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.1) !important;
+      transform: scale(1.02);
+      box-shadow: 0 2px 8px rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.3);
+    }
+  }
+
+}
+
+// Animations
+@keyframes strikethroughExpand {
+  0% {
+    transform: translateY(-50%) scaleX(0);
+    opacity: 0.8;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50%) scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  20%, 80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
+// Enhanced checked state (for items no longer pending)
+.shopping-mode .article-item {
+  &.checked:not(.pending-hide) {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+    
+    .article-content {
+      opacity: 0.5;
+    }
+  }
+
+  // Make pending items more prominent than fully checked items
+  &.pending-hide {
+    background-color: #fff3cd; // Slightly yellow background
+    border-left: 3px solid var(--list-primary-color, #1a9edb);
+    
+    .article-content {
+      opacity: 0.85;
+    }
+  }
+}
+
+
 
 }

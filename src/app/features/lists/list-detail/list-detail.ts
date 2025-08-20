@@ -21,14 +21,14 @@ import { DepartmentService } from '../../../core/services/department.service';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 import { SimplifiedDisambiguationService } from '../../../core/services/ai/simplified-disambiguation.service';
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
-type ViewMode = 'shopping' | 'edit';
-type ShoppingFilter = 'alle' | 'offen' | 'erledigt';
-type EditFilter = 'alle' | 'gelistet' | 'fehlend';
 
 interface ArticleWithState extends Article {
   isChecked: boolean;
   isInList: boolean;
+  pendingHideTimestamp?: number;
+  showUndoHint?: boolean;
 }
 
 interface ArticleWithToggleAndAmount extends Article {
@@ -46,6 +46,7 @@ interface DepartmentGroupEdit {
   articles: ArticleWithToggleAndAmount[];
 }
 
+
 @Component({
   selector: 'app-list-detail',
   standalone: true,
@@ -55,22 +56,39 @@ interface DepartmentGroupEdit {
     MatSnackBarModule, MatSlideToggleModule, MatTooltipModule, MatDialogModule
   ],
   templateUrl: './list-detail.html',
-  styleUrls: ['./list-detail.scss']
+  styleUrls: ['./list-detail.scss'],
+  animations: [
+    trigger('slideInOut', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(10px)' }),
+        animate('300ms ease', style({ opacity: 1, transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('300ms ease', style({ opacity: 0, transform: 'translateY(-5px)' }))
+      ])
+    ])
+  ]
 })
 export class ListDetailComponent implements OnInit, OnDestroy {
+  
+  currentMode: any = 'shopping';
+  currentShoppingFilter: any = 'offen'; 
+  currentEditFilter: any = 'alle';
+
   listId: string = '';
   list$!: Observable<ShoppingList | undefined>;
   departmentGroups$!: Observable<DepartmentGroup[]>;
   departmentGroupsEdit$!: Observable<DepartmentGroupEdit[]>;
   
-  currentMode: ViewMode = 'shopping';
-  currentShoppingFilter: ShoppingFilter = 'offen';
-  currentEditFilter: EditFilter = 'alle';
-  private shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('offen');
-  private editFilter$ = new BehaviorSubject<EditFilter>('alle');
+  private shoppingFilter$ = new BehaviorSubject<any>('offen');
+  private editFilter$ = new BehaviorSubject<any>('alle');
   private allListArticles$!: Observable<ArticleWithState[]>;
   private celebrationTimeout?: any;
   private autoSwitchTimer?: any;
+
+  private pendingHideTimer?: any; // NEW: Timer for checking expired items
+  private readonly HIDE_DELAY_MS = 5000; // NEW: 5 second delay
+  private undoHintTimeouts = new Map<string, any>(); // NEW: Track undo hint timers
   
   isFabExpanded = false;
   listArticles$!: Observable<ArticleWithState[]>;
@@ -88,6 +106,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   searchDisambiguation$ = new BehaviorSubject<any>(null);
   private searchDisambiguationTimeout?: any;
+
+  private pendingStates$ = new BehaviorSubject<Record<string, {
+    pendingHideTimestamp?: number;
+    showUndoHint?: boolean;
+  }>>({}); // Record = { [articleId]: { pendingState } }
+
 
   constructor(
     private route: ActivatedRoute,
@@ -109,34 +133,50 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.setupCompletionMonitoring();
     
     this.listArticles$ = combineLatest([
-      this.list$, this.dataService.getArticles(), 
+      this.list$, 
+      this.dataService.getArticles(), 
       this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
-      this.shoppingFilter$
+      this.shoppingFilter$,
+      this.pendingStates$ // ADD: Reactive pending states
     ]).pipe(
-      map(([list, articles, query, filter]) => {
+      map(([list, articles, query, filter, pendingStates]) => {
         if (!list) return [];
         
         let filteredArticles = articles
           .filter(article => list.articleIds.includes(article.id))
-          .map(article => ({
-            ...article,
-            isChecked: list.itemStates[article.id]?.isChecked || false,
-            isInList: true
-          }));
-
+          .map(article => {
+            // Get pending state from reactive source
+            const pendingState = pendingStates[article.id] || {};
+            
+            return {
+              ...article,
+              isChecked: list.itemStates[article.id]?.isChecked || false,
+              isInList: true,
+              // Reactive pending states
+              pendingHideTimestamp: pendingState.pendingHideTimestamp,
+              showUndoHint: pendingState.showUndoHint
+            } as ArticleWithState;
+          });
+    
         if (query?.trim()) {
           filteredArticles = filteredArticles.filter(article =>
             article.name.toLowerCase().includes(query.toLowerCase()) ||
             (article.notes && article.notes.toLowerCase().includes(query.toLowerCase()))
           );
         }
-
+    
         filteredArticles = filteredArticles.sort((a, b) => a.name.localeCompare(b.name));
-
+    
         switch (filter) {
-          case 'offen': return filteredArticles.filter(article => !article.isChecked);
-          case 'erledigt': return filteredArticles.filter(article => article.isChecked);
-          default: return filteredArticles;
+          case 'offen': 
+            return filteredArticles.filter(article => 
+              !article.isChecked || 
+              (article.isChecked && article.pendingHideTimestamp)
+            );
+          case 'erledigt': 
+            return filteredArticles.filter(article => article.isChecked);
+          default: 
+            return filteredArticles;
         }
       })
     );
@@ -206,6 +246,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    
+    // Clean up timers
+    if (this.pendingHideTimer) {
+      clearInterval(this.pendingHideTimer);
+    }
+    
+    // Clean up timeouts
+    this.undoHintTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.undoHintTimeouts.clear();
+    
+    // Complete subjects
+    this.pendingStates$.complete();
+    this.searchQuery$.complete();
+    this.shoppingFilter$.complete();
+    this.editFilter$.complete();
+
     // Only reset theme if we're not navigating to another list
     const currentUrl = this.router.url;
     if (!currentUrl.includes('/lists/') || currentUrl === '/lists') {
@@ -562,28 +618,26 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     return Math.floor((r + g + b) / 3 / 255 * 360);
   }
 
-  onArticleToggle(article: any): void {
-    console.log('🔍 Toggling article:', article.name);
+  onArticleToggle(article: ArticleWithState): void {
+    console.log('🔍 Toggle clicked:', article.name, 'isChecked:', article.isChecked, 'pending:', article.pendingHideTimestamp);
+    
+    if (article.isChecked && article.pendingHideTimestamp) {
+      console.log('🔄 UNDO detected');
+      this.undoArticleCompletion(article);
+      return;
+    }
     
     this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
       next: (success) => { 
         if (success) {
-          console.log('✅ Toggle successful, checking for completion...');
-          this.triggerChangeDetection();
+          console.log('✅ Toggle successful, article.isChecked should now be:', !article.isChecked);
           
-          // Use multiple methods to ensure detection
-          setTimeout(() => {
-            console.log('🔍 Running completion checks...');
-            
-            // Method 1: Unfiltered articles
-            this.checkCompletionAfterToggle();
-            
-            // Method 2: Direct list state check (fallback)
-            setTimeout(() => {
-              this.checkCompletionDirectly();
-            }, 100);
-            
-          }, 200);
+          if (!article.isChecked) { // This will be the NEW state after toggle
+            console.log('📝 Starting pending hide process');
+            this.startPendingHide(article);
+          }
+          
+          this.triggerChangeDetection();
         }
       },
       error: (error) => console.error('❌ Toggle error:', error)
@@ -678,15 +732,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.onEditAmount(article);
   }
 
-  setShoppingFilter(filter: ShoppingFilter): void {
+  setShoppingFilter(filter: any): void {
     this.currentShoppingFilter = filter;
     this.shoppingFilter$.next(filter);
     this.isFabExpanded = false;
-    this.searchDisambiguation$.next(null); // ADD: Clear disambiguation
+    this.searchDisambiguation$.next(null);
     this.cdr.detectChanges();
   }
-
-  setEditFilter(filter: EditFilter): void {
+  
+  setEditFilter(filter: any): void {
     this.currentEditFilter = filter;
     this.editFilter$.next(filter);
     this.isFabExpanded = false;
@@ -874,6 +928,97 @@ closeCelebrationAnimation(): void {
   }
   this.showCelebrationAnimation = false;
   this.cdr.detectChanges();
+}
+
+private startPendingHide(article: ArticleWithState): void {
+  const now = Date.now();
+  const hideTime = now + this.HIDE_DELAY_MS; // Still 5 seconds
+  
+  console.log('⏰ Starting pending hide for:', article.name);
+  
+  // Update reactive state
+  const currentStates = this.pendingStates$.value;
+  this.pendingStates$.next({
+    ...currentStates,
+    [article.id]: {
+      pendingHideTimestamp: hideTime,
+      showUndoHint: true
+    }
+  });
+  
+  // Clear any existing timeouts
+  this.clearTimeoutsForArticle(article.id);
+  
+  // SINGLE timeout: Hide undo button AND remove article after 5 seconds
+  const completeTimeout = setTimeout(() => {
+    console.log('⏰ Hiding undo button and removing article after 5s:', article.name);
+    this.removePendingState(article.id);
+  }, this.HIDE_DELAY_MS); // 5 seconds
+  
+  // Store only one timeout
+  this.undoHintTimeouts.set(article.id, completeTimeout);
+}
+
+private updatePendingState(articleId: string, updates: Partial<{pendingHideTimestamp?: number; showUndoHint?: boolean}>): void {
+  const currentStates = this.pendingStates$.value;
+  const currentArticleState = currentStates[articleId] || {};
+  
+  this.pendingStates$.next({
+    ...currentStates,
+    [articleId]: {
+      ...currentArticleState,
+      ...updates
+    }
+  });
+}
+
+private removePendingState(articleId: string): void {
+  const currentStates = this.pendingStates$.value;
+  const { [articleId]: removed, ...remaining } = currentStates;
+  
+  this.pendingStates$.next(remaining);
+  this.clearTimeoutsForArticle(articleId);
+  this.checkCompletionAfterToggle();
+}
+
+private clearTimeoutsForArticle(articleId: string): void {
+  const timeout = this.undoHintTimeouts.get(articleId);
+  if (timeout) {
+    clearTimeout(timeout);
+    this.undoHintTimeouts.delete(articleId);
+  }
+}
+
+private processSingleExpiredItem(articleId: string): void {
+  console.log('🗑️ Processing expired item:', articleId);
+  
+  // Use the new reactive approach
+  this.removePendingState(articleId);
+}
+
+undoArticleCompletion(article: ArticleWithState): void {
+  console.log('🔄 Undoing completion for:', article.name);
+  
+  // Remove from reactive state (this also clears the timeout)
+  this.removePendingState(article.id);
+  
+  // Toggle the item back to unchecked
+  this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+    next: (success) => {
+      if (success) {
+        console.log('✅ Undo successful for:', article.name);
+      }
+    },
+    error: (error) => console.error('❌ Undo error:', error)
+  });
+}
+
+
+shouldHideArticle(article: ArticleWithState): boolean {
+  // Only hide in 'offen' filter when item is checked and not pending
+  return this.currentShoppingFilter === 'offen' && 
+         article.isChecked && 
+         !article.pendingHideTimestamp;
 }
 
 }

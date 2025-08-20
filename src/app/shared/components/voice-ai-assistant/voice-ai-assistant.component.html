@@ -1,3 +1,8 @@
+<div *ngIf="aiService.showAIWarning" class="ai-status-warning" 
+     style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px 12px; margin-bottom: 16px; border-radius: 4px; color: #856404;">
+  ⚠️ {{ aiService.aiWarningMessage }}
+</div>
+
 <div class="voice-ai-assistant">
   <!-- Header with navigation and stats -->
   <mat-toolbar color="primary" class="app-toolbar">
