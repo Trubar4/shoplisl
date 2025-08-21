@@ -10,7 +10,7 @@
     </div>
     <span class="spacer"></span>
     
-    <!-- Simple Mode Toggle Buttons -->
+    <!-- Mode Toggle Buttons -->
     <div class="mode-toggle">
       <button 
         mat-button 
@@ -29,165 +29,162 @@
     </div>
   </mat-toolbar>
 
-  <!-- Loading -->
+  <!-- Loading State -->
   <div *ngIf="isLoading" class="loading">
     <p>Liste wird geladen...</p>
   </div>
 
   <!-- SHOPPING MODE -->
-<div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
-  <!-- Search Field -->
-  <div class="search-container">
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Artikel suchen</mat-label>
-      <input 
-        matInput 
-        [(ngModel)]="searchQuery"
-        (input)="onSearchQueryChange()"
-        placeholder="Artikel suchen...">
-      @if (searchQuery) {
-        <button matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
+  <div *ngIf="!isLoading && currentMode === 'shopping'" class="shopping-mode">
+    <!-- Search Field -->
+    <div class="search-container">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Artikel suchen</mat-label>
+        <input 
+          matInput 
+          [(ngModel)]="searchQuery"
+          (input)="onSearchQueryChange()"
+          placeholder="Artikel suchen...">
+        <button *ngIf="searchQuery" matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
           <mat-icon>close</mat-icon>
         </button>
-      } @else {
-        <mat-icon matSuffix>search</mat-icon>
-      }
-    </mat-form-field>
-  </div>
-
-  <!-- Search Disambiguation Results-->
-  <div *ngIf="searchDisambiguation$ | async as disambiguation" class="search-disambiguation">
-    <div class="disambiguation-header">
-      <mat-icon>search</mat-icon>
-      <span>{{ disambiguation.message }}</span>
-      <button mat-icon-button (click)="onClearSearchDisambiguation()" class="clear-button">
-        <mat-icon>close</mat-icon>
-      </button>
+        <mat-icon *ngIf="!searchQuery" matSuffix>search</mat-icon>
+      </mat-form-field>
     </div>
-    
-    <div class="disambiguation-options">
-      <div *ngFor="let option of disambiguation.options" 
-           class="disambiguation-option"
-           (click)="onSelectSearchDisambiguation(option)">
-        
-        <div class="option-icon">
-          <span>{{ option.icon || '📦' }}</span>
-        </div>
-        
-        <div class="option-details">
-          <div class="option-name">{{ option.displayName }}</div>
-          <div class="option-department" *ngIf="option.department">
-            <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag: </span>
-            {{ getDepartmentNameGerman(option.suggestedDepartmentId || option.article?.departmentId || option.department) }}
+
+    <!-- Search Disambiguation Results -->
+    <div *ngIf="searchDisambiguation$ | async as disambiguation" class="search-disambiguation">
+      <div class="disambiguation-header">
+        <mat-icon>search</mat-icon>
+        <span>{{ disambiguation.message }}</span>
+        <button mat-icon-button (click)="onClearSearchDisambiguation()" class="clear-button">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      
+      <div class="disambiguation-options">
+        <div *ngFor="let option of disambiguation.options" 
+             class="disambiguation-option"
+             (click)="onSelectSearchDisambiguation(option)">
+          
+          <div class="option-icon">
+            <span>{{ option.icon || '📦' }}</span>
           </div>
-          <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
-            {{ option.confidence > 0.9 ? 'Sehr ähnlich' : 'Ähnlich' }}
+          
+          <div class="option-details">
+            <div class="option-name">{{ option.displayName }}</div>
+            <div class="option-department" *ngIf="option.department">
+              <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag: </span>
+              {{ getDepartmentNameGerman(option.suggestedDepartmentId || option.article?.departmentId || option.department) }}
+            </div>
+            <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
+              {{ option.confidence > 0.9 ? 'Sehr ähnlich' : 'Ähnlich' }}
+            </div>
+          </div>
+          
+          <div class="option-action">
+            <span class="action-hint">
+              {{ option.type === 'existing' ? 'Hinzufügen' : 'Erstellen' }}
+            </span>
+            <mat-icon>add</mat-icon>
           </div>
         </div>
-        
-        <div class="option-action">
-          <span class="action-hint">
-            {{ option.type === 'existing' ? 'Hinzufügen' : 'Erstellen' }}
-          </span>
-          <mat-icon>add</mat-icon>
+      </div>
+    </div>
+
+    <!-- Shopping List Content -->
+    <div class="content-container">
+      <div class="articles-list" *ngIf="(departmentGroups$ | async)?.length">
+        <!-- Department Groups -->
+        <div *ngFor="let group of departmentGroups$ | async" class="department-group">
+          <!-- Articles in Department -->
+          <div 
+            *ngFor="let article of group.articles; let i = index" 
+            class="article-item"
+            [class.checked]="article.isChecked && !article.pendingHideTimestamp"
+            [class.pending-hide]="article.pendingHideTimestamp"
+            [class.fade-out]="article.isChecked && !article.pendingHideTimestamp && shouldHideArticle(article)"
+            [class.first-in-group]="i === 0">
+            
+            <!-- Department Icon (only for first article) -->
+            <div class="department-icon" *ngIf="i === 0">
+              <img [src]="getDepartmentIconPath(group.department.id)" 
+                   [alt]="group.department.nameGerman"
+                   [style.filter]="getDepartmentIconFilter()"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+              <span class="fallback-icon" [style.color]="getCurrentListColor()" style="display: none;">🏪</span>
+            </div>
+            
+            <!-- Article Icon -->
+            <div class="article-icon">
+              {{ article.icon || '📦' }}
+            </div>
+            
+            <!-- Article Content (Clickable for toggle) -->
+            <div class="article-content" (click)="onArticleToggle(article)">
+              <div class="article-header">
+                <span class="article-name" 
+                      [class.strikethrough]="article.isChecked"
+                      [class.pending-strikethrough]="article.pendingHideTimestamp">
+                  {{ article.name }}
+                </span>
+              </div>
+              
+              <!-- Notes -->
+              <div class="article-notes" *ngIf="article.notes">
+                {{ article.notes }}
+              </div>
+              
+              <!-- Undo hint positioned above actions -->
+              <button class="undo-hint-button" 
+                      *ngIf="article.showUndoHint"
+                      (click)="undoArticleCompletion(article); $event.stopPropagation()"
+                      mat-stroked-button>
+                <mat-icon class="undo-icon">undo</mat-icon>
+                <span>Rückgängig</span>
+              </button>
+            </div>
+
+            <!-- Amount and Info Button Row -->
+            <div class="article-actions" [class.hidden-by-undo]="article.showUndoHint">
+              <!-- Amount -->
+              <span class="article-amount clickable" 
+                    *ngIf="getArticleAmount(article)" 
+                    (click)="onEditAmountInShopping(article, $event)">
+                {{ getArticleAmount(article) }}
+              </span>
+              <!-- Empty Amount Chip -->
+              <span class="article-amount clickable empty" 
+                    *ngIf="!getArticleAmount(article)" 
+                    (click)="onEditAmountInShopping(article, $event)">
+                Menge
+              </span>
+              
+              <!-- Info Button -->
+              <button 
+                mat-icon-button 
+                (click)="onArticleInfo(article)"
+                class="info-button">
+                <mat-icon>info_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="!(departmentGroups$ | async)?.length">
+          <mat-icon class="empty-icon">shopping_cart</mat-icon>
+          <h3>Keine Artikel gefunden</h3>
+          <p *ngIf="searchQuery; else noItemsMessage">
+            Kein Artikel gefunden für "{{ searchQuery }}"
+          </p>
+          <ng-template #noItemsMessage>
+            <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
+          </ng-template>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- Shopping List -->
-  <div class="content-container">
-    <div class="articles-list" *ngIf="(departmentGroups$ | async)?.length">
-
-      <!-- Department Groups -->
-      <div *ngFor="let group of departmentGroups$ | async" class="department-group">
-        <!-- Articles in Department -->
-        <div 
-        *ngFor="let article of group.articles; let i = index" 
-        class="article-item"
-        [class.checked]="article.isChecked && !article.pendingHideTimestamp"
-        [class.pending-hide]="article.pendingHideTimestamp"
-        [class.fade-out]="article.isChecked && !article.pendingHideTimestamp && shouldHideArticle(article)"
-        [class.first-in-group]="i === 0">
-        
-        <!-- Department Icon (only for first article) -->
-        <div class="department-icon" *ngIf="i === 0">
-          <img [src]="getDepartmentIconPath(group.department.id)" 
-               [alt]="group.department.nameGerman"
-               [style.filter]="getDepartmentIconFilter()"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-          <span class="fallback-icon" [style.color]="getCurrentListColor()" style="display: none;">🏪</span>
-        </div>
-        
-        <!-- Article Icon -->
-        <div class="article-icon">
-          {{ article.icon || '📦' }}
-        </div>
-        
-        <!-- Article Content (Clickable for toggle) -->
-        <div class="article-content" (click)="onArticleToggle(article)">
-          <div class="article-header">
-            <span class="article-name" 
-                  [class.strikethrough]="article.isChecked"
-                  [class.pending-strikethrough]="article.pendingHideTimestamp">
-              {{ article.name }}
-            </span>
-          </div>
-          
-          <!-- Notes - NO strikethrough classes -->
-          <div class="article-notes" *ngIf="article.notes">
-            {{ article.notes }}
-          </div>
-          
-          <!-- NEW: Undo hint positioned above actions -->
-          <button class="undo-hint-button" 
-                  *ngIf="article.showUndoHint"
-                  (click)="undoArticleCompletion(article); $event.stopPropagation()"
-                  mat-stroked-button>
-            <mat-icon class="undo-icon">undo</mat-icon>
-            <span>Rückgängig</span>
-          </button>
-        </div>
-
-        <!-- Amount and Info Button Row - will be hidden when undo button shows -->
-        <div class="article-actions" [class.hidden-by-undo]="article.showUndoHint">
-          <!-- Amount - NO strikethrough classes -->
-          <span class="article-amount clickable" 
-                *ngIf="getArticleAmount(article)" 
-                (click)="onEditAmountInShopping(article, $event)">
-            {{ getArticleAmount(article) }}
-          </span>
-          <!-- Empty Amount Chip - NO strikethrough classes -->
-          <span class="article-amount clickable empty" 
-                *ngIf="!getArticleAmount(article)" 
-                (click)="onEditAmountInShopping(article, $event)">
-            Menge
-          </span>
-          
-          <!-- Info Button -->
-          <button 
-            mat-icon-button 
-            (click)="onArticleInfo(article)"
-            class="info-button">
-            <mat-icon>info_outline</mat-icon>
-          </button>
-        </div>
-    </div>
-
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="!(departmentGroups$ | async)?.length">
-      <mat-icon class="empty-icon">shopping_cart</mat-icon>
-      <h3>Keine Artikel gefunden</h3>
-      <p *ngIf="searchQuery; else noItemsMessage">
-        Kein Artikel gefunden für "{{ searchQuery }}"
-      </p>
-      <ng-template #noItemsMessage>
-        <p>Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen</p>
-      </ng-template>
-    </div>
-
-  </div>
-</div>
 
   <!-- EDIT MODE -->
   <div *ngIf="!isLoading && currentMode === 'edit'" class="edit-mode">
@@ -200,13 +197,10 @@
           [(ngModel)]="searchQuery"
           (input)="onSearchQueryChange()"
           placeholder="Artikel suchen...">
-        @if (searchQuery) {
-          <button matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
-            <mat-icon>close</mat-icon>
-          </button>
-        } @else {
-          <mat-icon matSuffix>search</mat-icon>
-        }
+        <button *ngIf="searchQuery" matSuffix matIconButton aria-label="Clear" (click)="searchQuery=''; onSearchQueryChange()">
+          <mat-icon>close</mat-icon>
+        </button>
+        <mat-icon *ngIf="!searchQuery" matSuffix>search</mat-icon>
       </mat-form-field>
     </div>
 
@@ -222,7 +216,6 @@
         Neuer Artikel
       </button>
       
-      <!-- NEW: Department Sort Button -->
       <button 
         mat-stroked-button 
         (click)="onDepartmentSort()"
@@ -236,88 +229,87 @@
 
     <!-- Content Container for Articles -->
     <div class="content-container">
-        <!-- All Articles with Toggle -->
-        <div class="all-articles">
-          <!-- Department Groups -->
-          <div *ngFor="let group of departmentGroupsEdit$ | async" class="department-group">
-            <!-- Articles in Department -->
-            <div 
-              *ngFor="let article of group.articles; let i = index" 
-              class="article-item"
-              [class.in-list]="article.isInList"
-              [class.first-in-group]="i === 0">
-              
-              <!-- Department Icon (only for first article) -->
-              <div class="department-icon" *ngIf="i === 0">
-                <img [src]="getDepartmentIconPath(group.department.id)" 
-                    [alt]="group.department.nameGerman"
-                    [style.filter]="getDepartmentIconFilter()"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                <span class="fallback-icon" [style.color]="getCurrentListColor()" style="display: none;">🏪</span>
-              </div>
-              
-              <!-- Article Icon -->
-              <div class="article-icon">
-                {{ article.icon || '📦' }}
-              </div>
-              
-              <!-- Article Content -->
-              <div class="article-content">
-                <div class="article-header">
-                  <span class="article-name">{{ article.name }}</span>
-                </div>
-                
-                <div class="article-notes" *ngIf="article.notes">
-                  {{ article.notes }}
-                </div>
-              </div>
-              
-              <!-- Amount and Info Button Row -->
-              <div class="article-actions">
-                <span 
-                    *ngIf="article.listAmount || article.amount" 
-                    class="article-amount"
-                    [class.editable]="article.isInList"
-                    [class.disabled]="!article.isInList"
-                    (click)="article.isInList ? onEditAmount(article) : null">
-                    {{ article.listAmount || article.amount }}
-                  </span>
-                  <!-- Empty Amount Chip -->
-                  <span 
-                    *ngIf="!(article.listAmount || article.amount)" 
-                    class="article-amount empty"
-                    [class.editable]="article.isInList"
-                    [class.disabled]="!article.isInList"
-                    (click)="article.isInList ? onEditAmount(article) : null">
-                    Menge
-                  </span>
-                
-                <!-- Info Button -->
-                <button 
-                  mat-icon-button 
-                  (click)="onArticleInfo(article)"
-                  class="info-button">
-                  <mat-icon>info_outline</mat-icon>
-                </button>
-              </div>
-              
-              <!-- Toggle Switch -->
-              <mat-slide-toggle
-                [checked]="article.isInList"
-                (change)="onToggleArticleInList(article)"
-                color="primary"
-                class="article-toggle">
-              </mat-slide-toggle>
+      <div class="all-articles">
+        <!-- Department Groups -->
+        <div *ngFor="let group of departmentGroupsEdit$ | async" class="department-group">
+          <!-- Articles in Department -->
+          <div 
+            *ngFor="let article of group.articles; let i = index" 
+            class="article-item"
+            [class.in-list]="article.isInList"
+            [class.first-in-group]="i === 0">
+            
+            <!-- Department Icon (only for first article) -->
+            <div class="department-icon" *ngIf="i === 0">
+              <img [src]="getDepartmentIconPath(group.department.id)" 
+                  [alt]="group.department.nameGerman"
+                  [style.filter]="getDepartmentIconFilter()"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+              <span class="fallback-icon" [style.color]="getCurrentListColor()" style="display: none;">🏪</span>
             </div>
-          </div>
-
-          <!-- No Results Message -->
-          <div class="no-results" *ngIf="searchQuery && (departmentGroupsEdit$ | async)?.length === 0">
-            <mat-icon class="empty-icon">search_off</mat-icon>
-            <h3>Keine Artikel gefunden</h3>
-            <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
+            
+            <!-- Article Icon -->
+            <div class="article-icon">
+              {{ article.icon || '📦' }}
+            </div>
+            
+            <!-- Article Content -->
+            <div class="article-content">
+              <div class="article-header">
+                <span class="article-name">{{ article.name }}</span>
+              </div>
+              
+              <div class="article-notes" *ngIf="article.notes">
+                {{ article.notes }}
+              </div>
+            </div>
+            
+            <!-- Amount and Info Button Row -->
+            <div class="article-actions">
+              <span 
+                *ngIf="article.listAmount || article.amount" 
+                class="article-amount"
+                [class.editable]="article.isInList"
+                [class.disabled]="!article.isInList"
+                (click)="article.isInList ? onEditAmount(article) : null">
+                {{ article.listAmount || article.amount }}
+              </span>
+              <!-- Empty Amount Chip -->
+              <span 
+                *ngIf="!(article.listAmount || article.amount)" 
+                class="article-amount empty"
+                [class.editable]="article.isInList"
+                [class.disabled]="!article.isInList"
+                (click)="article.isInList ? onEditAmount(article) : null">
+                Menge
+              </span>
+              
+              <!-- Info Button -->
+              <button 
+                mat-icon-button 
+                (click)="onArticleInfo(article)"
+                class="info-button">
+                <mat-icon>info_outline</mat-icon>
+              </button>
+            </div>
+            
+            <!-- Toggle Switch -->
+            <mat-slide-toggle
+              [checked]="article.isInList"
+              (change)="onToggleArticleInList(article)"
+              color="primary"
+              class="article-toggle">
+            </mat-slide-toggle>
           </div>
         </div>
+
+        <!-- No Results Message -->
+        <div class="no-results" *ngIf="searchQuery && (departmentGroupsEdit$ | async)?.length === 0">
+          <mat-icon class="empty-icon">search_off</mat-icon>
+          <h3>Keine Artikel gefunden</h3>
+          <p>Kein Artikel gefunden für "{{ searchQuery }}"</p>
+        </div>
+      </div>
     </div>
 
     <!-- Edit Mode Actions -->
@@ -356,7 +348,7 @@
       [class.visible]="isFabExpanded"
       (click)="closeFab()">
     </div>
-  
+
     <!-- Expandable Filter Options -->
     <div class="fab-menu" [class.expanded]="isFabExpanded">
       <!-- Shopping Mode Filters -->
@@ -391,7 +383,7 @@
           <span class="fab-label">Alle</span>
         </button>
       </div>
-  
+
       <!-- Edit Mode Filters -->
       <div *ngIf="currentMode === 'edit'" class="fab-options">
         <button 
@@ -423,11 +415,9 @@
           <mat-icon>apps</mat-icon>
           <span class="fab-label">Alle</span>
         </button>
-
-
       </div>
     </div>
-  
+
     <!-- Main FAB Button -->
     <button 
       mat-fab 
@@ -444,26 +434,26 @@
       *ngIf="showCelebrationAnimation"
       (click)="closeCelebrationAnimation()">
       <div class="celebration-content" (click)="closeCelebrationAnimation()">
-      <div class="celebration-animation">
-        <img 
-          src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZnaGJhMnhxcDZ1ZWVpZm15bm5ueTkwaGVzaGNtZWtzdTNscno4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2lQCBjuFMLCOvXno4l/giphy.gif" 
-          alt="Celebration!"
-          class="celebration-gif"
-          (error)="onGifError($event)"
-          (load)="onGifLoad($event)">
-        
-        <!-- Celebration Text Overlaid on Image -->
-        <div class="celebration-text-overlay">
-          <h2>🎉 Geschafft! 🎉</h2>
-          <p>Alle Artikel erledigt!</p>
-        </div>
-        
-        <!-- Fallback if GIF doesn't load -->
-        <div class="gif-fallback" style="display: none;">
-          <div class="emoji-celebration">🎉 👏 🎊 ✨ 🎈</div>
+        <div class="celebration-animation">
+          <img 
+            src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZnaGJhMnhxcDZ1ZWVpZm15bm5ueTkwaGVzaGNtZWtzdTNscno4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2lQCBjuFMLCOvXno4l/giphy.gif" 
+            alt="Celebration!"
+            class="celebration-gif"
+            (error)="onGifError($event)"
+            (load)="onGifLoad($event)">
+          
+          <!-- Celebration Text Overlaid on Image -->
+          <div class="celebration-text-overlay">
+            <h2>🎉 Geschafft! 🎉</h2>
+            <p>Alle Artikel erledigt!</p>
+          </div>
+          
+          <!-- Fallback if GIF doesn't load -->
+          <div class="gif-fallback" style="display: none;">
+            <div class="emoji-celebration">🎉 👏 🎊 ✨ 🎈</div>
+          </div>
         </div>
       </div>
     </div>
-    </div>  
-
+  </div>
 </div>

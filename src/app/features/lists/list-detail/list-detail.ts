@@ -23,7 +23,6 @@ import { SimplifiedDisambiguationService } from '../../../core/services/ai/simpl
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
-
 interface ArticleWithState extends Article {
   isChecked: boolean;
   isInList: boolean;
@@ -45,7 +44,6 @@ interface DepartmentGroupEdit {
   department: Department;
   articles: ArticleWithToggleAndAmount[];
 }
-
 
 @Component({
   selector: 'app-list-detail',
@@ -86,9 +84,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private celebrationTimeout?: any;
   private autoSwitchTimer?: any;
 
-  private pendingHideTimer?: any; // NEW: Timer for checking expired items
-  private readonly HIDE_DELAY_MS = 5000; // NEW: 5 second delay
-  private undoHintTimeouts = new Map<string, any>(); // NEW: Track undo hint timers
+  private pendingHideTimer?: any;
+  private readonly HIDE_DELAY_MS = 5000;
+  private undoHintTimeouts = new Map<string, any>();
   
   isFabExpanded = false;
   listArticles$!: Observable<ArticleWithState[]>;
@@ -110,8 +108,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private pendingStates$ = new BehaviorSubject<Record<string, {
     pendingHideTimestamp?: number;
     showUndoHint?: boolean;
-  }>>({}); // Record = { [articleId]: { pendingState } }
-
+  }>>({}); 
 
   constructor(
     private route: ActivatedRoute,
@@ -137,7 +134,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       this.dataService.getArticles(), 
       this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
       this.shoppingFilter$,
-      this.pendingStates$ // ADD: Reactive pending states
+      this.pendingStates$
     ]).pipe(
       map(([list, articles, query, filter, pendingStates]) => {
         if (!list) return [];
@@ -208,17 +205,31 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         }
       })
     );
-
   }
 
   ngOnInit(): void {
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'edit') this.currentMode = 'edit';
+    // Force edit filter initialization
+    this.editFilter$.next('alle');
+
+    console.log('Initial mode:', this.currentMode);
     
     this.setupDepartmentGroups();
 
-    this.setupSearchDisambiguation();
+    this.allArticlesWithState$.subscribe(articles => {
+      console.log('🔍 allArticlesWithState$ emitted:', articles.length, 'articles');
+      console.log('🔍 Filter:', this.currentEditFilter);
+    });
+    
+    this.departmentGroupsEdit$.subscribe(groups => {
+      console.log('🔍 departmentGroupsEdit$ emitted:', groups.length, 'groups');
+      groups.forEach(group => {
+        console.log(`  - ${group.department.nameGerman}: ${group.articles.length} articles`);
+      });
+    });
 
+    this.setupSearchDisambiguation();
     this.setupCompletionMonitoring();
     
     this.list$.subscribe({
@@ -246,7 +257,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    
     // Clean up timers
     if (this.pendingHideTimer) {
       clearInterval(this.pendingHideTimer);
@@ -483,34 +493,33 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     const uncheckedCount = articles.filter(article => !article.isChecked).length;
     const totalCount = articles.length;
   
-    console.log('🔍 Checking completion:', { uncheckedCount, totalCount });
+    console.log('Checking completion:', { uncheckedCount, totalCount });
   
     // Simple logic: if no unchecked items and we have items
     if (uncheckedCount === 0 && totalCount > 0) {
-      console.log('🎉 List completed! Showing celebration');
+      console.log('List completed! Showing celebration');
       this.triggerCelebrationAnimation();
     }
   }
 
   private triggerCelebrationAnimation(): void {
     if (this.showCelebrationAnimation) {
-      console.log('🔍 Animation already showing, skipping');
+      console.log('Animation already showing, skipping');
       return;
     }
     
-    console.log('🎉 STARTING CELEBRATION ANIMATION!');
+    console.log('STARTING CELEBRATION ANIMATION!');
     this.showCelebrationAnimation = true;
     this.cdr.detectChanges();
     
     // Auto-hide after 3 seconds
     this.celebrationTimeout = setTimeout(() => {
-      console.log('🎉 Ending celebration animation');
+      console.log('Ending celebration animation');
       this.showCelebrationAnimation = false;
       this.cdr.detectChanges();
     }, 3000);
   }
   
-
   private updateThemeColors(color: string): void {
     const root = document.documentElement;
     root.style.setProperty('--list-primary-color', color);
@@ -544,11 +553,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
   
   switchToShoppingMode(): void { 
-    this.currentMode = 'shopping'; 
+    this.currentMode = 'shopping';
+    console.log('Switched to shopping mode');
+    this.cdr.detectChanges();
   }
   
   switchToEditMode(): void { 
-    this.currentMode = 'edit'; 
+    console.log('switchToEditMode called, current mode:', this.currentMode);
+    this.currentMode = 'edit';
+    console.log('Mode set to:', this.currentMode);
+    this.editFilter$.next(this.currentEditFilter);
+    this.cdr.detectChanges();
   }
 
   private checkAndAutoSwitchFilter(): void {
@@ -619,10 +634,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onArticleToggle(article: ArticleWithState): void {
-    console.log('🔍 Toggle clicked:', article.name, 'isChecked:', article.isChecked, 'pending:', article.pendingHideTimestamp);
+    console.log('Toggle clicked:', article.name, 'isChecked:', article.isChecked, 'pending:', article.pendingHideTimestamp);
     
     if (article.isChecked && article.pendingHideTimestamp) {
-      console.log('🔄 UNDO detected');
+      console.log('UNDO detected');
       this.undoArticleCompletion(article);
       return;
     }
@@ -630,24 +645,24 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
       next: (success) => { 
         if (success) {
-          console.log('✅ Toggle successful, article.isChecked should now be:', !article.isChecked);
+          console.log('Toggle successful, article.isChecked should now be:', !article.isChecked);
           
           if (!article.isChecked) { // This will be the NEW state after toggle
-            console.log('📝 Starting pending hide process');
+            console.log('Starting pending hide process');
             this.startPendingHide(article);
           }
           
           this.triggerChangeDetection();
         }
       },
-      error: (error) => console.error('❌ Toggle error:', error)
+      error: (error) => console.error('Toggle error:', error)
     });
   }
 
   onGifError(event: any): void {
-    console.error('❌ GIF failed to load!');
-    console.error('❌ Attempted path:', event.target.src);
-    console.error('❌ Error details:', event);
+    console.error('GIF failed to load!');
+    console.error('Attempted path:', event.target.src);
+    console.error('Error details:', event);
     
     // Hide broken GIF
     event.target.style.display = 'none';
@@ -656,7 +671,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     const fallback = event.target.nextElementSibling;
     if (fallback) {
       fallback.style.display = 'flex';
-      console.log('✅ Showing emoji fallback');
+      console.log('Showing emoji fallback');
     }
   }
 
@@ -791,8 +806,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   testCelebrationAnimation(): void {
-    console.log('🧪 MANUAL TEST: Triggering celebration animation');
-    this.checkGifPath(); // Check if GIF works
+    console.log('MANUAL TEST: Triggering celebration animation');
+    this.checkGifPath();
     this.triggerCelebrationAnimation();
   }
 
@@ -820,205 +835,194 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     setTimeout(() => this.cdr.detectChanges(), 100);
   }
 
-// GIF load success handler
-onGifLoad(event: any): void {
-  console.log('✅ GIF loaded successfully!');
-  console.log('✅ GIF source:', event.target.src);
-  console.log('✅ GIF dimensions:', event.target.naturalWidth + 'x' + event.target.naturalHeight);
-}
-
-// Enhanced GIF path checker
-checkGifPath(): void {
-  const gifPath = '/assets/animations/celebration.gif';
-  console.log('🔍 Testing GIF path:', gifPath);
-  
-  const img = new Image();
-  img.onload = () => console.log('✅ GIF loads successfully!');
-  img.onerror = () => console.error('❌ GIF path is broken!');
-  img.src = gifPath;
-}
-
-// Debug current list state
-debugListState(): void {
-  this.listArticles$.pipe(take(1)).subscribe(articles => {
-    console.log('🔍 DEBUG: Current list state');
-    console.log('🔍 Mode:', this.currentMode);
-    console.log('🔍 Total articles:', articles.length);
-    console.log('🔍 Articles breakdown:');
-    articles.forEach(article => {
-      console.log(`  - ${article.name}: ${article.isChecked ? '✅' : '❌'}`);
-    });
-    
-    const unchecked = articles.filter(a => !a.isChecked).length;
-    console.log('🔍 Unchecked count:', unchecked);
-    console.log('🔍 Should celebrate:', unchecked === 0 && articles.length > 0);
-  });
-}
-
-private checkCompletionAfterToggle(): void {
-  if (this.currentMode !== 'shopping') {
-    console.log('🔍 Not in shopping mode, skipping completion check');
-    return;
+  onGifLoad(event: any): void {
+    console.log('GIF loaded successfully!');
+    console.log('GIF source:', event.target.src);
+    console.log('GIF dimensions:', event.target.naturalWidth + 'x' + event.target.naturalHeight);
   }
-  
-  // Use UNFILTERED articles for completion checking
-  this.allListArticles$.pipe(take(1)).subscribe(articles => {
-    console.log('🔍 Checking completion with UNFILTERED articles...');
-    console.log('🔍 All articles:', articles.map(a => ({ name: a.name, checked: a.isChecked })));
+
+  checkGifPath(): void {
+    const gifPath = '/assets/animations/celebration.gif';
+    console.log('Testing GIF path:', gifPath);
     
-    if (!articles?.length) {
-      console.log('🔍 No articles found in list');
-      return;
-    }
+    const img = new Image();
+    img.onload = () => console.log('GIF loads successfully!');
+    img.onerror = () => console.error('GIF path is broken!');
+    img.src = gifPath;
+  }
 
-    const uncheckedCount = articles.filter(article => !article.isChecked).length;
-    const totalCount = articles.length;
-    const checkedCount = articles.filter(article => article.isChecked).length;
-
-    console.log('🔍 Completion status:', { 
-      uncheckedCount, 
-      checkedCount,
-      totalCount, 
-      isComplete: uncheckedCount === 0,
-      mode: this.currentMode,
-      currentFilter: this.currentShoppingFilter
+  debugListState(): void {
+    this.listArticles$.pipe(take(1)).subscribe(articles => {
+      console.log('DEBUG: Current list state');
+      console.log('Mode:', this.currentMode);
+      console.log('Total articles:', articles.length);
+      console.log('Articles breakdown:');
+      articles.forEach(article => {
+        console.log(`  - ${article.name}: ${article.isChecked ? '✅' : '❌'}`);
+      });
+      
+      const unchecked = articles.filter(a => !a.isChecked).length;
+      console.log('Unchecked count:', unchecked);
+      console.log('Should celebrate:', unchecked === 0 && articles.length > 0);
     });
+  }
 
-    // Trigger celebration if all items are checked
-    if (uncheckedCount === 0 && totalCount > 0) {
-      console.log('🎉 ALL ITEMS COMPLETED! Triggering celebration!');
-      this.triggerCelebrationAnimation();
-    } else {
-      console.log(`🔍 Not complete: ${checkedCount}/${totalCount} items checked`);
-    }
-  });
-}
-
-private checkCompletionDirectly(): void {
-  if (this.currentMode !== 'shopping') return;
-  
-  this.list$.pipe(take(1)).subscribe(list => {
-    if (!list || !list.articleIds.length) {
-      console.log('🔍 No list or no articles');
+  private checkCompletionAfterToggle(): void {
+    if (this.currentMode !== 'shopping') {
+      console.log('Not in shopping mode, skipping completion check');
       return;
     }
     
-    const totalItems = list.articleIds.length;
-    const checkedItems = Object.values(list.itemStates || {})
-      .filter(state => state.isChecked).length;
-    
-    console.log('🔍 Direct completion check:', {
-      totalItems,
-      checkedItems,
-      isComplete: checkedItems === totalItems,
-      itemStates: list.itemStates
-    });
-    
-    if (checkedItems === totalItems && totalItems > 0) {
-      console.log('🎉 DIRECTLY CONFIRMED: ALL ITEMS COMPLETED!');
-      this.triggerCelebrationAnimation();
-    }
-  });
-}
-
-closeCelebrationAnimation(): void {
-  if (this.celebrationTimeout) {
-    clearTimeout(this.celebrationTimeout);
-    this.celebrationTimeout = undefined;
-  }
-  this.showCelebrationAnimation = false;
-  this.cdr.detectChanges();
-}
-
-private startPendingHide(article: ArticleWithState): void {
-  const now = Date.now();
-  const hideTime = now + this.HIDE_DELAY_MS; // Still 5 seconds
-  
-  console.log('⏰ Starting pending hide for:', article.name);
-  
-  // Update reactive state
-  const currentStates = this.pendingStates$.value;
-  this.pendingStates$.next({
-    ...currentStates,
-    [article.id]: {
-      pendingHideTimestamp: hideTime,
-      showUndoHint: true
-    }
-  });
-  
-  // Clear any existing timeouts
-  this.clearTimeoutsForArticle(article.id);
-  
-  // SINGLE timeout: Hide undo button AND remove article after 5 seconds
-  const completeTimeout = setTimeout(() => {
-    console.log('⏰ Hiding undo button and removing article after 5s:', article.name);
-    this.removePendingState(article.id);
-  }, this.HIDE_DELAY_MS); // 5 seconds
-  
-  // Store only one timeout
-  this.undoHintTimeouts.set(article.id, completeTimeout);
-}
-
-private updatePendingState(articleId: string, updates: Partial<{pendingHideTimestamp?: number; showUndoHint?: boolean}>): void {
-  const currentStates = this.pendingStates$.value;
-  const currentArticleState = currentStates[articleId] || {};
-  
-  this.pendingStates$.next({
-    ...currentStates,
-    [articleId]: {
-      ...currentArticleState,
-      ...updates
-    }
-  });
-}
-
-private removePendingState(articleId: string): void {
-  const currentStates = this.pendingStates$.value;
-  const { [articleId]: removed, ...remaining } = currentStates;
-  
-  this.pendingStates$.next(remaining);
-  this.clearTimeoutsForArticle(articleId);
-  this.checkCompletionAfterToggle();
-}
-
-private clearTimeoutsForArticle(articleId: string): void {
-  const timeout = this.undoHintTimeouts.get(articleId);
-  if (timeout) {
-    clearTimeout(timeout);
-    this.undoHintTimeouts.delete(articleId);
-  }
-}
-
-private processSingleExpiredItem(articleId: string): void {
-  console.log('🗑️ Processing expired item:', articleId);
-  
-  // Use the new reactive approach
-  this.removePendingState(articleId);
-}
-
-undoArticleCompletion(article: ArticleWithState): void {
-  console.log('🔄 Undoing completion for:', article.name);
-  
-  // Remove from reactive state (this also clears the timeout)
-  this.removePendingState(article.id);
-  
-  // Toggle the item back to unchecked
-  this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-    next: (success) => {
-      if (success) {
-        console.log('✅ Undo successful for:', article.name);
+    // Use UNFILTERED articles for completion checking
+    this.allListArticles$.pipe(take(1)).subscribe(articles => {
+      console.log('Checking completion with UNFILTERED articles...');
+      console.log('All articles:', articles.map(a => ({ name: a.name, checked: a.isChecked })));
+      
+      if (!articles?.length) {
+        console.log('No articles found in list');
+        return;
       }
-    },
-    error: (error) => console.error('❌ Undo error:', error)
-  });
-}
 
+      const uncheckedCount = articles.filter(article => !article.isChecked).length;
+      const totalCount = articles.length;
+      const checkedCount = articles.filter(article => article.isChecked).length;
 
-shouldHideArticle(article: ArticleWithState): boolean {
-  // Only hide in 'offen' filter when item is checked and not pending
-  return this.currentShoppingFilter === 'offen' && 
-         article.isChecked && 
-         !article.pendingHideTimestamp;
-}
+      console.log('Completion status:', { 
+        uncheckedCount, 
+        checkedCount,
+        totalCount, 
+        isComplete: uncheckedCount === 0,
+        mode: this.currentMode,
+        currentFilter: this.currentShoppingFilter
+      });
+
+      // Trigger celebration if all items are checked
+      if (uncheckedCount === 0 && totalCount > 0) {
+        console.log('ALL ITEMS COMPLETED! Triggering celebration!');
+        this.triggerCelebrationAnimation();
+      } else {
+        console.log(`Not complete: ${checkedCount}/${totalCount} items checked`);
+      }
+    });
+  }
+
+  private checkCompletionDirectly(): void {
+    if (this.currentMode !== 'shopping') return;
+    
+    this.list$.pipe(take(1)).subscribe(list => {
+      if (!list || !list.articleIds.length) {
+        console.log('No list or no articles');
+        return;
+      }
+      
+      const totalItems = list.articleIds.length;
+      const checkedItems = Object.values(list.itemStates || {})
+        .filter(state => state.isChecked).length;
+      
+      console.log('Direct completion check:', {
+        totalItems,
+        checkedItems,
+        isComplete: checkedItems === totalItems,
+        itemStates: list.itemStates
+      });
+      
+      if (checkedItems === totalItems && totalItems > 0) {
+        console.log('DIRECTLY CONFIRMED: ALL ITEMS COMPLETED!');
+        this.triggerCelebrationAnimation();
+      }
+    });
+  }
+
+  closeCelebrationAnimation(): void {
+    if (this.celebrationTimeout) {
+      clearTimeout(this.celebrationTimeout);
+      this.celebrationTimeout = undefined;
+    }
+    this.showCelebrationAnimation = false;
+    this.cdr.detectChanges();
+  }
+
+  private startPendingHide(article: ArticleWithState): void {
+    const now = Date.now();
+    const hideTime = now + this.HIDE_DELAY_MS;
+    
+    console.log('Starting pending hide for:', article.name);
+    
+    // Update reactive state
+    const currentStates = this.pendingStates$.value;
+    this.pendingStates$.next({
+      ...currentStates,
+      [article.id]: {
+        pendingHideTimestamp: hideTime,
+        showUndoHint: true
+      }
+    });
+    
+    // Clear any existing timeouts
+    this.clearTimeoutsForArticle(article.id);
+    
+    // SINGLE timeout: Hide undo button AND remove article after 5 seconds
+    const completeTimeout = setTimeout(() => {
+      console.log('Hiding undo button and removing article after 5s:', article.name);
+      this.removePendingState(article.id);
+    }, this.HIDE_DELAY_MS);
+    
+    // Store only one timeout
+    this.undoHintTimeouts.set(article.id, completeTimeout);
+  }
+
+  private updatePendingState(articleId: string, updates: Partial<{pendingHideTimestamp?: number; showUndoHint?: boolean}>): void {
+    const currentStates = this.pendingStates$.value;
+    const currentArticleState = currentStates[articleId] || {};
+    
+    this.pendingStates$.next({
+      ...currentStates,
+      [articleId]: {
+        ...currentArticleState,
+        ...updates
+      }
+    });
+  }
+
+  private removePendingState(articleId: string): void {
+    const currentStates = this.pendingStates$.value;
+    const { [articleId]: removed, ...remaining } = currentStates;
+    
+    this.pendingStates$.next(remaining);
+    this.clearTimeoutsForArticle(articleId);
+    this.checkCompletionAfterToggle();
+  }
+
+  private clearTimeoutsForArticle(articleId: string): void {
+    const timeout = this.undoHintTimeouts.get(articleId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.undoHintTimeouts.delete(articleId);
+    }
+  }
+
+  undoArticleCompletion(article: ArticleWithState): void {
+    console.log('Undoing completion for:', article.name);
+    
+    // Remove from reactive state (this also clears the timeout)
+    this.removePendingState(article.id);
+    
+    // Toggle the item back to unchecked
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+      next: (success) => {
+        if (success) {
+          console.log('Undo successful for:', article.name);
+        }
+      },
+      error: (error) => console.error('Undo error:', error)
+    });
+  }
+
+  shouldHideArticle(article: ArticleWithState): boolean {
+    // Only hide in 'offen' filter when item is checked and not pending
+    return this.currentShoppingFilter === 'offen' && 
+           article.isChecked && 
+           !article.pendingHideTimestamp;
+  }
 
 }
