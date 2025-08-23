@@ -1,0 +1,64 @@
+<!-- Search Field -->
+<div class="search-container">
+    <mat-form-field appearance="outline" class="search-field">
+    <mat-label>{{ placeholder }}</mat-label>
+    <input 
+        matInput 
+        [(ngModel)]="searchQuery"
+        (input)="onInputChange()"
+        [placeholder]="placeholder">
+    <button 
+        *ngIf="searchQuery" 
+        matSuffix 
+        matIconButton 
+        aria-label="Clear" 
+        (click)="clearSearch()">
+        <mat-icon>close</mat-icon>
+    </button>
+    <mat-icon *ngIf="!searchQuery" matSuffix>search</mat-icon>
+    </mat-form-field>
+</div>
+
+<!-- Disambiguation Results -->
+<div *ngIf="disambiguation" class="search-disambiguation">
+    <div class="disambiguation-header">
+    <mat-icon>search</mat-icon>
+    <span>{{ disambiguation.message }}</span>
+    <button 
+        mat-icon-button 
+        (click)="clearDisambiguation.emit()" 
+        class="clear-button">
+        <mat-icon>close</mat-icon>
+    </button>
+    </div>
+    
+    <div class="disambiguation-options">
+    <div 
+        *ngFor="let option of disambiguation.options" 
+        class="disambiguation-option"
+        (click)="selectOption.emit(option)">
+        
+        <div class="option-icon">
+        <span>{{ option.icon || '📦' }}</span>
+        </div>
+        
+        <div class="option-details">
+        <div class="option-name">{{ option.displayName }}</div>
+        <div class="option-department" *ngIf="option.department">
+            <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag: </span>
+            {{ getDepartmentDisplay(option) }}
+        </div>
+        <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
+            {{ getConfidenceDisplay(option.confidence) }}
+        </div>
+        </div>
+        
+        <div class="option-action">
+        <span class="action-hint">
+            {{ getActionHint(option.type) }}
+        </span>
+        <mat-icon>add</mat-icon>
+        </div>
+    </div>
+    </div>
+</div>

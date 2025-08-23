@@ -1,0 +1,35 @@
+<div class="fab-container">
+    <!-- Backdrop to close FAB when clicking outside -->
+    <div 
+    class="fab-backdrop" 
+    *ngIf="isExpanded"
+    [class.visible]="isExpanded"
+    (click)="close.emit()">
+    </div>
+
+    <!-- Expandable Filter Options -->
+    <div class="fab-menu" [class.expanded]="isExpanded">
+    <div class="fab-options">
+        <button 
+        *ngFor="let option of getFilterOptions()"
+        mat-mini-fab 
+        [class.active]="isFilterActive(option.value)"
+        (click)="selectFilter(option.value); $event.stopPropagation()"
+        class="fab-option"
+        [matTooltip]="option.tooltip">
+        <mat-icon>{{ option.icon }}</mat-icon>
+        <span class="fab-label">{{ option.label }}</span>
+        </button>
+    </div>
+    </div>
+
+    <!-- Main FAB Button -->
+    <button 
+    mat-fab 
+    (click)="toggleExpanded.emit(); $event.stopPropagation()"
+    class="main-fab"
+    [class.expanded]="isExpanded"
+    matTooltip="Filter">
+    <mat-icon [class.rotated]="isExpanded">filter_alt</mat-icon>
+    </button>
+</div>

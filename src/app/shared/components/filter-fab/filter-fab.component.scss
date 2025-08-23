@@ -1,0 +1,144 @@
+  // ===============================================
+  // filter-fab.component.scss
+  // ===============================================
+  
+.fab-container {
+position: fixed;
+bottom: 93px;
+right: 24px;
+z-index: 9999;
+
+.fab-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 9998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    
+    &.visible {
+    opacity: 1;
+    pointer-events: auto;
+    }
+}
+
+.fab-menu {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 10000;
+    pointer-events: none;
+    
+    &.expanded {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+    
+    .fab-option {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    }
+    
+    .fab-options { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 16px; 
+    align-items: flex-end;
+    }
+    
+    .fab-option {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.8);
+    background: var(--list-primary-color, #1976d2);
+    color: var(--list-contrast-color, white);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 120px;
+    height: 48px;
+    border-radius: 24px;
+    cursor: pointer;
+    pointer-events: none;
+    
+    &:hover {
+        background: var(--list-dark-color, #1565c0);
+        transform: translateY(-2px);
+    }
+    
+    &.active {
+        background: var(--list-dark-color, #0d47a1);
+    }
+    
+    mat-icon { 
+        margin-left: 12px;
+        font-size: 20px;
+        color: var(--list-contrast-color, white);
+        pointer-events: none;
+    }
+    
+    .fab-label { 
+        font-size: 14px;
+        font-weight: 500;
+        margin-right: 16px;
+        color: var(--list-contrast-color, white);
+        pointer-events: none;
+    }
+    }
+}
+
+.main-fab {
+    background: var(--list-primary-color, #1976d2);
+    color: var(--list-contrast-color, white);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+    z-index: 10001;
+    position: relative;
+    
+    &:hover {
+    background: var(--list-dark-color, #1565c0);
+    transform: translateY(-2px);
+    }
+    
+    &.expanded {
+    background: #f44336;
+    transform: rotate(180deg);
+    }
+    
+    mat-icon { 
+    font-size: 24px;
+    color: var(--list-contrast-color, white);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    
+    &.rotated { 
+        transform: rotate(180deg);
+    }
+    }
+}
+}
+
+// Safe area adjustments
+@supports(padding-bottom: env(safe-area-inset-bottom)) {
+.fab-container {
+    bottom: calc(93px + env(safe-area-inset-bottom));
+}
+}

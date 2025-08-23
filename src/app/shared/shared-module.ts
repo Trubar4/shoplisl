@@ -1,12 +1,21 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-// REMOVE this line:
-// import { ArticleFormComponent } from './components/article-form/article-form.component';
+import { SearchDisambiguationComponent } from './components/search-disambiguation/search-disambiguation.component';
+import { ArticleListComponent } from './components/article-list/article-list.component';
+import { FilterFabComponent } from './components/filter-fab/filter-fab.component';
+
 
 @NgModule({
-  declarations: [],
   imports: [
-    CommonModule
+    CommonModule,
+    SearchDisambiguationComponent,
+    ArticleListComponent,
+    FilterFabComponent
+  ],
+  exports: [
+    SearchDisambiguationComponent,
+    ArticleListComponent,
+    FilterFabComponent
   ]
 })
 export class SharedModule { }

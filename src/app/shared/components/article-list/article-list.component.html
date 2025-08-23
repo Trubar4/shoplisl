@@ -1,0 +1,105 @@
+<div class="articles-list" *ngIf="departmentGroups?.length">
+    <!-- Department Groups -->
+    <div *ngFor="let group of departmentGroups" class="department-group">
+    <!-- Articles in Department -->
+    <div 
+        *ngFor="let article of group.articles; let i = index" 
+        class="article-item"
+        [class.checked]="isArticleChecked(article)"
+        [class.pending-hide]="article.pendingHideTimestamp"
+        [class.fade-out]="shouldFadeOut(article)"
+        [class.first-in-group]="i === 0"
+        [class.in-list]="mode === 'edit' && article.isInList">
+        
+        <!-- Department Icon (only for first article) -->
+        <div class="department-icon" *ngIf="i === 0">
+        <img 
+            [src]="getDepartmentIconPath(group.department.id)" 
+            [alt]="group.department.nameGerman"
+            [style.filter]="getDepartmentIconFilter()"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+        <span 
+            class="fallback-icon" 
+            [style.color]="getCurrentListColor()" 
+            style="display: none;">🏪</span>
+        </div>
+        
+        <!-- Article Icon -->
+        <div class="article-icon">
+        {{ article.icon || '📦' }}
+        </div>
+        
+        <!-- Article Content -->
+        <div 
+        class="article-content" 
+        [class.clickable]="mode === 'shopping'"
+        (click)="onArticleClick(article)">
+        
+        <div class="article-header">
+            <span 
+            class="article-name" 
+            [class.strikethrough]="isArticleChecked(article)"
+            [class.pending-strikethrough]="article.pendingHideTimestamp">
+            {{ article.name }}
+            </span>
+        </div>
+        
+        <!-- Notes -->
+        <div class="article-notes" *ngIf="article.notes">
+            {{ article.notes }}
+        </div>
+        
+        <!-- Undo hint for shopping mode -->
+        <button 
+            *ngIf="mode === 'shopping' && article.showUndoHint"
+            class="undo-hint-button" 
+            (click)="undoCompletion.emit(article); $event.stopPropagation()"
+            mat-stroked-button>
+            <mat-icon class="undo-icon">undo</mat-icon>
+            <span>Rückgängig</span>
+        </button>
+        </div>
+
+        <!-- Article Actions -->
+        <div 
+        class="article-actions" 
+        [class.hidden-by-undo]="article.showUndoHint">
+        
+        <!-- Amount Display/Edit -->
+        <span 
+            class="article-amount"
+            [class.clickable]="canEditAmount(article)"
+            [class.editable]="canEditAmount(article)"
+            [class.disabled]="!canEditAmount(article)"
+            [class.empty]="!getDisplayAmount(article)"
+            (click)="onAmountClick(article, $event)">
+            {{ getDisplayAmount(article) || 'Menge' }}
+        </span>
+        
+        <!-- Info Button -->
+        <button 
+            mat-icon-button 
+            (click)="articleInfo.emit(article)"
+            class="info-button">
+            <mat-icon>info_outline</mat-icon>
+        </button>
+        </div>
+        
+        <!-- Edit Mode Toggle -->
+        <mat-slide-toggle
+        *ngIf="mode === 'edit'"
+        [checked]="article.isInList"
+        (change)="toggleInList.emit(article)"
+        color="primary"
+        class="article-toggle">
+        </mat-slide-toggle>
+    </div>
+    </div>
+</div>
+
+<!-- Empty State -->
+<div class="empty-state" *ngIf="!departmentGroups?.length">
+    <mat-icon class="empty-icon">{{ getEmptyStateIcon() }}</mat-icon>
+    <h3>{{ getEmptyStateTitle() }}</h3>
+    <p>{{ getEmptyStateMessage() }}</p>
+</div>
