@@ -123,21 +123,9 @@
             }
   
             &.pending-strikethrough {
-              position: relative;
-              
-              &::after {
-                content: '';
-                position: absolute;
-                left: 0;
-                top: 50%;
-                width: 100%;
-                height: 2px;
-                background-color: #e53e3e;
-                transform: translateY(-50%) scaleX(0);
-                transform-origin: left;
-                animation: strikethroughExpand 2s ease forwards;
-                box-shadow: 0 0 1px rgba(229, 62, 62, 0.5);
-              }
+              text-decoration: line-through;
+              text-decoration-color: #e53e3e;
+              text-decoration-thickness: 2px;
             }
           }
         }
