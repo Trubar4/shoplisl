@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,29 +7,24 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 export interface SearchDisambiguation {
   query: string;
-  options: any[];
+  options: DisambiguationOption[];
   message: string;
 }
 
-/**
- * SearchDisambiguationComponent
- * 
- * Handles search input with AI-powered disambiguation suggestions.
- * Shows smart suggestions when search yields no results.
- * 
- * @example
- * <app-search-disambiguation
- *   [(searchQuery)]="searchQuery"
- *   [disambiguation]="searchDisambiguation$ | async"
- *   [placeholder]="'Artikel suchen...'"
- *   (queryChange)="onSearchQueryChange($event)"
- *   (selectOption)="onSelectDisambiguation($event)"
- *   (clearDisambiguation)="onClearDisambiguation()">
- * </app-search-disambiguation>
- */
+export interface DisambiguationOption {
+  type: 'existing' | 'new';
+  displayName: string;
+  icon?: string;
+  confidence?: number;
+  department?: string;
+  suggestedDepartmentId?: string;
+  article?: any;
+}
+
 @Component({
   selector: 'app-search-disambiguation',
   standalone: true,
@@ -41,25 +36,26 @@ export interface SearchDisambiguation {
     MatIconModule,
     MatButtonModule
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './search-disambiguation.component.html',
   styleUrls: ['./search-disambiguation.component.scss']
 })
 export class SearchDisambiguationComponent implements OnInit, OnDestroy {
-  @Input() searchQuery = '';
+  @Input({ required: true }) searchQuery = '';
   @Input() disambiguation: SearchDisambiguation | null = null;
   @Input() placeholder = 'Suchen...';
-  @Input() getDepartmentNameGerman?: (departmentId: string) => string;
 
   @Output() searchQueryChange = new EventEmitter<string>();
   @Output() queryChange = new EventEmitter<string>();
-  @Output() selectOption = new EventEmitter<any>();
+  @Output() selectOption = new EventEmitter<DisambiguationOption>();
   @Output() clearDisambiguation = new EventEmitter<void>();
 
   private readonly destroy$ = new Subject<void>();
   private readonly searchQuery$ = new BehaviorSubject<string>('');
 
+  constructor(private readonly listUtils: ListUtilsService) {}
+
   ngOnInit(): void {
-    // Debounced search query emission
     this.searchQuery$.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -72,6 +68,7 @@ export class SearchDisambiguationComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.searchQuery$.complete();
   }
 
   onInputChange(): void {
@@ -86,12 +83,12 @@ export class SearchDisambiguationComponent implements OnInit, OnDestroy {
     this.clearDisambiguation.emit();
   }
 
-  getDepartmentDisplay(option: any): string {
-    if (this.getDepartmentNameGerman && option.suggestedDepartmentId) {
-      return this.getDepartmentNameGerman(option.suggestedDepartmentId);
+  getDepartmentDisplay(option: DisambiguationOption): string {
+    if (option.suggestedDepartmentId) {
+      return this.listUtils.getDepartmentNameGerman(option.suggestedDepartmentId);
     }
-    if (this.getDepartmentNameGerman && option.article?.departmentId) {
-      return this.getDepartmentNameGerman(option.article.departmentId);
+    if (option.article?.departmentId) {
+      return this.listUtils.getDepartmentNameGerman(option.article.departmentId);
     }
     return option.department || 'Sonstiges';
   }

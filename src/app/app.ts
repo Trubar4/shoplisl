@@ -10,6 +10,8 @@ import { LoggerService } from './core/services/logger.service';
 import { ConnectionService } from './core/services/connection.service';
 import { OfflineCacheService } from './core/services/offline-cache.service';
 import { DataService } from './core/services/data.service';
+import { ListUtilsService } from './core/services/list-utils.service';
+import { ArticleItemComponent } from './shared/components/article-item/article-item.component';
 
 @Component({
   selector: 'app-root',

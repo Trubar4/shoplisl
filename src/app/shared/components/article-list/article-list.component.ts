@@ -1,17 +1,8 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { Article } from '../../../core/models';
-
-export interface ArticleItem extends Article {
-    isChecked: boolean;  // Remove optional, make required
-    isInList: boolean;   // Remove optional, make required  
-    listAmount?: string;
-    pendingHideTimestamp?: number;
-    showUndoHint?: boolean;
-  }
+import { ArticleItemComponent, ArticleItemData } from '../article-item/article-item.component';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 export interface DepartmentGroup {
   department: {
@@ -19,99 +10,77 @@ export interface DepartmentGroup {
     nameGerman: string;
     icon: string;
   };
-  articles: ArticleItem[];
+  articles: ArticleItemData[];
 }
 
 export type ViewMode = 'shopping' | 'edit';
 
-/**
- * ArticleListComponent
- * 
- * Displays articles grouped by departments with different behaviors for shopping/edit modes.
- * Handles article interactions, amount editing, and toggle states.
- * 
- * @example
- * <app-article-list
- *   [departmentGroups]="groups$ | async"
- *   [mode]="currentMode"
- *   [getDepartmentIconPath]="getDepartmentIconPath.bind(this)"
- *   [getDepartmentIconFilter]="getDepartmentIconFilter.bind(this)"
- *   [getCurrentListColor]="getCurrentListColor.bind(this)"
- *   [getArticleAmount]="getArticleAmount.bind(this)"
- *   [shouldHideArticle]="shouldHideArticle.bind(this)"
- *   (articleToggle)="onArticleToggle($event)"
- *   (editAmount)="onEditAmount($event)"
- *   (articleInfo)="onArticleInfo($event)"
- *   (undoCompletion)="undoArticleCompletion($event)"
- *   (toggleInList)="onToggleArticleInList($event)">
- * </app-article-list>
- */
 @Component({
   selector: 'app-article-list',
   standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
-    MatButtonModule,
-    MatSlideToggleModule
+    ArticleItemComponent
   ],
-  templateUrl: './article-list.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="articles-list" *ngIf="departmentGroups?.length">
+      <div *ngFor="let group of departmentGroups" class="department-group">
+        
+        <!-- Department Header -->
+        <div class="department-header" *ngIf="group.articles.length > 0">
+          <div class="department-icon">
+            <img 
+              [src]="listUtils.getDepartmentIconPath(group.department.id)" 
+              [alt]="group.department.nameGerman"
+              [style.filter]="listUtils.getDepartmentIconFilter()"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+            <span 
+              class="fallback-icon" 
+              [style.color]="listUtils.getCurrentListColor()" 
+              style="display: none;">🏪</span>
+          </div>
+          <span class="department-name">{{ group.department.nameGerman }}</span>
+        </div>
+
+        <!-- Articles -->
+        <app-article-item
+          *ngFor="let article of group.articles" 
+          [article]="article"
+          [mode]="mode"
+          [shouldHideWhenChecked]="shouldHideArticle(article)"
+          (toggle)="articleToggle.emit($event)"
+          (editAmount)="editAmount.emit($event)"
+          (info)="articleInfo.emit($event)"
+          (undoCompletion)="undoCompletion.emit($event)"
+          (toggleInList)="toggleInList.emit($event)">
+        </app-article-item>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!departmentGroups?.length">
+      <mat-icon class="empty-icon">{{ getEmptyStateIcon() }}</mat-icon>
+      <h3>{{ getEmptyStateTitle() }}</h3>
+      <p>{{ getEmptyStateMessage() }}</p>
+    </div>
+  `,
   styleUrls: ['./article-list.component.scss']
 })
 export class ArticleListComponent {
-  @Input() departmentGroups: DepartmentGroup[] | null = null;
-  @Input() mode: ViewMode = 'shopping';
+  @Input({ required: true }) departmentGroups: DepartmentGroup[] | null = null;
+  @Input({ required: true }) mode!: ViewMode;
   @Input() searchQuery = '';
-  @Input() getDepartmentIconPath!: (departmentId: string) => string;
-  @Input() getDepartmentIconFilter!: () => string;
-  @Input() getCurrentListColor!: () => string;
-  @Input() getArticleAmount!: (article: ArticleItem) => string;
-  @Input() shouldHideArticle!: (article: ArticleItem) => boolean;
+  @Input({ required: true }) shouldHideArticle!: (article: ArticleItemData) => boolean;
 
-  @Output() articleToggle = new EventEmitter<ArticleItem>();
-  @Output() editAmount = new EventEmitter<{ article: ArticleItem; event?: Event }>();
-  @Output() articleInfo = new EventEmitter<ArticleItem>();
-  @Output() undoCompletion = new EventEmitter<ArticleItem>();
-  @Output() toggleInList = new EventEmitter<ArticleItem>();
+  @Output() articleToggle = new EventEmitter<ArticleItemData>();
+  @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
+  @Output() articleInfo = new EventEmitter<ArticleItemData>();
+  @Output() undoCompletion = new EventEmitter<ArticleItemData>();
+  @Output() toggleInList = new EventEmitter<ArticleItemData>();
 
-  onArticleClick(article: ArticleItem): void {
-    if (this.mode === 'shopping') {
-      this.articleToggle.emit(article);
-    }
-  }
-
-  onAmountClick(article: ArticleItem, event: Event): void {
-    if (this.canEditAmount(article)) {
-      this.editAmount.emit({ article, event });
-    }
-  }
-
-  isArticleChecked(article: ArticleItem): boolean {
-    return this.mode === 'shopping' && 
-           !!article.isChecked && 
-           !article.pendingHideTimestamp;
-  }
-
-  shouldFadeOut(article: ArticleItem): boolean {
-    return this.mode === 'shopping' && 
-           !!article.isChecked && 
-           !article.pendingHideTimestamp && 
-           this.shouldHideArticle(article);
-  }
-
-  canEditAmount(article: ArticleItem): boolean {
-    if (this.mode === 'shopping') {
-      return true; // Always editable in shopping mode
-    }
-    return this.mode === 'edit' && !!article.isInList;
-  }
-
-  getDisplayAmount(article: ArticleItem): string {
-    if (this.mode === 'edit') {
-      return article.listAmount || article.amount || '';
-    }
-    return this.getArticleAmount(article);
-  }
+  constructor(public readonly listUtils: ListUtilsService) {}
 
   getEmptyStateIcon(): string {
     return this.mode === 'shopping' ? 'shopping_cart' : 'search_off';

@@ -1,59 +1,31 @@
-import { Component, OnInit, ChangeDetectorRef, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, OnDestroy, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged, take, takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 
-// Import new sub-components
+// Optimized component imports
 import { SearchDisambiguationComponent } from '../../../shared/components/search-disambiguation/search-disambiguation.component';
-import { ArticleListComponent } from '../../../shared/components/article-list/article-list.component';
+import { ArticleListComponent, DepartmentGroup } from '../../../shared/components/article-list/article-list.component';
 import { FilterFabComponent } from '../../../shared/components/filter-fab/filter-fab.component';
-import { type ArticleItem } from '../../../shared/components/article-list/article-list.component';
+import { ArticleItemData } from '../../../shared/components/article-item/article-item.component';
 
-// Models and Services
+// Services and Models
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
-import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 import { SimplifiedDisambiguationService } from '../../../core/services/ai/simplified-disambiguation.service';
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
+import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 
-// Local interfaces
-interface ArticleWithState extends Article {
-  isChecked: boolean;
-  isInList: boolean;
-  pendingHideTimestamp?: number;
-  showUndoHint?: boolean;
-}
-
-interface ArticleWithToggleAndAmount extends Article {
-  isInList: boolean;
-  listAmount?: string;
-  isChecked: boolean;
-}
-
-interface DepartmentGroup {
-  department: Department;
-  articles: ArticleWithState[];
-}
-
-interface DepartmentGroupEdit {
-  department: Department;
-  articles: ArticleWithToggleAndAmount[];  
-}
-
+// Simplified interfaces
 interface PendingState {
   pendingHideTimestamp?: number;
   showUndoHint?: boolean;
@@ -63,42 +35,29 @@ type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'offen' | 'erledigt' | 'alle';
 type EditFilter = 'gelistet' | 'fehlend' | 'alle';
 
-/**
- * ListDetailComponent - Main component for managing shopping list details
- * 
- * Features:
- * - Shopping mode: Check off items while shopping
- * - Edit mode: Add/remove articles from list
- * - Search with AI disambiguation
- * - Department-based organization
- * - Progressive completion animations
- * 
- * @example
- * Navigate to: /lists/:id?mode=shopping|edit
- */
 @Component({
   selector: 'app-list-detail',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatToolbarModule, MatListModule, MatIconModule, 
-    MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule, 
-    MatSnackBarModule, MatSlideToggleModule, MatTooltipModule, MatDialogModule,
+    CommonModule, FormsModule, MatToolbarModule, MatIconModule, 
+    MatButtonModule, MatSnackBarModule, MatDialogModule,
     SearchDisambiguationComponent,
     ArticleListComponent,
     FilterFabComponent
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
 })
 export class ListDetailComponent implements OnInit, OnDestroy {
   
-  // === SIGNALS & REACTIVE STATE ===
-  currentMode = signal<ViewMode>('shopping');
-  currentShoppingFilter = signal<ShoppingFilter>('offen');
-  currentEditFilter = signal<EditFilter>('alle');
-  isLoading = signal<boolean>(true);
-  isFabExpanded = signal<boolean>(false);
-  showCelebrationAnimation = signal<boolean>(false);
+  // === SIGNALS ===
+  readonly currentMode = signal<ViewMode>('shopping');
+  readonly currentShoppingFilter = signal<ShoppingFilter>('offen');
+  readonly currentEditFilter = signal<EditFilter>('alle');
+  readonly isLoading = signal<boolean>(true);
+  readonly isFabExpanded = signal<boolean>(false);
+  readonly showCelebrationAnimation = signal<boolean>(false);
   
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -106,10 +65,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   
   readonly list$: Observable<ShoppingList | undefined>;
   readonly departmentGroups$: Observable<DepartmentGroup[]>;
-  readonly departmentGroupsEdit$: Observable<DepartmentGroupEdit[]>;
+  readonly departmentGroupsEdit$: Observable<DepartmentGroup[]>;
   readonly searchDisambiguation$ = new BehaviorSubject<any>(null);
   
-  // === REACTIVE STATE ===
+  // === STATE STREAMS ===
   private readonly shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('offen');
   private readonly editFilter$ = new BehaviorSubject<EditFilter>('alle');
   private readonly searchQuery$ = new BehaviorSubject<string>('');
@@ -120,7 +79,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   currentList: ShoppingList | null = null;
   
   // === PRIVATE PROPERTIES ===
-  private departmentIconFilterCache = '';
   private readonly undoHintTimeouts = new Map<string, any>();
   private celebrationTimeout?: any;
   private autoSwitchTimer?: any;
@@ -131,36 +89,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly dataService: DataService,
     private readonly departmentService: DepartmentService,
+    public readonly listUtils: ListUtilsService,
     private readonly snackBar: MatSnackBar,
     private readonly cdr: ChangeDetectorRef,
-    private readonly dialog: MatDialog,
     private readonly disambiguationService: SimplifiedDisambiguationService
   ) {
-    this.showCelebrationAnimation.set(false);
-    this.isLoading.set(false);
     this.listId = this.route.snapshot.paramMap.get('id') || '';
-
-    // Initialize list observable
     this.list$ = this.dataService.getLists().pipe(
       map(lists => lists.find(list => list.id === this.listId)),
       takeUntil(this.destroy$)
     );
 
-    // Setup observables
-    this.departmentGroups$ = this.createShoppingModeObservable();
-    this.departmentGroups$.subscribe(groups => {
-      console.log('DepartmentGroups$ emitted:', groups?.length || 0, 'groups');
-      groups?.forEach(g => console.log('  -', g.department.nameGerman, ':', g.articles.length, 'articles'));
-    });
-
-    this.departmentGroupsEdit$ = this.createEditModeObservable();
+    this.departmentGroups$ = this.createUnifiedObservable('shopping');
+    this.departmentGroupsEdit$ = this.createUnifiedObservable('edit');
   }
 
   ngOnInit(): void {
-    console.log('Current mode value:', this.currentMode());
-    console.log('Is loading value:', this.isLoading());
-    this.showCelebrationAnimation.set(false);
-    
     this.initializeComponent();
     this.setupSubscriptions();
     this.setupSearchDisambiguation();
@@ -170,48 +114,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  // === PUBLIC METHODS ===
-
-  /**
-   * Toggles article completion state in shopping mode
-   * Handles undo functionality and completion celebrations
-   */
-  onArticleToggle(article: ArticleItem): void {
-    const articleWithState = article as ArticleWithState;
-    if (article.isChecked && article.pendingHideTimestamp) {
-      this.undoArticleCompletion(articleWithState);
-      return;
-    }
-    
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => { 
-        if (success && !article.isChecked) {
-          this.startPendingHide(article);
-        }
-        this.triggerChangeDetection();
-      },
-      error: (error) => console.error('Toggle error:', error)
-    });
-  }
-
-  /**
-   * Handles search query changes with debouncing and auto-filter switching
-   */
-  onSearchQueryChange(): void { 
-    this.searchQuery$.next(this.searchQuery.trim());
-    this.searchDisambiguation$.next(null);
-    
-    this.clearAutoSwitchTimer();
-    this.autoSwitchTimer = setTimeout(() => {
-      this.checkAndAutoSwitchFilter();
-    }, 705);
-  }
-
-  /**
-   * Navigation methods
-   */
+  // === NAVIGATION ===
   onBack(): void {
-    this.resetToDefaultTheme();
+    this.listUtils.resetToDefaultTheme();
     this.router.navigate(['/lists']);
   }
   
@@ -222,13 +127,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   
   switchToEditMode(): void { 
     this.currentMode.set('edit');
-    this.editFilter$.next(this.currentEditFilter());
     this.cdr.detectChanges();
   }
 
-  /**
-   * Filter management - Updated to handle new component events
-   */
+  // === FILTER MANAGEMENT ===
   onFilterChange(data: { mode: ViewMode; filter: ShoppingFilter | EditFilter }): void {
     if (data.mode === 'shopping') {
       this.setShoppingFilter(data.filter as ShoppingFilter);
@@ -237,24 +139,29 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  setShoppingFilter(filter: ShoppingFilter): void {
+  private setShoppingFilter(filter: ShoppingFilter): void {
+    console.log('🔄 Switching shopping filter to:', filter);
+    
     this.currentShoppingFilter.set(filter);
     this.shoppingFilter$.next(filter);
     this.isFabExpanded.set(false);
     this.searchDisambiguation$.next(null);
-    this.cdr.detectChanges();
+    
+    // Reset celebration when switching filters
+    if (this.showCelebrationAnimation()) {
+      this.closeCelebrationAnimation();
+    }
   }
   
-  setEditFilter(filter: EditFilter): void {
+  private setEditFilter(filter: EditFilter): void {
     this.currentEditFilter.set(filter);
     this.editFilter$.next(filter);
     this.isFabExpanded.set(false);
-    this.cdr.detectChanges();
+    this.searchDisambiguation$.next(null); // Add this line
+    this.cdr.detectChanges(); // Add this line
   }
 
-  /**
-   * FAB controls
-   */
+  // === FAB CONTROLS ===
   toggleFab(): void { 
     this.isFabExpanded.update(expanded => !expanded);
   }
@@ -263,10 +170,39 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.isFabExpanded.set(false);
   }
 
-  /**
-   * Article management in edit mode
-   */
-  onToggleArticleInList(article: any): void {
+  // === ARTICLE EVENTS ===
+  onArticleToggle(article: ArticleItemData): void {
+    if (article.isChecked && article.pendingHideTimestamp) {
+      this.undoArticleCompletion(article);
+      return;
+    }
+    
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+      next: (success) => { 
+        if (success) {
+          if (!article.isChecked) {
+            // Article was just checked - start pending hide
+            this.startPendingHide(article);
+          }
+          this.triggerChangeDetection();
+          
+          // Check for completion after a short delay to allow state to update
+          setTimeout(() => {
+            if (this.currentMode() === 'shopping') {
+              this.setupCompletionMonitoring(); // Re-trigger monitoring
+            }
+          }, 150);
+        }
+      },
+      error: (error) => console.error('Toggle error:', error)
+    });
+  }
+  onEditAmountFromList(data: { article: ArticleItemData; event: Event }): void {
+    data.event.stopPropagation();
+    this.editArticleAmount(data.article);
+  }
+
+  onToggleArticleInList(article: ArticleItemData): void {
     const action = article.isInList 
       ? this.dataService.removeArticleFromList(this.listId, article.id)
       : this.dataService.addArticleToList(this.listId, article.id);
@@ -276,8 +212,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         if (success) {
           this.snackBar.open(
             `${article.name} ${article.isInList ? 'entfernt' : 'hinzugefügt'}`, 
-            '', 
-            { duration: 1000 }
+            '', { duration: 1000 }
           );
           this.triggerChangeDetection();
         }
@@ -286,36 +221,71 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Amount editing - Updated to handle new component event structure
-   */
-  onEditAmountFromList(data: { article: any; event?: Event }): void {
-    if (data.event) {
-      data.event.stopPropagation();
-    }
-    this.onEditAmount(data.article);
+  undoArticleCompletion(article: ArticleItemData): void {
+    this.removePendingState(article.id);
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+      next: (success) => success && console.log('Undo successful for:', article.name),
+      error: (error) => console.error('Undo error:', error)
+    });
   }
 
-  onEditAmount(article: any): void {
-    const currentAmount = article.listAmount || article.amount || '';
-    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
-    
-    if (newAmount !== null) {
-      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
-        next: () => this.snackBar.open('Menge aktualisiert', '', { duration: 1000 }),
-        error: (error) => console.error('Error updating amount:', error)
+  onArticleInfo(article: ArticleItemData): void {
+    if (article?.id) {
+      this.router.navigate(['/articles/edit', article.id], {
+        queryParams: { returnTo: `/lists/${this.listId}?mode=${this.currentMode()}` }
       });
     }
   }
 
-  onEditAmountInShopping(article: any, event: Event): void {
-    event.stopPropagation();
-    this.onEditAmount(article);
+  // === SEARCH MANAGEMENT ===
+  onSearchQueryChange(): void { 
+    this.searchQuery$.next(this.searchQuery.trim());
+    this.searchDisambiguation$.next(null);
+    
+    this.clearAutoSwitchTimer();
+    this.autoSwitchTimer = setTimeout(() => {
+      this.checkAndAutoSwitchFilter();
+    }, 705);
   }
 
-  /**
-   * List management actions
-   */
+  async onSelectSearchDisambiguation(option: any): Promise<void> {
+    const query = this.searchDisambiguation$.value?.query;
+    if (!query) return;
+
+    try {
+      if (option.type === 'existing' && option.article) {
+        await this.addExistingArticleToList(option.article);
+      } else if (option.type === 'new') {
+        await this.createAndAddNewArticle(query, option);
+      }
+      this.clearSearch();
+    } catch (error) {
+      console.error('Error selecting search disambiguation:', error);
+      this.snackBar.open('Fehler beim Hinzufügen des Artikels', '', { duration: 2000 });
+    }
+  }
+
+  onClearSearchDisambiguation(): void {
+    this.searchDisambiguation$.next(null);
+  }
+
+  // === LIST ACTIONS ===
+  onCreateNewArticle(): void {
+    const queryParams: any = { 
+      returnTo: `/lists/${this.listId}?mode=edit`,
+      listId: this.listId
+    };
+    if (this.searchQuery.trim()) {
+      queryParams.name = this.searchQuery.trim();
+    }
+    this.router.navigate(['/articles/add'], { queryParams });
+  }
+
+  onDepartmentSort(): void {
+    if (!this.currentList) return;
+    this.router.navigate(['/lists', this.listId, 'departments']);
+  }
+
   onClearAllItems(): void {
     if (!this.currentList) return;
     
@@ -329,8 +299,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       this.dataService.clearAllItemsFromList(this.listId).subscribe({
         next: (success) => this.snackBar.open(
           success ? 'Liste geleert' : 'Fehler beim Leeren der Liste', 
-          '', 
-          { duration: 1500 }
+          '', { duration: 1500 }
         ),
         error: () => this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 })
       });
@@ -357,8 +326,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         next: (success) => {
           this.snackBar.open(
             success ? 'Liste gelöscht' : 'Fehler beim Löschen', 
-            '', 
-            { duration: 1500 }
+            '', { duration: 1500 }
           );
           if (success) this.router.navigate(['/lists']);
         },
@@ -367,315 +335,197 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Navigation helpers
-   */
-  onCreateNewArticle(): void {
-    const queryParams: any = { 
-      returnTo: `/lists/${this.listId}?mode=edit`,
-      listId: this.listId
-    };
-    if (this.searchQuery.trim()) {
-      queryParams.name = this.searchQuery.trim();
-    }
-    this.router.navigate(['/articles/add'], { queryParams });
-  }
-
-  onArticleInfo(article: any): void {
-    if (article?.id) {
-      this.router.navigate(['/articles/edit', article.id], {
-        queryParams: { returnTo: `/lists/${this.listId}?mode=shopping` }
-      });
-    }
-  }
-
-  onDepartmentSort(): void {
-    if (!this.currentList) return;
-    this.router.navigate(['/lists', this.listId, 'departments']);
-  }
-
-  /**
-   * Search disambiguation handlers
-   */
-  async onSelectSearchDisambiguation(option: any): Promise<void> {
-    const query = this.searchDisambiguation$.value?.query;
-    if (!query) return;
-
-    try {
-      if (option.type === 'existing' && option.article) {
-        await this.addExistingArticleToList(option.article);
-      } else if (option.type === 'new') {
-        await this.createAndAddNewArticle(query, option);
-      }
-      
-      this.clearSearch();
-    } catch (error) {
-      console.error('Error selecting search disambiguation:', error);
-      this.snackBar.open('Fehler beim Hinzufügen des Artikels', '', { duration: 2000 });
-    }
-  }
-
-  onClearSearchDisambiguation(): void {
-    this.searchDisambiguation$.next(null);
-  }
-
-  /**
-   * Celebration animation controls
-   */
+  // === CELEBRATION ===
   closeCelebrationAnimation(): void {
     this.clearCelebrationTimeout();
     this.showCelebrationAnimation.set(false);
-    this.cdr.detectChanges();
   }
 
   onGifError(event: any): void {
-    console.error('GIF failed to load:', event.target.src);
     event.target.style.display = 'none';
-    
     const fallback = event.target.nextElementSibling;
-    if (fallback) {
-      fallback.style.display = 'flex';
-    }
+    if (fallback) fallback.style.display = 'flex';
   }
 
   onGifLoad(event: any): void {
-    console.log('GIF loaded successfully:', event.target.src);
+    console.log('GIF loaded successfully');
   }
 
-  /**
-   * Utility methods for template
-   */
+  // === UTILITY METHODS FOR TEMPLATE ===
   getCurrentListColor(): string { 
-    return this.currentList?.color || '#1a9edb'; 
+    return this.listUtils.getCurrentListColor();
   }
 
   getContrastColor(hexColor: string): string {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? '#333333' : '#ffffff';
+    return this.listUtils.getContrastColor(hexColor);
   }
 
-  getLightColor(hexColor: string): string {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    const lightR = Math.round(r + (255 - r) * 0.7);
-    const lightG = Math.round(g + (255 - g) * 0.7);
-    const lightB = Math.round(b + (255 - b) * 0.7);
-    return `rgb(${lightR}, ${lightG}, ${lightB})`;
-  }
-
-  getDarkColor(hexColor: string): string {
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    return `rgb(${Math.round(r * 0.8)}, ${Math.round(g * 0.8)}, ${Math.round(b * 0.8)})`;
-  }
-
-  getDepartmentIconPath(departmentId: string): string {
-    return this.departmentService.getDepartmentIconPath(departmentId);
-  }
-
-  getDepartmentIconFilter(): string {
-    if (this.departmentIconFilterCache) return this.departmentIconFilterCache;
-    this.departmentIconFilterCache = `hue-rotate(${this.getHueRotation()}deg) saturate(1.2)`;
-    return this.departmentIconFilterCache;
-  }
-
-  getDepartmentNameGerman(departmentId: string): string {
-    return this.departmentService.getDepartmentName(departmentId, 'german');
-  }
-
-  getArticleAmount(article: any): string {
-    try {
-      return this.currentList?.itemStates[article.id]?.amount || article.amount || '';
-    } catch { 
-      return article?.amount || ''; 
-    }
-  }
-
-  shouldHideArticle(article: ArticleItem): boolean {
-    const articleWithState = article as ArticleWithState;
+  shouldHideArticle = (article: ArticleItemData): boolean => {
     return this.currentShoppingFilter() === 'offen' && 
-           articleWithState.isChecked && 
-           !articleWithState.pendingHideTimestamp;
-  }
-
-  /**
-   * Undo completion for articles in pending state
-   */
-  undoArticleCompletion(article: ArticleItem): void {
-    const articleWithState = article as ArticleWithState;
-    this.removePendingState(articleWithState.id);
-        
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => {
-        if (success) {
-          console.log('Undo successful for:', article.name);
-        }
-      },
-      error: (error) => console.error('Undo error:', error)
-    });
-  }
+           article.isChecked && 
+           !article.pendingHideTimestamp;
+  };
 
   // === PRIVATE METHODS ===
-
   private initializeComponent(): void {
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'edit') {
       this.currentMode.set('edit');
+      this.editFilter$.next('alle'); // Ensure edit filter is set to 'alle' by default
     }
-    
-    this.editFilter$.next('alle');
   }
 
   private setupSubscriptions(): void {
-    // List subscription with theme management
     this.list$.pipe(takeUntil(this.destroy$)).subscribe({
       next: (list) => {
-        console.log('List loaded:', list);
         this.currentList = list || null;
-        this.isLoading.set(false); // <-- Make sure this line exists
-        this.departmentIconFilterCache = '';
+        this.isLoading.set(false);
         
         if (list?.color) {
-          this.updateThemeColors(list.color);
+          this.listUtils.updateThemeColors(list.color);
         } else {
-          this.updateThemeColors('#1a9edb');
+          this.listUtils.updateThemeColors('#1a9edb');
         }
         
         if (!list && !this.isLoading()) {
           this.router.navigate(['/lists']);
         }
-        this.isLoading.set(false); // Make sure this runs
       },
       error: (error) => {
         console.error('Error loading list:', error);
-        this.isLoading.set(false); // Make sure this runs on error too
+        this.isLoading.set(false);
         this.router.navigate(['/lists']);
       }
     });
 
-    // Completion monitoring
     this.setupCompletionMonitoring();
   }
 
-  private createShoppingModeObservable(): Observable<DepartmentGroup[]> {
-    const listArticles$ = combineLatest([
-      this.list$, 
-      this.dataService.getArticles(), 
-      this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
-      this.shoppingFilter$,
-      this.pendingStates$
-    ]).pipe(
-      map(([list, articles, query, filter, pendingStates]) => {
-        console.log('🔍 Shopping mode observable:', { list: list?.name, articlesCount: articles?.length, query, filter });
-        
-        if (!list) return [];
-        
-        let filteredArticles = articles
-          .filter(article => list.articleIds.includes(article.id))
-          .map(article => {
-            const pendingState = pendingStates[article.id] || {};
-            
-            return {
-              ...article,
-              isChecked: list.itemStates[article.id]?.isChecked || false,
-              isInList: true,
-              pendingHideTimestamp: pendingState.pendingHideTimestamp,
-              showUndoHint: pendingState.showUndoHint
-            } as ArticleWithState;
-          });
-  
-        console.log('🔍 Filtered articles:', filteredArticles.length);
-       
-        if (query?.trim()) {
-          filteredArticles = filteredArticles.filter(article =>
-            article.name.toLowerCase().includes(query.toLowerCase()) ||
-            (article.notes && article.notes.toLowerCase().includes(query.toLowerCase()))
-          );
-        }
-
-        filteredArticles = filteredArticles.sort((a, b) => a.name.localeCompare(b.name));
-
-        switch (filter) {
-          case 'offen': 
-            return filteredArticles.filter(article => 
-              !article.isChecked || 
-              (article.isChecked && article.pendingHideTimestamp)
-            );
-          case 'erledigt': 
-            return filteredArticles.filter(article => article.isChecked);
-          default: 
-            return filteredArticles;
-        }
-      })
-    );
-
-    return combineLatest([
-      listArticles$, 
-      this.departmentService.getDepartments(), 
-      this.list$
-    ]).pipe(
-      map(([articles, departments, list]) => {
-        return this.groupArticlesByDepartment(articles, departments, list);
-      })
-    );
-  }
-
-  private createEditModeObservable(): Observable<DepartmentGroupEdit[]> {
-    const allArticlesWithState$ = combineLatest([
-      this.list$, 
-      this.dataService.getArticles(), 
-      this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
-      this.editFilter$
-    ]).pipe(
-      map(([list, allArticles, query, filter]) => {
-        if (!list) return [];
-        
-        let filtered = query?.trim() 
-          ? allArticles.filter(article => article.name.toLowerCase().includes(query.toLowerCase()))
-          : allArticles;
-        
-        let articlesWithState = filtered
-          .map(article => ({
-            ...article,
-            isInList: list.articleIds.includes(article.id),
-            listAmount: list.itemStates[article.id]?.amount || article.amount || '',
-            isChecked: list.itemStates[article.id]?.isChecked || false  // Add this line
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-  
-        switch (filter) {
-          case 'gelistet': return articlesWithState.filter(article => article.isInList);
-          case 'fehlend': return articlesWithState.filter(article => !article.isInList);
-          default: return articlesWithState;
-        }
-      })
-    );
-
-    return combineLatest([
-      allArticlesWithState$, 
-      this.departmentService.getDepartments(), 
-      this.list$
-    ]).pipe(
-      map(([articles, departments, list]) => {
-        return this.groupArticlesByDepartmentEdit(articles, departments, list);
-      })
-    );
-  }
-
-  private groupArticlesByDepartment(
-    articles: ArticleWithState[], 
-    departments: Department[], 
-    list: ShoppingList | undefined
-  ): DepartmentGroup[] {
-    if (!list) return [];
+  private createUnifiedObservable(mode: ViewMode): Observable<DepartmentGroup[]> {
+    const filter$ = mode === 'shopping' ? this.shoppingFilter$ : this.editFilter$;
     
+    const articlesWithState$ = combineLatest([
+      this.list$, 
+      this.dataService.getArticles(), 
+      this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
+      filter$,
+      ...(mode === 'shopping' ? [this.pendingStates$] : [])
+    ]).pipe(
+      map(([list, articles, query, filter, ...rest]) => {
+        if (!list) return [];
+        
+        const pendingStates = mode === 'shopping' ? (rest[0] || {}) : {};
+        
+        let filteredArticles = this.getFilteredArticles(list, articles, query, filter, mode, pendingStates);
+        return this.groupArticlesByDepartment(filteredArticles, list);
+      })
+    );
+
+    return combineLatest([
+      articlesWithState$, 
+      this.departmentService.getDepartments()
+    ]).pipe(
+      map(([articles, departments]) => {
+        return this.createDepartmentGroups(articles, departments);
+      })
+    );
+  }
+
+  private getFilteredArticles(
+    list: ShoppingList, 
+    allArticles: Article[], 
+    query: string, 
+    filter: ShoppingFilter | EditFilter, 
+    mode: ViewMode,
+    pendingStates: Record<string, PendingState>
+  ): ArticleItemData[] {
+    let articles: ArticleItemData[];
+    
+    if (mode === 'shopping') {
+      articles = allArticles
+        .filter(article => list.articleIds.includes(article.id))
+        .map(article => this.mapToArticleItemData(article, list, pendingStates));
+      
+      switch (filter as ShoppingFilter) {
+        case 'offen': 
+          articles = articles.filter(a => !a.isChecked || a.pendingHideTimestamp);
+          break;
+        case 'erledigt': 
+          articles = articles.filter(a => a.isChecked);
+          break;
+      }
+    } else {
+      // EDIT MODE - Show ALL articles, not just those in the list
+      articles = allArticles.map(article => this.mapToArticleItemData(article, list, {}));
+      
+      switch (filter as EditFilter) {
+        case 'gelistet': 
+          articles = articles.filter(a => a.isInList);
+          break;
+        case 'fehlend': 
+          articles = articles.filter(a => !a.isInList);
+          break;
+        case 'alle':
+          // Show all articles - no filtering
+          break;
+      }
+    }
+  
+    if (query?.trim()) {
+      articles = articles.filter(article =>
+        article.name.toLowerCase().includes(query.toLowerCase()) ||
+        (article.notes && article.notes.toLowerCase().includes(query.toLowerCase()))
+      );
+    }
+  
+    return articles.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private mapToArticleItemData(
+    article: Article, 
+    list: ShoppingList, 
+    pendingStates: Record<string, PendingState>
+  ): ArticleItemData {
+    const pendingState = pendingStates[article.id] || {};
+    const itemState = list.itemStates[article.id];
+    
+    return {
+      id: article.id,
+      name: article.name,
+      icon: article.icon,
+      notes: article.notes,
+      amount: article.amount,
+      departmentId: article.departmentId,
+      isChecked: itemState?.isChecked || false,
+      isInList: list.articleIds.includes(article.id),
+      listAmount: itemState?.amount || article.amount || '',
+      pendingHideTimestamp: pendingState.pendingHideTimestamp,
+      showUndoHint: pendingState.showUndoHint
+    };
+  }
+
+  private groupArticlesByDepartment(articles: ArticleItemData[], list: ShoppingList): ArticleItemData[] {
     const departmentOrder = list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
-    const departmentMap = new Map<string, ArticleWithState[]>();
+    const departmentMap = new Map<string, ArticleItemData[]>();
+    
+    articles.forEach(article => {
+      const deptId = article.departmentId || 'miscellaneous';
+      if (!departmentMap.has(deptId)) departmentMap.set(deptId, []);
+      departmentMap.get(deptId)!.push(article);
+    });
+    
+    const orderedArticles: ArticleItemData[] = [];
+    departmentOrder.forEach(deptId => {
+      if (departmentMap.has(deptId)) {
+        orderedArticles.push(...departmentMap.get(deptId)!);
+      }
+    });
+    
+    return orderedArticles;
+  }
+
+  private createDepartmentGroups(articles: ArticleItemData[], departments: Department[]): DepartmentGroup[] {
+    const departmentMap = new Map<string, ArticleItemData[]>();
     
     articles.forEach(article => {
       const deptId = article.departmentId || 'miscellaneous';
@@ -684,6 +534,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
     
     const groups: DepartmentGroup[] = [];
+    const departmentOrder = this.currentList?.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
+    
     departmentOrder.forEach(deptId => {
       if (departmentMap.has(deptId)) {
         const department = departments.find(d => d.id === deptId) || {
@@ -694,52 +546,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         };
         groups.push({
           department,
-          articles: departmentMap.get(deptId)!.sort((a, b) => a.name.localeCompare(b.name))
+          articles: departmentMap.get(deptId)!
         });
       }
     });
-    return groups;
-  }
-
-  private groupArticlesByDepartmentEdit(
-    articles: ArticleWithToggleAndAmount[], 
-    departments: Department[], 
-    list: ShoppingList | undefined
-  ): DepartmentGroupEdit[] {
-    if (!list) return [];
     
-    const departmentOrder = list.departmentOrder || DEFAULT_DEPARTMENT_ORDER;
-    const departmentMap = new Map<string, ArticleWithToggleAndAmount[]>();
-    
-    articles.forEach(article => {
-      const deptId = article.departmentId || 'miscellaneous';
-      if (!departmentMap.has(deptId)) departmentMap.set(deptId, []);
-      departmentMap.get(deptId)!.push(article);
-    });
-    
-    const groups: DepartmentGroupEdit[] = [];
-    departmentOrder.forEach(deptId => {
-      if (departmentMap.has(deptId)) {
-        const department = departments.find(d => d.id === deptId) || {
-          id: 'miscellaneous', 
-          nameGerman: 'Sonstiges', 
-          nameEnglish: 'Miscellaneous',
-          icon: 'Help-Chat-2--Streamline-Core-Remix.png'
-        };
-        groups.push({
-          department,
-          articles: departmentMap.get(deptId)!.sort((a, b) => a.name.localeCompare(b.name))
-        });
-      }
-    });
     return groups;
   }
 
   private setupSearchDisambiguation(): void {
     combineLatest([
       this.searchQuery$.pipe(debounceTime(500), distinctUntilChanged()),
-      this.createShoppingModeObservable().pipe(map(groups => groups.flatMap(g => g.articles))),
-      this.createEditModeObservable().pipe(map(groups => groups.flatMap(g => g.articles)))
+      this.departmentGroups$.pipe(map(groups => groups.flatMap(g => g.articles))),
+      this.departmentGroupsEdit$.pipe(map(groups => groups.flatMap(g => g.articles)))
     ]).pipe(takeUntil(this.destroy$)).subscribe(([query, listArticles, allArticles]) => {
       if (!query.trim()) {
         this.searchDisambiguation$.next(null);
@@ -751,7 +570,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async handleNoSearchResults(query: string, allArticles: any[]): Promise<void> {
+  private async handleNoSearchResults(query: string, allArticles: ArticleItemData[]): Promise<void> {
     try {
       const articlesNotInList = allArticles.filter(article => !article.isInList);
       const hasMatches = articlesNotInList.some(article => 
@@ -771,6 +590,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Search disambiguation error:', error);
+    }
+  }
+
+  private editArticleAmount(article: ArticleItemData): void {
+    const currentAmount = article.listAmount || article.amount || '';
+    const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
+    
+    if (newAmount !== null) {
+      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
+        next: () => this.snackBar.open('Menge aktualisiert', '', { duration: 1000 }),
+        error: (error) => console.error('Error updating amount:', error)
+      });
     }
   }
 
@@ -796,9 +627,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
     if (success) {
       this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
-      setTimeout(() => {
-        this.searchDisambiguation$.next(null);
-      }, 100);
+      setTimeout(() => this.searchDisambiguation$.next(null), 100);
     }
   }
 
@@ -811,15 +640,14 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     };
 
     const newArticle = await this.dataService.createArticle(articleData).pipe(take(1)).toPromise();
-    
     if (newArticle) {
       await this.addExistingArticleToList(newArticle);
     }
   }
 
   private setupCompletionMonitoring(): void {
-
-    const allListArticles$ = combineLatest([
+    // Monitor the actual list articles (not filtered view)
+    const listArticles$ = combineLatest([
       this.list$,
       this.dataService.getArticles()
     ]).pipe(
@@ -830,81 +658,67 @@ export class ListDetailComponent implements OnInit, OnDestroy {
           .filter(article => list.articleIds.includes(article.id))
           .map(article => ({
             ...article,
-            isChecked: list.itemStates[article.id]?.isChecked || false,
-            isInList: true
+            isChecked: list.itemStates[article.id]?.isChecked || false
           }));
       })
     );
   
-    allListArticles$.pipe(takeUntil(this.destroy$)).subscribe(articles => {
-      this.checkForCompletion(articles);
+    listArticles$.pipe(takeUntil(this.destroy$)).subscribe(articles => {
+      // Only check in shopping mode
+      if (this.currentMode() === 'shopping') {
+        this.checkForCompletion(articles);
+      }
     });
   }
 
-  private checkForCompletion(articles: ArticleWithState[]): void {
-
-    if (!articles?.length || this.currentMode() !== 'shopping') return;
+  private checkForCompletion(articles: any[]): void {
+    // Must be in shopping mode and have articles
+    if (this.currentMode() !== 'shopping' || !articles?.length) {
+      return;
+    }
     
-    const uncheckedCount = articles.filter(article => !article.isChecked).length;
-    const totalCount = articles.length;
-  
-    if (uncheckedCount === 0 && totalCount > 0) {
+    // Count truly unchecked articles (not in pending state)
+    const uncheckedArticles = articles.filter(article => !article.isChecked);
+    
+    console.log('🎯 Completion check:', { 
+      mode: this.currentMode(),
+      totalArticles: articles.length,
+      uncheckedArticles: uncheckedArticles.length,
+      allChecked: uncheckedArticles.length === 0
+    });
+    
+    // Trigger celebration only when all articles are checked AND we're showing "offen" filter
+    // This prevents celebration when switching to "erledigt" filter with no articles
+    if (uncheckedArticles.length === 0 && 
+        articles.length > 0 && 
+        this.currentShoppingFilter() === 'offen') {
+      console.log('🎉 All articles completed - triggering celebration!');
       this.triggerCelebrationAnimation();
     }
   }
 
   private triggerCelebrationAnimation(): void {
-    if (this.showCelebrationAnimation()) return;
+    // Double-check conditions before showing animation
+    if (this.currentMode() !== 'shopping' || 
+        this.currentShoppingFilter() !== 'offen' ||
+        this.showCelebrationAnimation()) {
+      console.log('❌ Celebration blocked:', {
+        mode: this.currentMode(),
+        filter: this.currentShoppingFilter(),
+        alreadyShowing: this.showCelebrationAnimation()
+      });
+      return;
+    }
     
+    console.log('🎉 Showing celebration animation');
     this.showCelebrationAnimation.set(true);
     this.cdr.detectChanges();
     
     this.celebrationTimeout = setTimeout(() => {
+      console.log('🎉 Auto-closing celebration animation');
       this.showCelebrationAnimation.set(false);
       this.cdr.detectChanges();
     }, 3000);
-  }
-
-  private updateThemeColors(color: string): void {
-    const root = document.documentElement;
-    root.style.setProperty('--list-primary-color', color);
-    root.style.setProperty('--list-contrast-color', this.getContrastColor(color));
-    root.style.setProperty('--list-light-color', this.getLightColor(color));
-    root.style.setProperty('--list-dark-color', this.getDarkColor(color));
-    this.updateThemeColorMeta(color);
-  }
-
-  private updateThemeColorMeta(color: string): void {
-    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
-    if (!themeColorMeta) {
-      themeColorMeta = document.createElement('meta');
-      themeColorMeta.name = 'theme-color';
-      document.head.appendChild(themeColorMeta);
-    }
-    themeColorMeta.content = color;
-    document.documentElement.style.backgroundColor = color;
-  }
-
-  private resetToDefaultTheme(): void {
-    const defaultColor = '#1a9edb';
-    const root = document.documentElement;
-    
-    root.style.setProperty('--list-primary-color', defaultColor);
-    root.style.setProperty('--list-contrast-color', 'white');
-    root.style.setProperty('--list-light-color', '#a8d4f0');
-    root.style.setProperty('--list-dark-color', '#1976d2');
-    root.style.setProperty('--list-primary-color-rgb', '26, 158, 219');
-    
-    this.updateThemeColorMeta(defaultColor);
-    document.documentElement.style.backgroundColor = defaultColor;
-  }
-
-  private getHueRotation(): number {
-    const color = this.getCurrentListColor();
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    return Math.floor((r + g + b) / 3 / 255 * 360);
   }
 
   private checkAndAutoSwitchFilter(): void {
@@ -912,11 +726,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const listArticles$ = this.createShoppingModeObservable().pipe(
-      map(groups => groups.flatMap(g => g.articles))
-    );
-
-    listArticles$.pipe(take(1)).subscribe(articles => {
+    this.departmentGroups$.pipe(take(1)).subscribe(groups => {
+      const articles = groups.flatMap(g => g.articles);
       if (articles.length === 0) {
         this.setShoppingFilter('alle');
         this.snackBar.open('Filter auf Alle gestellt', '', { 
@@ -937,20 +748,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.searchDisambiguation$.next(null);
   }
 
-  private clearAutoSwitchTimer(): void {
-    if (this.autoSwitchTimer) {
-      clearTimeout(this.autoSwitchTimer);
-    }
-  }
-
-  private clearCelebrationTimeout(): void {
-    if (this.celebrationTimeout) {
-      clearTimeout(this.celebrationTimeout);
-      this.celebrationTimeout = undefined;
-    }
-  }
-
-  private startPendingHide(article: ArticleWithState): void {
+  private startPendingHide(article: ArticleItemData): void {
     const now = Date.now();
     const hideTime = now + this.HIDE_DELAY_MS;
     
@@ -988,19 +786,30 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  private clearAutoSwitchTimer(): void {
+    if (this.autoSwitchTimer) {
+      clearTimeout(this.autoSwitchTimer);
+    }
+  }
+
+  private clearCelebrationTimeout(): void {
+    if (this.celebrationTimeout) {
+      clearTimeout(this.celebrationTimeout);
+      this.celebrationTimeout = undefined;
+    }
+  }
+
   private triggerChangeDetection(): void {
     setTimeout(() => this.cdr.detectChanges(), 100);
   }
 
   private cleanup(): void {
-    // Clean up timers
     this.undoHintTimeouts.forEach(timeout => clearTimeout(timeout));
     this.undoHintTimeouts.clear();
     
     this.clearCelebrationTimeout();
     this.clearAutoSwitchTimer();
     
-    // Complete subjects
     this.destroy$.next();
     this.destroy$.complete();
     this.pendingStates$.complete();
@@ -1008,14 +817,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.shoppingFilter$.complete();
     this.editFilter$.complete();
 
-    // Reset theme if not navigating to another list
     const currentUrl = this.router.url;
     if (!currentUrl.includes('/lists/') || currentUrl === '/lists') {
-      this.resetToDefaultTheme();
-      
-      setTimeout(() => {
-        this.updateThemeColorMeta('#1a9edb');
-      }, 0);
+      this.listUtils.resetToDefaultTheme();
     }
   }
 }

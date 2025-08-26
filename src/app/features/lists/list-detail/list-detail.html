@@ -42,7 +42,6 @@
       [(searchQuery)]="searchQuery"
       [disambiguation]="searchDisambiguation$ | async"
       [placeholder]="'Artikel suchen'"
-      [getDepartmentNameGerman]="getDepartmentNameGerman.bind(this)"
       (queryChange)="onSearchQueryChange()"
       (selectOption)="onSelectSearchDisambiguation($event)"
       (clearDisambiguation)="onClearSearchDisambiguation()">
@@ -55,11 +54,7 @@
         [departmentGroups]="departmentGroups$ | async"
         [mode]="'shopping'"
         [searchQuery]="searchQuery"
-        [getDepartmentIconPath]="getDepartmentIconPath.bind(this)"
-        [getDepartmentIconFilter]="getDepartmentIconFilter.bind(this)"
-        [getCurrentListColor]="getCurrentListColor.bind(this)"
-        [getArticleAmount]="getArticleAmount.bind(this)"
-        [shouldHideArticle]="shouldHideArticle.bind(this)"
+        [shouldHideArticle]="shouldHideArticle"
         (articleToggle)="onArticleToggle($event)"
         (editAmount)="onEditAmountFromList($event)"
         (articleInfo)="onArticleInfo($event)"
@@ -77,7 +72,6 @@
       [(searchQuery)]="searchQuery"
       [disambiguation]="searchDisambiguation$ | async"
       [placeholder]="'Artikel eingeben'"
-      [getDepartmentNameGerman]="getDepartmentNameGerman.bind(this)"
       (queryChange)="onSearchQueryChange()"
       (selectOption)="onSelectSearchDisambiguation($event)"
       (clearDisambiguation)="onClearSearchDisambiguation()">
@@ -112,11 +106,7 @@
         [departmentGroups]="departmentGroupsEdit$ | async"
         [mode]="'edit'"
         [searchQuery]="searchQuery"
-        [getDepartmentIconPath]="getDepartmentIconPath.bind(this)"
-        [getDepartmentIconFilter]="getDepartmentIconFilter.bind(this)"
-        [getCurrentListColor]="getCurrentListColor.bind(this)"
-        [getArticleAmount]="getArticleAmount.bind(this)"
-        [shouldHideArticle]="shouldHideArticle.bind(this)"
+        [shouldHideArticle]="shouldHideArticle"
         (articleToggle)="onArticleToggle($event)"
         (editAmount)="onEditAmountFromList($event)"
         (articleInfo)="onArticleInfo($event)"
@@ -138,7 +128,7 @@
         mat-button 
         (click)="onDeleteList()"
         class="action-button tertiary-button"
-        [style.color]="getLightColor(getCurrentListColor())">
+        [style.color]="listUtils.getLightColor(getCurrentListColor())">
         Löschen
       </button>
       <button 
