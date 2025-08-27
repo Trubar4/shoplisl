@@ -12,6 +12,7 @@ import { OfflineCacheService } from './core/services/offline-cache.service';
 import { DataService } from './core/services/data.service';
 import { ListUtilsService } from './core/services/list-utils.service';
 import { ArticleItemComponent } from './shared/components/article-item/article-item.component';
+import { DataMigrationService } from './core/services/data-migration.service';
 
 @Component({
   selector: 'app-root',
@@ -38,7 +39,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private router: Router,
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
-    private dataService: DataService
+    private dataService: DataService,
+    private dataMigrationService: DataMigrationService
   ) {
     this.initializeLogger();
     this.initializeOfflineDebugging();
@@ -67,6 +69,15 @@ export class AppComponent implements OnInit, OnDestroy {
         document.title = status.isOnline ? baseTitle : `${baseTitle} (Offline)`;
       })
     );
+
+    // Run data cleanup on startup
+    if (this.connectionService.isOnline()) {
+      this.dataMigrationService.checkAndCleanupData().then(() => {
+        this.logger.debug('data', 'Startup data cleanup completed');  // Change 'app' to 'data'
+      }).catch(error => {
+        this.logger.error('data', 'Startup cleanup failed', error);  // Change 'app' to 'data'
+      });
+    }
 
     console.log('🚀 ShopLisl PWA ready with connection-first offline support!');
   }
@@ -152,6 +163,115 @@ export class AppComponent implements OnInit, OnDestroy {
         goOnline: () => {
           console.log('✅ Going back online...');
           console.log('Disable offline mode in browser DevTools');
+        },
+
+        cleanupData: async () => {
+          const result = await this.dataMigrationService.quickCleanupOrphanedReferences();
+          console.log('🧹 Manual cleanup result:', result);
+          return result;
+        },
+        checkOrphans: async () => {
+          const hasOrphans = await this.dataMigrationService.hasOrphanedReferences();
+          console.log('👻 Has orphaned references:', hasOrphans);
+          return hasOrphans;
+        },
+        testOrphanedData: async () => {
+          try {
+            console.log('🔍 Checking for orphaned references...');
+            
+            // Get current data through the app's services
+            const articles = await new Promise<any[]>(resolve => 
+              this.dataService.getArticles().subscribe((data: any[]) => resolve(data))
+            );
+            const lists = await new Promise<any[]>(resolve => 
+              this.dataService.getLists().subscribe((data: any[]) => resolve(data))
+            );
+            
+            const validArticleIds = new Set(articles.map((a: any) => a.id));
+            console.log('✅ Valid article IDs:', Array.from(validArticleIds));
+            console.log('📋 Total articles:', articles.length);
+            
+            let totalOrphans = 0;
+            
+            lists.forEach((list: any) => {
+              const orphanedIds = list.articleIds?.filter((id: any) => !validArticleIds.has(id)) || [];
+              const orphanedStates = Object.keys(list.itemStates || {}).filter((id: any) => !validArticleIds.has(id));
+              
+              if (orphanedIds.length > 0 || orphanedStates.length > 0) {
+                console.log(`🚨 List "${list.name}" has orphans:`, {
+                  orphanedArticleIds: orphanedIds,
+                  orphanedItemStates: orphanedStates,
+                  totalInList: list.articleIds?.length || 0,
+                  activeCount: list.articleIds?.filter((id: any) => {
+                    const itemState = list.itemStates?.[id];
+                    return !itemState?.isChecked;
+                  }).length || 0
+                });
+                totalOrphans += orphanedIds.length + orphanedStates.length;
+              } else {
+                console.log(`✅ List "${list.name}" is clean (${list.articleIds?.length || 0} articles)`);
+              }
+            });
+            
+            console.log(`📊 Summary: ${totalOrphans} orphaned references found across ${lists.length} lists`);
+            return { totalOrphans, lists: lists.length, articles: articles.length };
+            
+          } catch (error) {
+            console.error('❌ Error checking orphaned data:', error);
+            return { error: 'Check failed' };
+          }
+        },
+
+        debugListDetails: async (listName = 'Lädele') => {
+          try {
+            const lists = await new Promise<any[]>(resolve => 
+              this.dataService.getLists().subscribe((data: any[]) => resolve(data))
+            );
+            const articles = await new Promise<any[]>(resolve => 
+              this.dataService.getArticles().subscribe((data: any[]) => resolve(data))
+            );
+            
+            const list = lists.find((l: any) => l.name === listName);
+            if (!list) {
+              console.log(`❌ List "${listName}" not found`);
+              return;
+            }
+            
+            const validArticleIds = new Set(articles.map((a: any) => a.id));
+            const articlesMap = new Map(articles.map((a: any) => [a.id, a]));
+            
+            console.log(`🔍 Debugging list "${listName}":`);
+            console.log('📋 Total articleIds:', list.articleIds.length);
+            console.log('📊 ItemStates count:', Object.keys(list.itemStates || {}).length);
+            
+            // Check each article in the list
+            list.articleIds.forEach((articleId: any, index: number) => {
+              const article = articlesMap.get(articleId);
+              const itemState = list.itemStates?.[articleId];
+              const exists = validArticleIds.has(articleId);
+              const isChecked = itemState?.isChecked || false;
+              
+              console.log(`${index + 1}. Article ${articleId}:`, {
+                exists,
+                name: article?.name || 'MISSING',
+                isChecked,
+                itemState: itemState || 'NO_STATE'
+              });
+            });
+            
+            // Count unchecked articles
+            const uncheckedCount = list.articleIds.filter((id: any) => {
+              const itemState = list.itemStates?.[id];
+              return !itemState?.isChecked;
+            }).length;
+            
+            console.log(`📊 Unchecked count: ${uncheckedCount}`);
+            return { listName, total: list.articleIds.length, unchecked: uncheckedCount };
+            
+          } catch (error) {
+            console.error('❌ Debug failed:', error);
+            return { error: 'Debug failed' };
+          }
         }
       };
 

@@ -8,6 +8,7 @@ import { FirebaseDataService } from './firebase-data.service';
 import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
+import { DataMigrationService } from './data-migration.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,8 @@ export class ArticlesRepositoryService {
     private firebaseData: FirebaseDataService,
     private offlineSync: OfflineSyncService,
     private connectionService: ConnectionService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private dataMigrationService: DataMigrationService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -142,18 +144,23 @@ export class ArticlesRepositoryService {
       const updatedArticles = currentArticles.filter(a => a.id !== id);
       this.firebaseData.updateLocalArticles(updatedArticles);
     
-      // Queue for sync when online
+      // Queue for sync when online (including cleanup)
       this.offlineSync.queueOperation(async () => {
         await this.removeArticleFromAllLists(id);
         await this.firebaseData.deleteArticleInFirebase(id);
+        // Auto-cleanup will run when back online
       }, `Delete article: ${id}`);
     
       return of(true);
     }
-
+  
     return from(this.removeArticleFromAllLists(id)).pipe(
       mergeMap(() => {
         return from(this.firebaseData.deleteArticleInFirebase(id));
+      }),
+      mergeMap(() => {
+        // Trigger immediate cleanup after successful deletion
+        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
       }),
       map(() => true),
       catchError(error => {

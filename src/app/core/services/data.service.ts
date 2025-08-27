@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, from, of } from 'rxjs';  // Add 'of' here
+import { map, catchError, mergeMap } from 'rxjs/operators';  // Add 'map' here
+import { BehaviorSubject } from 'rxjs';
 
 import { Article, ShoppingList } from '../models';
 import { FirebaseDataService } from './firebase-data.service';
@@ -301,4 +303,39 @@ export class DataService {
     this.logger.enableTopic('data');
     this.logger.info('data', 'Debug logging disabled');
   }
+
+  /**
+   * Filter article IDs to only include existing articles
+   */
+  getValidArticleIds(articleIds: string[]): Observable<string[]> {
+    if (!articleIds || articleIds.length === 0) {
+      return of([]);
+    }
+
+    return this.getArticles().pipe(
+      map(articles => {
+        const validIds = new Set(articles.map(a => a.id));
+        return articleIds.filter(id => validIds.has(id));
+      })
+    );
+  }
+
+  /**
+   * Get active (non-checked) article count for a list, excluding orphaned references
+   */
+  getActiveArticleCount(list: ShoppingList): Observable<number> {
+    if (!list || !list.articleIds || list.articleIds.length === 0) {
+      return of(0);
+    }
+
+    return this.getValidArticleIds(list.articleIds).pipe(
+      map(validIds => {
+        return validIds.filter(articleId => {
+          const itemState = list.itemStates?.[articleId];
+          return !itemState?.isChecked;
+        }).length;
+      })
+    );
+  }
+
 }

@@ -59,6 +59,7 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
 
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
+
   
   constructor(
     private dataService: DataService,
@@ -66,28 +67,42 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     private snackBar: MatSnackBar,
     private connectionService: ConnectionService
   ) {
-    // Setup filtered and sorted lists observable
+    // Setup filtered and sorted lists observable WITH validation
     this.lists$ = combineLatest([
       this.dataService.getLists(),
+      this.dataService.getArticles(), // Add articles to get valid IDs
       this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()),
       this.sortMode$
     ]).pipe(
-      map(([lists, query, sortMode]) => {
-        // First apply search filter
-        let filteredLists = lists;
+      map(([lists, articles, query, sortMode]) => {
+        const validIds = new Set(articles.map(a => a.id));
+        
+        // First clean the lists data
+        const cleanedLists = lists.map(list => ({
+          ...list,
+          // Filter out orphaned article IDs
+          articleIds: list.articleIds.filter(id => validIds.has(id)),
+          // Clean item states
+          itemStates: Object.fromEntries(
+            Object.entries(list.itemStates || {})
+              .filter(([articleId]) => validIds.has(articleId))
+          )
+        }));
+        
+        // Then apply search filter
+        let filteredLists = cleanedLists;
         if (query?.trim()) {
-          filteredLists = lists.filter(list => 
+          filteredLists = cleanedLists.filter(list => 
             list.name.toLowerCase().includes(query.toLowerCase())
           );
         }
         
-        // Then apply sorting
+        // Finally apply sorting
         switch (sortMode) {
           case 'alphabetical':
             return [...filteredLists].sort((a, b) => a.name.localeCompare(b.name));
           case 'lastChanged':
           default:
-            // Sort by most recently updated first
             return [...filteredLists].sort((a, b) => 
               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
             );
@@ -383,7 +398,7 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   // === UTILITY METHODS ===
 
   /**
-   * Count active (non-checked) articles in a list
+   * Count active (non-checked) articles in a list - FIXED to exclude orphaned references
    */
   getActiveItemCount(list: ShoppingList): number {
     if (!list || !list.articleIds || list.articleIds.length === 0) {
@@ -392,13 +407,12 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   
     return list.articleIds.filter(articleId => {
       const itemState = list.itemStates?.[articleId];
-      // Only count as checked if itemState exists AND isChecked is explicitly true
       return !itemState?.isChecked;
     }).length;
   }
 
   /**
-   * Get display text for list info: "X/Y" format
+   * Get display text for list info: "X/Y" format - FIXED to exclude orphaned references
    */
   getListInfoText(list: ShoppingList): string {
     const activeCount = this.getActiveItemCount(list);

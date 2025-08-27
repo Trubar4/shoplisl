@@ -120,17 +120,18 @@ export class DataMigrationService {
     }
   }
 
-  async autoCleanupOrphanedReferences(): Promise<void> {
+  async autoCleanupOrphanedReferences(): Promise<{ listsUpdated: number; referencesRemoved: number }> {
     if (!this.connectionService.isOnline()) {
-      return;
+      return { listsUpdated: 0, referencesRemoved: 0 };
     }
-
+  
     try {
       const lists = await this.firebaseData.getAllListsFromFirebase();
       const articles = await this.firebaseData.getAllArticlesFromFirebase();
       
       const validArticleIds = new Set(articles.map(article => article.id));
-      let cleanedCount = 0;
+      let listsUpdated = 0;
+      let referencesRemoved = 0;
       
       for (const list of lists) {
         const articleIds = list.articleIds || [];
@@ -155,17 +156,25 @@ export class DataMigrationService {
             updatedAt: Timestamp.now()
           });
           
-          cleanedCount++;
+          const removedCount = (articleIds.length - cleanedArticleIds.length) + 
+                             (Object.keys(itemStates).length - Object.keys(cleanedItemStates).length);
+          
+          listsUpdated++;
+          referencesRemoved += removedCount;
+          
           this.logger.debug('data', `Auto-cleaned "${list.name}": ${articleIds.length}→${cleanedArticleIds.length} articles`);
         }
       }
       
-      if (cleanedCount > 0) {
-        this.logger.info('data', `Auto-cleanup completed: ${cleanedCount} lists cleaned`);
+      if (listsUpdated > 0) {
+        this.logger.info('data', `Auto-cleanup completed: ${listsUpdated} lists cleaned, ${referencesRemoved} references removed`);
       }
+      
+      return { listsUpdated, referencesRemoved };
       
     } catch (error) {
       this.logger.error('data', 'Error during auto-cleanup', error);
+      return { listsUpdated: 0, referencesRemoved: 0 };
     }
   }
 
@@ -309,4 +318,69 @@ export class DataMigrationService {
       throw error;
     }
   }
+
+  /**
+   * Clean up orphaned references immediately (for use after article deletion)
+   */
+  async quickCleanupOrphanedReferences(): Promise<{ listsUpdated: number; referencesRemoved: number }> {
+    if (!this.connectionService.isOnline()) {
+      this.logger.debug('data', 'Offline: Quick cleanup will sync when online');
+      return { listsUpdated: 0, referencesRemoved: 0 };
+    }
+  
+    try {
+      const lists = await this.firebaseData.getAllListsFromFirebase();
+      const articles = await this.firebaseData.getAllArticlesFromFirebase();
+      
+      const validArticleIds = new Set(articles.map(article => article.id));
+      let listsUpdated = 0;
+      let referencesRemoved = 0;
+      
+      for (const list of lists) {
+        const articleIds = list.articleIds || [];
+        const itemStates = list.itemStates || {};
+        
+        const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
+        
+        const cleanedItemStates: any = {};
+        Object.entries(itemStates).forEach(([articleId, state]) => {
+          if (validArticleIds.has(articleId)) {
+            cleanedItemStates[articleId] = state;
+          }
+        });
+        
+        const articleIdsRemoved = articleIds.length - cleanedArticleIds.length;
+        const itemStatesRemoved = Object.keys(itemStates).length - Object.keys(cleanedItemStates).length;
+        const totalRemoved = articleIdsRemoved + itemStatesRemoved;
+        
+        if (totalRemoved > 0) {
+          await this.firebaseData.updateListInFirebase(list.id, {
+            articleIds: cleanedArticleIds,
+            itemStates: cleanedItemStates,
+            updatedAt: Timestamp.now()
+          });
+          
+          listsUpdated++;
+          referencesRemoved += totalRemoved;
+          
+          this.logger.debug('data', 
+            `Quick cleanup "${list.name}": removed ${articleIdsRemoved} article IDs + ${itemStatesRemoved} item states`
+          );
+        }
+      }
+      
+      if (listsUpdated > 0) {
+        this.logger.info('data', `Quick cleanup: ${listsUpdated} lists cleaned, ${referencesRemoved} references removed`);
+        // Refresh local data
+        await this.firebaseData.refreshData();
+      }
+      
+      return { listsUpdated, referencesRemoved };
+      
+    } catch (error) {
+      this.logger.error('data', 'Error during quick cleanup', error);
+      return { listsUpdated: 0, referencesRemoved: 0 };
+    }
+  }
+
 }
