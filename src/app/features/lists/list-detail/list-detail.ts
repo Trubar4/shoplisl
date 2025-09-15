@@ -83,6 +83,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private celebrationTimeout?: any;
   private autoSwitchTimer?: any;
   private readonly HIDE_DELAY_MS = 5000;
+  private wasIncompleteLastCheck = false;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -122,6 +123,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   
   switchToShoppingMode(): void { 
     this.currentMode.set('shopping');
+    this.wasIncompleteLastCheck = false; // Reset completion tracker
     this.cdr.detectChanges();
   }
   
@@ -146,6 +148,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.shoppingFilter$.next(filter);
     this.isFabExpanded.set(false);
     this.searchDisambiguation$.next(null);
+    this.wasIncompleteLastCheck = false; // Add this line
     
     // Reset celebration when switching filters
     if (this.showCelebrationAnimation()) {
@@ -646,7 +649,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private setupCompletionMonitoring(): void {
-    // Monitor the actual list articles (not filtered view)
     const listArticles$ = combineLatest([
       this.list$,
       this.dataService.getArticles()
@@ -664,7 +666,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     );
   
     listArticles$.pipe(takeUntil(this.destroy$)).subscribe(articles => {
-      // Only check in shopping mode
       if (this.currentMode() === 'shopping') {
         this.checkForCompletion(articles);
       }
@@ -672,29 +673,33 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private checkForCompletion(articles: any[]): void {
-    // Must be in shopping mode and have articles
     if (this.currentMode() !== 'shopping' || !articles?.length) {
+      this.wasIncompleteLastCheck = false;
       return;
     }
     
-    // Count truly unchecked articles (not in pending state)
     const uncheckedArticles = articles.filter(article => !article.isChecked);
+    const isCurrentlyComplete = uncheckedArticles.length === 0;
     
     console.log('🎯 Completion check:', { 
       mode: this.currentMode(),
       totalArticles: articles.length,
       uncheckedArticles: uncheckedArticles.length,
-      allChecked: uncheckedArticles.length === 0
+      wasIncomplete: this.wasIncompleteLastCheck,
+      isComplete: isCurrentlyComplete,
+      shouldCelebrate: this.wasIncompleteLastCheck && isCurrentlyComplete
     });
     
-    // Trigger celebration only when all articles are checked AND we're showing "offen" filter
-    // This prevents celebration when switching to "erledigt" filter with no articles
-    if (uncheckedArticles.length === 0 && 
-        articles.length > 0 && 
+    // Only celebrate on transition from incomplete to complete
+    if (this.wasIncompleteLastCheck && 
+        isCurrentlyComplete && 
         this.currentShoppingFilter() === 'offen') {
-      console.log('🎉 All articles completed - triggering celebration!');
+      console.log('🎉 List just completed - triggering celebration!');
       this.triggerCelebrationAnimation();
     }
+    
+    // Update state for next check
+    this.wasIncompleteLastCheck = !isCurrentlyComplete;
   }
 
   private triggerCelebrationAnimation(): void {
