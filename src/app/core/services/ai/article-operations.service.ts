@@ -325,19 +325,48 @@ export class ArticleOperationsService {
   // ========================================
 
   async suggestDepartment(itemName: string): Promise<string> {
+    console.log('🔍 suggestDepartment called for:', itemName);
+    
+    // Valid department IDs
+    const validDepartments = [
+      'fruit-vegetables', 'dairy-products', 'fridge-meat', 'bread', 
+      'beverages-alcohol', 'frozen-goods', 'tins-jars', 'noodles-rice', 
+      'spices-oils', 'sweet-salty', 'breakfast', 'pastries', 
+      'sausage-cheese-counter', 'household-goods', 'cleaning-agents', 
+      'body-care', 'drugstore', 'medicine', 'miscellaneous', 
+      'international', 'season'
+    ];
+  
     try {
       // Try AI suggestions first
+      console.log('🤖 Trying AI suggestions...');
       const suggestions = await this.smartSuggestions.getSmartSuggestions(itemName);
+      console.log('🤖 AI suggestions response:', suggestions);
+      
       if (suggestions?.departmentId) {
-        console.log('✅🤖 AI department:', suggestions.departmentId);
-        return suggestions.departmentId;
+        console.log('🤖 AI suggested department:', suggestions.departmentId);
+        if (validDepartments.includes(suggestions.departmentId)) {
+          console.log('✅🤖 Valid AI department accepted:', suggestions.departmentId);
+          return suggestions.departmentId;
+        } else {
+          console.warn('❌🤖 Invalid AI department rejected:', suggestions.departmentId);
+        }
       }
     } catch (error) {
-      console.log('🎯❌ AI suggestions failed, using fallback');
+      console.log('🎯❌ AI suggestions failed:', error);
     }
     
     // Fallback to manual suggestions
-    return this.smartSuggestions.suggestDepartment(itemName);
+    console.log('🔧 Trying manual fallback...');
+    const fallbackDepartment = await this.smartSuggestions.suggestDepartment(itemName);
+    console.log('🔧 Manual fallback result:', fallbackDepartment);
+    
+    const finalDepartment = (fallbackDepartment && validDepartments.includes(fallbackDepartment)) 
+      ? fallbackDepartment 
+      : 'miscellaneous';
+      
+    console.log('🔧 Final department decision:', finalDepartment);
+    return finalDepartment;
   }
   
   async suggestIcon(itemName: string): Promise<string> {
@@ -355,4 +384,5 @@ export class ArticleOperationsService {
     // Fallback to manual suggestions
     return this.smartSuggestions.suggestIcon(itemName);
   }
+
 }

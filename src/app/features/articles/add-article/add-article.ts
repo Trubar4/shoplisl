@@ -72,7 +72,7 @@ export class AddArticleComponent implements OnDestroy {
           amount: formData.amount || undefined,
           notes: formData.notes || undefined,
           icon: formData.icon,
-          departmentId: formData.departmentId || undefined
+          departmentId: formData.departmentId || 'miscellaneous'
         };
 
         this.dataService.createArticle(newArticle)

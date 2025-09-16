@@ -84,7 +84,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private autoSwitchTimer?: any;
   private readonly HIDE_DELAY_MS = 5000;
   private wasIncompleteLastCheck = false;
-
+  private previousFilterBeforeSearch: ShoppingFilter | EditFilter | null = null; // ADD THIS LINE
+  
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
@@ -512,7 +513,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     const departmentMap = new Map<string, ArticleItemData[]>();
     
     articles.forEach(article => {
-      const deptId = article.departmentId || 'miscellaneous';
+      const deptId = article.departmentId || 'miscellaneous'; // ✅ This should catch empty departments
       if (!departmentMap.has(deptId)) departmentMap.set(deptId, []);
       departmentMap.get(deptId)!.push(article);
     });
@@ -524,9 +525,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       }
     });
     
+    // ❌ POTENTIAL ISSUE: Articles with departments not in the order are lost!
+    // Add this to catch orphaned articles:
+    departmentMap.forEach((articles, deptId) => {
+      if (!departmentOrder.includes(deptId)) {
+        console.warn(`Articles found with unknown department: ${deptId}`, articles);
+        orderedArticles.push(...articles); // Add them anyway
+      }
+    });
+    
     return orderedArticles;
   }
-
   private createDepartmentGroups(articles: ArticleItemData[], departments: Department[]): DepartmentGroup[] {
     const departmentMap = new Map<string, ArticleItemData[]>();
     
@@ -610,26 +619,30 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private async addExistingArticleToList(article: any): Promise<void> {
     if (!this.currentList) return;
-
+  
     const updatedArticleIds = [...this.currentList.articleIds];
     if (!updatedArticleIds.includes(article.id)) {
       updatedArticleIds.push(article.id);
     }
-
+  
     const updatedItemStates = { ...this.currentList.itemStates };
     updatedItemStates[article.id] = {
       articleId: article.id,
       isChecked: false,
       amount: article.amount || ''
     };
-
+  
     const success = await this.dataService.updateList(this.currentList.id, {
       articleIds: updatedArticleIds,
       itemStates: updatedItemStates
     }).pipe(take(1)).toPromise();
-
+  
     if (success) {
       this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
+      
+      // Restore previous filter if we had auto-switched
+      this.restorePreviousFilter();
+      
       setTimeout(() => this.searchDisambiguation$.next(null), 100);
     }
   }
@@ -641,10 +654,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       departmentId: option.suggestedDepartmentId || 'miscellaneous',
       icon: option.icon || '📦'
     };
-
+  
     const newArticle = await this.dataService.createArticle(articleData).pipe(take(1)).toPromise();
     if (newArticle) {
       await this.addExistingArticleToList(newArticle);
+      // restorePreviousFilter() is called in addExistingArticleToList, so no need to call it here
+    }
+  }
+
+  private restorePreviousFilter(): void {
+    if (this.previousFilterBeforeSearch) {
+      if (this.currentMode() === 'shopping') {
+        this.setShoppingFilter(this.previousFilterBeforeSearch as ShoppingFilter);
+      } else if (this.currentMode() === 'edit') {
+        this.setEditFilter(this.previousFilterBeforeSearch as EditFilter);
+      }
+      this.previousFilterBeforeSearch = null;
     }
   }
 
@@ -727,14 +752,23 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private checkAndAutoSwitchFilter(): void {
-    if (this.currentMode() !== 'shopping' || this.currentShoppingFilter() === 'alle' || !this.searchQuery.trim()) {
+    if (!this.searchQuery.trim()) {
       return;
     }
-
+  
     this.departmentGroups$.pipe(take(1)).subscribe(groups => {
       const articles = groups.flatMap(g => g.articles);
+      
       if (articles.length === 0) {
-        this.setShoppingFilter('alle');
+        // Remember current filter BEFORE switching to 'alle'
+        if (this.currentMode() === 'shopping' && this.currentShoppingFilter() !== 'alle') {
+          this.previousFilterBeforeSearch = this.currentShoppingFilter();
+          this.setShoppingFilter('alle');
+        } else if (this.currentMode() === 'edit' && this.currentEditFilter() !== 'alle') {
+          this.previousFilterBeforeSearch = this.currentEditFilter();
+          this.setEditFilter('alle');
+        }
+        
         this.snackBar.open('Filter auf Alle gestellt', '', { 
           duration: 400,
           verticalPosition: 'bottom'
@@ -751,6 +785,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.searchQuery = '';
     this.searchQuery$.next('');
     this.searchDisambiguation$.next(null);
+    
+    // Reset previous filter tracking when search is manually cleared
+    if (this.previousFilterBeforeSearch) {
+      this.restorePreviousFilter();
+    }
   }
 
   private startPendingHide(article: ArticleItemData): void {
@@ -826,5 +865,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     if (!currentUrl.includes('/lists/') || currentUrl === '/lists') {
       this.listUtils.resetToDefaultTheme();
     }
+  }
+
+  debugArticleDepartments(): void {
+    this.dataService.getArticles().subscribe(articles => {
+      const problematic = articles.filter(a => !a.departmentId || a.departmentId === '');
+      console.log('Articles without departments:', problematic.length);
+      
+      problematic.forEach(article => {
+        console.log(`${article.name}:`, {
+          departmentId: article.departmentId,
+          type: typeof article.departmentId,
+          hasProperty: Object.hasOwnProperty.call(article, 'departmentId'),
+          icon: article.icon
+        });
+      });
+    });
   }
 }

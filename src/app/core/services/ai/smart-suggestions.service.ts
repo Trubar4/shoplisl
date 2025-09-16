@@ -54,36 +54,36 @@ export class SmartSuggestionsService {
 
 Item: "${itemName}"
 
-German grocery departments:
+IMPORTANT: Use ONLY these exact department IDs (not German translations):
+
 - tins-jars: Konserven, Essiggurken, Oliven, Marmelade, Honig, Tomatenmark
-- fruit-vegetables: Obst, Gemüse, frische Kräuter  
+- fruit-vegetables: Obst, Gemüse, Kräuter, Petersilie, Basilikum
 - dairy-products: Milch, Käse, Joghurt, Butter, Sahne
 - sausage-cheese-counter: Wurst, Schinken, Aufschnitt, Käse von der Theke
 - fridge-meat: Frisches Fleisch, Hähnchen, Hack
-- fish: Fisch, Meeresfrüchte, geräucherter Lachs
 - bread: Brot, Brötchen, Toast, Backwaren
 - noodles-rice: Nudeln, Reis, Couscous, Quinoa
-- spices-oils: Gewürze, Öl, Essig, Kräuter
+- spices-oils: Gewürze, Öl, Essig, getrocknete Kräuter
 - beverages-alcohol: Getränke, Wasser, Bier, Wein, Saft
 - frozen-goods: Tiefkühl, Eis, TK-Gemüse
 - sweet-salty: Süßigkeiten, Chips, Schokolade, Nüsse
 - household-goods: Putzmittel, Klopapier, Batterien
 - body-care: Shampoo, Zahnpasta, Seife, Deo
-- baby: Windeln, Babybrei, Babymilch
-- pet-supplies: Tierfutter, Katzenstreu
 - miscellaneous: Alles andere
 
 Examples:
-- "Essiggurken" → tins-jars, 🥒
-- "Milch" → dairy-products, 🥛  
-- "Äpfel" → fruit-vegetables, 🍎
-- "Hähnchenbrust" → fridge-meat, 🍗
-- "Shampoo" → body-care, 🧴
+- "Essiggurken" → {"dept":"tins-jars","icon":"🥒"}
+- "Milch" → {"dept":"dairy-products","icon":"🥛"}
+- "Äpfel" → {"dept":"fruit-vegetables","icon":"🍎"}
+- "frischer Koriander" → {"dept":"fruit-vegetables","icon":"🌿"}
+- "Shampoo" → {"dept":"body-care","icon":"🧴"}
 
-Popular user icons: ${topIcons || '🥛🍞🧀🍎🥩'}
+Popular user icons: ${topIcons || '🥛🍞🧀🍎🥩🌽🍉🥖🥬🍔🥐🍗🍚🍫🍺🍋🥔'}
+
+CRITICAL: The "dept" field must be one of the exact IDs above, never a German word.
 
 Return ONLY valid JSON:
-{"dept":"tins-jars","icon":"🥒"}`;
+{"dept":"fruit-vegetables","icon":"🌿"}`;
 
       this.logger.debug('ai', `Sending single AI request for: ${itemName}`);
       
@@ -93,8 +93,10 @@ Return ONLY valid JSON:
       
       // Parse response more robustly
       const cleanResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      console.log('🤖 Raw AI response:', cleanResponse);
       const result = JSON.parse(cleanResponse);
-      
+      console.log('🤖 Parsed result:', result);
+
       if (result.dept && result.icon) {
         const suggestions = {
           departmentId: result.dept,
@@ -102,6 +104,7 @@ Return ONLY valid JSON:
           confidence: result.conf || 0.8
         };
         
+        console.log('🤖 Final suggestions object:', suggestions); // ADD THIS LINE
         this.logger.info('ai', `Smart suggestions success: ${itemName} → ${result.dept}, ${result.icon}`);
         return suggestions;
       }
