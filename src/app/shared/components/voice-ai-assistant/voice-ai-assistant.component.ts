@@ -1367,6 +1367,10 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     }
     
     if (option.type === 'existing') {
+      // If the pending action is a list selection (single or multi-item), reflect that in the message
+      if (pendingAction && (pendingAction.type === 'select_list' || pendingAction.type === 'select_list_for_multi_items')) {
+        return `Vorhandene Liste gewählt: ${option.displayName}`;
+      }
       return `Vorhandener Artikel gewählt: ${option.displayName}`;
     } else {
       return `Neuen Artikel erstellen: ${pendingAction.itemName}`;

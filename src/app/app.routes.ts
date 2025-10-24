@@ -1,17 +1,5 @@
 import { Routes } from '@angular/router';
-import { ListsOverviewComponent } from './features/lists/lists-overview/lists-overview';
-import { AddListComponent } from './features/lists/add-list/add-list';
-import { ListDetailComponent } from './features/lists/list-detail/list-detail';
-import { AddArticlesToListComponent } from './features/lists/add-articles/add-articles';
-import { ArticleOverviewComponent } from './features/articles/article-overview/article-overview';
-import { AddArticleComponent } from './features/articles/add-article/add-article';
-import { EditArticleComponent } from './features/articles/edit-article/edit-article';
-import { DepartmentSortComponent } from './features/lists/department-sort/department-sort.component';
-import { ArticleUploadComponent } from './core/services/article-upload.component';
-import { ListUploadComponent } from './core/services/list-upload.component';
 import { VoiceAIAssistantComponent } from './shared/components/voice-ai-assistant/voice-ai-assistant.component';
-import { PerformanceDashboardComponent } from './features/admin/performance-dashboard/performance-dashboard.component';
-
 
 export const routes: Routes = [
   {
@@ -21,47 +9,15 @@ export const routes: Routes = [
   },
   {
     path: 'lists',
-    component: ListsOverviewComponent
-  },
-  {
-    path: 'lists/add',
-    component: AddListComponent
-  },
-  {
-    path: 'lists/:id',
-    component: ListDetailComponent
-  },
-  {
-    path: 'lists/:id/add-articles',
-    component: AddArticlesToListComponent
+    loadChildren: () => import('./features/lists/lists.module').then(m => m.ListsModule)
   },
   {
     path: 'articles',
-    component: ArticleOverviewComponent
+    loadChildren: () => import('./features/articles/articles.module').then(m => m.ArticlesModule)
   },
   {
-    path: 'articles/add',
-    component: AddArticleComponent
-  },
-  {
-    path: 'articles/edit/:id', 
-    component: EditArticleComponent
-  },
-  {
-    path: 'admin/upload',
-    component: ArticleUploadComponent
-  },
-  {
-    path: 'admin/upload-list',
-    component: ListUploadComponent
-  },
-  {
-    path: 'admin/performance',
-    component: PerformanceDashboardComponent
-  },
-  {
-    path: 'lists/:id/departments',
-    component: DepartmentSortComponent
+    path: 'admin',
+    loadChildren: () => import('./features/admin/admin.module').then(m => m.AdminModule)
   },
   { 
     path: 'ai-assistant', 

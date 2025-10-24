@@ -28,7 +28,7 @@ import { DataMigrationService } from './core/services/data-migration.service';
     <app-bottom-tabs></app-bottom-tabs>
     <app-cache-status></app-cache-status>
   `,
-  styleUrl: './app.scss'
+  styleUrls: ['./app.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'shoplisl-app';
