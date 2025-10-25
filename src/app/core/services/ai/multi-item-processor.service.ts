@@ -40,7 +40,10 @@ export class MultiItemProcessorService {
     // Step 0: Check if input is complex and should be preprocessed with Groq
     let processedInput = input;
 
-    if (this.groqApi.hasApiKey() && this.groqApi.isComplexInput(input)) {
+    // Skip Groq if input is already processed (from recipe service)
+    const isAlreadyProcessed = /^füge\s+.+\s+hinzu$/i.test(input.trim());
+
+    if (!isAlreadyProcessed && this.groqApi.hasApiKey() && this.groqApi.isComplexInput(input)) {
       console.log('🎯 Detected complex input - preprocessing with Groq AI');
 
       try {
@@ -51,6 +54,8 @@ export class MultiItemProcessorService {
         // Continue with original input if Groq fails
         processedInput = input;
       }
+    } else if (isAlreadyProcessed) {
+      console.log('🎯 Input already preprocessed (from recipe service), skipping Groq');
     }
 
     // Step 1: Parse multiple items from input (using preprocessed input if available)
