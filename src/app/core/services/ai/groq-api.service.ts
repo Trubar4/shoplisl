@@ -140,6 +140,7 @@ export class GroqApiService {
   - Format: "MENGE EINHEIT ZUTAT" (z.B. "2 EL Öl", nicht "Öl 2 EL")
   - Deutsche Dezimalzahlen: 0,5 nicht 0.5 (Komma, nicht Punkt!)
   - Deutsche Einheiten: g, kg, ml, l, EL, TL, Prise, Stück
+  - KRITISCH: ÄNDERE NIEMALS Mengenangaben - übernimm sie EXAKT wie angegeben
   - KRITISCH: Behalte ALLE Produktspezifikationen (z.B. "3,5%", "Type 405", "mittelgroße", "gehackt", "extra virgin")
   - KRITISCH: Verwechsle NICHT Produktspezifikationen (wie "3,5%") mit Mengenangaben
   - Behalte beschreibende Adjektive (weiche, frische, große, etc.)
@@ -148,16 +149,16 @@ export class GroqApiService {
   - Ignoriere Formatierungszeichen (*, -, •, >>>, etc.)
   - WICHTIG: Gib ALLE Zutaten in EINER Zeile aus, getrennt durch Semikolon
 
-  BEISPIELE MIT PRODUKTSPEZIFIKATIONEN:
-  "400ml Vollmilch 3,5%" → "400 ml Vollmilch 3,5%" (BEHALTE "3,5%"!)
-  "500g Weizenmehl Type 405" → "500 g Weizenmehl Type 405" (BEHALTE "Type 405"!)
-  "2 mittelgroße Eier" → "2 Stück mittelgroße Eier" (BEHALTE "mittelgroße"!)
-  "200g Tomaten (gehackt)" → "200 g Tomaten gehackt" (BEHALTE "gehackt"!)
-  "75g weiche Butter" → "75 g weiche Butter" (BEHALTE "weiche"!)
-  "Honig 0,5l" → "0,5 l Honig" (Reihenfolge korrigieren)
-  "1 TL Salz," → "1 TL Salz" (entferne Komma am Ende)
-  "Öl 2 EL" → "2 EL Öl"
-  "Natron 0,3 TL" → "0,3 TL Natron"
+  BEISPIELE MIT PRODUKTSPEZIFIKATIONEN UND EXAKTEN MENGEN:
+  "400ml Vollmilch 3,5%" → "400 ml Vollmilch 3,5%" (EXAKT 400 ml, NICHT 1 l!)
+  "500g Weizenmehl Type 405" → "500 g Weizenmehl Type 405" (EXAKT 500 g!)
+  "2 mittelgroße Eier" → "2 Stück mittelgroße Eier" (EXAKT 2!)
+  "200g Tomaten (gehackt)" → "200 g Tomaten gehackt" (EXAKT 200 g!)
+  "75g weiche Butter" → "75 g weiche Butter" (EXAKT 75 g, NICHT aufrunden!)
+  "Honig 0,5l" → "0,5 l Honig" (EXAKT 0,5 l, Reihenfolge korrigieren)
+  "1 TL Salz," → "1 TL Salz" (EXAKT 1 TL, entferne Komma am Ende)
+  "Öl 2 EL" → "2 EL Öl" (EXAKT 2 EL)
+  "Natron 0,3 TL" → "0,3 TL Natron" (EXAKT 0,3 TL)
 
   AUSGABEFORMAT: Alle Zutaten in einer Zeile mit Semikolon getrennt:
   "500 g Weizenmehl Type 405; 2 Stück mittelgroße Eier; 400 ml Vollmilch 3,5%; 1 TL Salz; 200 g Tomaten gehackt; 1 Zwiebel; 2 EL Öl; 75 g weiche Butter; 0,5 l Honig"
@@ -199,6 +200,7 @@ export class GroqApiService {
   - Format: "MENGE EINHEIT ARTIKEL" (z.B. "2 Stück Äpfel", "500 g Mehl")
   - Deutsche Dezimalzahlen: 0,5 nicht 0.5 (Komma, nicht Punkt!)
   - Deutsche Einheiten: g, kg, ml, l, EL, TL, Prise, Stück, Pack, Dose, Flasche, Becher
+  - KRITISCH: ÄNDERE NIEMALS Mengenangaben - übernimm sie EXAKT wie angegeben
   - KRITISCH: Behalte ALLE Produktspezifikationen (z.B. "3,5%", "bio", "frisch", "mittelgroß")
   - KRITISCH: Verwechsle NICHT Produktspezifikationen (wie "3,5%") mit Mengenangaben
   - Behalte beschreibende Adjektive (weiche, frische, große, bio, etc.)
@@ -206,11 +208,11 @@ export class GroqApiService {
   - Ignoriere Formatierungszeichen (*, -, •, >>>, ---, etc.)
   - WICHTIG: Gib ALLE Artikel in EINER Zeile aus, getrennt durch Semikolon
 
-  BEISPIELE:
-  "500g bio Mehl, 2 frische Eier" → "500 g bio Mehl; 2 Stück frische Eier"
-  "Milch 3,5% 1l und Butter 250g" → "1 l Milch 3,5%; 250 g Butter"
-  "0,5l Honig" → "0,5 l Honig"
-  "3 große Äpfel, Bananen 1kg" → "3 Stück große Äpfel; 1 kg Bananen"
+  BEISPIELE MIT EXAKTEN MENGEN:
+  "500g bio Mehl, 2 frische Eier" → "500 g bio Mehl; 2 Stück frische Eier" (EXAKT 500 g, EXAKT 2!)
+  "400ml Milch 3,5% und Butter 250g" → "400 ml Milch 3,5%; 250 g Butter" (EXAKT 400 ml, NICHT 1 l!)
+  "0,5l Honig" → "0,5 l Honig" (EXAKT 0,5 l!)
+  "3 große Äpfel, Bananen 1kg" → "3 Stück große Äpfel; 1 kg Bananen" (EXAKT wie angegeben!)
 
   AUSGABEFORMAT: Alle Artikel in einer Zeile mit Semikolon getrennt.
 
