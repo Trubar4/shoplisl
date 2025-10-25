@@ -6,9 +6,10 @@ import { DepartmentIconMappingService } from './department-icon-mapping.service'
 import { ContextManagementService } from './context-management.service';
 import { ListOperationsService } from './list-operations.service';
 import { AIResponseService } from './ai-response.service';
-import { 
-  AIExecutionResult, 
-  MultiItemPendingAction, 
+import { GroqApiService } from './groq-api.service';
+import {
+  AIExecutionResult,
+  MultiItemPendingAction,
   PendingAction,
   MultiItemParseResult,
   ParsedItem
@@ -18,14 +19,15 @@ import {
   providedIn: 'root'
 })
 export class MultiItemProcessorService {
-  
+
   constructor(
     private quantityExtraction: QuantityExtractionService,
     private disambiguation: SimplifiedDisambiguationService,
     private departmentIconMapping: DepartmentIconMappingService,
     private contextManager: ContextManagementService,
     private listOps: ListOperationsService,
-    private aiResponse: AIResponseService
+    private aiResponse: AIResponseService,
+    private groqApi: GroqApiService
   ) {}
 
   // ========================================
@@ -34,10 +36,31 @@ export class MultiItemProcessorService {
 
   async processMultiItemCommand(input: string): Promise<AIExecutionResult> {
     console.log('🎯 PROCESSING MULTI-ITEM COMMAND:', input);
-    
-    // Step 1: Parse multiple items from input
-    const multiItemResult = this.quantityExtraction.parseMultipleItems(input);
-  
+
+    // Step 0: Check if input is complex and should be preprocessed with Groq
+    let processedInput = input;
+
+    // Skip Groq if input is already processed (from recipe service)
+    const isAlreadyProcessed = /^füge\s+.+\s+hinzu$/i.test(input.trim());
+
+    if (!isAlreadyProcessed && this.groqApi.hasApiKey() && this.groqApi.isComplexInput(input)) {
+      console.log('🎯 Detected complex input - preprocessing with Groq AI');
+
+      try {
+        processedInput = await this.groqApi.standardizeComplexInput(input);
+        console.log('🎯 Groq preprocessed result:', processedInput);
+      } catch (groqError) {
+        console.warn('🎯 Groq preprocessing failed, falling back to local parsing:', groqError);
+        // Continue with original input if Groq fails
+        processedInput = input;
+      }
+    } else if (isAlreadyProcessed) {
+      console.log('🎯 Input already preprocessed (from recipe service), skipping Groq');
+    }
+
+    // Step 1: Parse multiple items from input (using preprocessed input if available)
+    const multiItemResult = this.quantityExtraction.parseMultipleItems(processedInput);
+
     if (multiItemResult.command === 'unrecognized' || multiItemResult.items.length === 0) {
       console.log('🎯 No multi-items found, fallback to single item processing needed');
       // Return a special flag to indicate fallback is needed
@@ -50,7 +73,7 @@ export class MultiItemProcessorService {
 
     // Step 2: Determine target list strategy
     const targetStrategy = await this.determineTargetListStrategy(multiItemResult);
-    
+
     if (!targetStrategy.success) {
       return targetStrategy.result!;
     }

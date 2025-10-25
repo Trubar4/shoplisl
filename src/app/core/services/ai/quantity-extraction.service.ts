@@ -326,18 +326,18 @@ export class QuantityExtractionService {
   // ========================================
 
   /**
-   * 🎯 Enhanced: Parse comma-separated items with text number support
+   * 🎯 Enhanced: Parse comma-separated items with text number support and smart decimal comma detection
    */
   parseMultipleItems(input: string) {
     const cleanInput = input
       .replace(/^(füge|hinzu|erstelle|liste|rezept:?)\s*/gi, '')
       .replace(/\s+(hinzu|zu|in)(\s+\w+)?\s*$/gi, '')
       .trim();
-  
+
     // Extract list name from original input
     let listName: string | undefined;
     let command: 'add_items' | 'create_list_with_items' = 'add_items';
-  
+
     // Check for list creation patterns
     const createListMatch = input.match(/erstelle\s+liste\s+(.+?)\s+mit\s+(.+)/i);
     if (createListMatch) {
@@ -350,31 +350,31 @@ export class QuantityExtractionService {
         listName = addToListMatch[1].trim();
       }
     }
-  
-    // Existing comma logic first
+
+    // IMPROVED: Use smart comma splitting that preserves decimal commas
     if (cleanInput.includes(',') || cleanInput.includes(';')) {
-      let parts = cleanInput.split(/[,;]/).map(part => part.trim());
-      
-      // POST-PROCESS: Check each comma-separated part for conjunctions
+      const parts = this.splitCommaItems(cleanInput);
+
+      // POST-PROCESS: Check each part for conjunctions
       const finalParts: string[] = [];
       const conjunctions = ['und', 'sowie', 'außerdem'];
-      
+
       parts.forEach(part => {
         const hasConjunction = conjunctions.some(conj => part.toLowerCase().includes(` ${conj} `));
-        
+
         if (hasConjunction) {
           // Further split this part by conjunctions
           const subParts = part.split(new RegExp(`\\s+(${conjunctions.join('|')})\\s+`, 'gi'))
             .filter((subPart, index) => index % 2 === 0) // Remove conjunction words
             .map(subPart => subPart.trim())
             .filter(subPart => subPart.length > 0);
-          
+
           finalParts.push(...subParts);
         } else {
           finalParts.push(part);
         }
       });
-      
+
       const items = finalParts.map(item => {
         const extraction = this.extractQuantity(item);
         return {
@@ -384,7 +384,7 @@ export class QuantityExtractionService {
           confidence: 'high' as const
         };
       });
-      
+
       return {
         command,
         items: items,
