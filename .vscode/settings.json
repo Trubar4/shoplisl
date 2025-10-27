@@ -1,0 +1,23 @@
+{
+  // Test Explorer Settings
+  "testExplorer.useNativeTesting": true,
+  "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+
+  // Karma/Jasmine Settings
+  "karma.browsers": ["ChromeHeadless"],
+  "karma.port": 9876,
+  "karma.logLevel": "ERROR",
+
+  // Editor Settings
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+  // TypeScript Settings
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "relative",
+
+  // Angular Settings
+  "angular.log": "verbose"
+}
