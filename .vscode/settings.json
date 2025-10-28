@@ -1,12 +1,15 @@
 {
+  // Disable Karma Test Explorer (doesn't support new Angular build)
+  "karmaTestExplorer.enableExtension": false,
+
+  // Enable JavaScript/TypeScript Testing
+  "javascript.suggest.names": true,
+  "typescript.suggest.names": true,
+
   // Test Explorer Settings
   "testExplorer.useNativeTesting": true,
   "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
-
-  // Karma/Jasmine Settings
-  "karma.browsers": ["ChromeHeadless"],
-  "karma.port": 9876,
-  "karma.logLevel": "ERROR",
+  "testing.openTesting": "neverOpen",
 
   // Editor Settings
   "editor.formatOnSave": true,
