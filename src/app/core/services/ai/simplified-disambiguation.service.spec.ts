@@ -60,31 +60,28 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
     const loggerSpyObj = jasmine.createSpyObj('LoggerService', ['info', 'warn', 'error']);
     const circuitBreakerSpyObj = jasmine.createSpyObj('CircuitBreakerService', ['execute']);
 
-    TestBed.configureTestingModule({
-      providers: [
-        SimplifiedDisambiguationService,
-        { provide: DataService, useValue: dataServiceSpyObj },
-        { provide: DepartmentService, useValue: departmentServiceSpyObj },
-        { provide: SmartSuggestionsService, useValue: smartSuggestionsSpyObj },
-        { provide: DepartmentIconMappingService, useValue: departmentIconMappingSpyObj },
-        { provide: AICachingService, useValue: cachingServiceSpyObj },
-        { provide: AIErrorHandlerService, useValue: errorHandlerSpyObj },
-        { provide: PerformanceMonitorService, useValue: performanceMonitorSpyObj },
-        { provide: LoggerService, useValue: loggerSpyObj },
-        { provide: CircuitBreakerService, useValue: circuitBreakerSpyObj }
-      ]
-    });
+    // Manually create service with mocks to bypass Angular DI issues in Vitest
+    dataServiceSpy = dataServiceSpyObj;
+    departmentServiceSpy = departmentServiceSpyObj;
+    smartSuggestionsSpy = smartSuggestionsSpyObj;
+    departmentIconMappingSpy = departmentIconMappingSpyObj;
+    cachingServiceSpy = cachingServiceSpyObj;
+    errorHandlerSpy = errorHandlerSpyObj;
+    performanceMonitorSpy = performanceMonitorSpyObj;
+    loggerSpy = loggerSpyObj;
+    circuitBreakerSpy = circuitBreakerSpyObj;
 
-    service = TestBed.inject(SimplifiedDisambiguationService);
-    dataServiceSpy = TestBed.inject(DataService) as jasmine.SpyObj<DataService>;
-    departmentServiceSpy = TestBed.inject(DepartmentService) as jasmine.SpyObj<DepartmentService>;
-    smartSuggestionsSpy = TestBed.inject(SmartSuggestionsService) as jasmine.SpyObj<SmartSuggestionsService>;
-    departmentIconMappingSpy = TestBed.inject(DepartmentIconMappingService) as jasmine.SpyObj<DepartmentIconMappingService>;
-    cachingServiceSpy = TestBed.inject(AICachingService) as jasmine.SpyObj<AICachingService>;
-    errorHandlerSpy = TestBed.inject(AIErrorHandlerService) as jasmine.SpyObj<AIErrorHandlerService>;
-    performanceMonitorSpy = TestBed.inject(PerformanceMonitorService) as jasmine.SpyObj<PerformanceMonitorService>;
-    loggerSpy = TestBed.inject(LoggerService) as jasmine.SpyObj<LoggerService>;
-    circuitBreakerSpy = TestBed.inject(CircuitBreakerService) as jasmine.SpyObj<CircuitBreakerService>;
+    service = new SimplifiedDisambiguationService(
+      dataServiceSpy as any,
+      departmentServiceSpy as any,
+      smartSuggestionsSpy as any,
+      departmentIconMappingSpy as any,
+      cachingServiceSpy as any,
+      errorHandlerSpy as any,
+      performanceMonitorSpy as any,
+      loggerSpy as any,
+      circuitBreakerSpy as any
+    );
 
     // Default spy behaviors
     departmentServiceSpyObj.getDepartmentName.and.returnValue('Obst & Gemüse');
