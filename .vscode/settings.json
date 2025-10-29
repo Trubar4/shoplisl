@@ -22,5 +22,6 @@
   "typescript.preferences.importModuleSpecifier": "relative",
 
   // Angular Settings
-  "angular.log": "verbose"
+  "angular.log": "verbose",
+  "testing.automaticallyOpenTestResults": "neverOpen"
 }
