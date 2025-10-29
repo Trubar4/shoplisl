@@ -107,11 +107,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
     });
 
@@ -152,11 +152,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
     });
 
@@ -200,11 +200,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
     });
 
@@ -289,11 +289,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
     });
 
@@ -391,11 +391,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
     });
 
@@ -467,11 +467,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       cachingServiceSpy.createSuggestionsKey.and.returnValue('suggestions-key');
       smartSuggestionsSpy.getSmartSuggestions.and.returnValue(Promise.resolve({ departmentId: 'dairy', icon: '🥛', confidence: 0.9 }));
@@ -522,11 +522,11 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.createDisambiguationKey.and.returnValue('test-key');
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         const result = fn();
-        return result instanceof Promise ? from(result) : result;
+        return result instanceof Promise ? from(result) : of(result);
       });
       cachingServiceSpy.createSuggestionsKey.and.returnValue('suggestions-key');
       smartSuggestionsSpy.getSmartSuggestions.and.returnValue(Promise.resolve({ departmentId: 'miscellaneous', icon: '📦', confidence: 0.5 }));
@@ -602,7 +602,7 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
         try {
           const result = fn();
-          return result instanceof Promise ? from(result) : result;
+          return result instanceof Promise ? from(result) : of(result);
         } catch (e) {
           return throwError(() => e);
         }
@@ -610,7 +610,7 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       circuitBreakerSpy.execute.and.callFake((name, fn) => {
         try {
           const result = fn();
-          return result instanceof Promise ? from(result) : result;
+          return result instanceof Promise ? from(result) : of(result);
         } catch (e) {
           return throwError(() => e);
         }
