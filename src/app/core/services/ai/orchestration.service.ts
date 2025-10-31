@@ -13,7 +13,7 @@ import {
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
 import { SmartSuggestionsService } from './smart-suggestions.service';
 import { AICachingService } from './caching.service';
-import { AIErrorHandlerService, ErrorContext } from './error-handler.service';
+import { AIMessagingService, ErrorContext } from './ai-messaging.service';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
@@ -59,7 +59,7 @@ export class AIOrchestrationService {
     private disambiguationService: SimplifiedDisambiguationService,
     private smartSuggestions: SmartSuggestionsService,
     private cachingService: AICachingService,
-    private errorHandler: AIErrorHandlerService,
+    private errorHandler: AIMessagingService,
     private performanceMonitor: PerformanceMonitorService,
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService

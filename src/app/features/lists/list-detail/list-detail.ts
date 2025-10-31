@@ -106,6 +106,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.departmentGroupsEdit$ = this.createUnifiedObservable('edit');
   }
 
+  /**
+   * Component initialization
+   *
+   * Sets up the reactive data streams for the list, articles, and filtering.
+   * Initializes shopping mode with "offen" filter by default.
+   *
+   * Key initialization steps:
+   * - Subscribes to list data updates
+   * - Sets up article filtering pipelines
+   * - Initializes search functionality
+   * - Configures completion monitoring for celebration animation
+   */
   ngOnInit(): void {
     this.initializeComponent();
     this.setupSubscriptions();
@@ -134,6 +146,26 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   // === FILTER MANAGEMENT ===
+  /**
+   * Handles filter changes from FilterFab component
+   *
+   * Switches between view modes (shopping/edit) and applies the appropriate filter.
+   * Shopping mode filters: 'offen' (open), 'erledigt' (completed), 'alle' (all)
+   * Edit mode filters: 'gelistet' (in list), 'fehlend' (not in list), 'alle' (all)
+   *
+   * @param data - Object containing mode and filter selection
+   * @param data.mode - View mode: 'shopping' or 'edit'
+   * @param data.filter - Filter value based on current mode
+   *
+   * @example
+   * ```typescript
+   * // Switch to shopping mode, show only open items
+   * onFilterChange({ mode: 'shopping', filter: 'offen' });
+   *
+   * // Switch to edit mode, show all articles
+   * onFilterChange({ mode: 'edit', filter: 'alle' });
+   * ```
+   */
   onFilterChange(data: { mode: ViewMode; filter: ShoppingFilter | EditFilter }): void {
     if (data.mode === 'shopping') {
       this.setShoppingFilter(data.filter as ShoppingFilter);
@@ -175,6 +207,32 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   // === ARTICLE EVENTS ===
+
+  /**
+   * Handles article check/uncheck toggle
+   *
+   * In shopping mode:
+   * - Checking an article starts a 5-second undo timer
+   * - Shows undo hint during timer period
+   * - Triggers celebration animation when all items completed
+   * - Clicking during undo period reverses the action
+   *
+   * In edit mode:
+   * - Toggles article inclusion in the list
+   *
+   * @param article - Article item data including ID, name, and check state
+   *
+   * @example
+   * ```typescript
+   * // User checks off "Milch"
+   * onArticleToggle({ id: 'article-123', name: 'Milch', isChecked: false, ... });
+   * // -> Marks as checked, shows undo hint for 5 seconds
+   * //    If clicked again within 5s, unchecks the item
+   * ```
+   *
+   * @see {@link undoArticleCompletion} for undo functionality
+   * @see {@link setupCompletionMonitoring} for celebration trigger
+   */
   onArticleToggle(article: ArticleItemData): void {
     if (article.isChecked && article.pendingHideTimestamp) {
       this.undoArticleCompletion(article);
@@ -252,6 +310,28 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }, 705);
   }
 
+  /**
+   * Handles user selection from search disambiguation options
+   *
+   * When searching for an article results in multiple matches, this processes
+   * the user's selection and adds it to the list. Supports both creating new
+   * articles and using existing ones.
+   *
+   * @param option - Selected disambiguation option from search results
+   *
+   * @example
+   * ```typescript
+   * // User searched "Milch" and selected "Vollmilch 3,5%"
+   * await onSelectSearchDisambiguation({
+   *   id: 'article-123',
+   *   displayText: 'Vollmilch 3,5%',
+   *   type: 'existing'
+   * });
+   * // -> Adds article to list, clears search, closes disambiguation
+   * ```
+   *
+   * @see {@link SimplifiedDisambiguationService.handleDisambiguationChoice} for processing logic
+   */
   async onSelectSearchDisambiguation(option: any): Promise<void> {
     const query = this.searchDisambiguation$.value?.query;
     if (!query) return;

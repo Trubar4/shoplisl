@@ -5,7 +5,7 @@ import { SimplifiedDisambiguationService } from './simplified-disambiguation.ser
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { ContextManagementService } from './context-management.service';
 import { ListOperationsService } from './list-operations.service';
-import { AIResponseService } from './ai-response.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { GroqApiService } from './groq-api.service';
 import {
   AIExecutionResult,
@@ -25,7 +25,7 @@ export class MultiItemProcessorService {
     private disambiguation: SimplifiedDisambiguationService,
     private contextManager: ContextManagementService,
     private listOps: ListOperationsService,
-    private aiResponse: AIResponseService,
+    private aiResponse: AIMessagingService,
     private groqApi: GroqApiService
   ) {}
 

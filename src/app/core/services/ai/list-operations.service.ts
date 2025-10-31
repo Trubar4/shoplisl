@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { take, timeout } from 'rxjs/operators';
 import { DataService } from '../data.service';
-import { AIResponseService } from './ai-response.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { CommandParserService } from './command-parser.service';
 import { ContextManagementService } from './context-management.service';
 import { ShoppingList } from '../../models';
@@ -16,7 +16,7 @@ export class ListOperationsService {
   
   constructor(
     private dataService: DataService,
-    private aiResponse: AIResponseService,
+    private aiResponse: AIMessagingService,
     private commandParser: CommandParserService,
     private contextManager: ContextManagementService
   ) {}

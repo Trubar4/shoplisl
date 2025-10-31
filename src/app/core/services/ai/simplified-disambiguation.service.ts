@@ -21,7 +21,7 @@ import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.u
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
-import { AIErrorHandlerService, ErrorContext, ValidationRules } from './error-handler.service';
+import { AIMessagingService, ErrorContext, ValidationRules } from './ai-messaging.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
 
 @Injectable({
@@ -34,7 +34,7 @@ export class SimplifiedDisambiguationService {
     private departmentService: DepartmentService,
     private smartSuggestions: SmartSuggestionsService,
     private cachingService: AICachingService,
-    private errorHandler: AIErrorHandlerService,
+    private errorHandler: AIMessagingService,
     private performanceMonitor: PerformanceMonitorService,
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService
@@ -44,7 +44,37 @@ export class SimplifiedDisambiguationService {
   // MAIN DISAMBIGUATION METHODS
   // ========================================
 
-
+  /**
+   * Gets disambiguation options for an item name
+   *
+   * Searches existing articles using fuzzy matching (Levenshtein distance) and returns
+   * options sorted by similarity. Includes circuit breaker protection and caching.
+   *
+   * @param itemName - Name of the item to find disambiguation options for
+   * @param excludeId - Optional article ID to exclude from results
+   * @returns Promise resolving to array of disambiguation options including:
+   *   - Existing articles above similarity threshold (sorted by similarity)
+   *   - "Create new" option
+   *   - "Skip" option (for multi-item scenarios)
+   *
+   * @example
+   * ```typescript
+   * // Find options for "Milch"
+   * const options = await service.getDisambiguationOptions('Milch');
+   * // Returns: [
+   * //   { id: '1', displayText: 'Vollmilch 3,5%', type: 'existing', similarity: 0.90 },
+   * //   { id: '2', displayText: 'Milch 1,5%', type: 'existing', similarity: 0.85 },
+   * //   { id: 'new', displayText: 'Neu erstellen: Milch', type: 'new' }
+   * // ]
+   *
+   * // Exclude specific article
+   * const options = await service.getDisambiguationOptions('Milch', 'article-1');
+   * ```
+   *
+   * @throws {AIServiceError} If validation fails or critical error occurs
+   * @see {@link MIN_SIMILARITY_THRESHOLD} for similarity cutoff (default 0.6)
+   * @see {@link DisambiguationOption} for option structure
+   */
   async getDisambiguationOptions(itemName: string, excludeId?: string): Promise<DisambiguationOption[]> {
     try {
       const result = await this.circuitBreaker.execute(
@@ -152,6 +182,61 @@ export class SimplifiedDisambiguationService {
     }
   }
 
+  /**
+   * Handles user's choice from disambiguation options
+   *
+   * Processes the selected option and executes the appropriate action:
+   * - For existing articles: adds to list or uses in creation
+   * - For "create new": creates new article with suggested department/icon
+   * - For "skip": skips to next item in multi-item sequence
+   *
+   * Supports both single-item and multi-item pending actions.
+   *
+   * @param pendingAction - The action waiting for disambiguation (single or multi-item)
+   * @param selectedOption - The option chosen by the user
+   * @returns Promise resolving to execution result after processing the choice
+   *
+   * @example
+   * ```typescript
+   * // Single item: User selected existing article
+   * const pendingAction: PendingAction = {
+   *   type: 'add_to_list',
+   *   itemName: 'Milch',
+   *   listId: 'list-123',
+   *   listName: 'Einkaufen'
+   * };
+   *
+   * const selectedOption: DisambiguationOption = {
+   *   id: 'article-456',
+   *   displayText: 'Vollmilch 3,5%',
+   *   type: 'existing'
+   * };
+   *
+   * const result = await service.handleDisambiguationChoice(pendingAction, selectedOption);
+   * // Result: Article added to list
+   *
+   * // Multi-item: User chose to skip
+   * const multiAction: MultiItemPendingAction = {
+   *   type: 'add_multi_items_to_list',
+   *   items: [...],
+   *   currentIndex: 0,
+   *   ...
+   * };
+   *
+   * const skipOption: DisambiguationOption = {
+   *   id: 'skip',
+   *   displayText: 'Überspringen',
+   *   type: 'skip'
+   * };
+   *
+   * const result = await service.handleDisambiguationChoice(multiAction, skipOption);
+   * // Result: Skips current item, continues to next
+   * ```
+   *
+   * @throws {DisambiguationError} If choice processing fails
+   * @see {@link getDisambiguationOptions} for getting available options
+   * @see {@link processMultiItemSequentially} for multi-item handling
+   */
   async handleDisambiguationChoice(
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
@@ -459,6 +544,39 @@ export class SimplifiedDisambiguationService {
   // MULTI-ITEM PROCESSING METHODS
   // ========================================
 
+  /**
+   * Processes multiple items sequentially with disambiguation
+   *
+   * Handles multi-item additions by processing each item one at a time,
+   * requesting disambiguation when needed. Maintains context across items.
+   *
+   * @param action - Multi-item pending action containing array of items to process
+   * @returns Promise resolving to execution result (disambiguation prompt or completion)
+   *
+   * @example
+   * ```typescript
+   * const action: MultiItemPendingAction = {
+   *   type: 'add_multi_items_to_list',
+   *   items: [
+   *     { itemName: 'Milch', quantity: '1L' },
+   *     { itemName: 'Brot', quantity: undefined },
+   *     { itemName: 'Bananen', quantity: '500g' }
+   *   ],
+   *   currentIndex: 0,
+   *   listId: 'list-123',
+   *   listName: 'Einkaufen',
+   *   processedItems: []
+   * };
+   *
+   * const result = await service.processMultiItemSequentially(action);
+   * // First call: Returns disambiguation for "Milch"
+   * // After user selects: Processes "Milch", returns disambiguation for "Brot"
+   * // Continues until all items processed
+   * ```
+   *
+   * @see {@link processCurrentItemAndContinue} for single item processing
+   * @see {@link MultiItemPendingAction} for action structure
+   */
   async processMultiItemSequentially(action: MultiItemPendingAction): Promise<AIExecutionResult> {
     console.log(`🎯 Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
 
@@ -683,6 +801,35 @@ export class SimplifiedDisambiguationService {
   // LIST OPERATIONS
   // ========================================
 
+  /**
+   * Handles user's list selection
+   *
+   * Processes when user selects a list from available options, typically after
+   * creating or adding an article that needs to be assigned to a list.
+   *
+   * @param pendingAction - Pending action containing article data
+   * @param selectedOption - Selected list option (ID should start with 'list_')
+   * @returns Promise resolving to execution result after adding article to list
+   *
+   * @example
+   * ```typescript
+   * const pendingAction: PendingAction = {
+   *   type: 'add_to_list_after_creation',
+   *   itemName: 'Milch',
+   *   articleToAdd: { id: 'article-123', name: 'Milch', ... }
+   * };
+   *
+   * const selectedOption: DisambiguationOption = {
+   *   id: 'list_456',
+   *   displayText: 'Einkaufen',
+   *   type: 'list'
+   * };
+   *
+   * const result = await service.handleListSelection(pendingAction, selectedOption);
+   * ```
+   *
+   * @see {@link getListSelectionOptions} for getting available lists
+   */
   async handleListSelection(pendingAction: PendingAction, selectedOption: DisambiguationOption): Promise<AIExecutionResult> {
     try {
       const listId = selectedOption.id.replace('list_', '');
@@ -756,6 +903,25 @@ export class SimplifiedDisambiguationService {
     }
   }
 
+  /**
+   * Gets available lists for selection
+   *
+   * Returns all shopping lists as selection options, formatted for display
+   * in a disambiguation-style UI.
+   *
+   * @returns Promise resolving to array of list selection options
+   *
+   * @example
+   * ```typescript
+   * const listOptions = await service.getListSelectionOptions();
+   * // Returns: [
+   * //   { id: 'list-1', displayText: 'Einkaufen', listName: 'Einkaufen', color: '#4CAF50' },
+   * //   { id: 'list-2', displayText: 'REWE', listName: 'REWE', color: '#FF9800' }
+   * // ]
+   * ```
+   *
+   * @see {@link handleListSelection} for processing user's list choice
+   */
   async getListSelectionOptions(): Promise<ListSelectionOption[]> {
     try {
       const lists = await this.dataService.getLists().pipe(take(1)).toPromise();

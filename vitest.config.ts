@@ -31,15 +31,22 @@ export default defineConfig({
         'src/environments/**',
       ],
       // Progressive thresholds - start at baseline, increase during refactoring
-      // Baseline (2025-10-31): Lines 8%, Functions 39%, Branches 76%, Statements 8%
+      // Baseline (2025-10-31 after Quick Wins 1-3):
+      //   Lines: 15.07% | Functions: 59.71% | Branches: 74.69% | Statements: 15.07%
+      //
+      // Strategy: Set thresholds at current baseline to prevent regression
+      // Will increase progressively as we add tests in Phase 1-2
+      // Ultimate goal: 70% across all metrics
       thresholds: {
-        lines: 8,         // Current: 8.07%, Target: 70%
-        functions: 35,    // Current: 38.67%, Target: 70%
-        branches: 70,     // Current: 75.63%, Maintain above 70%
-        statements: 8,    // Current: 8.07%, Target: 70%
+        lines: 15,         // Current: 15.07%, Target: 70%
+        functions: 59,     // Current: 59.71%, Target: 70%
+        branches: 74,      // Current: 74.69%, Already above target! ✅
+        statements: 15,    // Current: 15.07%, Target: 70%
       },
       // Report uncovered files
       all: true,
+      // Include threshold coverage in CLI output
+      skipFull: false,
     },
 
     // Browser mode for better Angular compatibility

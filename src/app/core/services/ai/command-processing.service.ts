@@ -12,7 +12,7 @@ import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
-import { AIResponseService } from './ai-response.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { DataService } from '../data.service';
 import { GroqApiService } from './groq-api.service';
 import { ContextManagementService } from './context-management.service';
@@ -32,7 +32,7 @@ export class CommandProcessingService {
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: SimplifiedDisambiguationService,
-    private aiResponse: AIResponseService,
+    private aiResponse: AIMessagingService,
     private dataService: DataService,
     private groqApi: GroqApiService,
     private contextManager: ContextManagementService,

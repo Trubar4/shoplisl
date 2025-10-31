@@ -7,7 +7,7 @@ export { AIService } from './ai.service';
 // Sub-services
 export { QuantityExtractionService } from './quantity-extraction.service';
 export { CommandParserService } from './command-parser.service';
-export { AIResponseService } from './ai-response.service';
+export { AIMessagingService } from './ai-messaging.service';
 
 // All types and interfaces
 export * from './ai-models';
@@ -18,7 +18,7 @@ export * from './recipe-processing.service';
 export * from './continuation-handling.service';
 export * from './command-processing.service';
 // Keep existing exports
-export * from './ai-response.service';
+export * from './ai-messaging.service';
 export * from './quantity-extraction.service';
 export * from './command-parser.service';
 export * from './smart-suggestions.service';
@@ -49,7 +49,7 @@ export * from '../../utils/department-mapping.utils';
 
 export * from './simplified-disambiguation.service';
 export * from './caching.service';
-export * from './error-handler.service';
+// error-handler.service merged into ai-messaging.service
 export * from './orchestration.service';
 export * from './performance-monitor.service';
 
