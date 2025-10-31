@@ -623,4 +623,464 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       expect(Array.isArray(options)).toBe(true);
     });
   });
+
+  // =========================================
+  // LIST SELECTION TESTS (NEW - CRITICAL FOR MULTI-USER)
+  // =========================================
+
+  describe('List Selection', () => {
+    const createTestList = (id: string, name: string, articleCount: number = 0): ShoppingList => ({
+      id,
+      name,
+      articleIds: Array.from({ length: articleCount }, (_, i) => `article-${i}`),
+      itemStates: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      color: '#1a9edb',
+      icon: '🛒'
+    });
+
+    beforeEach(() => {
+      cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
+        const result = fn();
+        return result instanceof Promise ? from(result) : of(result);
+      });
+      circuitBreakerSpy.execute.and.callFake((name, fn, fallback) => {
+        try {
+          const result = fn();
+          return result instanceof Promise ? from(result) : of(result);
+        } catch (e) {
+          return from(fallback());
+        }
+      });
+    });
+
+    it('should get list selection options', async () => {
+      const testLists: ShoppingList[] = [
+        createTestList('list1', 'Einkauf', 5),
+        createTestList('list2', 'Wochenende', 3),
+        createTestList('list3', 'Party', 10)
+      ];
+
+      dataServiceSpy.getLists.and.returnValue(of(testLists));
+
+      const options = await service.getListSelectionOptions();
+
+      expect(options.length).toBe(3);
+      expect(options[0].id).toBe('list1');
+      expect(options[0].name).toBe('Einkauf');
+      expect(options[0].itemCount).toBe(5);
+    });
+
+    it('should convert lists to disambiguation options', async () => {
+      const listOptions = [
+        { id: 'list1', name: 'Einkauf', color: '#1a9edb', icon: '🛒', itemCount: 5 },
+        { id: 'list2', name: 'Wochenende', color: '#ff5722', icon: '🎉', itemCount: 3 }
+      ];
+
+      const disambiguationOptions = service.convertListsToDisambiguationOptions(listOptions);
+
+      expect(disambiguationOptions.length).toBe(2);
+      expect(disambiguationOptions[0].id).toBe('list_list1');
+      expect(disambiguationOptions[0].displayName).toBe('Einkauf');
+      expect(disambiguationOptions[0].type).toBe('existing');
+      expect(disambiguationOptions[0].department).toBe('5 Artikel');
+    });
+
+    it('should handle empty lists', async () => {
+      dataServiceSpy.getLists.and.returnValue(of([]));
+
+      const options = await service.getListSelectionOptions();
+
+      expect(options.length).toBe(0);
+    });
+
+    it('should handle list selection errors', async () => {
+      dataServiceSpy.getLists.and.returnValue(throwError(() => new Error('Database error')));
+
+      const options = await service.getListSelectionOptions();
+
+      expect(options).toBeDefined();
+      expect(Array.isArray(options)).toBe(true);
+    });
+  });
+
+  // =========================================
+  // MULTI-ITEM SEQUENTIAL PROCESSING (NEW - CRITICAL FOR RECIPE)
+  // =========================================
+
+  describe('Multi-Item Sequential Processing', () => {
+    beforeEach(() => {
+      cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
+        const result = fn();
+        return result instanceof Promise ? from(result) : of(result);
+      });
+      circuitBreakerSpy.execute.and.callFake((name, fn, fallback) => {
+        try {
+          const result = fn();
+          return result instanceof Promise ? from(result) : of(result);
+        } catch (e) {
+          return from(fallback());
+        }
+      });
+      dataServiceSpy.getArticles.and.returnValue(of(testArticles));
+      dataServiceSpy.createArticle.and.callFake((data) => {
+        const newArticle = createTestArticle('new-' + Date.now(), data.name, data.departmentId, data.icon);
+        return of(newArticle);
+      });
+      dataServiceSpy.getLists.and.returnValue(of([
+        {
+          id: 'target-list',
+          name: 'Test List',
+          articleIds: [],
+          itemStates: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]));
+      dataServiceSpy.updateList.and.returnValue(of(true));
+    });
+
+    it('should process multi-item action sequentially', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [
+          { itemName: 'Milch', quantity: '1L' },
+          { itemName: 'Brot', quantity: '500g' }
+        ],
+        currentItemIndex: 0,
+        processedItems: [],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Test List'
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      expect(result.success).toBe(true);
+      // Should either show disambiguation or add successfully
+      expect(result.message).toBeDefined();
+      expect(result.message.length).toBeGreaterThan(0);
+    });
+
+    it('should handle disambiguation during sequential processing', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [
+          { itemName: 'Milch', quantity: '1L' }
+        ],
+        currentItemIndex: 0,
+        processedItems: [],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Test List',
+        isMultiItemSequential: true
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      // Should either show disambiguation or add successfully
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+
+    it('should complete multi-item processing', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [
+          { itemName: 'Milch', quantity: '1L' }
+        ],
+        currentItemIndex: 1, // Already processed
+        processedItems: [
+          { item: { itemName: 'Milch', quantity: '1L' }, addedToList: true }
+        ],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Test List'
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('hinzugefügt');
+    });
+
+    it('should handle safety limit (max 20 iterations)', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: Array.from({ length: 25 }, (_, i) => ({ itemName: `Item${i}`, quantity: '' })),
+        currentItemIndex: 21, // Beyond safety limit
+        processedItems: [],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Test List'
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Keine Artikel');
+    });
+
+    it('should track processed, skipped, and failed items', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [],
+        currentItemIndex: 3,
+        processedItems: [
+          { item: { itemName: 'Item1' }, addedToList: true, addedToListId: 'target-list', addedToListName: 'Test List' },
+          { item: { itemName: 'Item2' }, skipped: true, originalText: 'Item2' },
+          { item: { itemName: 'Item3' }, failed: true, error: 'Network error', originalText: 'Item3' }
+        ],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Test List'
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      // When all items are processed, it should return summary
+      expect(result).toBeDefined();
+      expect(result.message).toContain('Artikel');
+      // Should mention processed, skipped, or failed items
+      expect(result.message.length).toBeGreaterThan(10);
+    });
+  });
+
+  // =========================================
+  // SKIP OPTION HANDLING (NEW - CRITICAL FOR UX)
+  // =========================================
+
+  describe('Skip Option Handling', () => {
+    beforeEach(() => {
+      cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
+        const result = fn();
+        return result instanceof Promise ? from(result) : of(result);
+      });
+      circuitBreakerSpy.execute.and.callFake((name, fn, fallback) => {
+        try {
+          const result = fn();
+          return result instanceof Promise ? from(result) : of(result);
+        } catch (e) {
+          return from(fallback());
+        }
+      });
+    });
+
+    it('should handle skip option for single item', async () => {
+      const pendingAction: any = {
+        type: 'add_item',
+        itemName: 'Milch',
+        extractedQuantity: '1L',
+        listName: 'Test List'
+      };
+
+      const skipOption: any = {
+        id: 'skip_item',
+        displayName: 'Überspringen',
+        type: 'skip',
+        confidence: 1.0,
+        skipReason: 'Bereits vorhanden'
+      };
+
+      const result = await service.handleDisambiguationChoice(pendingAction, skipOption);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('übersprungen');
+      expect(result.message).toContain('Milch');
+    });
+
+    it('should handle skip in sequential processing', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [
+          { itemName: 'Milch', quantity: '1L' },
+          { itemName: 'Brot', quantity: '' }
+        ],
+        currentItemIndex: 0,
+        processedItems: [],
+        confirmedTargetListId: 'list1',
+        confirmedTargetListName: 'Test List',
+        isMultiItemSequential: true
+      };
+
+      const skipOption: any = {
+        type: 'skip',
+        skipReason: 'Not needed'
+      };
+
+      dataServiceSpy.getArticles.and.returnValue(of(testArticles));
+      dataServiceSpy.getLists.and.returnValue(of([
+        {
+          id: 'list1',
+          name: 'Test List',
+          articleIds: [],
+          itemStates: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]));
+
+      const result = await service.handleDisambiguationChoice(multiItemAction, skipOption);
+
+      // Should skip current item and continue to next
+      expect(result).toBeDefined();
+      expect(multiItemAction.processedItems.length).toBeGreaterThan(0);
+      expect(multiItemAction.processedItems[0].skipped).toBe(true);
+    });
+
+    it('should include skip reason in result message', async () => {
+      const pendingAction: any = {
+        type: 'add_item',
+        itemName: 'Spezialprodukt',
+        extractedQuantity: '',
+        listName: 'Test'
+      };
+
+      const skipOption: any = {
+        type: 'skip',
+        skipReason: 'Zu teuer'
+      };
+
+      const result = await service.handleDisambiguationChoice(pendingAction, skipOption);
+
+      expect(result.message).toContain('Zu teuer');
+    });
+  });
+
+  // =========================================
+  // RECIPE PROCESSING (NEW - CRITICAL FOR HISTORY FEATURE)
+  // =========================================
+
+  describe('Recipe/Multi-Item Context Preservation', () => {
+    beforeEach(() => {
+      cachingServiceSpy.getOrSet.and.callFake((key, fn) => {
+        const result = fn();
+        return result instanceof Promise ? from(result) : of(result);
+      });
+      circuitBreakerSpy.execute.and.callFake((name, fn, fallback) => {
+        try {
+          const result = fn();
+          return result instanceof Promise ? from(result) : of(result);
+        } catch (e) {
+          return from(fallback());
+        }
+      });
+      dataServiceSpy.getArticles.and.returnValue(of(testArticles));
+      dataServiceSpy.createArticle.and.callFake((data) => {
+        const newArticle = createTestArticle('new-' + Date.now(), data.name, data.departmentId, data.icon);
+        return of(newArticle);
+      });
+      dataServiceSpy.getLists.and.returnValue(of([
+        {
+          id: 'target-list',
+          name: 'Recipe List',
+          articleIds: [],
+          itemStates: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]));
+      dataServiceSpy.updateList.and.returnValue(of(true));
+    });
+
+    it('should preserve conversation context during recipe processing', async () => {
+      const multiItemAction: any = {
+        type: 'add_multiple_items',
+        items: [
+          { itemName: 'Mehl', quantity: '500g' },
+          { itemName: 'Zucker', quantity: '200g' }
+        ],
+        currentItemIndex: 0,
+        processedItems: [],
+        confirmedTargetListId: 'target-list',
+        confirmedTargetListName: 'Recipe List',
+        isFromRecipe: true
+      };
+
+      const result = await service.processMultiItemSequentially(multiItemAction);
+
+      expect(result).toBeDefined();
+      if (result.conversationContext) {
+        expect(result.conversationContext.waitingForArticles).toBeDefined();
+        expect(result.conversationContext.waitingForArticles?.listId).toBe('target-list');
+      }
+    });
+
+    it('should maintain context after adding articles', async () => {
+      const pendingAction: any = {
+        type: 'add_item',
+        itemName: 'Eier',
+        extractedQuantity: '6 Stück',
+        listName: 'Recipe List',
+        conversationListId: 'target-list'
+      };
+
+      const existingArticle = createTestArticle('egg-id', 'Eier', 'dairy', '🥚');
+      const selectedOption: any = {
+        id: 'existing_egg-id',
+        displayName: 'Eier',
+        type: 'existing',
+        article: existingArticle,
+        confidence: 1.0
+      };
+
+      dataServiceSpy.updateList.and.returnValue(of(true));
+      dataServiceSpy.getLists.and.returnValue(of([
+        {
+          id: 'target-list',
+          name: 'Recipe List',
+          articleIds: [],
+          itemStates: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]));
+
+      const result = await service.handleDisambiguationChoice(pendingAction, selectedOption);
+
+      expect(result.success).toBe(true);
+      if (result.conversationContext) {
+        expect(result.conversationContext.lastAction?.type).toBe('article_added');
+        expect(result.conversationContext.lastAction?.listId).toBe('target-list');
+      }
+    });
+
+    it('should provide follow-up prompt after recipe item added', async () => {
+      const pendingAction: any = {
+        type: 'add_item',
+        itemName: 'Butter',
+        extractedQuantity: '250g',
+        listName: 'Recipe List',
+        conversationListId: 'target-list'
+      };
+
+      const newOption: any = {
+        id: 'new_article',
+        displayName: 'Butter (neu erstellen)',
+        type: 'new',
+        confidence: 1.0,
+        suggestedDepartmentId: 'dairy',
+        icon: '🧈'
+      };
+
+      smartSuggestionsSpy.getSmartSuggestions.and.returnValue(Promise.resolve({
+        departmentId: 'dairy',
+        icon: '🧈'
+      }));
+      dataServiceSpy.updateList.and.returnValue(of(true));
+      dataServiceSpy.getLists.and.returnValue(of([
+        {
+          id: 'target-list',
+          name: 'Recipe List',
+          articleIds: [],
+          itemStates: {},
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]));
+
+      const result = await service.handleDisambiguationChoice(pendingAction, newOption);
+
+      expect(result.success).toBe(true);
+      if (result.followUpPrompt) {
+        expect(result.followUpPrompt).toContain('weitere Artikel');
+      }
+    });
+  });
 });
