@@ -14,7 +14,7 @@ import { SimplifiedDisambiguationService } from './simplified-disambiguation.ser
 import { SmartSuggestionsService } from './smart-suggestions.service';
 import { AICachingService } from './caching.service';
 import { AIErrorHandlerService, ErrorContext } from './error-handler.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
+import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
@@ -60,7 +60,6 @@ export class AIOrchestrationService {
     private smartSuggestions: SmartSuggestionsService,
     private cachingService: AICachingService,
     private errorHandler: AIErrorHandlerService,
-    private departmentIconMapping: DepartmentIconMappingService,
     private performanceMonitor: PerformanceMonitorService,
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService
@@ -297,8 +296,8 @@ export class AIOrchestrationService {
       const [smartSuggestions, mappingSuggestions] = await Promise.allSettled([
         this.smartSuggestions.getSmartSuggestions(itemName),
         Promise.resolve({
-          departmentId: this.departmentIconMapping.suggestDepartment(itemName),
-          icon: this.departmentIconMapping.suggestIcon(itemName),
+          departmentId: suggestDepartment(itemName),
+          icon: suggestIcon(itemName),
           source: 'mapping'
         })
       ]);
@@ -342,8 +341,8 @@ export class AIOrchestrationService {
 
     // Fallback to mapping service
     return {
-      departmentId: this.departmentIconMapping.suggestDepartment(itemName),
-      icon: this.departmentIconMapping.suggestIcon(itemName),
+      departmentId: suggestDepartment(itemName),
+      icon: suggestIcon(itemName),
       source: 'mapping'
     };
   }

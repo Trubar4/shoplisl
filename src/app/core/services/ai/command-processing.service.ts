@@ -11,7 +11,7 @@ import {
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
+import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { AIResponseService } from './ai-response.service';
 import { DataService } from '../data.service';
 import { GroqApiService } from './groq-api.service';
@@ -32,7 +32,6 @@ export class CommandProcessingService {
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: SimplifiedDisambiguationService,
-    private departmentIconMapping: DepartmentIconMappingService,
     private aiResponse: AIResponseService,
     private dataService: DataService,
     private groqApi: GroqApiService,
@@ -96,7 +95,7 @@ export class CommandProcessingService {
         itemName: quantityExtraction.itemName,
         extractedQuantity: quantityExtraction.quantity,
         listName: targetListName,
-        suggestedDepartment: this.departmentIconMapping.suggestDepartment(quantityExtraction.itemName)
+        suggestedDepartment: suggestDepartment(quantityExtraction.itemName)
       };
   
       // Store conversation list ID in pending action for disambiguation service
@@ -145,7 +144,7 @@ export class CommandProcessingService {
         itemName: quantityExtraction.itemName,
         extractedQuantity: quantityExtraction.quantity,
         listName: listName,
-        suggestedDepartment: this.departmentIconMapping.suggestDepartment(quantityExtraction.itemName),
+        suggestedDepartment: suggestDepartment(quantityExtraction.itemName),
         conversationListId: listId
       } as any;
       
@@ -327,7 +326,7 @@ export class CommandProcessingService {
       itemName: finalItemName,
       extractedQuantity: quantityExtraction.quantity,
       listName: listName,
-      suggestedDepartment: this.departmentIconMapping.suggestDepartment(quantityExtraction.itemName)
+      suggestedDepartment: suggestDepartment(quantityExtraction.itemName)
     };
 
     if (!listName) {

@@ -17,7 +17,7 @@ import { Article, ShoppingList } from '../../models';
 import { DataService } from '../data.service';
 import { DepartmentService } from '../department.service';
 import { SmartSuggestionsService } from './smart-suggestions.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
+import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
@@ -33,7 +33,6 @@ export class SimplifiedDisambiguationService {
     private dataService: DataService,
     private departmentService: DepartmentService,
     private smartSuggestions: SmartSuggestionsService,
-    private departmentIconMapping: DepartmentIconMappingService,
     private cachingService: AICachingService,
     private errorHandler: AIErrorHandlerService,
     private performanceMonitor: PerformanceMonitorService,
@@ -113,8 +112,8 @@ export class SimplifiedDisambiguationService {
     this.logger.info('ai', `Using fallback disambiguation options for: ${itemName}`);
     
     // Basic fallback - always offer to create new
-    const departmentId = this.departmentIconMapping.suggestDepartment(itemName);
-    const icon = this.departmentIconMapping.suggestIcon(itemName);
+    const departmentId = suggestDepartment(itemName);
+    const icon = suggestIcon(itemName);
     const departmentName = this.departmentService.getDepartmentName(departmentId, 'german');
     
     return [{
@@ -385,8 +384,8 @@ export class SimplifiedDisambiguationService {
   
         // Always return a valid object
         return {
-          departmentId: this.departmentIconMapping.suggestDepartment(itemName),
-          icon: this.departmentIconMapping.suggestIcon(itemName)
+          departmentId: suggestDepartment(itemName),
+          icon: suggestIcon(itemName)
         };
       },
       5 * 60 * 1000 // 5 minutes TTL for suggestions
@@ -394,8 +393,8 @@ export class SimplifiedDisambiguationService {
     
     // Ensure we always return a valid object, never undefined
     return result || {
-      departmentId: this.departmentIconMapping.suggestDepartment(itemName),
-      icon: this.departmentIconMapping.suggestIcon(itemName)
+      departmentId: suggestDepartment(itemName),
+      icon: suggestIcon(itemName)
     };
   }
 
@@ -742,7 +741,7 @@ export class SimplifiedDisambiguationService {
         listName: targetList.name,
         currentItemIndex: 0,
         processedItems: [],
-        suggestedDepartment: this.departmentIconMapping.suggestDepartment(multiItemData.items[0]?.itemName || ''),
+        suggestedDepartment: suggestDepartment(multiItemData.items[0]?.itemName || ''),
         conversationListId: targetList.id,
         confirmedTargetListId: targetList.id,
         confirmedTargetListName: targetList.name

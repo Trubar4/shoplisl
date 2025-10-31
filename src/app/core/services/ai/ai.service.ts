@@ -14,7 +14,7 @@ import {
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
+import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { AIResponseService } from './ai-response.service';
 import { CommandProcessingService } from './command-processing.service';
 import { RecipeProcessingService } from './recipe-processing.service';
@@ -38,7 +38,6 @@ export class AIService {
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: SimplifiedDisambiguationService,
-    private departmentIconMapping: DepartmentIconMappingService,
     private aiResponse: AIResponseService,
     private commandProcessing: CommandProcessingService,
     private recipeProcessing: RecipeProcessingService,
@@ -247,12 +246,12 @@ export class AIService {
       itemName: quantityExtraction.itemName,
       extractedQuantity: quantityExtraction.quantity,
       listName: undefined,
-      suggestedDepartment: this.departmentIconMapping.suggestDepartment(quantityExtraction.itemName),
+      suggestedDepartment: suggestDepartment(quantityExtraction.itemName),
       articleToAdd: {
         name: quantityExtraction.itemName,
         amount: quantityExtraction.quantity || '',
-        departmentId: this.departmentIconMapping.suggestDepartment(quantityExtraction.itemName),
-        icon: this.departmentIconMapping.suggestIcon(quantityExtraction.itemName)
+        departmentId: suggestDepartment(quantityExtraction.itemName),
+        icon: suggestIcon(quantityExtraction.itemName)
       }
     };
     
