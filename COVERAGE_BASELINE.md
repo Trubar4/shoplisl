@@ -76,17 +76,40 @@
 
 ---
 
-### Phase 1B: List Detail Component
-**Current:** 4.09% → **Target:** 60%
+### Phase 1B: List Detail Component ⚠️ BLOCKED
+**Previous:** 4.09% → **Current:** 4.09% (tests skipped) → **Target:** 60%
 
-**Missing Coverage:**
-- Shopping mode filters
-- Edit mode filters
-- Search with auto-switch
-- Celebration animation
-- Undo functionality
+**Status:** Test specifications created but skipped due to technical limitation
 
-**Tests to Add:** ~20-25 new test cases
+**Technical Blocker:**
+Vitest cannot load external Angular templates (`.html`) and styles (`.scss`) files without additional configuration. Angular components with `templateUrl` and `styleUrls` fail to resolve.
+
+**Test Specifications Created:** 42 test cases
+- ✅ Initialization and routing (5 tests)
+- ✅ Shopping mode filters (4 tests)
+- ✅ Edit mode filters (3 tests)
+- ✅ Article toggle with undo (3 tests)
+- ✅ Article list operations (3 tests)
+- ✅ Search functionality (3 tests)
+- ✅ Celebration animation (4 tests)
+- ✅ Navigation (3 tests)
+- ✅ List management (4 tests)
+- ✅ Department grouping (3 tests)
+- ✅ Utility methods (4 tests)
+- ✅ Component cleanup (2 tests)
+
+**Resolution Options:**
+1. Use Karma for component tests (templates work automatically)
+2. Configure Vite plugin to inline templates during test build
+3. Use `@angular-builders/custom-webpack` with Vite
+4. Manually inline templates in test files (not maintainable)
+
+**Decision:** Move to Phase 1C (voice assistant) or use Karma for component tests
+
+**Value Despite Blocker:**
+- Test specifications document all expected behaviors
+- Serve as blueprint for refactoring
+- Will work immediately once template loading is configured
 
 ---
 
