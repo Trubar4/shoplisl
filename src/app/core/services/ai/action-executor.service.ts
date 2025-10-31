@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { ArticleOperationsService } from './article-operations.service';
 import { ListOperationsService } from './list-operations.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
-import { AIResponseService } from './ai-response.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { ContextManagementService } from './context-management.service';
 import { DataService } from '../data.service';
 import { PendingAction, AIExecutionResult } from './ai-models';
@@ -17,7 +17,7 @@ export class ActionExecutorService {
     private articleOps: ArticleOperationsService,
     private listOps: ListOperationsService,
     private disambiguation: SimplifiedDisambiguationService,
-    private aiResponse: AIResponseService,
+    private aiResponse: AIMessagingService,
     private contextManager: ContextManagementService,
     private dataService: DataService
   ) {}

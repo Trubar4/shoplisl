@@ -6,7 +6,7 @@ import { SmartSuggestionsService } from './smart-suggestions.service';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
-import { AIErrorHandlerService } from './error-handler.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
 import { Article, ShoppingList } from '../../models';
 import { of, throwError, from } from 'rxjs';
@@ -18,7 +18,7 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
   let departmentServiceSpy: jasmine.SpyObj<DepartmentService>;
   let smartSuggestionsSpy: jasmine.SpyObj<SmartSuggestionsService>;
   let cachingServiceSpy: jasmine.SpyObj<AICachingService>;
-  let errorHandlerSpy: jasmine.SpyObj<AIErrorHandlerService>;
+  let errorHandlerSpy: jasmine.SpyObj<AIMessagingService>;
   let performanceMonitorSpy: jasmine.SpyObj<PerformanceMonitorService>;
   let loggerSpy: jasmine.SpyObj<LoggerService>;
   let circuitBreakerSpy: jasmine.SpyObj<CircuitBreakerService>;
@@ -52,7 +52,7 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
     const departmentServiceSpyObj = jasmine.createSpyObj('DepartmentService', ['getDepartmentName']);
     const smartSuggestionsSpyObj = jasmine.createSpyObj('SmartSuggestionsService', ['getSmartSuggestions']);
     const cachingServiceSpyObj = jasmine.createSpyObj('AICachingService', ['getOrSet', 'createDisambiguationKey', 'createSuggestionsKey']);
-    const errorHandlerSpyObj = jasmine.createSpyObj('AIErrorHandlerService', ['validateInput', 'handleError']);
+    const errorHandlerSpyObj = jasmine.createSpyObj('AIMessagingService', ['validateInput', 'handleError']);
     const performanceMonitorSpyObj = jasmine.createSpyObj('PerformanceMonitorService', ['startOperation', 'endOperation']);
     const loggerSpyObj = jasmine.createSpyObj('LoggerService', ['info', 'warn', 'error']);
     const circuitBreakerSpyObj = jasmine.createSpyObj('CircuitBreakerService', ['execute']);

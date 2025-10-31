@@ -21,7 +21,7 @@ import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.u
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
-import { AIErrorHandlerService, ErrorContext, ValidationRules } from './error-handler.service';
+import { AIMessagingService, ErrorContext, ValidationRules } from './ai-messaging.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
 
 @Injectable({
@@ -34,7 +34,7 @@ export class SimplifiedDisambiguationService {
     private departmentService: DepartmentService,
     private smartSuggestions: SmartSuggestionsService,
     private cachingService: AICachingService,
-    private errorHandler: AIErrorHandlerService,
+    private errorHandler: AIMessagingService,
     private performanceMonitor: PerformanceMonitorService,
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService

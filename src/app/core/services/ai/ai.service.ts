@@ -15,7 +15,7 @@ import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
-import { AIResponseService } from './ai-response.service';
+import { AIMessagingService } from './ai-messaging.service';
 import { CommandProcessingService } from './command-processing.service';
 import { RecipeProcessingService } from './recipe-processing.service';
 import { ContextManagementService } from './context-management.service';
@@ -38,7 +38,7 @@ export class AIService {
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
     private disambiguation: SimplifiedDisambiguationService,
-    private aiResponse: AIResponseService,
+    private aiResponse: AIMessagingService,
     private commandProcessing: CommandProcessingService,
     private recipeProcessing: RecipeProcessingService,
     private contextManager: ContextManagementService,
@@ -467,7 +467,7 @@ export class AIService {
   private validateOtherServices(): void {
     const requiredServices: Array<{service: object; name: string}> = [
       { service: this.disambiguation, name: 'DisambiguationService' },
-      { service: this.aiResponse, name: 'AIResponseService' },
+      { service: this.aiResponse, name: 'AIMessagingService' },
       { service: this.commandProcessing, name: 'CommandProcessingService' },
       { service: this.recipeProcessing, name: 'RecipeProcessingService' },
       { service: this.contextManager, name: 'ContextManagementService' },
@@ -554,7 +554,7 @@ export class AIService {
     return this.quantityExtraction;
   }
   
-  public get aiResponseService(): AIResponseService {
+  public get aiResponseService(): AIMessagingService {
     return this.aiResponse;
   }
 
