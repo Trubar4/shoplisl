@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
+import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { ContextManagementService } from './context-management.service';
 import { ListOperationsService } from './list-operations.service';
 import { AIResponseService } from './ai-response.service';
@@ -23,7 +23,6 @@ export class MultiItemProcessorService {
   constructor(
     private quantityExtraction: QuantityExtractionService,
     private disambiguation: SimplifiedDisambiguationService,
-    private departmentIconMapping: DepartmentIconMappingService,
     private contextManager: ContextManagementService,
     private listOps: ListOperationsService,
     private aiResponse: AIResponseService,
@@ -231,7 +230,7 @@ export class MultiItemProcessorService {
       listName: targetListName,
       currentItemIndex: 0,
       processedItems: [],
-      suggestedDepartment: this.departmentIconMapping.suggestDepartment(multiItemResult.items[0]?.itemName || ''),
+      suggestedDepartment: suggestDepartment(multiItemResult.items[0]?.itemName || ''),
       conversationListId: targetListId,
       confirmedTargetListId: targetListId,
       confirmedTargetListName: targetListName

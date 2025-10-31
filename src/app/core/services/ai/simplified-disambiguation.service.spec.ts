@@ -3,7 +3,6 @@ import { SimplifiedDisambiguationService } from './simplified-disambiguation.ser
 import { DataService } from '../data.service';
 import { DepartmentService } from '../department.service';
 import { SmartSuggestionsService } from './smart-suggestions.service';
-import { DepartmentIconMappingService } from './department-icon-mapping.service';
 import { LoggerService } from '../logger.service';
 import { PerformanceMonitorService } from './performance-monitor.service';
 import { AICachingService } from './caching.service';
@@ -18,7 +17,6 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
   let dataServiceSpy: jasmine.SpyObj<DataService>;
   let departmentServiceSpy: jasmine.SpyObj<DepartmentService>;
   let smartSuggestionsSpy: jasmine.SpyObj<SmartSuggestionsService>;
-  let departmentIconMappingSpy: jasmine.SpyObj<DepartmentIconMappingService>;
   let cachingServiceSpy: jasmine.SpyObj<AICachingService>;
   let errorHandlerSpy: jasmine.SpyObj<AIErrorHandlerService>;
   let performanceMonitorSpy: jasmine.SpyObj<PerformanceMonitorService>;
@@ -53,7 +51,6 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
     const dataServiceSpyObj = jasmine.createSpyObj('DataService', ['getArticles', 'createArticle', 'updateList', 'getLists']);
     const departmentServiceSpyObj = jasmine.createSpyObj('DepartmentService', ['getDepartmentName']);
     const smartSuggestionsSpyObj = jasmine.createSpyObj('SmartSuggestionsService', ['getSmartSuggestions']);
-    const departmentIconMappingSpyObj = jasmine.createSpyObj('DepartmentIconMappingService', ['suggestDepartment', 'suggestIcon']);
     const cachingServiceSpyObj = jasmine.createSpyObj('AICachingService', ['getOrSet', 'createDisambiguationKey', 'createSuggestionsKey']);
     const errorHandlerSpyObj = jasmine.createSpyObj('AIErrorHandlerService', ['validateInput', 'handleError']);
     const performanceMonitorSpyObj = jasmine.createSpyObj('PerformanceMonitorService', ['startOperation', 'endOperation']);
@@ -64,7 +61,6 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
     dataServiceSpy = dataServiceSpyObj;
     departmentServiceSpy = departmentServiceSpyObj;
     smartSuggestionsSpy = smartSuggestionsSpyObj;
-    departmentIconMappingSpy = departmentIconMappingSpyObj;
     cachingServiceSpy = cachingServiceSpyObj;
     errorHandlerSpy = errorHandlerSpyObj;
     performanceMonitorSpy = performanceMonitorSpyObj;
@@ -75,7 +71,6 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
       dataServiceSpy as any,
       departmentServiceSpy as any,
       smartSuggestionsSpy as any,
-      departmentIconMappingSpy as any,
       cachingServiceSpy as any,
       errorHandlerSpy as any,
       performanceMonitorSpy as any,
@@ -85,8 +80,6 @@ describe('SimplifiedDisambiguationService - Similarity Algorithm', () => {
 
     // Default spy behaviors
     departmentServiceSpyObj.getDepartmentName.and.returnValue('Obst & Gemüse');
-    departmentIconMappingSpyObj.suggestDepartment.and.returnValue('miscellaneous');
-    departmentIconMappingSpyObj.suggestIcon.and.returnValue('📦');
     performanceMonitorSpyObj.startOperation.and.stub();
     performanceMonitorSpyObj.endOperation.and.stub();
     errorHandlerSpyObj.validateInput.and.stub();
