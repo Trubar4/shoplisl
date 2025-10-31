@@ -60,6 +60,33 @@ export class AIService {
   // PUBLIC API - MAIN COMMAND EXECUTION
   // ========================================
 
+  /**
+   * Main entry point for executing AI commands
+   *
+   * Processes natural language input and executes the appropriate action such as
+   * adding articles, creating lists, handling recipes, or managing disambiguation.
+   *
+   * @param input - Natural language command from the user
+   * @returns Promise resolving to execution result with success status and message
+   *
+   * @example
+   * ```typescript
+   * // Simple article addition
+   * const result = await aiService.executeCommand('Füge Milch hinzu');
+   *
+   * // Multi-item command
+   * const result = await aiService.executeCommand('Füge Milch, Brot, Bananen hinzu');
+   *
+   * // Recipe command
+   * const result = await aiService.executeCommand('Rezept: 500g Mehl, 2 Eier, 250ml Milch');
+   *
+   * // List creation
+   * const result = await aiService.executeCommand('Erstelle Liste Einkaufen');
+   * ```
+   *
+   * @throws {AIServiceError} If command execution fails critically
+   * @see {@link AIExecutionResult} for result structure
+   */
   async executeCommand(input: string): Promise<AIExecutionResult> {
     console.log('🗣️ EXECUTING COMMAND:', input);
     console.log('🗣️ Current context:', this.getConversationContext());
@@ -490,6 +517,38 @@ export class AIService {
   // PUBLIC API - DISAMBIGUATION
   // ========================================
 
+  /**
+   * Handles user's selection from disambiguation options
+   *
+   * When multiple similar articles are found, this method processes the user's
+   * choice and continues with the original action (add, create list, etc.)
+   *
+   * @param pendingAction - The action waiting for disambiguation (single or multi-item)
+   * @param selectedOption - The option chosen by the user from disambiguation list
+   * @returns Promise resolving to execution result after processing the choice
+   *
+   * @example
+   * ```typescript
+   * // User selected "Vollmilch 3,5%" from disambiguation options
+   * const pendingAction: PendingAction = {
+   *   type: 'add_to_list',
+   *   itemName: 'Milch',
+   *   listId: 'list-123'
+   * };
+   *
+   * const selectedOption: DisambiguationOption = {
+   *   id: 'article-456',
+   *   displayText: 'Vollmilch 3,5%',
+   *   type: 'existing'
+   * };
+   *
+   * const result = await aiService.handleDisambiguationChoice(pendingAction, selectedOption);
+   * ```
+   *
+   * @see {@link getDisambiguationOptions} for getting available options
+   * @see {@link PendingAction} for action types
+   * @see {@link DisambiguationOption} for option structure
+   */
   async handleDisambiguationChoice(
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
@@ -514,6 +573,31 @@ export class AIService {
     return result;
   }
 
+  /**
+   * Gets disambiguation options for a given item name
+   *
+   * Searches for similar existing articles and returns options including:
+   * - Exact and fuzzy matches from existing articles
+   * - Option to create a new article
+   * - Option to skip (for multi-item scenarios)
+   *
+   * @param itemName - Name of the item to find disambiguation options for
+   * @returns Promise resolving to array of disambiguation options
+   *
+   * @example
+   * ```typescript
+   * // Get options for "Milch"
+   * const options = await aiService.getDisambiguationOptions('Milch');
+   * // Returns: [
+   * //   { id: 'article-1', displayText: 'Vollmilch 3,5%', type: 'existing', similarity: 0.85 },
+   * //   { id: 'article-2', displayText: 'Milch 1,5%', type: 'existing', similarity: 0.90 },
+   * //   { id: 'new', displayText: 'Neu erstellen: Milch', type: 'new' }
+   * // ]
+   * ```
+   *
+   * @see {@link DisambiguationOption} for option structure
+   * @see {@link handleDisambiguationChoice} for processing user's selection
+   */
   async getDisambiguationOptions(itemName: string): Promise<DisambiguationOption[]> {
     return this.disambiguation.getDisambiguationOptions(itemName);
   }
@@ -626,7 +710,21 @@ export class AIService {
   }
 
   /**
-   * Test circuit breaker functionality
+   * Tests circuit breaker functionality
+   *
+   * Diagnostic method to verify circuit breaker is working correctly.
+   * Useful for debugging and monitoring the health of the AI services.
+   *
+   * @returns Promise resolving to test results including circuit states and metrics
+   *
+   * @example
+   * ```typescript
+   * const testResult = await aiService.testCircuitBreaker();
+   * console.log('Circuit states:', testResult.circuitStates);
+   * console.log('All circuits operational:', testResult.allCircuitsOperational);
+   * ```
+   *
+   * @internal For debugging and monitoring purposes
    */
   async testCircuitBreaker(): Promise<{
     success: boolean;
@@ -664,7 +762,34 @@ export class AIService {
 
 
 /**
- * Get comprehensive system health report
+ * Generates comprehensive system health report
+ *
+ * Provides detailed status information about all AI service components including:
+ * - Overall system status
+ * - API key configuration
+ * - Circuit breaker states
+ * - Request metrics and failure rates
+ *
+ * @returns Promise resolving to formatted health report string
+ *
+ * @example
+ * ```typescript
+ * const healthReport = await aiService.getSystemHealthReport();
+ * console.log(healthReport);
+ * // Output:
+ * // 🚀 AI Service Health Report - 10/31/2025, 2:30:00 PM
+ * // ================================
+ * //
+ * // 📊 Status: 🟢 AI Ready
+ * // 🔑 API Key: Configured
+ * // 🔌 Circuit Breakers: 5 active
+ * //
+ * // Circuit Details:
+ * // - disambiguation: closed (142 requests, 2.1% failure rate)
+ * // - api_call: closed (89 requests, 0.0% failure rate)
+ * ```
+ *
+ * @see {@link getAIStatus} for current status summary
  */
 async getSystemHealthReport(): Promise<string> {
   try {
@@ -694,7 +819,25 @@ async getSystemHealthReport(): Promise<string> {
 }
 
 /**
- * Trigger manual recovery of AI services
+ * Triggers manual recovery of AI services
+ *
+ * Forces recovery of all circuit breakers and clears cached state.
+ * Useful when services are degraded and need manual intervention.
+ *
+ * @returns Promise resolving to recovery result with success status and actions taken
+ *
+ * @example
+ * ```typescript
+ * const recovery = await aiService.triggerManualRecovery();
+ * if (recovery.success) {
+ *   console.log('Recovery successful!');
+ *   console.log('Actions taken:', recovery.actions);
+ *   // Actions taken: ['Reset 3 circuit breakers', 'Cleared cache']
+ * }
+ * ```
+ *
+ * @see {@link getSystemHealthReport} to check status after recovery
+ * @see {@link testCircuitBreaker} to verify recovery was successful
  */
 async triggerManualRecovery(): Promise<{
   success: boolean;
