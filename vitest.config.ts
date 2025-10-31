@@ -21,13 +21,25 @@ export default defineConfig({
     // Coverage configuration
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'src/test-setup.ts',
         '**/*.spec.ts',
         '**/*.config.ts',
+        'src/main.ts',
+        'src/environments/**',
       ],
+      // Progressive thresholds - start at baseline, increase during refactoring
+      // Baseline (2025-10-31): Lines 8%, Functions 39%, Branches 76%, Statements 8%
+      thresholds: {
+        lines: 8,         // Current: 8.07%, Target: 70%
+        functions: 35,    // Current: 38.67%, Target: 70%
+        branches: 70,     // Current: 75.63%, Maintain above 70%
+        statements: 8,    // Current: 8.07%, Target: 70%
+      },
+      // Report uncovered files
+      all: true,
     },
 
     // Browser mode for better Angular compatibility
