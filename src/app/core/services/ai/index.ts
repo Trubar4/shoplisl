@@ -44,7 +44,9 @@ export { ListOperationsService } from './list-operations.service';
 export { MultiItemProcessorService } from './multi-item-processor.service';
 export { ActionExecutorService } from './action-executor.service';
 
-export * from './department-icon-mapping.service';
+// Department mapping utilities (migrated from service to pure functions)
+export * from '../../utils/department-mapping.utils';
+
 export * from './simplified-disambiguation.service';
 export * from './caching.service';
 export * from './error-handler.service';
