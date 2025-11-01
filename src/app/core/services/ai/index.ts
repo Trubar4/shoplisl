@@ -47,7 +47,8 @@ export { ActionExecutorService } from './action-executor.service';
 // Department mapping utilities (migrated from service to pure functions)
 export * from '../../utils/department-mapping.utils';
 
-export * from './simplified-disambiguation.service';
+// Disambiguation services (refactored in Phase 2)
+export * from './disambiguation';
 export * from './caching.service';
 // error-handler.service merged into ai-messaging.service
 export * from './orchestration.service';
