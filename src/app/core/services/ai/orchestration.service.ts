@@ -10,7 +10,7 @@ import {
   EnhancedConversationContext,
   TargetListInfo
 } from './ai-models';
-import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
+import { DisambiguationService } from './disambiguation';
 import { SmartSuggestionsService } from './smart-suggestions.service';
 import { AICachingService } from './caching.service';
 import { AIMessagingService, ErrorContext } from './ai-messaging.service';
@@ -56,7 +56,7 @@ export class AIOrchestrationService {
   };
 
   constructor(
-    private disambiguationService: SimplifiedDisambiguationService,
+    private disambiguationService: DisambiguationService,
     private smartSuggestions: SmartSuggestionsService,
     private cachingService: AICachingService,
     private errorHandler: AIMessagingService,

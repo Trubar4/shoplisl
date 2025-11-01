@@ -13,7 +13,7 @@ import {
 } from './ai-models';
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
-import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
+import { DisambiguationService } from './disambiguation';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { AIMessagingService } from './ai-messaging.service';
 import { CommandProcessingService } from './command-processing.service';
@@ -37,7 +37,7 @@ export class AIService {
   constructor(
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
-    private disambiguation: SimplifiedDisambiguationService,
+    private disambiguation: DisambiguationService,
     private aiResponse: AIMessagingService,
     private commandProcessing: CommandProcessingService,
     private recipeProcessing: RecipeProcessingService,

@@ -7,7 +7,7 @@ import { ListDetailComponent } from './list-detail';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
-import { SimplifiedDisambiguationService } from '../../../core/services/ai/simplified-disambiguation.service';
+import { DisambiguationService } from '../../../core/services/ai/disambiguation';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -148,7 +148,7 @@ describe('ListDetailComponent', () => {
       listUtilsMock as ListUtilsService,
       snackBarMock as MatSnackBar,
       cdrMock as ChangeDetectorRef,
-      disambiguationMock as SimplifiedDisambiguationService
+      disambiguationMock as DisambiguationService
     );
   });
 
@@ -195,7 +195,7 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as SimplifiedDisambiguationService
+        disambiguationMock as DisambiguationService
       );
 
       newComponent.ngOnInit();
@@ -226,7 +226,7 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as SimplifiedDisambiguationService
+        disambiguationMock as DisambiguationService
       );
 
       newComponent.ngOnInit();
@@ -876,7 +876,7 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as SimplifiedDisambiguationService
+        disambiguationMock as DisambiguationService
       );
 
       newComponent.ngOnInit();
@@ -1193,7 +1193,7 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as SimplifiedDisambiguationService
+        disambiguationMock as DisambiguationService
       );
 
       newComponent.ngOnInit();

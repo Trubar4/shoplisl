@@ -10,7 +10,7 @@ import {
 } from './ai-models';
 import { QuantityExtractionService } from './quantity-extraction.service';
 import { CommandParserService } from './command-parser.service';
-import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
+import { DisambiguationService } from './disambiguation';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { AIMessagingService } from './ai-messaging.service';
 import { DataService } from '../data.service';
@@ -31,7 +31,7 @@ export class CommandProcessingService {
   constructor(
     private quantityExtraction: QuantityExtractionService,
     private commandParser: CommandParserService,
-    private disambiguation: SimplifiedDisambiguationService,
+    private disambiguation: DisambiguationService,
     private aiResponse: AIMessagingService,
     private dataService: DataService,
     private groqApi: GroqApiService,
