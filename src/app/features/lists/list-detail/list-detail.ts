@@ -21,7 +21,7 @@ import { ShoppingList, Article, Department } from '../../../core/models';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
-import { SimplifiedDisambiguationService } from '../../../core/services/ai/simplified-disambiguation.service';
+import { DisambiguationService } from '../../../core/services/ai/disambiguation';
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 
@@ -94,7 +94,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     public readonly listUtils: ListUtilsService,
     private readonly snackBar: MatSnackBar,
     private readonly cdr: ChangeDetectorRef,
-    private readonly disambiguationService: SimplifiedDisambiguationService
+    private readonly disambiguationService: DisambiguationService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     this.list$ = this.dataService.getLists().pipe(
@@ -330,7 +330,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    * // -> Adds article to list, clears search, closes disambiguation
    * ```
    *
-   * @see {@link SimplifiedDisambiguationService.handleDisambiguationChoice} for processing logic
+   * @see {@link DisambiguationService.handleDisambiguationChoice} for processing logic
    */
   async onSelectSearchDisambiguation(option: any): Promise<void> {
     const query = this.searchDisambiguation$.value?.query;

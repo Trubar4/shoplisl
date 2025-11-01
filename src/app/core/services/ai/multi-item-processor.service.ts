@@ -1,7 +1,7 @@
 // src/app/core/services/ai/multi-item-processor.service.ts
 import { Injectable } from '@angular/core';
 import { QuantityExtractionService } from './quantity-extraction.service';
-import { SimplifiedDisambiguationService } from './simplified-disambiguation.service';
+import { DisambiguationService } from './disambiguation';
 import { suggestDepartment, suggestIcon } from '../../utils/department-mapping.utils';
 import { ContextManagementService } from './context-management.service';
 import { ListOperationsService } from './list-operations.service';
@@ -22,7 +22,7 @@ export class MultiItemProcessorService {
 
   constructor(
     private quantityExtraction: QuantityExtractionService,
-    private disambiguation: SimplifiedDisambiguationService,
+    private disambiguation: DisambiguationService,
     private contextManager: ContextManagementService,
     private listOps: ListOperationsService,
     private aiResponse: AIMessagingService,
