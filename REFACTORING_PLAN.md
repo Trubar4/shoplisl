@@ -1,7 +1,7 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-01
-**Current Phase:** Phase 2 Complete ✅ - Disambiguation Service Split
-**Next Phase:** Phase 3 - Split List Detail Component
+**Last Updated:** 2025-11-03
+**Current Phase:** Phase 3 In Progress 🔄 - Split List Detail Component (Filter Service ✅)
+**Next Session:** Continue Phase 3 - Integrate service & extract child components
 **Next Major Features:** History Function, Multi-User with Real-Time Collaboration
 
 ---
@@ -285,8 +285,18 @@ src/app/core/services/ai/
 
 ---
 
-### Phase 3: Split List Detail Component (3-4 days)
+### Phase 3: Split List Detail Component (3-4 days) - 🔄 IN PROGRESS
 **Goal:** Separate shopping and edit modes into focused components
+**Started:** 2025-11-03
+**Current Status:** Filter service extracted and tested ✅
+
+#### Progress:
+- ✅ **Session 1 (2025-11-03)**: Filter service extraction complete
+  - Created `list-filter.service.ts` (196 lines)
+  - Created `list-filter.service.spec.ts` (24 tests, 100% coverage)
+  - All tests passing
+  - Committed and pushed to branch
+- 🔄 **Next Session**: Integrate filter service and extract child components
 
 #### New File Structure:
 ```
@@ -334,7 +344,10 @@ src/app/features/lists/list-detail/
    - Pass list data to children
    - Update navigation
 
-**Resume Point After Phase 3:**
+**Resume Point After Phase 3 Session 1:**
+> "Filter service extraction complete (196 lines, 24 tests). ListFilterService manages shopping/edit filters, search state, auto-switch to 'alle', and previous filter restoration. 100% test coverage. Branch: claude/shoplisl-phase-3-split-list-detail-011CUktWzvBWoqpstLE1Xk9g. Next: Integrate service into list-detail, then extract shopping-mode and edit-mode components. See PHASE_3_CONTINUE_PROMPT.md for detailed continuation plan."
+
+**Resume Point After Phase 3 (Target):**
 > "List detail split complete. New components: shopping-mode, edit-mode. New service: list-filter. Parent component reduced to 400 lines. All tests passing. Next: Split voice assistant component."
 
 ---
