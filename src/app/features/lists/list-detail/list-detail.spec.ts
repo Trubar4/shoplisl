@@ -8,6 +8,7 @@ import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 import { DisambiguationService } from '../../../core/services/ai/disambiguation';
+import { ListFilterService } from './services/list-filter.service';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -36,6 +37,7 @@ describe('ListDetailComponent', () => {
   let departmentServiceMock: any;
   let listUtilsMock: any;
   let disambiguationMock: any;
+  let filterServiceMock: any;
   let snackBarMock: any;
   let routerMock: any;
   let activatedRouteMock: any;
@@ -114,6 +116,34 @@ describe('ListDetailComponent', () => {
       handleDisambiguationChoice: vi.fn(() => Promise.resolve({ success: true }))
     };
 
+    const shoppingFilterSubject = new BehaviorSubject<'offen' | 'erledigt' | 'alle'>('offen');
+    const editFilterSubject = new BehaviorSubject<'gelistet' | 'fehlend' | 'alle'>('alle');
+    const searchQuerySubject = new BehaviorSubject<string>('');
+
+    filterServiceMock = {
+      shoppingFilter$: shoppingFilterSubject.asObservable(),
+      editFilter$: editFilterSubject.asObservable(),
+      searchQuery$: searchQuerySubject.asObservable(),
+      get currentShoppingFilter() { return shoppingFilterSubject.value; },
+      get currentEditFilter() { return editFilterSubject.value; },
+      get currentSearchQuery() { return searchQuerySubject.value; },
+      setShoppingFilter: vi.fn((filter: any) => shoppingFilterSubject.next(filter)),
+      setEditFilter: vi.fn((filter: any) => editFilterSubject.next(filter)),
+      setSearchQuery: vi.fn((query: string) => searchQuerySubject.next(query)),
+      autoSwitchToAllFilter: vi.fn(() => false),
+      restorePreviousFilter: vi.fn(),
+      clearSearch: vi.fn(() => searchQuerySubject.next('')),
+      resetFilters: vi.fn(() => {
+        shoppingFilterSubject.next('offen');
+        editFilterSubject.next('alle');
+        searchQuerySubject.next('');
+      }),
+      cleanup: vi.fn(),
+      _shoppingFilterSubject: shoppingFilterSubject,
+      _editFilterSubject: editFilterSubject,
+      _searchQuerySubject: searchQuerySubject
+    };
+
     snackBarMock = {
       open: vi.fn()
     };
@@ -148,7 +178,8 @@ describe('ListDetailComponent', () => {
       listUtilsMock as ListUtilsService,
       snackBarMock as MatSnackBar,
       cdrMock as ChangeDetectorRef,
-      disambiguationMock as DisambiguationService
+      disambiguationMock as DisambiguationService,
+      filterServiceMock as ListFilterService
     );
   });
 
@@ -195,7 +226,8 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as DisambiguationService
+        disambiguationMock as DisambiguationService,
+        filterServiceMock as ListFilterService
       );
 
       newComponent.ngOnInit();
@@ -226,7 +258,8 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as DisambiguationService
+        disambiguationMock as DisambiguationService,
+        filterServiceMock as ListFilterService
       );
 
       newComponent.ngOnInit();
@@ -556,8 +589,7 @@ describe('ListDetailComponent', () => {
     });
 
     it('should debounce search query', () => {
-      const searchQuery$ = component['searchQuery$'];
-      const nextSpy = vi.spyOn(searchQuery$, 'next');
+      const setSearchQuerySpy = filterServiceMock.setSearchQuery;
 
       component.searchQuery = 'M';
       component.onSearchQueryChange();
@@ -568,7 +600,8 @@ describe('ListDetailComponent', () => {
       component.searchQuery = 'Mil';
       component.onSearchQueryChange();
 
-      expect(nextSpy).toHaveBeenCalledTimes(3);
+      expect(setSearchQuerySpy).toHaveBeenCalledTimes(3);
+      expect(setSearchQuerySpy).toHaveBeenCalledWith('Mil');
     });
 
     it('should clear search correctly', () => {
@@ -876,7 +909,8 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as DisambiguationService
+        disambiguationMock as DisambiguationService,
+        filterServiceMock as ListFilterService
       );
 
       newComponent.ngOnInit();
@@ -1193,7 +1227,8 @@ describe('ListDetailComponent', () => {
         listUtilsMock as ListUtilsService,
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
-        disambiguationMock as DisambiguationService
+        disambiguationMock as DisambiguationService,
+        filterServiceMock as ListFilterService
       );
 
       newComponent.ngOnInit();
