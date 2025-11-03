@@ -47,21 +47,17 @@
       (clearDisambiguation)="onClearSearchDisambiguation()">
     </app-search-disambiguation>
 
-
-    <!-- Shopping List Content -->
-    <div class="content-container">
-      <app-article-list
-        [departmentGroups]="departmentGroups$ | async"
-        [mode]="'shopping'"
-        [searchQuery]="searchQuery"
-        [shouldHideArticle]="shouldHideArticle"
-        (articleToggle)="onArticleToggle($event)"
-        (editAmount)="onEditAmountFromList($event)"
-        (articleInfo)="onArticleInfo($event)"
-        (undoCompletion)="undoArticleCompletion($event)"
-        (toggleInList)="onToggleArticleInList($event)">
-      </app-article-list>
-    </div>
+    <!-- Shopping Mode Component -->
+    <app-shopping-mode
+      [list]="currentList"
+      [departmentGroups]="(departmentGroups$ | async) || []"
+      [searchQuery]="searchQuery"
+      [shoppingFilter]="currentShoppingFilter()"
+      (articleToggle)="onArticleToggle($event)"
+      (articleInfo)="onArticleInfo($event)"
+      (editAmount)="onEditAmountFromList($event)"
+      (undoCompletion)="onUndoArticleCompletion($event)">
+    </app-shopping-mode>
   </div>
 
   <!-- EDIT MODE -->
@@ -153,33 +149,5 @@
     (close)="closeFab()"
     (filterChange)="onFilterChange($event)">
   </app-filter-fab>
-
-  <!-- Celebration Animation Overlay -->
-  <div 
-    class="celebration-overlay" 
-    *ngIf="showCelebrationAnimation()"
-    (click)="closeCelebrationAnimation()">
-    <div class="celebration-content" (click)="closeCelebrationAnimation()">
-      <div class="celebration-animation">
-        <img 
-          src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZnaGJhMnhxcDZ1ZWVpZm15bm5ueTkwaGVzaGNtZWtzdTNscno4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2lQCBjuFMLCOvXno4l/giphy.gif" 
-          alt="Celebration!"
-          class="celebration-gif"
-          (error)="onGifError($event)"
-          (load)="onGifLoad($event)">
-        
-        <!-- Celebration Text Overlaid on Image -->
-        <div class="celebration-text-overlay">
-          <h2>🎉 Geschafft! 🎉</h2>
-          <p>Alle Artikel erledigt!</p>
-        </div>
-        
-        <!-- Fallback if GIF doesn't load -->
-        <div class="gif-fallback" style="display: none;">
-          <div class="emoji-celebration">🎉 👏 🎊 ✨ 🎈</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
 </div>

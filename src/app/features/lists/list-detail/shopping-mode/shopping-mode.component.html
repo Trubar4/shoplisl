@@ -1,0 +1,42 @@
+<div class="shopping-mode">
+  <!-- Shopping List Content -->
+  <div class="content-container">
+    <app-article-list
+      [departmentGroups]="departmentGroups"
+      [mode]="'shopping'"
+      [searchQuery]="searchQuery"
+      [shouldHideArticle]="shouldHideArticle"
+      (articleToggle)="onArticleToggle($event)"
+      (editAmount)="onEditAmount($event)"
+      (articleInfo)="onArticleInfo($event)">
+    </app-article-list>
+  </div>
+
+  <!-- Celebration Animation Overlay -->
+  <div
+    class="celebration-overlay"
+    *ngIf="showCelebrationAnimation()"
+    (click)="closeCelebrationAnimation()">
+    <div class="celebration-content" (click)="closeCelebrationAnimation()">
+      <div class="celebration-animation">
+        <img
+          src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZnaGJhMnhxcDZ1ZWVpZm15bm5ueTkwaGVzaGNtZWtzdTNscno4bCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2lQCBjuFMLCOvXno4l/giphy.gif"
+          alt="Celebration!"
+          class="celebration-gif"
+          (error)="onGifError($event)"
+          (load)="onGifLoad($event)">
+
+        <!-- Celebration Text Overlaid on Image -->
+        <div class="celebration-text-overlay">
+          <h2>🎉 Geschafft! 🎉</h2>
+          <p>Alle Artikel erledigt!</p>
+        </div>
+
+        <!-- Fallback if GIF doesn't load -->
+        <div class="gif-fallback" style="display: none;">
+          <div class="emoji-celebration">🎉 👏 🎊 ✨ 🎈</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
