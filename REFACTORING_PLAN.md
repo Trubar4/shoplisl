@@ -1,7 +1,8 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-03
-**Current Phase:** Phase 3 In Progress 🔄 - Split List Detail Component (Filter Service ✅)
-**Next Session:** Continue Phase 3 - Integrate service & extract child components
+**Last Updated:** 2025-11-04
+**Current Phase:** Phase 3 In Progress 🔄 - Split List Detail Component (~60% complete)
+**Completed:** Filter Service ✅ | Shopping-Mode Component ✅
+**Next Session:** Fix parent tests, extract Edit-Mode component, final parent refactor
 **Next Major Features:** History Function, Multi-User with Real-Time Collaboration
 
 ---
@@ -285,18 +286,38 @@ src/app/core/services/ai/
 
 ---
 
-### Phase 3: Split List Detail Component (3-4 days) - 🔄 IN PROGRESS
+### Phase 3: Split List Detail Component (3-4 days) - 🔄 IN PROGRESS (~60% complete)
 **Goal:** Separate shopping and edit modes into focused components
 **Started:** 2025-11-03
-**Current Status:** Filter service extracted and tested ✅
+**Current Status:** Filter service ✅ | Shopping-mode component ✅ | Edit-mode pending
 
 #### Progress:
-- ✅ **Session 1 (2025-11-03)**: Filter service extraction complete
-  - Created `list-filter.service.ts` (196 lines)
-  - Created `list-filter.service.spec.ts` (24 tests, 100% coverage)
-  - All tests passing
-  - Committed and pushed to branch
-- 🔄 **Next Session**: Integrate filter service and extract child components
+
+**✅ Session 1 (2025-11-03)**: Filter service extraction
+- Created `list-filter.service.ts` (196 lines)
+- Created `list-filter.service.spec.ts` (24 tests, 100% coverage)
+- All tests passing
+- Commit: `cba3d03`
+
+**✅ Session 2 Part 1 (2025-11-04)**: Filter service integration
+- Integrated ListFilterService into list-detail.component.ts
+- Removed duplicate BehaviorSubjects (shoppingFilter$, editFilter$, searchQuery$)
+- Updated all filter methods to use service
+- list-detail.ts: 965 → 960 lines (-5 lines)
+- All 78 tests passing ✓
+- Commit: `30f1b9b`
+
+**✅ Session 2 Part 2 (2025-11-04)**: Shopping-mode component extraction
+- Created `shopping-mode.component.ts` (320 lines)
+- Created `shopping-mode.component.html` (42 lines)
+- Created `shopping-mode.component.scss` (192 lines)
+- Created `shopping-mode.component.spec.ts` (27 tests, 100% coverage)
+- Extracted: article toggle with undo, pending states, celebration animation
+- list-detail.ts: 960 → 772 lines (-188 lines, -19.6%)
+- Parent tests: 55 passing, 23 failing (need update - moved to child)
+- Commit: `7a667cf`
+
+**🔄 Next Session**: Fix parent tests, extract edit-mode component, final parent refactor
 
 #### New File Structure:
 ```
@@ -344,11 +365,11 @@ src/app/features/lists/list-detail/
    - Pass list data to children
    - Update navigation
 
-**Resume Point After Phase 3 Session 1:**
-> "Filter service extraction complete (196 lines, 24 tests). ListFilterService manages shopping/edit filters, search state, auto-switch to 'alle', and previous filter restoration. 100% test coverage. Branch: claude/shoplisl-phase-3-split-list-detail-011CUktWzvBWoqpstLE1Xk9g. Next: Integrate service into list-detail, then extract shopping-mode and edit-mode components. See PHASE_3_CONTINUE_PROMPT.md for detailed continuation plan."
+**Resume Point After Phase 3 Session 2:**
+> "Phase 3 60% complete. ListFilterService integrated ✅. ShoppingModeComponent extracted (320 lines, 27 tests) ✅. Parent reduced from 965 → 772 lines (-19.6%). Branch: claude/shoplisl-phase-3-session-2-011CUm3psoMczbVQ6imJVPYq. Commits: 30f1b9b (integration), 7a667cf (shopping-mode). Next: Fix parent tests (remove shopping-specific), extract edit-mode component, final parent refactor to ~400-500 lines. See PHASE_3_SESSION_3_CONTINUE_PROMPT.md for continuation."
 
 **Resume Point After Phase 3 (Target):**
-> "List detail split complete. New components: shopping-mode, edit-mode. New service: list-filter. Parent component reduced to 400 lines. All tests passing. Next: Split voice assistant component."
+> "List detail split complete. New components: shopping-mode (320 lines), edit-mode (~250 lines). New service: list-filter (196 lines). Parent component reduced from 965 to ~400-500 lines (-48%). All tests passing. Clean separation of shopping/edit concerns. Next: Split voice assistant component."
 
 ---
 
