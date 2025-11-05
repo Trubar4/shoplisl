@@ -62,30 +62,28 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly pendingStates$ = new BehaviorSubject<Record<string, PendingState>>({});
 
+  // Enriched department groups with pending states - as observable for change detection
+  readonly enrichedDepartmentGroups$ = combineLatest([
+    this.pendingStates$
+  ]).pipe(
+    map(([pendingStates]) => {
+      return this.departmentGroups.map(group => ({
+        ...group,
+        articles: group.articles.map(article => ({
+          ...article,
+          pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
+          showUndoHint: pendingStates[article.id]?.showUndoHint
+        }))
+      }));
+    }),
+    takeUntil(this.destroy$)
+  );
+
   // === PRIVATE PROPERTIES ===
   private readonly undoHintTimeouts = new Map<string, any>();
   private celebrationTimeout?: any;
   private readonly HIDE_DELAY_MS = 5000;
   private wasIncompleteLastCheck = false;
-
-  // === COMPUTED PROPERTIES ===
-
-  /**
-   * Returns department groups with pending states merged into articles
-   * This ensures undo hints are displayed correctly
-   */
-  get enrichedDepartmentGroups(): DepartmentGroup[] {
-    const pendingStates = this.pendingStates$.value;
-
-    return this.departmentGroups.map(group => ({
-      ...group,
-      articles: group.articles.map(article => ({
-        ...article,
-        pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
-        showUndoHint: pendingStates[article.id]?.showUndoHint
-      }))
-    }));
-  }
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -235,25 +233,19 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
   /**
    * Monitors list completion and triggers celebration
    * Tracks transition from incomplete to complete
+   * Uses reactive approach to avoid infinite loops
    */
   private setupCompletionMonitoring(): void {
-    // Monitor department groups for completion
-    // Note: We need to extract articles with their checked state from the list
-    // Since departmentGroups already have the full ArticleItemData with isChecked
-    // we can directly monitor them
-
-    // We'll create a simple interval to check completion status
-    // This is a simplified version - in production, you might want to
-    // observe list changes more precisely
-    const checkInterval = setInterval(() => {
-      if (this.departmentGroups && this.departmentGroups.length > 0) {
-        const articles = this.departmentGroups.flatMap(g => g.articles);
+    // Subscribe to enriched department groups to reactively check completion
+    // This triggers only when the data actually changes, not on a fixed interval
+    this.enrichedDepartmentGroups$.pipe(
+      map(groups => groups.flatMap(g => g.articles)),
+      takeUntil(this.destroy$)
+    ).subscribe(articles => {
+      if (articles && articles.length > 0) {
         this.checkForCompletion(articles);
       }
-    }, 500);
-
-    // Clean up on destroy
-    this.destroy$.subscribe(() => clearInterval(checkInterval));
+    });
   }
 
   /**

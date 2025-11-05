@@ -2,7 +2,7 @@
   <!-- Shopping List Content -->
   <div class="content-container">
     <app-article-list
-      [departmentGroups]="enrichedDepartmentGroups"
+      [departmentGroups]="(enrichedDepartmentGroups$ | async) || []"
       [mode]="'shopping'"
       [searchQuery]="searchQuery"
       [shouldHideArticle]="shouldHideArticle"
