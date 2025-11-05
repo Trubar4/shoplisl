@@ -16,6 +16,7 @@ import { ArticleListComponent, DepartmentGroup } from '../../../shared/component
 import { FilterFabComponent } from '../../../shared/components/filter-fab/filter-fab.component';
 import { ArticleItemData } from '../../../shared/components/article-item/article-item.component';
 import { ShoppingModeComponent } from './shopping-mode/shopping-mode.component';
+import { EditModeComponent } from './edit-mode/edit-mode.component';
 
 // Services and Models
 import { ShoppingList, Article, Department } from '../../../core/models';
@@ -41,7 +42,8 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
     SearchDisambiguationComponent,
     ArticleListComponent,
     FilterFabComponent,
-    ShoppingModeComponent
+    ShoppingModeComponent,
+    EditModeComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './list-detail.html',
@@ -335,22 +337,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   onClearAllItems(): void {
     if (!this.currentList) return;
-    
+
     const count = this.currentList.articleIds.length;
     if (count === 0) {
       this.snackBar.open('Liste ist bereits leer', '', { duration: 1500 });
       return;
     }
-    
-    if (confirm(`Alle ${count} Artikel von der Liste entfernen?`)) {
-      this.dataService.clearAllItemsFromList(this.listId).subscribe({
-        next: (success) => this.snackBar.open(
-          success ? 'Liste geleert' : 'Fehler beim Leeren der Liste', 
-          '', { duration: 1500 }
-        ),
-        error: () => this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 })
-      });
-    }
+
+    // Confirmation is handled by edit-mode component
+    this.dataService.clearAllItemsFromList(this.listId).subscribe({
+      next: (success) => this.snackBar.open(
+        success ? 'Liste geleert' : 'Fehler beim Leeren der Liste',
+        '', { duration: 1500 }
+      ),
+      error: () => this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 })
+    });
   }
 
   onEditList(): void {
@@ -365,21 +366,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   onDeleteList(): void {
     if (!this.currentList) return;
-    
-    const confirmMessage = `Liste "${this.currentList.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`;
-    
-    if (confirm(confirmMessage)) {
-      this.dataService.deleteList(this.listId).subscribe({
-        next: (success) => {
-          this.snackBar.open(
-            success ? 'Liste gelöscht' : 'Fehler beim Löschen', 
-            '', { duration: 1500 }
-          );
-          if (success) this.router.navigate(['/lists']);
-        },
-        error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 })
-      });
-    }
+
+    // Confirmation is handled by edit-mode component
+    this.dataService.deleteList(this.listId).subscribe({
+      next: (success) => {
+        this.snackBar.open(
+          success ? 'Liste gelöscht' : 'Fehler beim Löschen',
+          '', { duration: 1500 }
+        );
+        if (success) this.router.navigate(['/lists']);
+      },
+      error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 })
+    });
   }
 
   // === UTILITY METHODS FOR TEMPLATE ===

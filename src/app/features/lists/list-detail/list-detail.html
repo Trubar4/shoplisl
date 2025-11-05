@@ -61,7 +61,7 @@
   </div>
 
   <!-- EDIT MODE -->
-  <div *ngIf="!isLoading() && currentMode() === 'edit'" class="edit-mode">
+  <div *ngIf="!isLoading() && currentMode() === 'edit'" class="edit-mode-container">
 
     <!-- Search Component -->
     <app-search-disambiguation
@@ -73,69 +73,24 @@
       (clearDisambiguation)="onClearSearchDisambiguation()">
     </app-search-disambiguation>
 
-    <!-- Add New Article and Department Sort Buttons -->
-    <div class="add-button-container">
-      <button 
-        mat-raised-button 
-        (click)="onCreateNewArticle()"
-        class="add-article-button"
-        [style.background-color]="getCurrentListColor()"
-        [style.color]="getContrastColor(getCurrentListColor())">
-        <mat-icon>add</mat-icon>
-        Neuer Artikel
-      </button>
-      
-      <button 
-        mat-stroked-button 
-        (click)="onDepartmentSort()"
-        class="department-sort-button"
-        [style.border-color]="getCurrentListColor()"
-        [style.color]="getCurrentListColor()">
-        <mat-icon>reorder</mat-icon>
-        Abteilungen
-      </button>
-    </div>
-
-    <!-- Content Container for Articles -->
-    <div class="content-container">
-      <app-article-list
-        [departmentGroups]="departmentGroupsEdit$ | async"
-        [mode]="'edit'"
-        [searchQuery]="searchQuery"
-        [shouldHideArticle]="shouldHideArticle"
-        (articleToggle)="onArticleToggle($event)"
-        (editAmount)="onEditAmountFromList($event)"
-        (articleInfo)="onArticleInfo($event)"
-        (undoCompletion)="undoArticleCompletion($event)"
-        (toggleInList)="onToggleArticleInList($event)">
-      </app-article-list>
-    </div>
-
-    <!-- Edit Mode Actions -->
-    <div class="edit-actions">
-      <button 
-        mat-button 
-        (click)="onClearAllItems()"
-        class="action-button secondary-button"
-        [style.color]="getCurrentListColor()">
-        Leeren
-      </button>
-      <button 
-        mat-button 
-        (click)="onDeleteList()"
-        class="action-button tertiary-button"
-        [style.color]="listUtils.getLightColor(getCurrentListColor())">
-        Löschen
-      </button>
-      <button 
-        mat-raised-button 
-        (click)="onEditList()"
-        class="action-button primary-button"
-        [style.background-color]="getCurrentListColor()"
-        [style.color]="getContrastColor(getCurrentListColor())">
-        Bearbeiten
-      </button>
-    </div>
+    <!-- Edit Mode Component -->
+    <app-edit-mode
+      [list]="currentList"
+      [departmentGroups]="(departmentGroupsEdit$ | async) || []"
+      [searchQuery]="searchQuery"
+      [editFilter]="currentEditFilter()"
+      [listColor]="getCurrentListColor()"
+      [contrastColor]="getContrastColor(getCurrentListColor())"
+      [lightColor]="listUtils.getLightColor(getCurrentListColor())"
+      (toggleInList)="onToggleArticleInList($event)"
+      (articleInfo)="onArticleInfo($event)"
+      (editAmount)="onEditAmountFromList($event)"
+      (createArticle)="onCreateNewArticle()"
+      (departmentSort)="onDepartmentSort()"
+      (clearList)="onClearAllItems()"
+      (editList)="onEditList()"
+      (deleteList)="onDeleteList()">
+    </app-edit-mode>
   </div>
 
   <!-- FAB Filter Menu -->

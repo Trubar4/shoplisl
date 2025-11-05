@@ -1,0 +1,63 @@
+<div class="edit-mode">
+  <!-- Add New Article and Department Sort Buttons -->
+  <div class="add-button-container">
+    <button
+      mat-raised-button
+      (click)="onCreateArticle()"
+      class="add-article-button"
+      [style.background-color]="listColor"
+      [style.color]="contrastColor">
+      <mat-icon>add</mat-icon>
+      Neuer Artikel
+    </button>
+
+    <button
+      mat-stroked-button
+      (click)="onDepartmentSort()"
+      class="department-sort-button"
+      [style.border-color]="listColor"
+      [style.color]="listColor">
+      <mat-icon>reorder</mat-icon>
+      Abteilungen
+    </button>
+  </div>
+
+  <!-- Content Container for Articles -->
+  <div class="content-container">
+    <app-article-list
+      [departmentGroups]="departmentGroups"
+      [mode]="'edit'"
+      [searchQuery]="searchQuery"
+      (articleToggle)="onArticleToggle($event)"
+      (editAmount)="onEditAmount($event)"
+      (articleInfo)="onArticleInfo($event)"
+      (toggleInList)="onToggleInList($event)">
+    </app-article-list>
+  </div>
+
+  <!-- Edit Mode Actions -->
+  <div class="edit-actions">
+    <button
+      mat-button
+      (click)="onClearAllItems()"
+      class="action-button secondary-button"
+      [style.color]="listColor">
+      Leeren
+    </button>
+    <button
+      mat-button
+      (click)="onDeleteList()"
+      class="action-button tertiary-button"
+      [style.color]="lightColor">
+      Löschen
+    </button>
+    <button
+      mat-raised-button
+      (click)="onEditList()"
+      class="action-button primary-button"
+      [style.background-color]="listColor"
+      [style.color]="contrastColor">
+      Bearbeiten
+    </button>
+  </div>
+</div>

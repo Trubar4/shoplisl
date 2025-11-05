@@ -669,40 +669,21 @@ describe('ListDetailComponent', () => {
     });
 
     it('should clear all items from list', () => {
-      global.confirm = vi.fn(() => true);
-
+      // Confirmation is handled by edit-mode component
       component.onClearAllItems();
 
       expect(dataServiceMock.clearAllItemsFromList).toHaveBeenCalledWith('list1');
     });
 
-    it('should NOT clear items if user cancels', () => {
-      global.confirm = vi.fn(() => false);
-
-      component.onClearAllItems();
-
-      expect(dataServiceMock.clearAllItemsFromList).not.toHaveBeenCalled();
-    });
-
-    it('should delete list after confirmation', () => {
-      global.confirm = vi.fn(() => true);
-
+    it('should delete list', () => {
+      // Confirmation is handled by edit-mode component
       component.onDeleteList();
 
       expect(dataServiceMock.deleteList).toHaveBeenCalledWith('list1');
     });
 
-    it('should NOT delete list if user cancels', () => {
-      global.confirm = vi.fn(() => false);
-
-      component.onDeleteList();
-
-      expect(dataServiceMock.deleteList).not.toHaveBeenCalled();
-    });
-
     it('should navigate after successful delete', async () => {
-      global.confirm = vi.fn(() => true);
-
+      // Confirmation is handled by edit-mode component
       component.onDeleteList();
       await new Promise(resolve => setTimeout(resolve, 50));
 
