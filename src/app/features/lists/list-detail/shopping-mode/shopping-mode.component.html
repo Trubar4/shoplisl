@@ -2,13 +2,14 @@
   <!-- Shopping List Content -->
   <div class="content-container">
     <app-article-list
-      [departmentGroups]="departmentGroups"
+      [departmentGroups]="enrichedDepartmentGroups"
       [mode]="'shopping'"
       [searchQuery]="searchQuery"
       [shouldHideArticle]="shouldHideArticle"
       (articleToggle)="onArticleToggle($event)"
       (editAmount)="onEditAmount($event)"
-      (articleInfo)="onArticleInfo($event)">
+      (articleInfo)="onArticleInfo($event)"
+      (undoCompletion)="onUndoCompletion($event)">
     </app-article-list>
   </div>
 

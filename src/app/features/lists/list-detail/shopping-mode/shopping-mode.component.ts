@@ -68,6 +68,25 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
   private readonly HIDE_DELAY_MS = 5000;
   private wasIncompleteLastCheck = false;
 
+  // === COMPUTED PROPERTIES ===
+
+  /**
+   * Returns department groups with pending states merged into articles
+   * This ensures undo hints are displayed correctly
+   */
+  get enrichedDepartmentGroups(): DepartmentGroup[] {
+    const pendingStates = this.pendingStates$.value;
+
+    return this.departmentGroups.map(group => ({
+      ...group,
+      articles: group.articles.map(article => ({
+        ...article,
+        pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
+        showUndoHint: pendingStates[article.id]?.showUndoHint
+      }))
+    }));
+  }
+
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
@@ -116,6 +135,14 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
    */
   onEditAmount(data: { article: ArticleItemData; event: Event }): void {
     this.editAmount.emit(data);
+  }
+
+  /**
+   * Handles undo completion - removes pending state and emits to parent
+   */
+  onUndoCompletion(article: ArticleItemData): void {
+    this.removePendingState(article.id);
+    this.undoCompletion.emit(article);
   }
 
   /**
