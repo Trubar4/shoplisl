@@ -123,9 +123,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/lists']);
   }
   
-  switchToShoppingMode(): void { 
+  switchToShoppingMode(): void {
     this.currentMode.set('shopping');
-    this.wasIncompleteLastCheck = false; // Reset completion tracker
     this.cdr.detectChanges();
   }
   
@@ -170,12 +169,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.filterService.setShoppingFilter(filter);
     this.isFabExpanded.set(false);
     this.searchDisambiguation$.next(null);
-    this.wasIncompleteLastCheck = false;
-
-    // Reset celebration when switching filters
-    if (this.showCelebrationAnimation()) {
-      this.closeCelebrationAnimation();
-    }
   }
 
   private setEditFilter(filter: EditFilter): void {

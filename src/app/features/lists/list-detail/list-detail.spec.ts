@@ -18,17 +18,19 @@ import { MatSnackBar } from '@angular/material/snack-bar';
  * Tests component logic directly without template rendering to avoid
  * Vitest + Angular external template loading issues.
  *
- * Test Coverage: 50+ test cases covering:
+ * Test Coverage: Core parent component functionality:
  * - Initialization and routing
  * - Shopping mode filters (offen/erledigt/alle)
  * - Edit mode filters (gelistet/fehlend/alle)
- * - Article toggle with undo
+ * - Article toggle coordination
  * - Search with auto-filter switching
- * - Celebration animation
  * - Department grouping
  * - List management
  * - Navigation
  * - Cleanup
+ *
+ * Note: Shopping-specific tests (celebration, pending states, shouldHideArticle)
+ * have been moved to shopping-mode.component.spec.ts
  */
 
 describe('ListDetailComponent', () => {
@@ -309,28 +311,12 @@ describe('ListDetailComponent', () => {
       expect(allChecked).toBe(true);
     });
 
-    it('should reset wasIncompleteLastCheck when changing filter', () => {
-      component['wasIncompleteLastCheck'] = true;
-
-      component.onFilterChange({ mode: 'shopping', filter: 'alle' });
-
-      expect(component['wasIncompleteLastCheck']).toBe(false);
-    });
-
     it('should update shopping filter signal', () => {
       component.onFilterChange({ mode: 'shopping', filter: 'erledigt' });
       expect(component.currentShoppingFilter()).toBe('erledigt');
 
       component.onFilterChange({ mode: 'shopping', filter: 'alle' });
       expect(component.currentShoppingFilter()).toBe('alle');
-    });
-
-    it('should close celebration when switching filters', () => {
-      component['showCelebrationAnimation'].set(true);
-
-      component.onFilterChange({ mode: 'shopping', filter: 'alle' });
-
-      expect(component.showCelebrationAnimation()).toBe(false);
     });
   });
 
@@ -411,35 +397,6 @@ describe('ListDetailComponent', () => {
       component.onArticleToggle(article);
 
       expect(dataServiceMock.toggleItemChecked).toHaveBeenCalledWith('list1', 'article1');
-    });
-
-    it('should undo article completion when clicking checked item with pending hide', () => {
-      const article: any = {
-        id: 'article1',
-        name: 'Milch',
-        isChecked: true,
-        isInList: true,
-        pendingHideTimestamp: Date.now() + 5000
-      };
-
-      component.onArticleToggle(article);
-
-      // Should call toggleItemChecked to undo
-      expect(dataServiceMock.toggleItemChecked).toHaveBeenCalledWith('list1', 'article1');
-    });
-
-    it('should call undo method for articles with pending state', () => {
-      const article: any = {
-        id: 'article1',
-        name: 'Milch',
-        isChecked: true,
-        pendingHideTimestamp: Date.now() + 3000
-      };
-
-      const undoSpy = vi.spyOn(component, 'undoArticleCompletion');
-      component.onArticleToggle(article);
-
-      expect(undoSpy).toHaveBeenCalledWith(article);
     });
 
     it('should handle toggle errors gracefully', () => {
@@ -614,100 +571,6 @@ describe('ListDetailComponent', () => {
       component.searchDisambiguation$.subscribe(value => {
         expect(value).toBeNull();
       });
-    });
-  });
-
-  // =========================================
-  // CELEBRATION ANIMATION TESTS
-  // =========================================
-
-  describe('Celebration Animation', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      component.switchToShoppingMode();
-      component.onFilterChange({ mode: 'shopping', filter: 'offen' });
-    });
-
-    it('should trigger celebration when all items are checked', () => {
-      // Mark as incomplete first
-      component['wasIncompleteLastCheck'] = true;
-
-      // Trigger check with all items checked
-      component['checkForCompletion']([
-        { ...testArticles[0], isChecked: true },
-        { ...testArticles[1], isChecked: true },
-        { ...testArticles[2], isChecked: true }
-      ]);
-
-      expect(component.showCelebrationAnimation()).toBe(true);
-    });
-
-    it('should NOT trigger celebration if already in "erledigt" filter', () => {
-      component.onFilterChange({ mode: 'shopping', filter: 'erledigt' });
-      component['wasIncompleteLastCheck'] = true;
-
-      component['checkForCompletion']([
-        { ...testArticles[0], isChecked: true },
-        { ...testArticles[1], isChecked: true }
-      ]);
-
-      expect(component.showCelebrationAnimation()).toBe(false);
-    });
-
-    it('should NOT trigger celebration if already complete', () => {
-      component['wasIncompleteLastCheck'] = false; // Already complete
-
-      component['checkForCompletion']([
-        { ...testArticles[0], isChecked: true },
-        { ...testArticles[1], isChecked: true }
-      ]);
-
-      expect(component.showCelebrationAnimation()).toBe(false);
-    });
-
-    it('should NOT trigger celebration in edit mode', () => {
-      component.switchToEditMode();
-      component['wasIncompleteLastCheck'] = true;
-
-      component['checkForCompletion']([
-        { ...testArticles[0], isChecked: true },
-        { ...testArticles[1], isChecked: true }
-      ]);
-
-      expect(component.showCelebrationAnimation()).toBe(false);
-    });
-
-    it('should close celebration animation', () => {
-      component['showCelebrationAnimation'].set(true);
-
-      component.closeCelebrationAnimation();
-
-      expect(component.showCelebrationAnimation()).toBe(false);
-    });
-
-    it('should auto-close celebration after timeout', () => {
-      vi.useFakeTimers();
-      component['wasIncompleteLastCheck'] = true;
-
-      component['triggerCelebrationAnimation']();
-      expect(component.showCelebrationAnimation()).toBe(true);
-
-      vi.advanceTimersByTime(3000);
-      expect(component.showCelebrationAnimation()).toBe(false);
-
-      vi.useRealTimers();
-    });
-
-    it('should update wasIncompleteLastCheck flag', () => {
-      // Start incomplete
-      component['wasIncompleteLastCheck'] = false;
-
-      component['checkForCompletion']([
-        { ...testArticles[0], isChecked: false },
-        { ...testArticles[1], isChecked: false }
-      ]);
-
-      expect(component['wasIncompleteLastCheck']).toBe(true);
     });
   });
 
@@ -994,42 +857,6 @@ describe('ListDetailComponent', () => {
       const contrast = component.getContrastColor('#1a9edb');
       expect(contrast).toBe('#ffffff');
     });
-
-    it('should determine if article should be hidden', () => {
-      const checkedArticle: any = {
-        isChecked: true,
-        pendingHideTimestamp: undefined
-      };
-
-      component['currentShoppingFilter'].set('offen');
-      const shouldHide = component.shouldHideArticle(checkedArticle);
-
-      expect(shouldHide).toBe(true);
-    });
-
-    it('should NOT hide article if it has pending hide timestamp', () => {
-      const checkedArticle: any = {
-        isChecked: true,
-        pendingHideTimestamp: Date.now() + 5000
-      };
-
-      component['currentShoppingFilter'].set('offen');
-      const shouldHide = component.shouldHideArticle(checkedArticle);
-
-      expect(shouldHide).toBe(false);
-    });
-
-    it('should NOT hide unchecked articles', () => {
-      const uncheckedArticle: any = {
-        isChecked: false,
-        pendingHideTimestamp: undefined
-      };
-
-      component['currentShoppingFilter'].set('offen');
-      const shouldHide = component.shouldHideArticle(uncheckedArticle);
-
-      expect(shouldHide).toBe(false);
-    });
   });
 
   // =========================================
@@ -1052,26 +879,14 @@ describe('ListDetailComponent', () => {
       expect(listUtilsMock.resetToDefaultTheme).toHaveBeenCalled();
     });
 
-    it('should clear timeouts on destroy', () => {
-      // Set some pending state with timeout
-      component['undoHintTimeouts'].set('article1', setTimeout(() => {}, 5000));
-
-      component.ngOnDestroy();
-
-      // Timeouts should be cleared
-      expect(component['undoHintTimeouts'].size).toBe(0);
-    });
-
     it('should complete all observables on destroy', () => {
       const destroySpy = vi.spyOn(component['destroy$'], 'next');
       const completeDestroySpy = vi.spyOn(component['destroy$'], 'complete');
-      const completePendingSpy = vi.spyOn(component['pendingStates$'], 'complete');
 
       component.ngOnDestroy();
 
       expect(destroySpy).toHaveBeenCalled();
       expect(completeDestroySpy).toHaveBeenCalled();
-      expect(completePendingSpy).toHaveBeenCalled();
     });
 
     it('should reset theme when navigating away from lists', () => {
@@ -1150,64 +965,6 @@ describe('ListDetailComponent', () => {
   });
 
   // =========================================
-  // PENDING STATE MANAGEMENT TESTS
-  // =========================================
-
-  describe('Pending State Management', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it('should start pending hide timer for checked article', () => {
-      const article: any = {
-        id: 'article1',
-        name: 'Milch',
-        isChecked: false
-      };
-
-      component['startPendingHide'](article);
-
-      // Check that pending state was set
-      component['pendingStates$'].subscribe(states => {
-        expect(states['article1']).toBeDefined();
-        expect(states['article1'].showUndoHint).toBe(true);
-      });
-    });
-
-    it('should remove pending state after timeout', () => {
-      const article: any = {
-        id: 'article1',
-        name: 'Milch'
-      };
-
-      component['startPendingHide'](article);
-
-      // Advance time by 5 seconds
-      vi.advanceTimersByTime(5000);
-
-      // Pending state should be removed
-      component['pendingStates$'].subscribe(states => {
-        expect(states['article1']).toBeUndefined();
-      });
-    });
-
-    it('should clear timeout when removing pending state', () => {
-      const article: any = { id: 'article1', name: 'Milch' };
-
-      component['startPendingHide'](article);
-      expect(component['undoHintTimeouts'].has('article1')).toBe(true);
-
-      component['removePendingState']('article1');
-      expect(component['undoHintTimeouts'].has('article1')).toBe(false);
-    });
-  });
-
-  // =========================================
   // EDGE CASE TESTS
   // =========================================
 
@@ -1269,13 +1026,6 @@ describe('ListDetailComponent', () => {
 
       // Should not navigate
       expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
-
-    it('should handle celebration on empty list', () => {
-      component['checkForCompletion']([]);
-
-      expect(component['wasIncompleteLastCheck']).toBe(false);
-      expect(component.showCelebrationAnimation()).toBe(false);
     });
   });
 });
