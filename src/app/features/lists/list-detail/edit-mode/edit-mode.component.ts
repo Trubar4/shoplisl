@@ -54,6 +54,16 @@ export class EditModeComponent {
   @Output() editList = new EventEmitter<void>();
   @Output() deleteList = new EventEmitter<void>();
 
+  // === FILTERING ===
+
+  /**
+   * Determines if an article should be hidden from the list
+   * In edit mode, we never hide articles - show all
+   */
+  shouldHideArticle = (_article: ArticleItemData): boolean => {
+    return false;
+  };
+
   // === EVENT HANDLERS ===
 
   /**

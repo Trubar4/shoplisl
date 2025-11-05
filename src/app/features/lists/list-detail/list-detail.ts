@@ -40,7 +40,6 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
     CommonModule, FormsModule, MatToolbarModule, MatIconModule,
     MatButtonModule, MatSnackBarModule, MatDialogModule,
     SearchDisambiguationComponent,
-    ArticleListComponent,
     FilterFabComponent,
     ShoppingModeComponent,
     EditModeComponent
