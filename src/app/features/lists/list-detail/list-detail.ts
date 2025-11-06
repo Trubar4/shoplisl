@@ -461,10 +461,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       articles = allArticles
         .filter(article => list.articleIds.includes(article.id))
         .map(article => this.mapToArticleItemData(article, list));
-      
+
       switch (filter as ShoppingFilter) {
         case 'offen':
-          articles = articles.filter(a => !a.isChecked);
+          // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
+          // This allows checked articles with pending states (undo window) to remain visible
           break;
         case 'erledigt':
           articles = articles.filter(a => a.isChecked);
