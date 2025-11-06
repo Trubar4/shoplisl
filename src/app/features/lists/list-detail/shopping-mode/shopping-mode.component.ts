@@ -93,15 +93,37 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     // Update department groups observable when input changes
-    if (changes['departmentGroups'] && changes['departmentGroups'].currentValue) {
-      this.departmentGroups$.next(changes['departmentGroups'].currentValue);
+    if (changes['departmentGroups']) {
+      const currentValue = changes['departmentGroups'].currentValue;
+      console.log('🔍 Shopping-mode ngOnChanges:', {
+        hasValue: !!currentValue,
+        groupCount: currentValue?.length || 0,
+        totalArticles: currentValue?.flatMap((g: DepartmentGroup) => g.articles)?.length || 0
+      });
+
+      if (currentValue) {
+        this.departmentGroups$.next(currentValue);
+      }
     }
   }
 
   ngOnInit(): void {
+    console.log('🔍 Shopping-mode ngOnInit:', {
+      groupCount: this.departmentGroups?.length || 0,
+      totalArticles: this.departmentGroups?.flatMap(g => g.articles)?.length || 0
+    });
+
     // Initialize with current value
     this.departmentGroups$.next(this.departmentGroups);
     this.setupCompletionMonitoring();
+
+    // Debug: Subscribe to enriched groups
+    this.enrichedDepartmentGroups$.subscribe(groups => {
+      console.log('🔍 Enriched groups emitted:', {
+        groupCount: groups?.length || 0,
+        totalArticles: groups?.flatMap(g => g.articles)?.length || 0
+      });
+    });
   }
 
   ngOnDestroy(): void {
