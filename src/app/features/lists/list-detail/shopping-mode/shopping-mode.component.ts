@@ -296,19 +296,10 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     const uncheckedArticles = articles.filter(article => !article.isChecked);
     const isCurrentlyComplete = uncheckedArticles.length === 0;
 
-    console.log('🎯 Completion check:', {
-      totalArticles: articles.length,
-      uncheckedArticles: uncheckedArticles.length,
-      wasIncomplete: this.wasIncompleteLastCheck,
-      isComplete: isCurrentlyComplete,
-      shouldCelebrate: this.wasIncompleteLastCheck && isCurrentlyComplete
-    });
-
     // Only celebrate on transition from incomplete to complete
     if (this.wasIncompleteLastCheck &&
         isCurrentlyComplete &&
         this.shoppingFilter === 'offen') {
-      console.log('🎉 List just completed - triggering celebration!');
       this.triggerCelebrationAnimation();
     }
 
@@ -323,19 +314,13 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   private triggerCelebrationAnimation(): void {
     // Double-check conditions before showing animation
     if (this.shoppingFilter !== 'offen' || this.showCelebrationAnimation()) {
-      console.log('❌ Celebration blocked:', {
-        filter: this.shoppingFilter,
-        alreadyShowing: this.showCelebrationAnimation()
-      });
       return;
     }
 
-    console.log('🎉 Showing celebration animation');
     this.showCelebrationAnimation.set(true);
     this.cdr.detectChanges();
 
     this.celebrationTimeout = setTimeout(() => {
-      console.log('🎉 Auto-closing celebration animation');
       this.showCelebrationAnimation.set(false);
       this.cdr.detectChanges();
     }, 3000);
