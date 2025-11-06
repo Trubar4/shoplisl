@@ -72,17 +72,25 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   ]).pipe(
     map(([groups, pendingStates]) => {
       const pendingCount = Object.keys(pendingStates).length;
+      const allArticleIds = groups.flatMap(g => g.articles.map(a => a.id));
+      const pendingIds = Object.keys(pendingStates);
+
       console.log('🔀 Enriching department groups:', {
         groupCount: groups.length,
+        totalArticles: allArticleIds.length,
         pendingStatesCount: pendingCount,
-        pendingArticleIds: Object.keys(pendingStates)
+        pendingArticleIds: pendingIds,
+        allArticleIds: allArticleIds,
+        idsMatch: pendingIds.every(pid => allArticleIds.includes(pid))
       });
 
+      let enrichedCount = 0;
       const enriched = groups.map(group => ({
         ...group,
         articles: group.articles.map(article => {
           const hasPending = !!pendingStates[article.id];
           if (hasPending) {
+            enrichedCount++;
             console.log('📦 Enriching article with pending state:', {
               articleId: article.id,
               articleName: article.name,
@@ -98,6 +106,11 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
           };
         })
       }));
+
+      console.log('✅ Enrichment complete:', {
+        articlesEnriched: enrichedCount,
+        expectedToEnrich: pendingCount
+      });
 
       return enriched;
     }),
