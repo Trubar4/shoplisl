@@ -5,6 +5,8 @@ import {
   EventEmitter,
   OnInit,
   OnDestroy,
+  OnChanges,
+  SimpleChanges,
   ChangeDetectorRef,
   ChangeDetectionStrategy,
   signal
@@ -42,7 +44,7 @@ type ShoppingFilter = 'offen' | 'erledigt' | 'alle';
   templateUrl: './shopping-mode.component.html',
   styleUrls: ['./shopping-mode.component.scss']
 })
-export class ShoppingModeComponent implements OnInit, OnDestroy {
+export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   // === INPUTS ===
   @Input() list: ShoppingList | null = null;
   @Input() departmentGroups: DepartmentGroup[] = [];
@@ -61,13 +63,15 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
   private readonly pendingStates$ = new BehaviorSubject<Record<string, PendingState>>({});
+  private readonly departmentGroups$ = new BehaviorSubject<DepartmentGroup[]>([]);
 
   // Enriched department groups with pending states - as observable for change detection
   readonly enrichedDepartmentGroups$ = combineLatest([
+    this.departmentGroups$,
     this.pendingStates$
   ]).pipe(
-    map(([pendingStates]) => {
-      return this.departmentGroups.map(group => ({
+    map(([groups, pendingStates]) => {
+      return groups.map(group => ({
         ...group,
         articles: group.articles.map(article => ({
           ...article,
@@ -87,7 +91,16 @@ export class ShoppingModeComponent implements OnInit, OnDestroy {
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
+  ngOnChanges(changes: SimpleChanges): void {
+    // Update department groups observable when input changes
+    if (changes['departmentGroups'] && changes['departmentGroups'].currentValue) {
+      this.departmentGroups$.next(changes['departmentGroups'].currentValue);
+    }
+  }
+
   ngOnInit(): void {
+    // Initialize with current value
+    this.departmentGroups$.next(this.departmentGroups);
     this.setupCompletionMonitoring();
   }
 
