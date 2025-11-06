@@ -71,14 +71,35 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     this.pendingStates$
   ]).pipe(
     map(([groups, pendingStates]) => {
-      return groups.map(group => ({
+      const pendingCount = Object.keys(pendingStates).length;
+      console.log('🔀 Enriching department groups:', {
+        groupCount: groups.length,
+        pendingStatesCount: pendingCount,
+        pendingArticleIds: Object.keys(pendingStates)
+      });
+
+      const enriched = groups.map(group => ({
         ...group,
-        articles: group.articles.map(article => ({
-          ...article,
-          pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
-          showUndoHint: pendingStates[article.id]?.showUndoHint
-        }))
+        articles: group.articles.map(article => {
+          const hasPending = !!pendingStates[article.id];
+          if (hasPending) {
+            console.log('📦 Enriching article with pending state:', {
+              articleId: article.id,
+              articleName: article.name,
+              isChecked: article.isChecked,
+              pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
+              showUndoHint: pendingStates[article.id]?.showUndoHint
+            });
+          }
+          return {
+            ...article,
+            pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
+            showUndoHint: pendingStates[article.id]?.showUndoHint
+          };
+        })
       }));
+
+      return enriched;
     }),
     takeUntil(this.destroy$)
   );
@@ -138,7 +159,15 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    * Otherwise, toggles the article and starts undo timer
    */
   onArticleToggle(article: ArticleItemData): void {
+    console.log('🔄 onArticleToggle called:', {
+      articleId: article.id,
+      articleName: article.name,
+      isChecked: article.isChecked,
+      hasPendingHide: !!article.pendingHideTimestamp
+    });
+
     if (article.isChecked && article.pendingHideTimestamp) {
+      console.log('↩️ Undoing completion for:', article.name);
       this.undoCompletion.emit(article);
       this.removePendingState(article.id);
       return;
@@ -149,10 +178,14 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
 
     // If article was just checked, start pending hide
     if (!article.isChecked) {
+      console.log('⏳ Article will be checked, scheduling pending hide in 100ms for:', article.name);
       setTimeout(() => {
+        console.log('⏰ Timer fired, calling startPendingHide for:', article.name);
         this.startPendingHide(article);
         this.cdr.detectChanges();
       }, 100);
+    } else {
+      console.log('⚠️ Article is already checked, not scheduling pending hide');
     }
   }
 
@@ -224,17 +257,28 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     const hideTime = now + this.HIDE_DELAY_MS;
 
     const currentStates = this.pendingStates$.value;
-    this.pendingStates$.next({
+    const newStates = {
       ...currentStates,
       [article.id]: {
         pendingHideTimestamp: hideTime,
         showUndoHint: true
       }
+    };
+
+    console.log('🎯 startPendingHide:', {
+      articleId: article.id,
+      articleName: article.name,
+      hideTime: new Date(hideTime).toISOString(),
+      currentStatesCount: Object.keys(currentStates).length,
+      newStatesCount: Object.keys(newStates).length
     });
+
+    this.pendingStates$.next(newStates);
 
     this.clearTimeoutsForArticle(article.id);
 
     const completeTimeout = setTimeout(() => {
+      console.log('⏰ Pending hide timeout expired for:', article.name);
       this.removePendingState(article.id);
     }, this.HIDE_DELAY_MS);
 
