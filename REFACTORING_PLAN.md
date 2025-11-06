@@ -339,15 +339,52 @@ src/app/core/services/ai/
 - All 130 tests passing ✓ (57 parent + 27 shopping + 22 edit + 24 filter)
 - Commit: `54acfc1`
 
+**✅ Session 3 Part 3 (2025-11-06)**: Bug fixes and production hardening
+- **Undo button not showing**: Fixed parent filtering logic (parent was removing checked articles before child could add undo state)
+  - Modified `getFilteredArticles()` to not filter on 'offen' case
+  - Let shopping-mode child handle visibility via `shouldHideArticle`
+  - Commit: `29f18be`
+
+- **Layout gaps issue**: Articles hidden with CSS opacity but still taking DOM space
+  - Modified `enrichedDepartmentGroups$` to filter out hidden articles completely
+  - Remove empty department groups from DOM
+  - Commit: `30edba0`
+
+- **Search celebration bug**: Celebration triggering on empty search results
+  - Added `searchQuery` guard to completion check
+  - Don't celebrate when search is active
+  - Commit: `30edba0`
+
+- **Vertical scrolling not working**: Parent wrapper class conflicting with child scrolling
+  - Renamed parent `.shopping-mode` class to `.mode-content-wrapper`
+  - Removed `overflow: hidden`, added `min-height: 0` for flexbox scrolling
+  - Commit: `7e9c727`
+
+- **Debug logging cleanup**: Removed all console.log statements
+  - shopping-mode component: 358 lines (final)
+  - Commits: `b68d9c9`, `867a488`
+
+- **Architecture documentation**: Created comprehensive ARCHITECTURE.md
+  - Component hierarchy, data flow, state management
+  - Key architectural decisions and rationale
+  - Testing strategy and migration guide
+  - Commit: `07153fc`
+
+- **Final metrics**: All 464 tests passing (100% coverage)
+- Branch: `claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm`
+
 #### Final File Structure:
 ```
 src/app/features/lists/list-detail/
-├── list-detail.component.ts (763 lines) ⬇️ from 965 lines (-21%)
+├── list-detail.ts (763 lines) ⬇️ from 965 lines (-21%)
 │   └── Parent: routing, mode switching, layout, coordination
+├── list-detail.html (130 lines)
+├── list-detail.scss (540 lines)
+├── list-detail.spec.ts (57 tests, 100% coverage)
 ├── shopping-mode/
-│   ├── shopping-mode.component.ts (320 lines)
+│   ├── shopping-mode.component.ts (358 lines)
 │   │   └── Shopping view, celebration, undo hints, pending states
-│   ├── shopping-mode.component.html (42 lines)
+│   ├── shopping-mode.component.html (44 lines)
 │   ├── shopping-mode.component.scss (192 lines)
 │   └── shopping-mode.component.spec.ts (27 tests, 100% coverage)
 ├── edit-mode/
@@ -392,7 +429,7 @@ src/app/features/lists/list-detail/
 **Status:** ✅ Complete and pushed
 
 **Resume Point After Phase 3:**
-> "Phase 3 complete! ✅ List detail component successfully split. Created: shopping-mode (320 lines, 27 tests), edit-mode (133 lines, 22 tests), list-filter service (196 lines, 24 tests). Parent reduced from 965 → 763 lines (-21%). All 130 tests passing (100%). Clean separation of shopping/edit concerns with focused, testable components. Branch: claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm. Commits: cba3d03 (filter service), 30f1b9b (integration), 7a667cf (shopping-mode), 8a8b6c1 (test cleanup), 54acfc1 (edit-mode). Ready for Phase 4: Split voice assistant component."
+> "Phase 3 complete! ✅ List detail component successfully split and hardened. Created: shopping-mode (358 lines, 27 tests), edit-mode (133 lines, 22 tests), list-filter service (196 lines, 24 tests). Parent reduced from 965 → 763 lines (-21%). All 464 tests passing (100% coverage). Clean separation of shopping/edit concerns with focused, testable components. Fixed critical bugs: undo button functionality, layout gaps, search celebration, vertical scrolling. Added comprehensive ARCHITECTURE.md documentation. Production-ready code with no debug logging. Branch: claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm. Key commits: cba3d03 (filter service), 7a667cf (shopping-mode), 54acfc1 (edit-mode), 29f18be (undo fix), 30edba0 (layout/celebration), 7e9c727 (scroll fix), 07153fc (docs). Ready for Phase 4: Split voice assistant component."
 
 ---
 
