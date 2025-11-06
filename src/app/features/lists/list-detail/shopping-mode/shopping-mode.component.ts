@@ -73,12 +73,24 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     map(([groups, pendingStates]) => {
       return groups.map(group => ({
         ...group,
-        articles: group.articles.map(article => ({
-          ...article,
-          pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
-          showUndoHint: pendingStates[article.id]?.showUndoHint
-        }))
-      }));
+        articles: group.articles
+          .map(article => ({
+            ...article,
+            pendingHideTimestamp: pendingStates[article.id]?.pendingHideTimestamp,
+            showUndoHint: pendingStates[article.id]?.showUndoHint
+          }))
+          // Filter out articles that should be hidden (completely remove from DOM)
+          .filter(article => {
+            // For 'offen' filter: hide checked articles that don't have pending state
+            if (this.shoppingFilter === 'offen') {
+              return !this.shouldHideArticle(article);
+            }
+            // For other filters, show all articles in the groups
+            return true;
+          })
+      }))
+      // Remove empty department groups
+      .filter(group => group.articles.length > 0);
     }),
     takeUntil(this.destroy$)
   );
@@ -269,7 +281,14 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    * Triggers celebration on transition from incomplete to complete
    */
   private checkForCompletion(articles: ArticleItemData[]): void {
-    if (!articles?.length || this.shoppingFilter !== 'offen') {
+    // Don't check completion if:
+    // - No articles in filtered view
+    // - Not in 'offen' filter mode
+    // - Search is active (filtered view doesn't represent true list state)
+    if (!articles?.length ||
+        this.shoppingFilter !== 'offen' ||
+        this.searchQuery?.trim()) {
+      // Reset state when conditions aren't met
       this.wasIncompleteLastCheck = false;
       return;
     }
