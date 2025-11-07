@@ -161,6 +161,19 @@ describe('VoiceAIAssistantComponent', () => {
       log: vi.fn()
     };
 
+    voiceInputServiceMock = {
+      isRecording$: of(false),
+      voiceResult$: new Subject(),
+      voiceError$: new Subject(),
+      startRecording: vi.fn(() => true),
+      stopRecording: vi.fn(),
+      toggleRecording: vi.fn(() => true),
+      isRecording: vi.fn(() => false),
+      checkMicrophonePermission: vi.fn(() => of(true)),
+      cleanup: vi.fn(),
+      isSpeechRecognitionSupported: vi.fn(() => true)
+    };
+
     // Create component instance directly (no TestBed)
     component = new VoiceAIAssistantComponent(
       aiServiceMock as AIService,
@@ -170,13 +183,16 @@ describe('VoiceAIAssistantComponent', () => {
       snackBarMock as MatSnackBar,
       dialogMock as MatDialog,
       'browser' as any,
-      loggerMock as LoggerService
+      loggerMock as LoggerService,
+      voiceInputServiceMock as VoiceInputService
     );
   });
 
   afterEach(() => {
     vi.clearAllTimers();
-    component.ngOnDestroy();
+    if (component) {
+      component.ngOnDestroy();
+    }
   });
 
   it('should create', () => {
@@ -208,31 +224,11 @@ describe('VoiceAIAssistantComponent', () => {
       expect(syncSpy).toHaveBeenCalled();
     });
 
-    it('should initialize speech recognition if supported', () => {
+    it('should subscribe to voice input service on init', () => {
       component.ngOnInit();
 
-      expect(component['recognition']).toBeDefined();
-    });
-
-    it('should handle browser without speech recognition', () => {
-      delete (global as any).window.webkitSpeechRecognition;
-      delete (global as any).window.SpeechRecognition;
-
-      const newComponent = new VoiceAIAssistantComponent(
-        aiServiceMock as AIService,
-        chatPersistenceMock as ChatPersistenceService,
-        departmentServiceMock as DepartmentService,
-        routerMock as Router,
-        snackBarMock as MatSnackBar,
-        dialogMock as MatDialog,
-        'browser' as any,
-        loggerMock as LoggerService
-      );
-
-      newComponent.ngOnInit();
-
-      expect(newComponent['recognition']).toBeUndefined();
-      newComponent.ngOnDestroy();
+      // Voice input subscriptions are set up in constructor via setupVoiceInputSubscriptions
+      expect(voiceInputServiceMock.isRecording$).toBeDefined();
     });
 
     it('should setup PWA viewport on browser platform', () => {
@@ -1277,34 +1273,21 @@ describe('VoiceAIAssistantComponent', () => {
       component.ngOnInit();
     });
 
-    it('should toggle voice recording on', () => {
-      component.isRecording = false;
-
+    it('should toggle voice recording using service', () => {
       component.toggleVoiceInput();
 
-      expect(mockSpeechRecognition.start).toHaveBeenCalled();
-      expect(component.isRecording).toBe(true);
+      expect(voiceInputServiceMock.toggleRecording).toHaveBeenCalled();
     });
 
-    it('should toggle voice recording off', () => {
-      component.isRecording = true;
-
-      component.toggleVoiceInput();
-
-      expect(mockSpeechRecognition.stop).toHaveBeenCalled();
-      expect(component.isRecording).toBe(false);
-    });
-
-    it('should handle speech recognition result', async () => {
+    it('should handle voice recognition result from service', async () => {
       vi.useFakeTimers();
-
-      component['recognition'] = mockSpeechRecognition;
 
       const sendSpy = vi.spyOn(component, 'sendMessage');
 
-      // Simulate speech result
-      mockSpeechRecognition.onresult({
-        results: [[{ transcript: 'Test speech input' }]]
+      // Simulate voice result from service
+      voiceInputServiceMock.voiceResult$.next({
+        transcript: 'Test speech input',
+        timestamp: new Date()
       });
 
       expect(component.currentMessage).toBe('Test speech input');
@@ -1317,19 +1300,24 @@ describe('VoiceAIAssistantComponent', () => {
       vi.useRealTimers();
     });
 
-    it('should handle speech recognition error', () => {
-      component['recognition'] = mockSpeechRecognition;
+    it('should handle voice recognition error from service', () => {
+      voiceInputServiceMock.voiceError$.next({
+        error: 'no-speech',
+        message: 'Keine Sprache erkannt. Versuche es erneut.'
+      });
 
-      mockSpeechRecognition.onerror({ error: 'no-speech' });
-
-      expect(component.isRecording).toBe(false);
-      expect(snackBarMock.open).toHaveBeenCalled();
+      expect(snackBarMock.open).toHaveBeenCalledWith(
+        expect.stringContaining('Keine Sprache erkannt'),
+        'OK',
+        expect.any(Object)
+      );
     });
 
-    it('should handle permission denied error', () => {
-      component['recognition'] = mockSpeechRecognition;
-
-      mockSpeechRecognition.onerror({ error: 'not-allowed' });
+    it('should handle permission denied error from service', () => {
+      voiceInputServiceMock.voiceError$.next({
+        error: 'not-allowed',
+        message: 'Mikrofon-Berechtigung erforderlich.'
+      });
 
       expect(snackBarMock.open).toHaveBeenCalledWith(
         expect.stringContaining('Berechtigung'),
@@ -1338,45 +1326,35 @@ describe('VoiceAIAssistantComponent', () => {
       );
     });
 
-    it('should reset recording flag on recognition end', () => {
-      component['recognition'] = mockSpeechRecognition;
-      component.isRecording = true;
+    it('should update recording state from service observable', async () => {
+      voiceInputServiceMock.isRecording$ = of(true);
 
-      mockSpeechRecognition.onend();
-
-      expect(component.isRecording).toBe(false);
-    });
-
-    it('should handle start recording failure', () => {
-      component['recognition'] = mockSpeechRecognition;
-      mockSpeechRecognition.start.mockImplementation(() => {
-        throw new Error('Failed to start');
-      });
-
-      component['startVoiceRecording']();
-
-      expect(component.isRecording).toBe(false);
-      expect(snackBarMock.open).toHaveBeenCalled();
-    });
-
-    it('should show error when speech recognition not supported', () => {
-      component['recognition'] = null;
-
-      component['startVoiceRecording']();
-
-      expect(snackBarMock.open).toHaveBeenCalledWith(
-        expect.stringContaining('nicht unterstützt'),
-        'OK',
-        expect.any(Object)
+      // Re-create component to get new subscription
+      const newComponent = new VoiceAIAssistantComponent(
+        aiServiceMock as AIService,
+        chatPersistenceMock as ChatPersistenceService,
+        departmentServiceMock as DepartmentService,
+        routerMock as Router,
+        snackBarMock as MatSnackBar,
+        dialogMock as MatDialog,
+        'browser' as any,
+        loggerMock as LoggerService,
+        voiceInputServiceMock as VoiceInputService
       );
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(newComponent.isRecording).toBe(true);
+      newComponent.ngOnDestroy();
     });
 
-    it('should set voice input source and audio feedback flag', async () => {
-      component['recognition'] = mockSpeechRecognition;
-
-      mockSpeechRecognition.onresult({
-        results: [[{ transcript: 'Voice test' }]]
+    it('should set voice input source and audio feedback flag on voice result', async () => {
+      voiceInputServiceMock.voiceResult$.next({
+        transcript: 'Voice test',
+        timestamp: new Date()
       });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(component['lastInputSource']).toBe('voice');
       expect(component['shouldProvideAudioFeedback']).toBe(true);
@@ -1953,13 +1931,10 @@ describe('VoiceAIAssistantComponent', () => {
       expect(removeEventListenerSpy).toHaveBeenCalled();
     });
 
-    it('should stop recording on destroy', () => {
-      component.isRecording = true;
-      component['recognition'] = mockSpeechRecognition;
-
+    it('should cleanup voice input service on destroy', () => {
       component.ngOnDestroy();
 
-      expect(mockSpeechRecognition.stop).toHaveBeenCalled();
+      expect(voiceInputServiceMock.cleanup).toHaveBeenCalled();
     });
   });
 
