@@ -24,15 +24,21 @@ import { LoggerService } from '../../../core/services/logger.service';
 import { environment } from '../../../../environments/environment';
 
 // Application services
-import { 
-  AIService, 
-  AIExecutionResult, 
+import {
+  AIService,
+  AIExecutionResult,
   PendingAction,
   MultiItemPendingAction,
   DisambiguationOption
 } from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
+
+// Voice assistant services
+import { VoiceInputService } from './services/voice-input.service';
+import { VoiceOutputService } from './services/voice-output.service';
+import { ChatUIService } from './services/chat-ui.service';
+import { DisambiguationUIService } from './services/disambiguation-ui.service';
 
 interface ChatMessage {
   text: string;
@@ -63,17 +69,11 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   // Component state
   currentMessage = '';
   isProcessing = false;
-  isRecording = false;
-  private isSpeaking = false;
   private isProcessingMessage = false;
-  
+
   // Input tracking & audio feedback
   private lastInputSource: 'voice' | 'text' = 'text';
   private shouldProvideAudioFeedback = false;
-  
-  // Speech services
-  private recognition: any;
-  private synthesis: SpeechSynthesis;
   
   // Lifecycle management
   private destroy$ = new Subject<void>();
@@ -96,30 +96,54 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private logger: LoggerService
+    private logger: LoggerService,
+    public voiceInput: VoiceInputService,
+    public voiceOutput: VoiceOutputService,
+    public chatUI: ChatUIService,
+    public disambiguationUI: DisambiguationUIService
   ) {
-    this.synthesis = window.speechSynthesis;
-    
     this.messages$ = this.chatPersistence.messages$;
     this.disambiguation$ = this.chatPersistence.disambiguation$;
-    
-    this.initializeSpeechRecognition();
   }
 
   ngOnInit(): void {
     this.initializeChat();
-    this.setupPWAViewport();
+    this.chatUI.initializePWAViewport();
     this.setupMessageScrolling();
+    this.setupVoiceInputSubscriptions();
     this.checkRestoredContext();
     this.logChatStatus();
-    
+
     // ADDED: Configure logger for less noise
     this.logger.disableTopic('context'); // Disable context logging by default
-    
+
     // Enable context logging only when needed (for debugging)
     // this.logger.enableTopic('context'); // Uncomment for debugging
-    
-    setTimeout(() => this.scrollToBottom(true), 10);
+
+    setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 10);
+  }
+
+  /**
+   * Set up voice input service subscriptions
+   */
+  private setupVoiceInputSubscriptions(): void {
+    // Subscribe to voice results
+    this.voiceInput.voiceResult$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        this.currentMessage = result.transcript;
+        this.lastInputSource = 'voice';
+        this.shouldProvideAudioFeedback = true;
+        console.log('🎤 Voice input received:', result.transcript);
+        setTimeout(() => this.sendMessage(), 500);
+      });
+
+    // Subscribe to voice errors
+    this.voiceInput.voiceError$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(error => {
+        this.snackBar.open(error.message, 'OK', { duration: 3000 });
+      });
   }
 
   ngOnDestroy(): void {
@@ -130,14 +154,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     // Ensure scroll container is available and scroll to bottom
     setTimeout(() => {
       if (this.messagesContainer) {
-        this.scrollToBottom(true);
+        this.chatUI.scrollToBottom(this.messagesContainer, true);
       }
     }, 30);
   }
 
   onContentChange(): void {
     // Call this method whenever content dynamically changes
-    setTimeout(() => this.scrollToBottom(true), 50);
+    this.chatUI.scrollToBottomDelayed(this.messagesContainer, 50);
   }
 
   // ========================================
@@ -153,10 +177,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   private setupMessageScrolling(): void {
     this.messages$.pipe(takeUntil(this.destroy$)).subscribe((messages) => {
       // Scroll whenever messages update
-      setTimeout(() => this.scrollToBottom(true), 50);
-      
+      this.chatUI.scrollToBottomDelayed(this.messagesContainer, 50);
+
       // Additional scroll for dynamic content
-      setTimeout(() => this.scrollToBottom(true), 200);
+      this.chatUI.scrollToBottomDelayed(this.messagesContainer, 200);
     });
   }
   
@@ -181,12 +205,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   private cleanup(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    this.stopRecording();
-
-    if (isPlatformBrowser(this.platformId)) {
-      window.removeEventListener('resize', this.setupPWAViewport);
-      window.removeEventListener('orientationchange', this.setupPWAViewport);
-    }
+    this.voiceInput.cleanup();
+    this.voiceOutput.cleanup();
+    this.chatUI.cleanup();
   }
 
   // ========================================
@@ -315,7 +336,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.chatPersistence.setDisambiguation(null);
     this.chatPersistence.addMessage(userMessage, 'user');
     
-    this.scrollToBottom(true);
+    this.chatUI.scrollToBottom(this.messagesContainer, true);
     this.currentMessage = '';
     this.isProcessing = true;
 
@@ -366,7 +387,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
               lowerInput === 'stop' || lowerInput === 'ende') {
             this.clearAllContexts();
             this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
-            this.scrollToBottom(true);
+            this.chatUI.scrollToBottom(this.messagesContainer, true);
             return;
           }
           
@@ -390,7 +411,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         `❌ Entschuldigung, ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, 
         'error'
       );
-      this.scrollToBottom(true);
+      this.chatUI.scrollToBottom(this.messagesContainer, true);
       
     } finally {
       this.isProcessing = false;
@@ -432,7 +453,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
     
     // CRITICAL: Force scroll after message addition
-    this.scrollToBottom(true);
+    this.chatUI.scrollToBottom(this.messagesContainer, true);
   
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
@@ -538,7 +559,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       setTimeout(() => {
         this.handleSuccessfulAction(result);
         // CRITICAL: Scroll after any additional UI updates
-        this.scrollToBottom(true);
+        this.chatUI.scrollToBottom(this.messagesContainer, true);
       }, 100);
     }
   
@@ -863,7 +884,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     
     const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
-    this.scrollToBottom(true);
+    this.chatUI.scrollToBottom(this.messagesContainer, true);
     
     this.isProcessing = true;
   
@@ -872,7 +893,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       console.error('🚨 Disambiguation operation timed out after 10 seconds');
       this.isProcessing = false;
       this.chatPersistence.addMessage('❌ Operation timed out. Please try again.', 'error');
-      this.scrollToBottom(true);
+      this.chatUI.scrollToBottom(this.messagesContainer, true);
     }, 10000);
   
     const currentContext = this.getCurrentActiveContext();
@@ -946,7 +967,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
           `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
         );
-        this.scrollToBottom(true);
+        this.chatUI.scrollToBottom(this.messagesContainer, true);
       })
       .finally(() => {
         this.isProcessing = false; // CRITICAL: Always reset processing state
@@ -962,7 +983,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     let skipMessage = `⏭️ "${pendingAction.itemName}" übersprungen`;
     
     this.chatPersistence.addMessage(skipMessage, 'user');
-    this.scrollToBottom(true);
+    this.chatUI.scrollToBottom(this.messagesContainer, true);
     
     this.isProcessing = true;
     
@@ -982,7 +1003,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       .catch((error: any) => {
         console.error('⏭️ Error skipping article:', error);
         this.chatPersistence.addMessage('❌ Fehler beim Überspringen des Artikels', 'error');
-        this.scrollToBottom(true);
+        this.chatUI.scrollToBottom(this.messagesContainer, true);
       })
       .finally(() => {
         this.isProcessing = false;
@@ -1170,222 +1191,77 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   // ========================================
-  // DISAMBIGUATION UI HELPERS - FIXED
+  // DISAMBIGUATION UI HELPERS - DELEGATED TO SERVICE
   // ========================================
 
   isRecipeProcessing(pendingAction: any): boolean {
-    if (!pendingAction) return false;
-    return pendingAction.isFromRecipe || 
-           pendingAction.isMultiItemSequential ||
-           (pendingAction.originalInput && pendingAction.originalInput.toLowerCase().includes('rezept')) ||
-           (pendingAction.allItems && pendingAction.allItems.length > 3);
+    return this.disambiguationUI.isRecipeProcessing(pendingAction);
   }
 
   isSequentialRecipeProcessing(pendingAction: any): boolean {
-    return pendingAction?.isMultiItemSequential && 
-           pendingAction?.items &&
-           Array.isArray(pendingAction.items) &&
-           typeof pendingAction?.currentItemIndex === 'number' &&
-           pendingAction.currentItemIndex < pendingAction.items.length;
+    return this.disambiguationUI.isSequentialRecipeProcessing(pendingAction);
   }
 
   getCurrentItemIndex(pendingAction: any): number {
-    return pendingAction?.currentItemIndex || 0;
+    return this.disambiguationUI.getCurrentItemIndex(pendingAction);
   }
 
   getTotalItems(pendingAction: any): number {
-    return pendingAction?.allItems?.length || pendingAction?.items?.length || 1;
+    return this.disambiguationUI.getTotalItems(pendingAction);
   }
 
   getProgressPercentage(pendingAction: any): number {
-    if (!this.isSequentialRecipeProcessing(pendingAction)) return 0;
-    const current = this.getCurrentItemIndex(pendingAction) + 1;
-    const total = this.getTotalItems(pendingAction);
-    return Math.round((current / total) * 100);
+    return this.disambiguationUI.getProgressPercentage(pendingAction);
   }
 
   canSkipAll(pendingAction: any): boolean {
-    if (!this.isSequentialRecipeProcessing(pendingAction)) return false;
-    const current = this.getCurrentItemIndex(pendingAction);
-    const total = this.getTotalItems(pendingAction);
-    return (total - current) >= 3;
+    return this.disambiguationUI.canSkipAll(pendingAction);
   }
 
   getDisambiguationHeaderColor(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
-      return '#2196f3';
-    }
-    return '#ff9800';
+    return this.disambiguationUI.getDisambiguationHeaderColor(disambiguation);
   }
 
   getDisambiguationHeaderIcon(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
-      return 'playlist_add';
-    }
-    return 'help_outline';
+    return this.disambiguationUI.getDisambiguationHeaderIcon(disambiguation);
   }
 
   getDisambiguationHeaderTitle(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
-      return 'Liste auswählen';
-    }
-    
-    // For article disambiguation, don't show "X Artikel" subtitle
-    return 'Artikel auswählen';
+    return this.disambiguationUI.getDisambiguationHeaderTitle(disambiguation);
   }
 
   getActionDescription(pendingAction: any): string {
-    if (!pendingAction) return 'Unbekannte Aktion';
-    
-    if ('items' in pendingAction && 'currentItemIndex' in pendingAction) {
-      const items = pendingAction.items;
-      const currentIndex = pendingAction.currentItemIndex;
-      
-      if (Array.isArray(items) && typeof currentIndex === 'number' && currentIndex < items.length) {
-        const currentItem = items[currentIndex];
-        if (currentItem && currentItem.itemName) {
-          return `Artikel ${currentIndex + 1}/${items.length}: "${currentItem.itemName}" verarbeiten`;
-        }
-      }
-      return `Mehrere Artikel verarbeiten`;
-    } else {
-      switch (pendingAction.type) {
-        case 'add_item':
-          return pendingAction.listName ? 
-            `Hinzufügen zu "${pendingAction.listName}"` : 
-            'Hinzufügen zur Liste';
-        case 'create_list':
-          return `Neue Liste "${pendingAction.listName}" erstellen`;
-        case 'select_list':
-          return 'Zur ausgewählten Liste hinzufügen';
-        default:
-          return 'Unbekannte Aktion';
-      }
-    }
+    return this.disambiguationUI.getActionDescription(pendingAction);
   }
 
   getDefaultIcon(option: any): string {
-    if (option.type === 'skip') return '⏭️';
-    if (option.type === 'new') return '➕';
-    if (option.type === 'existing') return '📦';
-    return '📋';
+    return this.disambiguationUI.getDefaultIcon(option);
   }
 
   getActionHint(option: any, pendingAction: any): string {
-    if (!pendingAction) return 'Unbekannte Aktion';
-    
-    if (option.type === 'skip') {
-      return 'Überspringen';
-    }
-    
-    const isListSelection = pendingAction?.type === 'select_list';
-    
-    if (isListSelection) {
-      if ('items' in pendingAction) {
-        const items = pendingAction.items;
-        if (Array.isArray(items) && items.length > 1) {
-          return `${items.length} Artikel zu "${option.displayName}" hinzufügen`;
-        }
-      }
-      return `Zu "${option.displayName}" hinzufügen`;
-    }
-  
-    if (option.type === 'existing') {
-      return 'Vorhandenen Artikel verwenden';
-    } else {
-      return 'Neuen Artikel erstellen';
-    }
+    return this.disambiguationUI.getActionHint(option, pendingAction);
   }
 
   getDepartmentName(departmentId: string): string {
-    // Map department IDs to German names
-    const departmentNames: Record<string, string> = {
-      'fruit-vegetables': 'Obst & Gemüse',
-      'dairy-products': 'Milchprodukte', 
-      'sausage-cheese-counter': 'Wurst & Käse',
-      'fridge-meat': 'Fleisch',
-      'fish': 'Fisch',
-      'bread': 'Brot & Backwaren',
-      'noodles-rice': 'Nudeln & Reis',
-      'tins-jars': 'Konserven',
-      'spices-oils': 'Gewürze & Öle',
-      'beverages-alcohol': 'Getränke',
-      'frozen-goods': 'Tiefkühl',
-      'pastries': 'Süßwaren',
-      'sweet-salty': 'Süß & Salzig',
-      'household-goods': 'Haushalt',
-      'body-care': 'Körperpflege',
-      'cleaning-agents': 'Reinigung',
-      'breakfast': 'Frühstück',
-      'international': 'International',
-      'pet-supplies': 'Tierbedarf',
-      'baby': 'Baby',
-      'medicine': 'Medikamente',
-      'miscellaneous': 'Sonstiges'
-    };
-    
-    return departmentNames[departmentId] || departmentId;
+    return this.disambiguationUI.getDepartmentName(departmentId);
   }
 
   getOptionIcon(option: any): string {
-    // Skip options get their specific icon
-    if (option.type === 'skip') {
-      return '⏭️';
-    }
-    
-    // Use suggested icon if available
-    if (option.icon && option.icon !== '✨') {
-      return option.icon;
-    }
-    
-    // Fallback to default
-    return this.getDefaultIcon(option);
+    return this.disambiguationUI.getOptionIcon(option);
   }
 
   getConfidenceText(confidence: number): string {
-    const percentage = Math.round(confidence * 100);
-    if (percentage >= 90) return `${percentage}% - Exakte Übereinstimmung`;
-    if (percentage >= 70) return `${percentage}% - Sehr ähnlich`;
-    if (percentage >= 50) return `${percentage}% - Ähnlich`;
-    return `${percentage}% - Entfernt ähnlich`;
+    return this.disambiguationUI.getConfidenceText(confidence);
   }
 
   private generateChoiceText(option: DisambiguationOption, pendingAction: any): string {
-    if (option.type === 'skip') {
-      return `⏭️ "${pendingAction.itemName}" übersprungen`;
-    }
-    
-    if (this.isSequentialRecipeProcessing(pendingAction)) {
-      const current = this.getCurrentItemIndex(pendingAction) + 1;
-      const total = this.getTotalItems(pendingAction);
-      
-      if (option.type === 'existing') {
-        return `🍳 Zutat ${current}/${total}: ${option.displayName} gewählt`;
-      } else {
-        return `🍳 Zutat ${current}/${total}: "${pendingAction.itemName}" (neu erstellen)`;
-      }
-    }
-    
-    if (option.type === 'existing') {
-      // If the pending action is a list selection (single or multi-item), reflect that in the message
-      if (pendingAction && (pendingAction.type === 'select_list' || pendingAction.type === 'select_list_for_multi_items')) {
-        return `Vorhandene Liste gewählt: ${option.displayName}`;
-      }
-      return `Vorhandener Artikel gewählt: ${option.displayName}`;
-    } else {
-      return `Neuen Artikel erstellen: ${pendingAction.itemName}`;
-    }
+    return this.disambiguationUI.generateChoiceText(option, pendingAction);
   }
 
   private handleSuccessfulAction(result: AIExecutionResult): void {
     if (this.shouldProvideAudioFeedback) {
-      const messageToSpeak = result.message.split('\n')[0]
-        .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '')
-        .trim();
-      
-      if (messageToSpeak) {
-        this.speak(messageToSpeak);
-      }
+      // VoiceOutputService handles text cleaning automatically
+      this.voiceOutput.speak(result.message);
     }
   }
 
@@ -1394,125 +1270,15 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   // ========================================
 
   toggleVoiceInput(): void {
-    if (this.isRecording) {
-      this.stopRecording();
-    } else {
-      this.startVoiceRecording();
-    }
+    this.voiceInput.toggleRecording();
   }
 
-  private initializeSpeechRecognition(): void {
-    if (!this.isSpeechRecognitionSupported()) {
-      console.warn('Speech recognition not supported');
-      return;
-    }
-
-    const SpeechRecognition = this.getSpeechRecognitionClass();
-    this.recognition = new SpeechRecognition();
-    this.configureSpeechRecognition();
+  get isRecording(): boolean {
+    return this.voiceInput.isRecording();
   }
 
-  private isSpeechRecognitionSupported(): boolean {
-    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-  }
-
-  private getSpeechRecognitionClass(): any {
-    return (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-  }
-
-  private configureSpeechRecognition(): void {
-    this.recognition.continuous = false;
-    this.recognition.interimResults = false;
-    this.recognition.lang = 'de-DE';
-    
-    this.recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      this.currentMessage = transcript;
-      this.isRecording = false;
-      
-      this.lastInputSource = 'voice';
-      this.shouldProvideAudioFeedback = true;
-      
-      console.log('🎤 Voice input received:', transcript);
-      setTimeout(() => this.sendMessage(), 500);
-    };
-
-    this.recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      this.isRecording = false;
-      this.handleSpeechError(event.error);
-    };
-
-    this.recognition.onend = () => {
-      this.isRecording = false;
-    };
-  }
-
-  private handleSpeechError(error: string): void {
-    let errorMessage = 'Spracherkennung fehlgeschlagen.';
-    
-    switch (error) {
-      case 'no-speech':
-        errorMessage = 'Keine Sprache erkannt. Versuche es erneut.';
-        break;
-      case 'not-allowed':
-        errorMessage = 'Mikrofon-Berechtigung erforderlich.';
-        break;
-    }
-    
-    this.snackBar.open(errorMessage, 'OK', { duration: 3000 });
-  }
-
-  private startVoiceRecording(): void {
-    if (!this.recognition) {
-      this.snackBar.open('Spracherkennung nicht unterstützt', 'OK', { duration: 3000 });
-      return;
-    }
-
-    this.isRecording = true;
-    this.currentMessage = '';
-    
-    try {
-      this.recognition.start();
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error);
-      this.isRecording = false;
-      this.snackBar.open('Spracherkennung konnte nicht gestartet werden', 'OK', { duration: 3000 });
-    }
-  }
-
-  private stopRecording(): void {
-    if (this.recognition && this.isRecording) {
-      this.recognition.stop();
-    }
-    this.isRecording = false;
-  }
-
-  private speak(text: string): void {
-    if (!this.synthesis || this.isSpeaking) return;
-    
-    this.synthesis.cancel();
-    this.isSpeaking = true;
-    
-    const cleanText = text.split('\n')[0]
-      .replace(/[✅❌🎯💡📝🛒🔑⚖️🎨📋]/g, '')
-      .trim();
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
-    
-    utterance.onend = () => {
-      this.isSpeaking = false;
-    };
-    
-    utterance.onerror = () => {
-      this.isSpeaking = false;
-    };
-    
-    this.synthesis.speak(utterance);
-  }
+  // All voice input methods now handled by VoiceInputService
+  // See setupVoiceInputSubscriptions() in ngOnInit()
 
   // ========================================
   // NAVIGATION & ACTIONS
@@ -1565,85 +1331,14 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   // ========================================
-  // PWA & UTILITY METHODS
+  // UTILITY METHODS
   // ========================================
 
-  private setupPWAViewport(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-
-    this.setViewportHeight();
-    this.setupViewportListeners();
-    this.handlePWAMode();
-    this.handleMobileKeyboard();
-  }
-
-  private setViewportHeight(): void {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-  }
-
-  private setupViewportListeners(): void {
-    const updateViewport = () => {
-      this.setViewportHeight();
-    };
-
-    window.addEventListener('resize', updateViewport);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(updateViewport, 100);
-    });
-  }
-
-  private handlePWAMode(): void {
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('🔧 PWA mode detected - applying viewport fixes');
-      document.body.style.setProperty('--pwa-bottom-padding', 'calc(75px + env(safe-area-inset-bottom, 0px))');
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 30);
-    }
-  }
-
-  private handleMobileKeyboard(): void {
-    let initialViewportHeight = window.innerHeight;
-
-    const handleViewportChange = () => {
-      const currentHeight = window.innerHeight;
-      const keyboardHeight = initialViewportHeight - currentHeight;
-
-      if (keyboardHeight > 150) {
-        document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
-        document.body.classList.add('keyboard-open');
-      } else {
-        document.documentElement.style.setProperty('--keyboard-height', '0px');
-        document.body.classList.remove('keyboard-open');
-      }
-    };
-
-    window.addEventListener('resize', handleViewportChange);
-    window.addEventListener('focus', () => {
-      initialViewportHeight = window.innerHeight;
-    }, true);
-  }
-
-  private scrollToBottom(force: boolean = false): void {
-    if (!this.messagesContainer) return;
-    
-    const element = this.messagesContainer.nativeElement;
-    
-    // INSTANT: Most direct scroll command
-    try {
-      element.scrollTo({
-        top: element.scrollHeight,
-        behavior: 'instant'
-      });
-    } catch (error) {
-      // Fallback for older browsers
-      element.scrollTop = element.scrollHeight;
-    }
-  }
+  // PWA viewport and scrolling now handled by ChatUIService
+  // See chatUI.initializePWAViewport() and chatUI.scrollToBottom()
 
   public trackByOptionId(index: number, option: any): string {
-    return option.id || index.toString();
+    return this.disambiguationUI.trackByOptionId(index, option);
   }
 
 
