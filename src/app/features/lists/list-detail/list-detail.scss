@@ -105,18 +105,21 @@
   }
 
   // === MODE SPECIFIC STYLES ===
-  .shopping-mode {
+  .mode-content-wrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    min-height: 0; // Important for flexbox scrolling
 
-    .content-container {
-      padding-bottom: 100px;
+    app-shopping-mode {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
   }
 
-  .edit-mode {
+  .edit-mode-container {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -346,12 +349,8 @@
     .content-container {
       padding-bottom: 95px;
     }
-    
-    .shopping-mode .content-container {
-      padding-bottom: 95px;
-    }
-    
-    .edit-mode .content-container {
+
+    .edit-mode-container .content-container {
       padding-bottom: 150px;
     }
     
@@ -387,12 +386,8 @@
     .content-container {
       padding-bottom: 90px;
     }
-    
-    .shopping-mode .content-container {
-      padding-bottom: 90px;
-    }
-    
-    .edit-mode .content-container {
+
+    .edit-mode-container .content-container {
       padding-bottom: 140px;
     }
     
@@ -426,12 +421,8 @@
     .content-container {
       padding-bottom: calc(100px + env(safe-area-inset-bottom));
     }
-    
-    .shopping-mode .content-container {
-      padding-bottom: calc(100px + env(safe-area-inset-bottom));
-    }
-    
-    .edit-mode .content-container {
+
+    .edit-mode-container .content-container {
       padding-bottom: calc(160px + env(safe-area-inset-bottom));
     }
     
@@ -445,12 +436,8 @@
       .content-container {
         padding-bottom: calc(95px + env(safe-area-inset-bottom));
       }
-      
-      .shopping-mode .content-container {
-        padding-bottom: calc(95px + env(safe-area-inset-bottom));
-      }
-      
-      .edit-mode .content-container {
+
+      .edit-mode-container .content-container {
         padding-bottom: calc(150px + env(safe-area-inset-bottom));
       }
     }
@@ -461,12 +448,8 @@
       .content-container {
         padding-bottom: calc(90px + env(safe-area-inset-bottom));
       }
-      
-      .shopping-mode .content-container {
-        padding-bottom: calc(90px + env(safe-area-inset-bottom));
-      }
-      
-      .edit-mode .content-container {
+
+      .edit-mode-container .content-container {
         padding-bottom: calc(140px + env(safe-area-inset-bottom));
       }
     }

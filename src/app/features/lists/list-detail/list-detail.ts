@@ -15,6 +15,8 @@ import { SearchDisambiguationComponent } from '../../../shared/components/search
 import { ArticleListComponent, DepartmentGroup } from '../../../shared/components/article-list/article-list.component';
 import { FilterFabComponent } from '../../../shared/components/filter-fab/filter-fab.component';
 import { ArticleItemData } from '../../../shared/components/article-item/article-item.component';
+import { ShoppingModeComponent } from './shopping-mode/shopping-mode.component';
+import { EditModeComponent } from './edit-mode/edit-mode.component';
 
 // Services and Models
 import { ShoppingList, Article, Department } from '../../../core/models';
@@ -24,13 +26,9 @@ import { ListUtilsService } from '../../../core/services/list-utils.service';
 import { DisambiguationService } from '../../../core/services/ai/disambiguation';
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
+import { ListFilterService } from './services/list-filter.service';
 
-// Simplified interfaces
-interface PendingState {
-  pendingHideTimestamp?: number;
-  showUndoHint?: boolean;
-}
-
+// Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
 type ShoppingFilter = 'offen' | 'erledigt' | 'alle';
 type EditFilter = 'gelistet' | 'fehlend' | 'alle';
@@ -39,11 +37,12 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
   selector: 'app-list-detail',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatToolbarModule, MatIconModule, 
+    CommonModule, FormsModule, MatToolbarModule, MatIconModule,
     MatButtonModule, MatSnackBarModule, MatDialogModule,
     SearchDisambiguationComponent,
-    ArticleListComponent,
-    FilterFabComponent
+    FilterFabComponent,
+    ShoppingModeComponent,
+    EditModeComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './list-detail.html',
@@ -57,7 +56,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   readonly currentEditFilter = signal<EditFilter>('alle');
   readonly isLoading = signal<boolean>(true);
   readonly isFabExpanded = signal<boolean>(false);
-  readonly showCelebrationAnimation = signal<boolean>(false);
   
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -69,22 +67,13 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   readonly searchDisambiguation$ = new BehaviorSubject<any>(null);
   
   // === STATE STREAMS ===
-  private readonly shoppingFilter$ = new BehaviorSubject<ShoppingFilter>('offen');
-  private readonly editFilter$ = new BehaviorSubject<EditFilter>('alle');
-  private readonly searchQuery$ = new BehaviorSubject<string>('');
-  private readonly pendingStates$ = new BehaviorSubject<Record<string, PendingState>>({});
   
   // === COMPONENT STATE ===
   searchQuery = '';
   currentList: ShoppingList | null = null;
   
   // === PRIVATE PROPERTIES ===
-  private readonly undoHintTimeouts = new Map<string, any>();
-  private celebrationTimeout?: any;
   private autoSwitchTimer?: any;
-  private readonly HIDE_DELAY_MS = 5000;
-  private wasIncompleteLastCheck = false;
-  private previousFilterBeforeSearch: ShoppingFilter | EditFilter | null = null; // ADD THIS LINE
   
   constructor(
     private readonly route: ActivatedRoute,
@@ -94,7 +83,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     public readonly listUtils: ListUtilsService,
     private readonly snackBar: MatSnackBar,
     private readonly cdr: ChangeDetectorRef,
-    private readonly disambiguationService: DisambiguationService
+    private readonly disambiguationService: DisambiguationService,
+    private readonly filterService: ListFilterService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     this.list$ = this.dataService.getLists().pipe(
@@ -134,9 +124,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/lists']);
   }
   
-  switchToShoppingMode(): void { 
+  switchToShoppingMode(): void {
     this.currentMode.set('shopping');
-    this.wasIncompleteLastCheck = false; // Reset completion tracker
     this.cdr.detectChanges();
   }
   
@@ -176,25 +165,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private setShoppingFilter(filter: ShoppingFilter): void {
     console.log('🔄 Switching shopping filter to:', filter);
-    
+
     this.currentShoppingFilter.set(filter);
-    this.shoppingFilter$.next(filter);
+    this.filterService.setShoppingFilter(filter);
     this.isFabExpanded.set(false);
     this.searchDisambiguation$.next(null);
-    this.wasIncompleteLastCheck = false; // Add this line
-    
-    // Reset celebration when switching filters
-    if (this.showCelebrationAnimation()) {
-      this.closeCelebrationAnimation();
-    }
   }
-  
+
   private setEditFilter(filter: EditFilter): void {
     this.currentEditFilter.set(filter);
-    this.editFilter$.next(filter);
+    this.filterService.setEditFilter(filter);
     this.isFabExpanded.set(false);
-    this.searchDisambiguation$.next(null); // Add this line
-    this.cdr.detectChanges(); // Add this line
+    this.searchDisambiguation$.next(null);
+    this.cdr.detectChanges();
   }
 
   // === FAB CONTROLS ===
@@ -230,33 +213,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    * //    If clicked again within 5s, unchecks the item
    * ```
    *
-   * @see {@link undoArticleCompletion} for undo functionality
-   * @see {@link setupCompletionMonitoring} for celebration trigger
    */
   onArticleToggle(article: ArticleItemData): void {
-    if (article.isChecked && article.pendingHideTimestamp) {
-      this.undoArticleCompletion(article);
-      return;
-    }
-    
     this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => { 
+      next: (success) => {
         if (success) {
-          if (!article.isChecked) {
-            // Article was just checked - start pending hide
-            this.startPendingHide(article);
-          }
           this.triggerChangeDetection();
-          
-          // Check for completion after a short delay to allow state to update
-          setTimeout(() => {
-            if (this.currentMode() === 'shopping') {
-              this.setupCompletionMonitoring(); // Re-trigger monitoring
-            }
-          }, 150);
         }
       },
       error: (error) => console.error('Toggle error:', error)
+    });
+  }
+
+  onUndoArticleCompletion(article: ArticleItemData): void {
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
+      next: (success) => success && console.log('Undo successful for:', article.name),
+      error: (error) => console.error('Undo error:', error)
     });
   }
   onEditAmountFromList(data: { article: ArticleItemData; event: Event }): void {
@@ -283,14 +255,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  undoArticleCompletion(article: ArticleItemData): void {
-    this.removePendingState(article.id);
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => success && console.log('Undo successful for:', article.name),
-      error: (error) => console.error('Undo error:', error)
-    });
-  }
-
   onArticleInfo(article: ArticleItemData): void {
     if (article?.id) {
       this.router.navigate(['/articles/edit', article.id], {
@@ -300,10 +264,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   // === SEARCH MANAGEMENT ===
-  onSearchQueryChange(): void { 
-    this.searchQuery$.next(this.searchQuery.trim());
+  onSearchQueryChange(): void {
+    this.filterService.setSearchQuery(this.searchQuery.trim());
     this.searchDisambiguation$.next(null);
-    
+
     this.clearAutoSwitchTimer();
     this.autoSwitchTimer = setTimeout(() => {
       this.checkAndAutoSwitchFilter();
@@ -372,22 +336,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   onClearAllItems(): void {
     if (!this.currentList) return;
-    
+
     const count = this.currentList.articleIds.length;
     if (count === 0) {
       this.snackBar.open('Liste ist bereits leer', '', { duration: 1500 });
       return;
     }
-    
-    if (confirm(`Alle ${count} Artikel von der Liste entfernen?`)) {
-      this.dataService.clearAllItemsFromList(this.listId).subscribe({
-        next: (success) => this.snackBar.open(
-          success ? 'Liste geleert' : 'Fehler beim Leeren der Liste', 
-          '', { duration: 1500 }
-        ),
-        error: () => this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 })
-      });
-    }
+
+    // Confirmation is handled by edit-mode component
+    this.dataService.clearAllItemsFromList(this.listId).subscribe({
+      next: (success) => this.snackBar.open(
+        success ? 'Liste geleert' : 'Fehler beim Leeren der Liste',
+        '', { duration: 1500 }
+      ),
+      error: () => this.snackBar.open('Fehler beim Leeren der Liste', '', { duration: 2000 })
+    });
   }
 
   onEditList(): void {
@@ -402,37 +365,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   onDeleteList(): void {
     if (!this.currentList) return;
-    
-    const confirmMessage = `Liste "${this.currentList.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`;
-    
-    if (confirm(confirmMessage)) {
-      this.dataService.deleteList(this.listId).subscribe({
-        next: (success) => {
-          this.snackBar.open(
-            success ? 'Liste gelöscht' : 'Fehler beim Löschen', 
-            '', { duration: 1500 }
-          );
-          if (success) this.router.navigate(['/lists']);
-        },
-        error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 })
-      });
-    }
-  }
 
-  // === CELEBRATION ===
-  closeCelebrationAnimation(): void {
-    this.clearCelebrationTimeout();
-    this.showCelebrationAnimation.set(false);
-  }
-
-  onGifError(event: any): void {
-    event.target.style.display = 'none';
-    const fallback = event.target.nextElementSibling;
-    if (fallback) fallback.style.display = 'flex';
-  }
-
-  onGifLoad(event: any): void {
-    console.log('GIF loaded successfully');
+    // Confirmation is handled by edit-mode component
+    this.dataService.deleteList(this.listId).subscribe({
+      next: (success) => {
+        this.snackBar.open(
+          success ? 'Liste gelöscht' : 'Fehler beim Löschen',
+          '', { duration: 1500 }
+        );
+        if (success) this.router.navigate(['/lists']);
+      },
+      error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 })
+    });
   }
 
   // === UTILITY METHODS FOR TEMPLATE ===
@@ -444,18 +388,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     return this.listUtils.getContrastColor(hexColor);
   }
 
-  shouldHideArticle = (article: ArticleItemData): boolean => {
-    return this.currentShoppingFilter() === 'offen' && 
-           article.isChecked && 
-           !article.pendingHideTimestamp;
-  };
-
   // === PRIVATE METHODS ===
   private initializeComponent(): void {
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'edit') {
       this.currentMode.set('edit');
-      this.editFilter$.next('alle'); // Ensure edit filter is set to 'alle' by default
+      this.filterService.setEditFilter('alle'); // Ensure edit filter is set to 'alle' by default
     }
   }
 
@@ -481,26 +419,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         this.router.navigate(['/lists']);
       }
     });
-
-    this.setupCompletionMonitoring();
   }
 
   private createUnifiedObservable(mode: ViewMode): Observable<DepartmentGroup[]> {
-    const filter$ = mode === 'shopping' ? this.shoppingFilter$ : this.editFilter$;
-    
+    const filter$ = mode === 'shopping' ? this.filterService.shoppingFilter$ : this.filterService.editFilter$;
+
     const articlesWithState$ = combineLatest([
-      this.list$, 
-      this.dataService.getArticles(), 
-      this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()), 
-      filter$,
-      ...(mode === 'shopping' ? [this.pendingStates$] : [])
+      this.list$,
+      this.dataService.getArticles(),
+      this.filterService.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()),
+      filter$
     ]).pipe(
-      map(([list, articles, query, filter, ...rest]) => {
+      map(([list, articles, query, filter]) => {
         if (!list) return [];
-        
-        const pendingStates = mode === 'shopping' ? (rest[0] || {}) : {};
-        
-        let filteredArticles = this.getFilteredArticles(list, articles, query, filter, mode, pendingStates);
+
+        let filteredArticles = this.getFilteredArticles(list, articles, query, filter, mode);
         return this.groupArticlesByDepartment(filteredArticles, list);
       })
     );
@@ -516,31 +449,31 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private getFilteredArticles(
-    list: ShoppingList, 
-    allArticles: Article[], 
-    query: string, 
-    filter: ShoppingFilter | EditFilter, 
-    mode: ViewMode,
-    pendingStates: Record<string, PendingState>
+    list: ShoppingList,
+    allArticles: Article[],
+    query: string,
+    filter: ShoppingFilter | EditFilter,
+    mode: ViewMode
   ): ArticleItemData[] {
     let articles: ArticleItemData[];
-    
+
     if (mode === 'shopping') {
       articles = allArticles
         .filter(article => list.articleIds.includes(article.id))
-        .map(article => this.mapToArticleItemData(article, list, pendingStates));
-      
+        .map(article => this.mapToArticleItemData(article, list));
+
       switch (filter as ShoppingFilter) {
-        case 'offen': 
-          articles = articles.filter(a => !a.isChecked || a.pendingHideTimestamp);
+        case 'offen':
+          // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
+          // This allows checked articles with pending states (undo window) to remain visible
           break;
-        case 'erledigt': 
+        case 'erledigt':
           articles = articles.filter(a => a.isChecked);
           break;
       }
     } else {
       // EDIT MODE - Show ALL articles, not just those in the list
-      articles = allArticles.map(article => this.mapToArticleItemData(article, list, {}));
+      articles = allArticles.map(article => this.mapToArticleItemData(article, list));
       
       switch (filter as EditFilter) {
         case 'gelistet': 
@@ -566,13 +499,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private mapToArticleItemData(
-    article: Article, 
-    list: ShoppingList, 
-    pendingStates: Record<string, PendingState>
+    article: Article,
+    list: ShoppingList
   ): ArticleItemData {
-    const pendingState = pendingStates[article.id] || {};
     const itemState = list.itemStates[article.id];
-    
+
     return {
       id: article.id,
       name: article.name,
@@ -582,9 +513,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       departmentId: article.departmentId,
       isChecked: itemState?.isChecked || false,
       isInList: list.articleIds.includes(article.id),
-      listAmount: itemState?.amount || article.amount || '',
-      pendingHideTimestamp: pendingState.pendingHideTimestamp,
-      showUndoHint: pendingState.showUndoHint
+      listAmount: itemState?.amount || article.amount || ''
     };
   }
 
@@ -648,7 +577,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private setupSearchDisambiguation(): void {
     combineLatest([
-      this.searchQuery$.pipe(debounceTime(500), distinctUntilChanged()),
+      this.filterService.searchQuery$.pipe(debounceTime(500), distinctUntilChanged()),
       this.departmentGroups$.pipe(map(groups => groups.flatMap(g => g.articles))),
       this.departmentGroupsEdit$.pipe(map(groups => groups.flatMap(g => g.articles)))
     ]).pipe(takeUntil(this.destroy$)).subscribe(([query, listArticles, allArticles]) => {
@@ -743,117 +672,40 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private restorePreviousFilter(): void {
-    if (this.previousFilterBeforeSearch) {
-      if (this.currentMode() === 'shopping') {
-        this.setShoppingFilter(this.previousFilterBeforeSearch as ShoppingFilter);
-      } else if (this.currentMode() === 'edit') {
-        this.setEditFilter(this.previousFilterBeforeSearch as EditFilter);
-      }
-      this.previousFilterBeforeSearch = null;
+    this.filterService.restorePreviousFilter(this.currentMode());
+    // Update local signal to match service state
+    if (this.currentMode() === 'shopping') {
+      this.currentShoppingFilter.set(this.filterService.currentShoppingFilter);
+    } else {
+      this.currentEditFilter.set(this.filterService.currentEditFilter);
     }
-  }
-
-  private setupCompletionMonitoring(): void {
-    const listArticles$ = combineLatest([
-      this.list$,
-      this.dataService.getArticles()
-    ]).pipe(
-      map(([list, articles]) => {
-        if (!list) return [];
-        
-        return articles
-          .filter(article => list.articleIds.includes(article.id))
-          .map(article => ({
-            ...article,
-            isChecked: list.itemStates[article.id]?.isChecked || false
-          }));
-      })
-    );
-  
-    listArticles$.pipe(takeUntil(this.destroy$)).subscribe(articles => {
-      if (this.currentMode() === 'shopping') {
-        this.checkForCompletion(articles);
-      }
-    });
-  }
-
-  private checkForCompletion(articles: any[]): void {
-    if (this.currentMode() !== 'shopping' || !articles?.length) {
-      this.wasIncompleteLastCheck = false;
-      return;
-    }
-    
-    const uncheckedArticles = articles.filter(article => !article.isChecked);
-    const isCurrentlyComplete = uncheckedArticles.length === 0;
-    
-    console.log('🎯 Completion check:', { 
-      mode: this.currentMode(),
-      totalArticles: articles.length,
-      uncheckedArticles: uncheckedArticles.length,
-      wasIncomplete: this.wasIncompleteLastCheck,
-      isComplete: isCurrentlyComplete,
-      shouldCelebrate: this.wasIncompleteLastCheck && isCurrentlyComplete
-    });
-    
-    // Only celebrate on transition from incomplete to complete
-    if (this.wasIncompleteLastCheck && 
-        isCurrentlyComplete && 
-        this.currentShoppingFilter() === 'offen') {
-      console.log('🎉 List just completed - triggering celebration!');
-      this.triggerCelebrationAnimation();
-    }
-    
-    // Update state for next check
-    this.wasIncompleteLastCheck = !isCurrentlyComplete;
-  }
-
-  private triggerCelebrationAnimation(): void {
-    // Double-check conditions before showing animation
-    if (this.currentMode() !== 'shopping' || 
-        this.currentShoppingFilter() !== 'offen' ||
-        this.showCelebrationAnimation()) {
-      console.log('❌ Celebration blocked:', {
-        mode: this.currentMode(),
-        filter: this.currentShoppingFilter(),
-        alreadyShowing: this.showCelebrationAnimation()
-      });
-      return;
-    }
-    
-    console.log('🎉 Showing celebration animation');
-    this.showCelebrationAnimation.set(true);
-    this.cdr.detectChanges();
-    
-    this.celebrationTimeout = setTimeout(() => {
-      console.log('🎉 Auto-closing celebration animation');
-      this.showCelebrationAnimation.set(false);
-      this.cdr.detectChanges();
-    }, 3000);
   }
 
   private checkAndAutoSwitchFilter(): void {
     if (!this.searchQuery.trim()) {
       return;
     }
-  
+
     this.departmentGroups$.pipe(take(1)).subscribe(groups => {
       const articles = groups.flatMap(g => g.articles);
-      
+
       if (articles.length === 0) {
-        // Remember current filter BEFORE switching to 'alle'
-        if (this.currentMode() === 'shopping' && this.currentShoppingFilter() !== 'alle') {
-          this.previousFilterBeforeSearch = this.currentShoppingFilter();
-          this.setShoppingFilter('alle');
-        } else if (this.currentMode() === 'edit' && this.currentEditFilter() !== 'alle') {
-          this.previousFilterBeforeSearch = this.currentEditFilter();
-          this.setEditFilter('alle');
+        const didSwitch = this.filterService.autoSwitchToAllFilter(this.currentMode());
+
+        if (didSwitch) {
+          // Update local signal to match service state
+          if (this.currentMode() === 'shopping') {
+            this.currentShoppingFilter.set('alle');
+          } else {
+            this.currentEditFilter.set('alle');
+          }
+
+          this.snackBar.open('Filter auf Alle gestellt', '', {
+            duration: 400,
+            verticalPosition: 'bottom'
+          });
         }
-        
-        this.snackBar.open('Filter auf Alle gestellt', '', { 
-          duration: 400,
-          verticalPosition: 'bottom'
-        });
-        
+
         setTimeout(() => {
           this.handleNoSearchResults(this.searchQuery.trim(), []);
         }, 100);
@@ -863,51 +715,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private clearSearch(): void {
     this.searchQuery = '';
-    this.searchQuery$.next('');
+    this.filterService.clearSearch();
     this.searchDisambiguation$.next(null);
-    
-    // Reset previous filter tracking when search is manually cleared
-    if (this.previousFilterBeforeSearch) {
-      this.restorePreviousFilter();
-    }
-  }
 
-  private startPendingHide(article: ArticleItemData): void {
-    const now = Date.now();
-    const hideTime = now + this.HIDE_DELAY_MS;
-    
-    const currentStates = this.pendingStates$.value;
-    this.pendingStates$.next({
-      ...currentStates,
-      [article.id]: {
-        pendingHideTimestamp: hideTime,
-        showUndoHint: true
-      }
-    });
-    
-    this.clearTimeoutsForArticle(article.id);
-    
-    const completeTimeout = setTimeout(() => {
-      this.removePendingState(article.id);
-    }, this.HIDE_DELAY_MS);
-    
-    this.undoHintTimeouts.set(article.id, completeTimeout);
-  }
-
-  private removePendingState(articleId: string): void {
-    const currentStates = this.pendingStates$.value;
-    const { [articleId]: removed, ...remaining } = currentStates;
-    
-    this.pendingStates$.next(remaining);
-    this.clearTimeoutsForArticle(articleId);
-  }
-
-  private clearTimeoutsForArticle(articleId: string): void {
-    const timeout = this.undoHintTimeouts.get(articleId);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.undoHintTimeouts.delete(articleId);
-    }
+    // Restore previous filter if it was auto-switched
+    this.restorePreviousFilter();
   }
 
   private clearAutoSwitchTimer(): void {
@@ -916,30 +728,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  private clearCelebrationTimeout(): void {
-    if (this.celebrationTimeout) {
-      clearTimeout(this.celebrationTimeout);
-      this.celebrationTimeout = undefined;
-    }
-  }
-
   private triggerChangeDetection(): void {
     setTimeout(() => this.cdr.detectChanges(), 100);
   }
 
   private cleanup(): void {
-    this.undoHintTimeouts.forEach(timeout => clearTimeout(timeout));
-    this.undoHintTimeouts.clear();
-    
-    this.clearCelebrationTimeout();
     this.clearAutoSwitchTimer();
-    
+
     this.destroy$.next();
     this.destroy$.complete();
-    this.pendingStates$.complete();
-    this.searchQuery$.complete();
-    this.shoppingFilter$.complete();
-    this.editFilter$.complete();
+
+    this.filterService.cleanup();
 
     const currentUrl = this.router.url;
     if (!currentUrl.includes('/lists/') || currentUrl === '/lists') {

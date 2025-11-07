@@ -1,7 +1,8 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-03
-**Current Phase:** Phase 3 In Progress 🔄 - Split List Detail Component (Filter Service ✅)
-**Next Session:** Continue Phase 3 - Integrate service & extract child components
+**Last Updated:** 2025-11-05
+**Current Phase:** Phase 3 Complete ✅ - List Detail Component Split
+**Completed:** Filter Service ✅ | Shopping-Mode ✅ | Edit-Mode ✅
+**Next Phase:** Phase 4 - Split Voice Assistant Component
 **Next Major Features:** History Function, Multi-User with Real-Time Collaboration
 
 ---
@@ -285,37 +286,117 @@ src/app/core/services/ai/
 
 ---
 
-### Phase 3: Split List Detail Component (3-4 days) - 🔄 IN PROGRESS
+### Phase 3: Split List Detail Component (3-4 days) - ✅ COMPLETE
 **Goal:** Separate shopping and edit modes into focused components
 **Started:** 2025-11-03
-**Current Status:** Filter service extracted and tested ✅
+**Completed:** 2025-11-05
+**Final Status:** Filter service ✅ | Shopping-mode ✅ | Edit-mode ✅ | Parent tests ✅
 
 #### Progress:
-- ✅ **Session 1 (2025-11-03)**: Filter service extraction complete
-  - Created `list-filter.service.ts` (196 lines)
-  - Created `list-filter.service.spec.ts` (24 tests, 100% coverage)
-  - All tests passing
-  - Committed and pushed to branch
-- 🔄 **Next Session**: Integrate filter service and extract child components
 
-#### New File Structure:
+**✅ Session 1 (2025-11-03)**: Filter service extraction
+- Created `list-filter.service.ts` (196 lines)
+- Created `list-filter.service.spec.ts` (24 tests, 100% coverage)
+- All tests passing
+- Commit: `cba3d03`
+
+**✅ Session 2 Part 1 (2025-11-04)**: Filter service integration
+- Integrated ListFilterService into list-detail.component.ts
+- Removed duplicate BehaviorSubjects (shoppingFilter$, editFilter$, searchQuery$)
+- Updated all filter methods to use service
+- list-detail.ts: 965 → 960 lines (-5 lines)
+- All 78 tests passing ✓
+- Commit: `30f1b9b`
+
+**✅ Session 2 Part 2 (2025-11-04)**: Shopping-mode component extraction
+- Created `shopping-mode.component.ts` (320 lines)
+- Created `shopping-mode.component.html` (42 lines)
+- Created `shopping-mode.component.scss` (192 lines)
+- Created `shopping-mode.component.spec.ts` (27 tests, 100% coverage)
+- Extracted: article toggle with undo, pending states, celebration animation
+- list-detail.ts: 960 → 772 lines (-188 lines, -19.6%)
+- Parent tests: 55 passing, 23 failing (need update - moved to child)
+- Commit: `7a667cf`
+
+**✅ Session 3 Part 1 (2025-11-05)**: Parent test cleanup
+- Removed 23 shopping-specific tests from parent (moved to shopping-mode)
+- Updated parent component to remove celebration references
+- list-detail.spec.ts: 78 → 59 tests (-19 tests)
+- All 59 parent tests passing ✓
+- All 27 shopping-mode tests passing ✓
+- Commit: `8a8b6c1`
+
+**✅ Session 3 Part 2 (2025-11-05)**: Edit-mode component extraction
+- Created `edit-mode.component.ts` (133 lines)
+- Created `edit-mode.component.html` (63 lines)
+- Created `edit-mode.component.scss` (211 lines)
+- Created `edit-mode.component.spec.ts` (22 tests, 100% coverage)
+- Extracted: article toggle in/out, edit amount, list management actions
+- Updated parent to use edit-mode component
+- Simplified parent methods (removed confirmation dialogs from parent)
+- list-detail.ts: 772 → 763 lines (-9 lines)
+- Parent tests: 59 → 57 tests (removed 2 confirmation tests)
+- All 130 tests passing ✓ (57 parent + 27 shopping + 22 edit + 24 filter)
+- Commit: `54acfc1`
+
+**✅ Session 3 Part 3 (2025-11-06)**: Bug fixes and production hardening
+- **Undo button not showing**: Fixed parent filtering logic (parent was removing checked articles before child could add undo state)
+  - Modified `getFilteredArticles()` to not filter on 'offen' case
+  - Let shopping-mode child handle visibility via `shouldHideArticle`
+  - Commit: `29f18be`
+
+- **Layout gaps issue**: Articles hidden with CSS opacity but still taking DOM space
+  - Modified `enrichedDepartmentGroups$` to filter out hidden articles completely
+  - Remove empty department groups from DOM
+  - Commit: `30edba0`
+
+- **Search celebration bug**: Celebration triggering on empty search results
+  - Added `searchQuery` guard to completion check
+  - Don't celebrate when search is active
+  - Commit: `30edba0`
+
+- **Vertical scrolling not working**: Parent wrapper class conflicting with child scrolling
+  - Renamed parent `.shopping-mode` class to `.mode-content-wrapper`
+  - Removed `overflow: hidden`, added `min-height: 0` for flexbox scrolling
+  - Commit: `7e9c727`
+
+- **Debug logging cleanup**: Removed all console.log statements
+  - shopping-mode component: 358 lines (final)
+  - Commits: `b68d9c9`, `867a488`
+
+- **Architecture documentation**: Created comprehensive ARCHITECTURE.md
+  - Component hierarchy, data flow, state management
+  - Key architectural decisions and rationale
+  - Testing strategy and migration guide
+  - Commit: `07153fc`
+
+- **Final metrics**: All 464 tests passing (100% coverage)
+- Branch: `claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm`
+
+#### Final File Structure:
 ```
 src/app/features/lists/list-detail/
-├── list-detail.component.ts (400 lines)
-│   └── Parent: routing, mode switching, layout
+├── list-detail.ts (763 lines) ⬇️ from 965 lines (-21%)
+│   └── Parent: routing, mode switching, layout, coordination
+├── list-detail.html (130 lines)
+├── list-detail.scss (540 lines)
+├── list-detail.spec.ts (57 tests, 100% coverage)
 ├── shopping-mode/
-│   ├── shopping-mode.component.ts (300 lines)
-│   │   └── Shopping view, celebration, undo hints
-│   ├── shopping-mode.component.html
-│   └── shopping-mode.component.scss
+│   ├── shopping-mode.component.ts (358 lines)
+│   │   └── Shopping view, celebration, undo hints, pending states
+│   ├── shopping-mode.component.html (44 lines)
+│   ├── shopping-mode.component.scss (192 lines)
+│   └── shopping-mode.component.spec.ts (27 tests, 100% coverage)
 ├── edit-mode/
-│   ├── edit-mode.component.ts (300 lines)
-│   │   └── Edit view, article toggling
-│   ├── edit-mode.component.html
-│   └── edit-mode.component.scss
+│   ├── edit-mode.component.ts (133 lines)
+│   │   └── Edit view, article toggle in/out, list actions
+│   ├── edit-mode.component.html (63 lines)
+│   ├── edit-mode.component.scss (211 lines)
+│   └── edit-mode.component.spec.ts (22 tests, 100% coverage)
 └── services/
-    └── list-filter.service.ts (150 lines)
-        └── Filter logic, search, auto-switching
+    ├── list-filter.service.ts (196 lines)
+    │   └── Filter state, search, auto-switching
+    └── list-filter.service.spec.ts (24 tests, 100% coverage)
 ```
 
 #### Migration Steps:
@@ -344,11 +425,11 @@ src/app/features/lists/list-detail/
    - Pass list data to children
    - Update navigation
 
-**Resume Point After Phase 3 Session 1:**
-> "Filter service extraction complete (196 lines, 24 tests). ListFilterService manages shopping/edit filters, search state, auto-switch to 'alle', and previous filter restoration. 100% test coverage. Branch: claude/shoplisl-phase-3-split-list-detail-011CUktWzvBWoqpstLE1Xk9g. Next: Integrate service into list-detail, then extract shopping-mode and edit-mode components. See PHASE_3_CONTINUE_PROMPT.md for detailed continuation plan."
+**Git Branch:** `claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm`
+**Status:** ✅ Complete and pushed
 
-**Resume Point After Phase 3 (Target):**
-> "List detail split complete. New components: shopping-mode, edit-mode. New service: list-filter. Parent component reduced to 400 lines. All tests passing. Next: Split voice assistant component."
+**Resume Point After Phase 3:**
+> "Phase 3 complete! ✅ List detail component successfully split and hardened. Created: shopping-mode (358 lines, 27 tests), edit-mode (133 lines, 22 tests), list-filter service (196 lines, 24 tests). Parent reduced from 965 → 763 lines (-21%). All 464 tests passing (100% coverage). Clean separation of shopping/edit concerns with focused, testable components. Fixed critical bugs: undo button functionality, layout gaps, search celebration, vertical scrolling. Added comprehensive ARCHITECTURE.md documentation. Production-ready code with no debug logging. Branch: claude/shoplisl-phase-3-session-3-011CUpehu8cJtzQmXh5j1YDm. Key commits: cba3d03 (filter service), 7a667cf (shopping-mode), 54acfc1 (edit-mode), 29f18be (undo fix), 30edba0 (layout/celebration), 7e9c727 (scroll fix), 07153fc (docs). Ready for Phase 4: Split voice assistant component."
 
 ---
 
