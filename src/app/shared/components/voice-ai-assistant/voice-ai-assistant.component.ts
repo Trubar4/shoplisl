@@ -416,7 +416,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     } finally {
       this.isProcessing = false;
       this.isProcessingMessage = false; // Clear the flag
-      setTimeout(() => this.scrollToBottom(true), 100);
+      setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 100);
     }
   }
 
@@ -460,7 +460,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       console.log('🤖 Showing disambiguation');
       this.handleDisambiguation(result);
       // Scroll after disambiguation setup
-      setTimeout(() => this.scrollToBottom(true), 200);
+      setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 200);
       return;
     }
 
@@ -550,7 +550,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       setTimeout(() => {
         this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
         // CRITICAL: Scroll after follow-up message
-        setTimeout(() => this.scrollToBottom(true), 100);
+        setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 100);
       }, 1000);
     }
   
@@ -564,7 +564,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     }
   
     // CRITICAL: Additional scroll guarantee for any dynamic content
-    setTimeout(() => this.scrollToBottom(true), 300);
+    setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 300);
   }
 
   // ========================================
@@ -971,7 +971,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       })
       .finally(() => {
         this.isProcessing = false; // CRITICAL: Always reset processing state
-        setTimeout(() => this.scrollToBottom(true), 100);
+        setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 100);
       });
   }
 
@@ -1007,7 +1007,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       })
       .finally(() => {
         this.isProcessing = false;
-        setTimeout(() => this.scrollToBottom(true), 100);
+        setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 100);
       });
   }
 
@@ -1110,7 +1110,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       this.chatPersistence.addMessage('✅ Alle restlichen Artikel übersprungen', 'assistant');
     } finally {
       this.isProcessing = false;
-      setTimeout(() => this.scrollToBottom(true), 100);
+      setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 100);
     }
   }
 
@@ -1134,7 +1134,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     this.sendMessage();
     
     // Ensure scroll after quick message
-    setTimeout(() => this.scrollToBottom(true), 50);
+    setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 50);
   }
 
   canUseContinuation(): boolean {
