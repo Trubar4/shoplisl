@@ -40,6 +40,10 @@ describe('VoiceAIAssistantComponent', () => {
   let snackBarMock: any;
   let dialogMock: any;
   let loggerMock: any;
+  let voiceInputServiceMock: any;
+  let voiceOutputServiceMock: any;
+  let chatUIServiceMock: any;
+  let disambiguationUIServiceMock: any;
 
   // Mock window objects
   let mockSpeechRecognition: any;
@@ -174,6 +178,46 @@ describe('VoiceAIAssistantComponent', () => {
       isSpeechRecognitionSupported: vi.fn(() => true)
     };
 
+    voiceOutputServiceMock = {
+      isSpeaking$: of(false),
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      isSpeaking: vi.fn(() => false),
+      isSpeechSynthesisSupported: vi.fn(() => true),
+      getAvailableVoices: vi.fn(() => []),
+      getGermanVoices: vi.fn(() => []),
+      cleanup: vi.fn()
+    };
+
+    chatUIServiceMock = {
+      initializePWAViewport: vi.fn(),
+      setViewportHeight: vi.fn(),
+      scrollToBottom: vi.fn(),
+      scrollToBottomDelayed: vi.fn(),
+      isScrolledToBottom: vi.fn(() => true),
+      cleanup: vi.fn()
+    };
+
+    disambiguationUIServiceMock = {
+      isRecipeProcessing: vi.fn(() => false),
+      isSequentialRecipeProcessing: vi.fn(() => false),
+      getCurrentItemIndex: vi.fn(() => 0),
+      getTotalItems: vi.fn(() => 1),
+      getProgressPercentage: vi.fn(() => 0),
+      canSkipAll: vi.fn(() => false),
+      getDisambiguationHeaderColor: vi.fn(() => '#ff9800'),
+      getDisambiguationHeaderIcon: vi.fn(() => 'help_outline'),
+      getDisambiguationHeaderTitle: vi.fn(() => 'Artikel auswählen'),
+      getActionDescription: vi.fn(() => 'Unbekannte Aktion'),
+      getDefaultIcon: vi.fn(() => '📋'),
+      getActionHint: vi.fn(() => 'Aktion'),
+      getDepartmentName: vi.fn((id) => id),
+      getOptionIcon: vi.fn(() => '📋'),
+      getConfidenceText: vi.fn(() => '50% - Ähnlich'),
+      generateChoiceText: vi.fn(() => 'Option gewählt'),
+      trackByOptionId: vi.fn((index, option) => option.id || index.toString())
+    };
+
     // Create component instance directly (no TestBed)
     component = new VoiceAIAssistantComponent(
       aiServiceMock as AIService,
@@ -184,7 +228,10 @@ describe('VoiceAIAssistantComponent', () => {
       dialogMock as MatDialog,
       'browser' as any,
       loggerMock as LoggerService,
-      voiceInputServiceMock as VoiceInputService
+      voiceInputServiceMock as any,
+      voiceOutputServiceMock as any,
+      chatUIServiceMock as any,
+      disambiguationUIServiceMock as any
     );
   });
 

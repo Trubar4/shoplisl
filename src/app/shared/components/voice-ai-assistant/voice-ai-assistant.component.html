@@ -32,8 +32,8 @@
     
     <!-- Messages display area -->
     <div class="messages-container" #messagesContainer>
-      <div *ngFor="let message of messages$ | async; trackBy: trackByOptionId" 
-           class="message" 
+      <div *ngFor="let message of messages$ | async; let i = index; trackBy: trackByIndex"
+           class="message"
            [ngClass]="'message-' + message.type">
         
         <div class="message-content" [innerHTML]="message.text"></div>
