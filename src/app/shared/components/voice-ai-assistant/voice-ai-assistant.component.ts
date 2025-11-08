@@ -121,6 +121,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     // this.logger.enableTopic('context'); // Uncomment for debugging
 
     setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 10);
+
+    // Handle deep link parameters from Siri Shortcuts
+    this.handleDeepLinkParameters();
   }
 
   /**
@@ -200,6 +203,57 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   private logChatStatus(): void {
     const summary = this.chatPersistence.getChatSummary();
     console.log('💬 Chat loaded:', summary);
+  }
+
+  /**
+   * Handle deep link parameters from Siri Shortcuts or other sources
+   * Supports: ?add=ItemName or ?command=FullCommand
+   * Intelligently detects if input is already a complete command (German/English)
+   */
+  private handleDeepLinkParameters(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const addItem = urlParams.get('add');
+    const command = urlParams.get('command');
+
+    if (addItem || command) {
+      // Construct message to send
+      let messageToSend: string;
+      if (command) {
+        messageToSend = command;
+      } else if (addItem) {
+        // Check if the input is already a complete command (German or English)
+        const lowerInput = addItem.toLowerCase().trim();
+        const isCompleteCommand =
+          lowerInput.startsWith('füge ') ||
+          lowerInput.startsWith('add ') ||
+          lowerInput.startsWith('erstelle ') ||
+          lowerInput.startsWith('create ') ||
+          lowerInput.includes(' hinzu') ||
+          lowerInput.includes(' to ');
+
+        if (isCompleteCommand) {
+          // Use as-is if it's already a complete command
+          messageToSend = addItem;
+        } else {
+          // Auto-format simple item names as "add" command in German
+          messageToSend = `Füge ${addItem} hinzu`;
+        }
+      } else {
+        return; // Safety check
+      }
+
+      console.log('📱 Deep link detected:', messageToSend);
+
+      // Wait for services to initialize before processing
+      setTimeout(() => {
+        this.currentMessage = messageToSend;
+        this.lastInputSource = 'text'; // Don't provide audio feedback for deep links
+        this.sendMessage();
+
+        // Clean URL after processing to avoid re-triggering on reload
+        window.history.replaceState({}, '', window.location.pathname);
+      }, 1500); // 1.5s delay ensures all services are ready
+    }
   }
 
   private cleanup(): void {
