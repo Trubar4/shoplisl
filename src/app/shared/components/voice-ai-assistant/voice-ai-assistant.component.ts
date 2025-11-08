@@ -208,6 +208,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   /**
    * Handle deep link parameters from Siri Shortcuts or other sources
    * Supports: ?add=ItemName or ?command=FullCommand
+   * Intelligently detects if input is already a complete command (German/English)
    */
   private handleDeepLinkParameters(): void {
     const urlParams = new URLSearchParams(window.location.search);
@@ -220,8 +221,23 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       if (command) {
         messageToSend = command;
       } else if (addItem) {
-        // Auto-format as "add" command in German
-        messageToSend = `Füge ${addItem} hinzu`;
+        // Check if the input is already a complete command (German or English)
+        const lowerInput = addItem.toLowerCase().trim();
+        const isCompleteCommand =
+          lowerInput.startsWith('füge ') ||
+          lowerInput.startsWith('add ') ||
+          lowerInput.startsWith('erstelle ') ||
+          lowerInput.startsWith('create ') ||
+          lowerInput.includes(' hinzu') ||
+          lowerInput.includes(' to ');
+
+        if (isCompleteCommand) {
+          // Use as-is if it's already a complete command
+          messageToSend = addItem;
+        } else {
+          // Auto-format simple item names as "add" command in German
+          messageToSend = `Füge ${addItem} hinzu`;
+        }
       } else {
         return; // Safety check
       }
