@@ -1337,11 +1337,12 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   // PWA viewport and scrolling now handled by ChatUIService
   // See chatUI.initializePWAViewport() and chatUI.scrollToBottom()
 
-  public trackByOptionId(index: number, option: any): string {
+  // Arrow functions to preserve 'this' context for trackBy
+  public trackByOptionId = (index: number, option: any): string => {
     return this.disambiguationUI.trackByOptionId(index, option);
   }
 
-  public trackByIndex(index: number): number {
+  public trackByIndex = (index: number): number => {
     return index;
   }
 
