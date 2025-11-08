@@ -1341,6 +1341,10 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     return this.disambiguationUI.trackByOptionId(index, option);
   }
 
+  public trackByIndex(index: number): number {
+    return index;
+  }
+
 
   async triggerRecovery() {
     try {
