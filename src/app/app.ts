@@ -47,6 +47,9 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Handle Siri Shortcuts deep links - redirect to AI assistant if URL parameters present
+    this.handleSiriShortcutRedirect();
+
     // Global theme reset on navigation - fixes iPhone status bar color persistence
     this.subscriptions.add(
       this.router.events.pipe(
@@ -63,7 +66,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.connectionService.getConnectionStatus().subscribe(status => {
         console.log(`🌐 Connection status: ${status.isOnline ? 'Online' : 'Offline'}`, status);
-        
+
         // Update document title to show connection status (helpful for debugging)
         const baseTitle = 'ShopLisl';
         document.title = status.isOnline ? baseTitle : `${baseTitle} (Offline)`;
@@ -84,6 +87,26 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
+  }
+
+  /**
+   * Handle Siri Shortcuts deep links by redirecting to AI assistant
+   * Detects ?add= or ?command= parameters and preserves them during redirect
+   */
+  private handleSiriShortcutRedirect(): void {
+    if (typeof window === 'undefined') return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasAddParam = urlParams.has('add');
+    const hasCommandParam = urlParams.has('command');
+
+    if (hasAddParam || hasCommandParam) {
+      console.log('📱 Siri Shortcut deep link detected, redirecting to AI assistant...');
+
+      // Redirect to ai-assistant with the same URL parameters
+      const queryString = window.location.search;
+      this.router.navigateByUrl(`/ai-assistant${queryString}`);
+    }
   }
 
   private initializeLogger(): void {
