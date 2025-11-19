@@ -462,29 +462,35 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         .filter(article => list.articleIds.includes(article.id))
         .map(article => this.mapToArticleItemData(article, list));
 
-      switch (filter as ShoppingFilter) {
-        case 'offen':
-          // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
-          // This allows checked articles with pending states (undo window) to remain visible
-          break;
-        case 'erledigt':
-          articles = articles.filter(a => a.isChecked);
-          break;
+      // When searching, skip filter to show all matching results
+      if (!query?.trim()) {
+        switch (filter as ShoppingFilter) {
+          case 'offen':
+            // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
+            // This allows checked articles with pending states (undo window) to remain visible
+            break;
+          case 'erledigt':
+            articles = articles.filter(a => a.isChecked);
+            break;
+        }
       }
     } else {
       // EDIT MODE - Show ALL articles, not just those in the list
       articles = allArticles.map(article => this.mapToArticleItemData(article, list));
-      
-      switch (filter as EditFilter) {
-        case 'gelistet': 
-          articles = articles.filter(a => a.isInList);
-          break;
-        case 'fehlend': 
-          articles = articles.filter(a => !a.isInList);
-          break;
-        case 'alle':
-          // Show all articles - no filtering
-          break;
+
+      // When searching, skip filter to show all matching results
+      if (!query?.trim()) {
+        switch (filter as EditFilter) {
+          case 'gelistet':
+            articles = articles.filter(a => a.isInList);
+            break;
+          case 'fehlend':
+            articles = articles.filter(a => !a.isInList);
+            break;
+          case 'alle':
+            // Show all articles - no filtering
+            break;
+        }
       }
     }
   
