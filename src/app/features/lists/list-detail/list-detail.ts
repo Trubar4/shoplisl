@@ -462,29 +462,35 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         .filter(article => list.articleIds.includes(article.id))
         .map(article => this.mapToArticleItemData(article, list));
 
-      switch (filter as ShoppingFilter) {
-        case 'offen':
-          // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
-          // This allows checked articles with pending states (undo window) to remain visible
-          break;
-        case 'erledigt':
-          articles = articles.filter(a => a.isChecked);
-          break;
+      // When searching, skip filter to show all matching results
+      if (!query?.trim()) {
+        switch (filter as ShoppingFilter) {
+          case 'offen':
+            // Don't filter here - let shopping-mode child handle hiding via shouldHideArticle
+            // This allows checked articles with pending states (undo window) to remain visible
+            break;
+          case 'erledigt':
+            articles = articles.filter(a => a.isChecked);
+            break;
+        }
       }
     } else {
       // EDIT MODE - Show ALL articles, not just those in the list
       articles = allArticles.map(article => this.mapToArticleItemData(article, list));
-      
-      switch (filter as EditFilter) {
-        case 'gelistet': 
-          articles = articles.filter(a => a.isInList);
-          break;
-        case 'fehlend': 
-          articles = articles.filter(a => !a.isInList);
-          break;
-        case 'alle':
-          // Show all articles - no filtering
-          break;
+
+      // When searching, skip filter to show all matching results
+      if (!query?.trim()) {
+        switch (filter as EditFilter) {
+          case 'gelistet':
+            articles = articles.filter(a => a.isInList);
+            break;
+          case 'fehlend':
+            articles = articles.filter(a => !a.isInList);
+            break;
+          case 'alle':
+            // Show all articles - no filtering
+            break;
+        }
       }
     }
   
@@ -583,7 +589,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     ]).pipe(takeUntil(this.destroy$)).subscribe(([query, listArticles, allArticles]) => {
       if (!query.trim()) {
         this.searchDisambiguation$.next(null);
-      } else if (this.currentMode() === 'shopping' && listArticles.length === 0 && this.currentShoppingFilter() === 'alle') {
+      } else if (this.currentMode() === 'shopping') {
+        // Show disambiguation whenever searching in shopping mode
         this.handleNoSearchResults(query.trim(), allArticles);
       } else {
         this.searchDisambiguation$.next(null);
@@ -690,21 +697,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       const articles = groups.flatMap(g => g.articles);
 
       if (articles.length === 0) {
-        const didSwitch = this.filterService.autoSwitchToAllFilter(this.currentMode());
-
-        if (didSwitch) {
-          // Update local signal to match service state
-          if (this.currentMode() === 'shopping') {
-            this.currentShoppingFilter.set('alle');
-          } else {
-            this.currentEditFilter.set('alle');
-          }
-
-          this.snackBar.open('Filter auf Alle gestellt', '', {
-            duration: 400,
-            verticalPosition: 'bottom'
-          });
-        }
+        // Keep the filter as it was - don't auto-switch to 'alle'
+        // User wants to preserve the current filter state (e.g., 'offen' stays 'offen')
 
         setTimeout(() => {
           this.handleNoSearchResults(this.searchQuery.trim(), []);
