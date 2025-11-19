@@ -64,13 +64,15 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private readonly pendingStates$ = new BehaviorSubject<Record<string, PendingState>>({});
   private readonly departmentGroups$ = new BehaviorSubject<DepartmentGroup[]>([]);
+  private readonly searchQuery$ = new BehaviorSubject<string>('');
 
   // Enriched department groups with pending states - as observable for change detection
   readonly enrichedDepartmentGroups$ = combineLatest([
     this.departmentGroups$,
-    this.pendingStates$
+    this.pendingStates$,
+    this.searchQuery$
   ]).pipe(
-    map(([groups, pendingStates]) => {
+    map(([groups, pendingStates, searchQuery]) => {
       return groups.map(group => ({
         ...group,
         articles: group.articles
@@ -82,7 +84,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
           // Filter out articles that should be hidden (completely remove from DOM)
           .filter(article => {
             // When searching, always show matching articles regardless of filter
-            if (this.searchQuery?.trim()) {
+            if (searchQuery?.trim()) {
               return true;
             }
             // For 'offen' filter: hide checked articles that don't have pending state
@@ -115,11 +117,16 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
         this.departmentGroups$.next(currentValue);
       }
     }
+    // Update search query observable when input changes
+    if (changes['searchQuery']) {
+      this.searchQuery$.next(changes['searchQuery'].currentValue || '');
+    }
   }
 
   ngOnInit(): void {
-    // Initialize with current value
+    // Initialize with current values
     this.departmentGroups$.next(this.departmentGroups);
+    this.searchQuery$.next(this.searchQuery || '');
     this.setupCompletionMonitoring();
   }
 
