@@ -210,8 +210,13 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Determines if an article should be hidden
    * Articles are hidden when they're checked and past the undo window
+   * However, during search, all matching articles are shown regardless of checked state
    */
   shouldHideArticle = (article: ArticleItemData): boolean => {
+    // Don't hide articles when searching - user needs to see matching results
+    if (this.searchQuery?.trim()) {
+      return false;
+    }
     return this.shoppingFilter === 'offen' &&
            article.isChecked &&
            !article.pendingHideTimestamp;

@@ -589,7 +589,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     ]).pipe(takeUntil(this.destroy$)).subscribe(([query, listArticles, allArticles]) => {
       if (!query.trim()) {
         this.searchDisambiguation$.next(null);
-      } else if (this.currentMode() === 'shopping' && listArticles.length === 0 && this.currentShoppingFilter() === 'alle') {
+      } else if (this.currentMode() === 'shopping' && listArticles.length === 0) {
+        // Show disambiguation when no matching articles found, regardless of filter
         this.handleNoSearchResults(query.trim(), allArticles);
       } else {
         this.searchDisambiguation$.next(null);
