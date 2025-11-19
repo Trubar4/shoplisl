@@ -690,21 +690,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       const articles = groups.flatMap(g => g.articles);
 
       if (articles.length === 0) {
-        const didSwitch = this.filterService.autoSwitchToAllFilter(this.currentMode());
-
-        if (didSwitch) {
-          // Update local signal to match service state
-          if (this.currentMode() === 'shopping') {
-            this.currentShoppingFilter.set('alle');
-          } else {
-            this.currentEditFilter.set('alle');
-          }
-
-          this.snackBar.open('Filter auf Alle gestellt', '', {
-            duration: 400,
-            verticalPosition: 'bottom'
-          });
-        }
+        // Keep the filter as it was - don't auto-switch to 'alle'
+        // User wants to preserve the current filter state (e.g., 'offen' stays 'offen')
 
         setTimeout(() => {
           this.handleNoSearchResults(this.searchQuery.trim(), []);
