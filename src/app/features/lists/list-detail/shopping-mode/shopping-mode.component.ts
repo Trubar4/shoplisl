@@ -81,6 +81,10 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
           }))
           // Filter out articles that should be hidden (completely remove from DOM)
           .filter(article => {
+            // When searching, always show matching articles regardless of filter
+            if (this.searchQuery?.trim()) {
+              return true;
+            }
             // For 'offen' filter: hide checked articles that don't have pending state
             if (this.shoppingFilter === 'offen') {
               return !this.shouldHideArticle(article);
