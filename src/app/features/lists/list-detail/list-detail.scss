@@ -96,7 +96,7 @@
     flex: 1;
     overflow-y: auto;
     background-color: white;
-    padding-bottom: 100px;
+    padding-bottom: 120px;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
@@ -126,7 +126,7 @@
     overflow: hidden;
 
     .content-container {
-      padding-bottom: 160px; // Account for action buttons
+      padding-bottom: 180px; // Account for action buttons and tab bar
     }
 
     .add-button-container {
@@ -347,11 +347,11 @@
 @media (max-width: 768px) {
   .list-detail {
     .content-container {
-      padding-bottom: 95px;
+      padding-bottom: 130px;
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: 150px;
+      padding-bottom: 180px;
     }
     
     .edit-actions {
@@ -384,11 +384,11 @@
 @media (max-width: 480px) {
   .list-detail {
     .content-container {
-      padding-bottom: 90px;
+      padding-bottom: 120px;
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: 140px;
+      padding-bottom: 170px;
     }
     
     .edit-actions {
@@ -419,11 +419,11 @@
 @supports(padding-bottom: env(safe-area-inset-bottom)) {
   .list-detail {
     .content-container {
-      padding-bottom: calc(100px + env(safe-area-inset-bottom));
+      padding-bottom: calc(120px + env(safe-area-inset-bottom));
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: calc(160px + env(safe-area-inset-bottom));
+      padding-bottom: calc(180px + env(safe-area-inset-bottom));
     }
     
     .edit-actions {
@@ -434,11 +434,11 @@
   @media (max-width: 768px) {
     .list-detail {
       .content-container {
-        padding-bottom: calc(95px + env(safe-area-inset-bottom));
+        padding-bottom: calc(130px + env(safe-area-inset-bottom));
       }
 
       .edit-mode-container .content-container {
-        padding-bottom: calc(150px + env(safe-area-inset-bottom));
+        padding-bottom: calc(180px + env(safe-area-inset-bottom));
       }
     }
   }
@@ -446,11 +446,11 @@
   @media (max-width: 480px) {
     .list-detail {
       .content-container {
-        padding-bottom: calc(90px + env(safe-area-inset-bottom));
+        padding-bottom: calc(120px + env(safe-area-inset-bottom));
       }
 
       .edit-mode-container .content-container {
-        padding-bottom: calc(140px + env(safe-area-inset-bottom));
+        padding-bottom: calc(170px + env(safe-area-inset-bottom));
       }
     }
   }

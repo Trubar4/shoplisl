@@ -7,6 +7,8 @@
     transition: all 0.2s ease;
     min-height: 56px;
     background-color: #ffffff;
+    max-width: 100%;
+    box-sizing: border-box;
 
     &.checked {
       background-color: #f5f5f5;
@@ -137,7 +139,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-shrink: 0;
+      flex-shrink: 1;
+      min-width: 0;
       transition: opacity 0.3s ease, visibility 0.3s ease;
   
       &.hidden-by-undo {
@@ -158,6 +161,10 @@
         align-items: center;
         min-height: 20px;
         transition: all 0.2s ease;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
   
         &.clickable, &.editable {
           cursor: pointer;
@@ -186,13 +193,14 @@
       }
   
       .info-button {
-        width: 50px;
+        width: 40px;
         height: 32px;
         margin: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        
+        flex-shrink: 0;
+
         mat-icon {
           color: #757575;
           font-size: 20px;
@@ -204,6 +212,7 @@
     .article-toggle {
       flex-shrink: 0;
       margin-left: 8px;
+      margin-right: 4px;
       align-self: center;
     }
   }

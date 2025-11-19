@@ -6,7 +6,7 @@
   .content-container {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 90px;
+    padding-bottom: 120px;
   }
 
   // === CELEBRATION ANIMATION ===
@@ -111,7 +111,7 @@
 @media (max-width: 768px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: 95px;
+      padding-bottom: 130px;
     }
 
     .celebration-overlay .celebration-content {
@@ -134,7 +134,7 @@
 @media (max-width: 480px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: 90px;
+      padding-bottom: 120px;
     }
 
     .celebration-overlay .celebration-content {
