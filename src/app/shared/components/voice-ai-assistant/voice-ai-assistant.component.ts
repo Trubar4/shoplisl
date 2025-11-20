@@ -439,14 +439,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         const targetList = this.getCurrentTargetList();
         if (targetList) {
           // End conversation check
-          if (lowerInput === 'nein' || lowerInput === 'fertig' || 
+          if (lowerInput === 'nein' || lowerInput === 'fertig' ||
               lowerInput === 'stop' || lowerInput === 'ende') {
             this.clearAllContexts();
             this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
             this.chatUI.scrollToBottom(this.messagesContainer, true);
             return;
           }
-          
+
           // FIXED: Process as contextual article with proper context sync
           this.syncContextBidirectional();
           const result = await this.aiService.executeCommand(userMessage);
@@ -454,10 +454,21 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
           return;
         }
       }
-      
+
+      // Check if we have a pending recipe choice - if so, DON'T clear context
+      const hasPendingRecipe = this.aiService.recipeProcessingService.hasPendingRecipeChoice();
+
+      if (hasPendingRecipe) {
+        console.log('🍳 Has pending recipe choice - preserving context');
+        // Execute command without clearing context
+        const result = await this.aiService.executeCommand(userMessage);
+        await this.handleAIResult(result);
+        return;
+      }
+
       // Regular processing - clear context for new commands
       this.clearAllContexts();
-      
+
       const result = await this.aiService.executeCommand(userMessage);
       await this.handleAIResult(result);
       

@@ -675,12 +675,16 @@ export class AIService {
   public get quantityExtractionService(): QuantityExtractionService {
     return this.quantityExtraction;
   }
-  
+
   public get aiResponseService(): AIMessagingService {
     return this.aiResponse;
   }
 
-// ========================================
+  public get recipeProcessingService(): RecipeProcessingService {
+    return this.recipeProcessing;
+  }
+
+  // ========================================
   // HEALTH MONITORING METHODS
   // ========================================
 
