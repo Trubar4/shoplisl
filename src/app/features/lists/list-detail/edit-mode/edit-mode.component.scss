@@ -2,6 +2,15 @@
 // EDIT MODE COMPONENT STYLES
 // ===============================================
 
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 .edit-mode {
   flex: 1;
   display: flex;

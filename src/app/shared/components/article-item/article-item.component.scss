@@ -1,13 +1,21 @@
 // src/app/shared/components/article-item/article-item.component.scss
 
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .article-item {
     display: flex;
     align-items: center;
-    padding: 12px 4px 12px 12px;
+    padding: 12px 8px 12px 12px;
     transition: all 0.2s ease;
     min-height: 56px;
     background-color: #ffffff;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 
     &.checked {
@@ -217,9 +225,15 @@
   
     .article-toggle {
       flex-shrink: 0;
-      margin-left: 2px;
-      margin-right: 0;
+      margin-left: 4px;
+      margin-right: 4px;
       align-self: center;
+
+      // Scale down the toggle in edit mode
+      ::ng-deep .mdc-switch {
+        transform: scale(0.85);
+        transform-origin: center;
+      }
     }
   }
   
