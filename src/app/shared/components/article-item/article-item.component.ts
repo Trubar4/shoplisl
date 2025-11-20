@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ArticleSelectionService } from '../../../features/lists/list-detail/services/article-selection.service';
 
 export interface ArticleItemData {
   id: string;
@@ -28,22 +30,34 @@ export type ArticleViewMode = 'shopping' | 'edit';
     CommonModule,
     MatIconModule,
     MatButtonModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatCheckboxModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div 
+    <div
       class="article-item"
       [class.checked]="isArticleChecked()"
       [class.pending-hide]="article.pendingHideTimestamp"
       [class.fade-out]="shouldFadeOut()"
-      [class.in-list]="mode === 'edit' && article.isInList">
-      
+      [class.in-list]="mode === 'edit' && article.isInList"
+      [class.selection-mode]="isSelectionMode">
+
+      <!-- Selection Checkbox (only visible in selection mode) -->
+      <mat-checkbox
+        *ngIf="isSelectionMode && mode === 'shopping'"
+        [checked]="isArticleSelected()"
+        (change)="onSelectionCheckboxChange($event)"
+        (click)="$event.stopPropagation()"
+        color="primary"
+        class="selection-checkbox">
+      </mat-checkbox>
+
       <!-- Article Icon -->
       <div class="article-icon">
         {{ article.icon || '📦' }}
       </div>
-      
+
       <!-- Article Content -->
       <div 
         class="article-content" 
@@ -116,6 +130,9 @@ export class ArticleItemComponent {
   @Input({ required: true }) article!: ArticleItemData;
   @Input({ required: true }) mode!: ArticleViewMode;
   @Input() shouldHideWhenChecked = false;
+  @Input() isSelectionMode: boolean = false;
+  @Input() selectionService?: ArticleSelectionService;
+  @Input() selectedArticleIds?: Set<string>;
 
   @Output() toggle = new EventEmitter<ArticleItemData>();
   @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
@@ -127,6 +144,22 @@ export class ArticleItemComponent {
     if (this.mode === 'shopping') {
       this.toggle.emit(this.article);
     }
+  }
+
+  onSelectionCheckboxChange(event: any): void {
+    event.stopPropagation();
+    if (this.selectionService) {
+      this.selectionService.toggleArticle(this.article.id);
+    }
+  }
+
+  isArticleSelected(): boolean {
+    // Prefer using the input Set for better change detection
+    if (this.selectedArticleIds) {
+      return this.selectedArticleIds.has(this.article.id);
+    }
+    // Fallback to service if Set not provided
+    return this.selectionService?.isArticleSelected(this.article.id) || false;
   }
 
   onAmountClick(event: Event): void {

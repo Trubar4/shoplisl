@@ -9,15 +9,19 @@ import {
   SimpleChanges,
   ChangeDetectorRef,
   ChangeDetectionStrategy,
-  signal
+  signal,
+  computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { BehaviorSubject, Subject, combineLatest } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 
 import { ArticleListComponent, DepartmentGroup } from '../../../../shared/components/article-list/article-list.component';
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
 import { ShoppingList, Article, Department } from '../../../../core/models';
+import { ArticleSelectionService } from '../services/article-selection.service';
 
 /**
  * Shopping Mode Component
@@ -39,7 +43,7 @@ type ShoppingFilter = 'offen' | 'erledigt' | 'alle';
 @Component({
   selector: 'app-shopping-mode',
   standalone: true,
-  imports: [CommonModule, ArticleListComponent],
+  imports: [CommonModule, MatButtonModule, MatCheckboxModule, ArticleListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shopping-mode.component.html',
   styleUrls: ['./shopping-mode.component.scss']
@@ -50,15 +54,52 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   @Input() departmentGroups: DepartmentGroup[] = [];
   @Input() searchQuery: string = '';
   @Input() shoppingFilter: ShoppingFilter = 'offen';
+  @Input() isSelectionMode: boolean = false;
+  @Input() selectionService!: ArticleSelectionService;
 
   // === OUTPUTS ===
   @Output() articleToggle = new EventEmitter<ArticleItemData>();
   @Output() articleInfo = new EventEmitter<ArticleItemData>();
   @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
   @Output() undoCompletion = new EventEmitter<ArticleItemData>();
+  @Output() moveSelectedArticles = new EventEmitter<string[]>();
+  @Output() deleteSelectedArticles = new EventEmitter<string[]>();
+  @Output() markSelectedAsDone = new EventEmitter<string[]>();
 
   // === SIGNALS ===
   readonly showCelebrationAnimation = signal<boolean>(false);
+
+  /**
+   * Signal tracking visible article IDs based on current filter
+   * Used for select-all functionality
+   */
+  readonly visibleArticleIds = signal<string[]>([]);
+
+  /**
+   * Signal tracking the count of selected articles
+   * Updated reactively for change detection
+   */
+  readonly selectedCount = signal<number>(0);
+
+  /**
+   * Signal tracking the set of selected article IDs
+   * Updated reactively to trigger change detection in child components
+   */
+  readonly selectedArticleIdsSet = signal<Set<string>>(new Set());
+
+  /**
+   * Checks if all visible articles are selected
+   */
+  get areAllVisibleSelected(): boolean {
+    return this.selectionService?.areAllSelected(this.visibleArticleIds()) || false;
+  }
+
+  /**
+   * Checks if some (but not all) visible articles are selected
+   */
+  get areSomeVisibleSelected(): boolean {
+    return this.selectionService?.areSomeSelected(this.visibleArticleIds()) || false;
+  }
 
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -106,6 +147,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   private celebrationTimeout?: any;
   private readonly HIDE_DELAY_MS = 5000;
   private wasIncompleteLastCheck = false;
+  private selectionTrackingSetup = false;
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -121,6 +163,10 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['searchQuery']) {
       this.searchQuery$.next(changes['searchQuery'].currentValue || '');
     }
+    // Setup selection tracking when selectionService becomes available
+    if (changes['selectionService'] && changes['selectionService'].currentValue) {
+      this.setupSelectionTracking();
+    }
   }
 
   ngOnInit(): void {
@@ -128,6 +174,8 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     this.departmentGroups$.next(this.departmentGroups);
     this.searchQuery$.next(this.searchQuery || '');
     this.setupCompletionMonitoring();
+    this.setupVisibleArticlesTracking();
+    this.setupSelectionTracking();
   }
 
   ngOnDestroy(): void {
@@ -140,8 +188,16 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    * Handles article toggle in shopping mode
    * If article has pending hide timestamp, undoes the completion
    * Otherwise, toggles the article and starts undo timer
+   * In selection mode, toggles article selection instead
    */
   onArticleToggle(article: ArticleItemData): void {
+    // If in selection mode, toggle selection instead
+    if (this.isSelectionMode && this.selectionService) {
+      this.selectionService.toggleArticle(article.id);
+      this.cdr.detectChanges();
+      return;
+    }
+
     if (article.isChecked && article.pendingHideTimestamp) {
       this.undoCompletion.emit(article);
       this.removePendingState(article.id);
@@ -205,6 +261,57 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    */
   onGifLoad(event: any): void {
     console.log('GIF loaded successfully');
+  }
+
+  // === SELECTION MODE METHODS ===
+
+  /**
+   * Toggles select-all for visible articles
+   */
+  onToggleSelectAll(): void {
+    if (!this.selectionService) return;
+    this.selectionService.toggleAll(this.visibleArticleIds());
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Gets selection state for an article
+   */
+  isArticleSelected(articleId: string): boolean {
+    return this.selectionService?.isArticleSelected(articleId) || false;
+  }
+
+  /**
+   * Handles "Verschieben" action - emits event to parent
+   */
+  onMoveSelectedArticles(): void {
+    if (!this.selectionService) return;
+    const selectedIds = Array.from(this.selectionService.selectedArticleIds);
+    if (selectedIds.length > 0) {
+      this.moveSelectedArticles.emit(selectedIds);
+    }
+  }
+
+  /**
+   * Handles "Erledigt" action - emits event to parent
+   */
+  onMarkSelectedAsDone(): void {
+    if (!this.selectionService) return;
+    const selectedIds = Array.from(this.selectionService.selectedArticleIds);
+    if (selectedIds.length > 0) {
+      this.markSelectedAsDone.emit(selectedIds);
+    }
+  }
+
+  /**
+   * Handles "Löschen" action - emits event to parent
+   */
+  onDeleteSelectedArticles(): void {
+    if (!this.selectionService) return;
+    const selectedIds = Array.from(this.selectionService.selectedArticleIds);
+    if (selectedIds.length > 0) {
+      this.deleteSelectedArticles.emit(selectedIds);
+    }
   }
 
   /**
@@ -272,6 +379,39 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
       clearTimeout(timeout);
       this.undoHintTimeouts.delete(articleId);
     }
+  }
+
+  /**
+   * Sets up tracking of visible article IDs for select-all functionality
+   * Updates signal whenever the filtered/enriched articles change
+   */
+  private setupVisibleArticlesTracking(): void {
+    this.enrichedDepartmentGroups$.pipe(
+      map(groups => groups.flatMap(g => g.articles.map(a => a.id))),
+      takeUntil(this.destroy$)
+    ).subscribe(articleIds => {
+      this.visibleArticleIds.set(articleIds);
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Sets up tracking of selection changes for action buttons
+   * Updates signals whenever selection changes
+   */
+  private setupSelectionTracking(): void {
+    if (!this.selectionService || this.selectionTrackingSetup) return;
+
+    this.selectionTrackingSetup = true;
+
+    // Subscribe to selected IDs to update both count and set signals
+    this.selectionService.selectedArticleIds$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(selectedIds => {
+      this.selectedCount.set(selectedIds.size);
+      this.selectedArticleIdsSet.set(selectedIds);
+      this.cdr.markForCheck();
+    });
   }
 
   /**

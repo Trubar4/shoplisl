@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, of } from 'rxjs';  // Add 'of' here
+import { Observable, from, of, forkJoin } from 'rxjs';  // Add 'of' and 'forkJoin' here
 import { map, catchError, mergeMap } from 'rxjs/operators';  // Add 'map' here
 import { BehaviorSubject } from 'rxjs';
 
@@ -155,6 +155,14 @@ export class DataService {
     return this.listsRepo.addArticleToList(listId, articleId);
   }
 
+  addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
+    return this.listsRepo.addMultipleArticlesToList(listId, articleIds);
+  }
+
+  markMultipleArticlesAsChecked(listId: string, articleIds: string[]): Observable<boolean> {
+    return this.listsRepo.markMultipleArticlesAsChecked(listId, articleIds);
+  }
+
   removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
     return this.listsRepo.removeArticleFromList(listId, articleId);
   }
@@ -165,6 +173,99 @@ export class DataService {
 
   clearAllItemsFromList(listId: string): Observable<boolean> {
     return this.listsRepo.clearAllItemsFromList(listId);
+  }
+
+  // === BATCH LIST ITEM OPERATIONS ===
+
+  /**
+   * Moves articles between lists (copies to target list and marks as checked in source list)
+   * @param articleIds - Array of article IDs to move
+   * @param sourceListId - Source list ID
+   * @param targetListId - Target list ID
+   * @returns Observable that completes when all operations are done
+   */
+  moveArticlesBetweenLists(
+    articleIds: string[],
+    sourceListId: string,
+    targetListId: string
+  ): Observable<{ success: boolean; errors: string[] }> {
+    if (articleIds.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
+    const errors: string[] = [];
+
+    // Phase 1: Add all articles to target list in a single batch operation
+    // This avoids race conditions from parallel individual adds
+    return this.addMultipleArticlesToList(targetListId, articleIds).pipe(
+      catchError(err => {
+        errors.push(`Failed to add articles to target list: ${err}`);
+        return of(false);
+      }),
+      mergeMap(() => {
+        // Phase 2: Mark all articles as checked in source list in a single batch operation
+        // This avoids race conditions from parallel individual toggles
+        return this.markMultipleArticlesAsChecked(sourceListId, articleIds).pipe(
+          map(() => ({ success: errors.length === 0, errors })),
+          catchError(err => {
+            errors.push(`Failed to mark articles as checked in source list: ${err}`);
+            return of({ success: false, errors });
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Removes multiple articles from a list
+   * @param listId - List ID
+   * @param articleIds - Array of article IDs to remove
+   * @returns Observable with success status and any errors
+   */
+  removeMultipleArticlesFromList(
+    listId: string,
+    articleIds: string[]
+  ): Observable<{ success: boolean; errors: string[] }> {
+    if (articleIds.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
+    const errors: string[] = [];
+
+    // Use batch operation to remove all articles in a single update
+    return this.listsRepo.removeMultipleArticlesFromList(listId, articleIds).pipe(
+      map(() => ({ success: true, errors: [] })),
+      catchError(err => {
+        errors.push(`Failed to remove articles: ${err}`);
+        return of({ success: false, errors });
+      })
+    );
+  }
+
+  /**
+   * Marks multiple articles as done (checked)
+   * @param listId - List ID
+   * @param articleIds - Array of article IDs to check
+   * @returns Observable with success status and any errors
+   */
+  markMultipleArticlesAsDone(
+    listId: string,
+    articleIds: string[]
+  ): Observable<{ success: boolean; errors: string[] }> {
+    if (articleIds.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
+    const errors: string[] = [];
+
+    // Use batch operation to mark all articles as checked in a single update
+    return this.markMultipleArticlesAsChecked(listId, articleIds).pipe(
+      map(() => ({ success: true, errors: [] })),
+      catchError(err => {
+        errors.push(`Failed to mark articles as done: ${err}`);
+        return of({ success: false, errors });
+      })
+    );
   }
 
   // === DEPARTMENT ORDER ===

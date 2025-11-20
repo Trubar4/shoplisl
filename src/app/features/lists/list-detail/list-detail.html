@@ -9,18 +9,28 @@
       <span class="list-name">{{ currentList?.name || 'Loading...' }}</span>
     </div>
     <span class="spacer"></span>
-    
-    <!-- Mode Toggle Buttons -->
-    <div class="mode-toggle">
-      <button 
-        mat-button 
+
+    <!-- Exit Selection Mode Button -->
+    <button
+      *ngIf="currentMode() === 'shopping' && isSelectionMode()"
+      mat-icon-button
+      class="exit-selection-button"
+      (click)="exitSelectionMode()"
+      aria-label="Auswahl beenden">
+      <mat-icon>close</mat-icon>
+    </button>
+
+    <!-- Mode Toggle Buttons (hidden during selection mode) -->
+    <div class="mode-toggle" *ngIf="!isSelectionMode()">
+      <button
+        mat-button
         [class.active]="currentMode() === 'shopping'"
         (click)="switchToShoppingMode()"
         class="mode-button">
         Shoppen
       </button>
-      <button 
-        mat-button 
+      <button
+        mat-button
         [class.active]="currentMode() === 'edit'"
         (click)="switchToEditMode()"
         class="mode-button">
@@ -37,15 +47,28 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search Component -->
-    <app-search-disambiguation
-      [(searchQuery)]="searchQuery"
-      [disambiguation]="searchDisambiguation$ | async"
-      [placeholder]="'Artikel suchen'"
-      (queryChange)="onSearchQueryChange()"
-      (selectOption)="onSelectSearchDisambiguation($event)"
-      (clearDisambiguation)="onClearSearchDisambiguation()">
-    </app-search-disambiguation>
+    <!-- Search and Selection Button Container -->
+    <div class="search-selection-container">
+      <!-- Search Component -->
+      <app-search-disambiguation
+        [(searchQuery)]="searchQuery"
+        [disambiguation]="searchDisambiguation$ | async"
+        [placeholder]="'Artikel suchen'"
+        (queryChange)="onSearchQueryChange()"
+        (selectOption)="onSelectSearchDisambiguation($event)"
+        (clearDisambiguation)="onClearSearchDisambiguation()">
+      </app-search-disambiguation>
+
+      <!-- Selection Mode Button -->
+      <button
+        *ngIf="!isSelectionMode()"
+        mat-raised-button
+        class="selection-button"
+        (click)="enterSelectionMode()"
+        [style.background-color]="getCurrentListColor()">
+        Auswählen
+      </button>
+    </div>
 
     <!-- Shopping Mode Component -->
     <app-shopping-mode
@@ -53,10 +76,15 @@
       [departmentGroups]="(departmentGroups$ | async) || []"
       [searchQuery]="searchQuery"
       [shoppingFilter]="currentShoppingFilter()"
+      [isSelectionMode]="isSelectionMode()"
+      [selectionService]="selectionService"
       (articleToggle)="onArticleToggle($event)"
       (articleInfo)="onArticleInfo($event)"
       (editAmount)="onEditAmountFromList($event)"
-      (undoCompletion)="onUndoArticleCompletion($event)">
+      (undoCompletion)="onUndoArticleCompletion($event)"
+      (moveSelectedArticles)="onMoveSelectedArticles($event)"
+      (deleteSelectedArticles)="onDeleteSelectedArticles($event)"
+      (markSelectedAsDone)="onMarkSelectedAsDone($event)">
     </app-shopping-mode>
   </div>
 
@@ -93,9 +121,9 @@
     </app-edit-mode>
   </div>
 
-  <!-- FAB Filter Menu -->
+  <!-- FAB Filter Menu (hidden during selection mode) -->
   <app-filter-fab
-    *ngIf="!isLoading()"
+    *ngIf="!isLoading() && !isSelectionMode()"
     [isExpanded]="isFabExpanded()"
     [mode]="currentMode()"
     [currentShoppingFilter]="currentShoppingFilter()"

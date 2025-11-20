@@ -1,4 +1,15 @@
 <div class="shopping-mode">
+  <!-- Select All Checkbox (visible only in selection mode) -->
+  <div class="select-all-container" *ngIf="isSelectionMode">
+    <mat-checkbox
+      [checked]="areAllVisibleSelected"
+      [indeterminate]="areSomeVisibleSelected && !areAllVisibleSelected"
+      (change)="onToggleSelectAll()"
+      color="primary">
+      Alle auswählen
+    </mat-checkbox>
+  </div>
+
   <!-- Shopping List Content -->
   <div class="content-container">
     <app-article-list
@@ -6,11 +17,39 @@
       [mode]="'shopping'"
       [searchQuery]="searchQuery"
       [shouldHideArticle]="shouldHideArticle"
+      [isSelectionMode]="isSelectionMode"
+      [selectionService]="selectionService"
+      [selectedArticleIds]="selectedArticleIdsSet()"
       (articleToggle)="onArticleToggle($event)"
       (editAmount)="onEditAmount($event)"
       (articleInfo)="onArticleInfo($event)"
       (undoCompletion)="onUndoCompletion($event)">
     </app-article-list>
+  </div>
+
+  <!-- Action Bar (visible only in selection mode) -->
+  <div class="selection-action-bar" *ngIf="isSelectionMode">
+    <button
+      mat-stroked-button
+      class="action-button"
+      (click)="onMoveSelectedArticles()"
+      [disabled]="!selectionService || selectedCount() === 0">
+      Verschieben
+    </button>
+    <button
+      mat-button
+      class="action-button"
+      (click)="onMarkSelectedAsDone()"
+      [disabled]="!selectionService || selectedCount() === 0">
+      Erledigt
+    </button>
+    <button
+      mat-button
+      class="action-button delete-button"
+      (click)="onDeleteSelectedArticles()"
+      [disabled]="!selectionService || selectedCount() === 0">
+      Löschen
+    </button>
   </div>
 
   <!-- Celebration Animation Overlay -->
