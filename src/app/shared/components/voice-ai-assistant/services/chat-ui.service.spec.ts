@@ -157,7 +157,7 @@ describe('ChatUIService', () => {
       service = TestBed.inject(ChatUIService);
     });
 
-    it('should detect PWA standalone mode', () => {
+    it('should detect PWA standalone mode', async () => {
       mockWindow.matchMedia = vi.fn(() => ({
         matches: true,
         addListener: vi.fn(),
@@ -170,6 +170,10 @@ describe('ChatUIService', () => {
         '--pwa-bottom-padding',
         'calc(75px + env(safe-area-inset-bottom, 0px))'
       );
+
+      // Wait for setTimeout in handlePWAMode
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       expect(mockWindow.scrollTo).toHaveBeenCalledWith(0, 0);
     });
 
