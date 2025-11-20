@@ -333,6 +333,71 @@ export class ListsRepositoryService {
     );
   }
 
+  /**
+   * Marks multiple articles as checked in a single batch operation
+   * This avoids race conditions when checking multiple articles simultaneously
+   */
+  markMultipleArticlesAsChecked(listId: string, articleIds: string[]): Observable<boolean> {
+    if (articleIds.length === 0) {
+      return of(true);
+    }
+
+    return this.firebaseData.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
+
+        // Update item states for all articles
+        const newItemStates = { ...list.itemStates };
+        const now = new Date();
+
+        articleIds.forEach(articleId => {
+          const currentState = newItemStates[articleId]?.isChecked || false;
+          // Only update if not already checked
+          if (!currentState) {
+            newItemStates[articleId] = {
+              ...newItemStates[articleId],
+              articleId,
+              isChecked: true,
+              checkedAt: now
+            };
+          }
+        });
+
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.firebaseData.getCurrentLists();
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              itemStates: newItemStates,
+              updatedAt: new Date()
+            } : l
+          );
+          this.firebaseData.updateLocalLists(updatedLists);
+
+          // Queue for sync when online
+          this.offlineSync.queueOperation(async () => {
+            await this.firebaseData.updateListInFirebase(listId, {
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          }, `Mark ${articleIds.length} articles as checked in list ${listId}`);
+        } else {
+          this.firebaseData.updateListInFirebase(listId, {
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
+
+        return true;
+      }),
+      catchError(error => {
+        this.logger.error('data', `Error marking ${articleIds.length} articles as checked`, error);
+        return of(false);
+      })
+    );
+  }
+
   removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
     return this.firebaseData.getList(listId).pipe(
       map(list => {

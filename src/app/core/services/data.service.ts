@@ -159,6 +159,10 @@ export class DataService {
     return this.listsRepo.addMultipleArticlesToList(listId, articleIds);
   }
 
+  markMultipleArticlesAsChecked(listId: string, articleIds: string[]): Observable<boolean> {
+    return this.listsRepo.markMultipleArticlesAsChecked(listId, articleIds);
+  }
+
   removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
     return this.listsRepo.removeArticleFromList(listId, articleId);
   }
@@ -199,34 +203,13 @@ export class DataService {
         return of(false);
       }),
       mergeMap(() => {
-        // Phase 2: Mark all articles as checked in source list
-        // Get current list state once for all articles
-        return this.getList(sourceListId).pipe(
-          mergeMap(list => {
-            if (!list) {
-              errors.push(`Source list ${sourceListId} not found`);
-              return of({ success: false, errors });
-            }
-
-            // Create operations to check articles that aren't already checked
-            const checkOperations = articleIds
-              .filter(articleId => !list.itemStates[articleId]?.isChecked)
-              .map(articleId =>
-                this.toggleItemChecked(sourceListId, articleId).pipe(
-                  catchError(err => {
-                    errors.push(`Failed to check article ${articleId} in source list: ${err}`);
-                    return of(false);
-                  })
-                )
-              );
-
-            if (checkOperations.length === 0) {
-              return of({ success: errors.length === 0, errors });
-            }
-
-            return forkJoin(checkOperations).pipe(
-              map(() => ({ success: errors.length === 0, errors }))
-            );
+        // Phase 2: Mark all articles as checked in source list in a single batch operation
+        // This avoids race conditions from parallel individual toggles
+        return this.markMultipleArticlesAsChecked(sourceListId, articleIds).pipe(
+          map(() => ({ success: errors.length === 0, errors })),
+          catchError(err => {
+            errors.push(`Failed to mark articles as checked in source list: ${err}`);
+            return of({ success: false, errors });
           })
         );
       })
