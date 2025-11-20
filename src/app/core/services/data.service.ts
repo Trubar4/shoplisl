@@ -167,6 +167,130 @@ export class DataService {
     return this.listsRepo.clearAllItemsFromList(listId);
   }
 
+  // === BATCH LIST ITEM OPERATIONS ===
+
+  /**
+   * Moves articles between lists (copies to target list and marks as checked in source list)
+   * @param articleIds - Array of article IDs to move
+   * @param sourceListId - Source list ID
+   * @param targetListId - Target list ID
+   * @returns Observable that completes when all operations are done
+   */
+  moveArticlesBetweenLists(
+    articleIds: string[],
+    sourceListId: string,
+    targetListId: string
+  ): Observable<{ success: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    // Create an array of observables for all operations
+    const operations = articleIds.flatMap(articleId => [
+      // Add article to target list (unchecked)
+      this.addArticleToList(targetListId, articleId).pipe(
+        catchError(err => {
+          errors.push(`Failed to add article ${articleId} to target list: ${err}`);
+          return of(false);
+        })
+      ),
+      // Mark article as checked in source list
+      this.getList(sourceListId).pipe(
+        mergeMap(list => {
+          if (!list) {
+            errors.push(`Source list ${sourceListId} not found`);
+            return of(false);
+          }
+          const isChecked = list.itemStates[articleId]?.isChecked || false;
+          // Only toggle if not already checked
+          if (!isChecked) {
+            return this.toggleItemChecked(sourceListId, articleId).pipe(
+              catchError(err => {
+                errors.push(`Failed to check article ${articleId} in source list: ${err}`);
+                return of(false);
+              })
+            );
+          }
+          return of(true);
+        })
+      )
+    ]);
+
+    // Execute all operations and return summary
+    return from(operations).pipe(
+      mergeMap(op => op),
+      map(() => ({ success: errors.length === 0, errors }))
+    );
+  }
+
+  /**
+   * Removes multiple articles from a list
+   * @param listId - List ID
+   * @param articleIds - Array of article IDs to remove
+   * @returns Observable with success status and any errors
+   */
+  removeMultipleArticlesFromList(
+    listId: string,
+    articleIds: string[]
+  ): Observable<{ success: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    const operations = articleIds.map(articleId =>
+      this.removeArticleFromList(listId, articleId).pipe(
+        catchError(err => {
+          errors.push(`Failed to remove article ${articleId}: ${err}`);
+          return of(false);
+        })
+      )
+    );
+
+    return from(operations).pipe(
+      mergeMap(op => op),
+      map(() => ({ success: errors.length === 0, errors }))
+    );
+  }
+
+  /**
+   * Marks multiple articles as done (checked)
+   * @param listId - List ID
+   * @param articleIds - Array of article IDs to check
+   * @returns Observable with success status and any errors
+   */
+  markMultipleArticlesAsDone(
+    listId: string,
+    articleIds: string[]
+  ): Observable<{ success: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    // Get current list state to check which articles are already checked
+    return this.getList(listId).pipe(
+      mergeMap(list => {
+        if (!list) {
+          return of({ success: false, errors: ['List not found'] });
+        }
+
+        // Only toggle articles that aren't already checked
+        const operations = articleIds
+          .filter(articleId => !list.itemStates[articleId]?.isChecked)
+          .map(articleId =>
+            this.toggleItemChecked(listId, articleId).pipe(
+              catchError(err => {
+                errors.push(`Failed to check article ${articleId}: ${err}`);
+                return of(false);
+              })
+            )
+          );
+
+        if (operations.length === 0) {
+          return of({ success: true, errors: [] });
+        }
+
+        return from(operations).pipe(
+          mergeMap(op => op),
+          map(() => ({ success: errors.length === 0, errors }))
+        );
+      })
+    );
+  }
+
   // === DEPARTMENT ORDER ===
 
   updateListDepartmentOrder(listId: string, departmentOrder: string[]): Observable<boolean> {

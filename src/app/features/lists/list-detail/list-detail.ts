@@ -8,7 +8,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 
 // Optimized component imports
 import { SearchDisambiguationComponent } from '../../../shared/components/search-disambiguation/search-disambiguation.component';
@@ -27,6 +27,8 @@ import { DisambiguationService } from '../../../core/services/ai/disambiguation'
 import { DisambiguationOption } from '../../../core/services/ai/ai-models';
 import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 import { ListFilterService } from './services/list-filter.service';
+import { ArticleSelectionService } from './services/article-selection.service';
+import { ListPickerDialogComponent, ListPickerDialogData, ListPickerDialogResult } from '../../../shared/components/list-picker-dialog/list-picker-dialog';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -44,18 +46,20 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
     ShoppingModeComponent,
     EditModeComponent
   ],
+  providers: [ArticleSelectionService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './list-detail.html',
   styleUrls: ['./list-detail.scss']
 })
 export class ListDetailComponent implements OnInit, OnDestroy {
-  
+
   // === SIGNALS ===
   readonly currentMode = signal<ViewMode>('shopping');
   readonly currentShoppingFilter = signal<ShoppingFilter>('offen');
   readonly currentEditFilter = signal<EditFilter>('alle');
   readonly isLoading = signal<boolean>(true);
   readonly isFabExpanded = signal<boolean>(false);
+  readonly isSelectionMode = signal<boolean>(false);
   
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -84,7 +88,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly snackBar: MatSnackBar,
     private readonly cdr: ChangeDetectorRef,
     private readonly disambiguationService: DisambiguationService,
-    private readonly filterService: ListFilterService
+    private readonly filterService: ListFilterService,
+    public readonly selectionService: ArticleSelectionService,
+    private readonly dialog: MatDialog
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     this.list$ = this.dataService.getLists().pipe(
@@ -112,10 +118,39 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.initializeComponent();
     this.setupSubscriptions();
     this.setupSearchDisambiguation();
+    this.setupSelectionModeSubscription();
   }
 
   ngOnDestroy(): void {
     this.cleanup();
+  }
+
+  // === SELECTION MODE ===
+
+  /**
+   * Toggles selection mode on/off in shopping mode
+   */
+  toggleSelectionMode(): void {
+    if (this.selectionService.isSelectionMode) {
+      this.exitSelectionMode();
+    } else {
+      this.enterSelectionMode();
+    }
+  }
+
+  /**
+   * Enters selection mode
+   */
+  enterSelectionMode(): void {
+    this.selectionService.enterSelectionMode();
+    this.closeFab(); // Close filter FAB when entering selection mode
+  }
+
+  /**
+   * Exits selection mode and clears selections
+   */
+  exitSelectionMode(): void {
+    this.selectionService.exitSelectionMode();
   }
 
   // === NAVIGATION ===
@@ -263,6 +298,119 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  // === SELECTION ACTIONS ===
+
+  /**
+   * Handles moving selected articles to another list
+   * Opens a dialog to pick the target list
+   */
+  onMoveSelectedArticles(articleIds: string[]): void {
+    if (!this.currentList || articleIds.length === 0) return;
+
+    // Open list picker dialog
+    const dialogRef = this.dialog.open(ListPickerDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Artikel verschieben',
+        message: `${articleIds.length} Artikel ${articleIds.length === 1 ? 'wurde' : 'wurden'} ausgewählt`,
+        currentListId: this.listId
+      } as ListPickerDialogData
+    });
+
+    dialogRef.afterClosed().subscribe((result: ListPickerDialogResult | null) => {
+      if (result) {
+        this.dataService.moveArticlesBetweenLists(
+          articleIds,
+          this.listId,
+          result.selectedListId
+        ).subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.snackBar.open(
+                `${articleIds.length} Artikel zu "${result.selectedListName}" verschoben`,
+                '', { duration: 2000 }
+              );
+              this.exitSelectionMode();
+            } else {
+              this.snackBar.open(
+                'Einige Artikel konnten nicht verschoben werden',
+                '', { duration: 3000 }
+              );
+              console.error('Move errors:', response.errors);
+            }
+          },
+          error: (error) => {
+            console.error('Error moving articles:', error);
+            this.snackBar.open('Fehler beim Verschieben der Artikel', '', { duration: 2000 });
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Handles deleting selected articles from the current list
+   */
+  onDeleteSelectedArticles(articleIds: string[]): void {
+    if (articleIds.length === 0) return;
+
+    const confirmMessage = `${articleIds.length} Artikel ${articleIds.length === 1 ? 'wird' : 'werden'} von der Liste entfernt. Fortfahren?`;
+
+    if (confirm(confirmMessage)) {
+      this.dataService.removeMultipleArticlesFromList(this.listId, articleIds).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.snackBar.open(
+              `${articleIds.length} Artikel entfernt`,
+              '', { duration: 2000 }
+            );
+            this.exitSelectionMode();
+          } else {
+            this.snackBar.open(
+              'Einige Artikel konnten nicht entfernt werden',
+              '', { duration: 3000 }
+            );
+            console.error('Delete errors:', response.errors);
+          }
+        },
+        error: (error) => {
+          console.error('Error deleting articles:', error);
+          this.snackBar.open('Fehler beim Löschen der Artikel', '', { duration: 2000 });
+        }
+      });
+    }
+  }
+
+  /**
+   * Handles marking selected articles as done
+   */
+  onMarkSelectedAsDone(articleIds: string[]): void {
+    if (articleIds.length === 0) return;
+
+    this.dataService.markMultipleArticlesAsDone(this.listId, articleIds).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.snackBar.open(
+            `${articleIds.length} Artikel als erledigt markiert`,
+            '', { duration: 2000 }
+          );
+          this.exitSelectionMode();
+          this.triggerChangeDetection();
+        } else {
+          this.snackBar.open(
+            'Einige Artikel konnten nicht markiert werden',
+            '', { duration: 3000 }
+          );
+          console.error('Mark as done errors:', response.errors);
+        }
+      },
+      error: (error) => {
+        console.error('Error marking articles as done:', error);
+        this.snackBar.open('Fehler beim Markieren der Artikel', '', { duration: 2000 });
+      }
+    });
+  }
+
   // === SEARCH MANAGEMENT ===
   onSearchQueryChange(): void {
     this.filterService.setSearchQuery(this.searchQuery.trim());
@@ -402,13 +550,13 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       next: (list) => {
         this.currentList = list || null;
         this.isLoading.set(false);
-        
+
         if (list?.color) {
           this.listUtils.updateThemeColors(list.color);
         } else {
           this.listUtils.updateThemeColors('#1a9edb');
         }
-        
+
         if (!list && !this.isLoading()) {
           this.router.navigate(['/lists']);
         }
@@ -418,6 +566,18 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         this.isLoading.set(false);
         this.router.navigate(['/lists']);
       }
+    });
+  }
+
+  /**
+   * Subscribes to selection mode changes and updates local signal
+   */
+  private setupSelectionModeSubscription(): void {
+    this.selectionService.isSelectionMode$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(isActive => {
+      this.isSelectionMode.set(isActive);
+      this.cdr.detectChanges();
     });
   }
 

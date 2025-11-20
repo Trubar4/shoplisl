@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ArticleItemComponent, ArticleItemData } from '../article-item/article-item.component';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
+import { ArticleSelectionService } from '../../../features/lists/list-detail/services/article-selection.service';
 
 export interface DepartmentGroup {
   department: {
@@ -46,10 +47,12 @@ export type ViewMode = 'shopping' | 'edit';
 
         <!-- Articles -->
         <app-article-item
-          *ngFor="let article of group.articles" 
+          *ngFor="let article of group.articles"
           [article]="article"
           [mode]="mode"
           [shouldHideWhenChecked]="shouldHideArticle(article)"
+          [isSelectionMode]="isSelectionMode"
+          [selectionService]="selectionService"
           (toggle)="articleToggle.emit($event)"
           (editAmount)="editAmount.emit($event)"
           (info)="articleInfo.emit($event)"
@@ -73,6 +76,8 @@ export class ArticleListComponent {
   @Input({ required: true }) mode!: ViewMode;
   @Input() searchQuery = '';
   @Input({ required: true }) shouldHideArticle!: (article: ArticleItemData) => boolean;
+  @Input() isSelectionMode: boolean = false;
+  @Input() selectionService?: ArticleSelectionService;
 
   @Output() articleToggle = new EventEmitter<ArticleItemData>();
   @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
