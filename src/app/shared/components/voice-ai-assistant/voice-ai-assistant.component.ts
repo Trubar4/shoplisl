@@ -370,21 +370,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     }
     
     this.isProcessingMessage = true; // Set flag immediately
-    
+
     const userMessage = this.currentMessage.trim();
     const lowerInput = userMessage.toLowerCase().trim();
-    
-    console.log('🔍 DEBUG: sendMessage() called at:', new Date().toLocaleTimeString());
-    console.log('🔍 DEBUG: Input:', userMessage);
-    
+
     // SIMPLIFIED: Just sync once and ensure AI service gets the context
     this.syncContextBidirectional();
     const currentContext = this.getCurrentActiveContext();
-    console.log('🔄 CURRENT CONTEXT:', currentContext);
-    
+
     // CRITICAL: Set context in AI service directly
     if (currentContext.waitingForArticles) {
-      console.log('🔄 FORCING context into AI service');
       this.aiService.setConversationContext(currentContext);
     }
     
@@ -459,7 +454,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       const hasPendingRecipe = this.aiService.recipeProcessingService.hasPendingRecipeChoice();
 
       if (hasPendingRecipe) {
-        console.log('🍳 Has pending recipe choice - preserving context');
         // Execute command without clearing context
         const result = await this.aiService.executeCommand(userMessage);
         await this.handleAIResult(result);
@@ -519,7 +513,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     // Handle action buttons from result
     if (result.actionButtons && result.actionButtons.length > 0) {
       this.currentActionButtons = result.actionButtons;
-      console.log('🔘 Action buttons set:', this.currentActionButtons);
     } else {
       this.currentActionButtons = [];
     }
@@ -1409,20 +1402,13 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
    * Handle action button click
    */
   async handleActionButtonClick(button: ActionButton): Promise<void> {
-    console.log('🔘 ========== ACTION BUTTON CLICKED ==========');
-    console.log('🔘 Button:', button);
-    console.log('🔘 Current context:', this.aiService.getConversationContext());
-
     // Send the button's command
     this.currentMessage = button.command;
-    console.log('🔘 Set currentMessage to:', this.currentMessage);
 
     // Clear action buttons after setting message
     this.currentActionButtons = [];
 
-    console.log('🔘 Calling sendMessage()...');
     await this.sendMessage();
-    console.log('🔘 ========== BUTTON CLICK COMPLETE ==========');
   }
 
   // ========================================
