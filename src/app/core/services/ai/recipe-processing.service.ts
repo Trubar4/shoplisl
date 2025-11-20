@@ -265,6 +265,7 @@ export class RecipeProcessingService {
   private splitSpaceSeparatedIngredients(text: string): string[] {
     // Pattern to detect quantity indicators at start of ingredients
     // Matches: "500g", "2", "400ml", "1 TL", "0,5l" etc.
+    // Important: Must not match "Type 405" or "3,5%" (product specifications)
     const quantityPattern = /(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser|pck)?/gi;
 
     const matches = [];
@@ -272,10 +273,41 @@ export class RecipeProcessingService {
     // Find all quantity positions in the text
     let match;
     while ((match = quantityPattern.exec(text)) !== null) {
+      const matchedText = match[0];
+      const matchIndex = match.index;
+
+      // Skip if this looks like a product specification, not a quantity:
+
+      // 1. Skip "Type 405" - check if preceded by "Type" or "type"
+      const beforeMatch = text.substring(Math.max(0, matchIndex - 10), matchIndex).toLowerCase();
+      if (/type\s*$/.test(beforeMatch)) {
+        console.log(`🍳 Skipping "${matchedText}" - part of Type specification`);
+        continue;
+      }
+
+      // 2. Skip "3,5%" - check if followed by "%"
+      const afterMatch = text.substring(matchIndex + matchedText.length, matchIndex + matchedText.length + 1);
+      if (afterMatch === '%') {
+        console.log(`🍳 Skipping "${matchedText}" - part of percentage specification`);
+        continue;
+      }
+
+      // 3. Skip standalone numbers without units that aren't at word boundaries
+      // (e.g., "1" in middle of text without context)
+      const hasUnit = match[2]; // The unit capture group
+      if (!hasUnit) {
+        // For numbers without units, check if they're at start or preceded by separators
+        const charBefore = matchIndex > 0 ? text[matchIndex - 1] : ' ';
+        if (!/[\s,;]/.test(charBefore) && matchIndex > 0) {
+          console.log(`🍳 Skipping "${matchedText}" - number without unit not at boundary`);
+          continue;
+        }
+      }
+
       matches.push({
-        index: match.index,
-        quantity: match[0],
-        fullMatch: match[0]
+        index: matchIndex,
+        quantity: matchedText,
+        fullMatch: matchedText
       });
     }
 
