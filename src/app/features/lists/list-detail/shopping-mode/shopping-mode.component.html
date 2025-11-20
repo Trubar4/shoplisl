@@ -32,21 +32,21 @@
       mat-stroked-button
       class="action-button"
       (click)="onMoveSelectedArticles()"
-      [disabled]="!selectionService || selectionService.selectedCount === 0">
+      [disabled]="!selectionService || selectedCount() === 0">
       Verschieben
     </button>
     <button
       mat-button
       class="action-button"
       (click)="onMarkSelectedAsDone()"
-      [disabled]="!selectionService || selectionService.selectedCount === 0">
+      [disabled]="!selectionService || selectedCount() === 0">
       Erledigt
     </button>
     <button
       mat-button
       class="action-button delete-button"
       (click)="onDeleteSelectedArticles()"
-      [disabled]="!selectionService || selectionService.selectedCount === 0">
+      [disabled]="!selectionService || selectedCount() === 0">
       Löschen
     </button>
   </div>

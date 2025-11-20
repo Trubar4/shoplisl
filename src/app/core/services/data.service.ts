@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, of } from 'rxjs';  // Add 'of' here
+import { Observable, from, of, forkJoin } from 'rxjs';  // Add 'of' and 'forkJoin' here
 import { map, catchError, mergeMap } from 'rxjs/operators';  // Add 'map' here
 import { BehaviorSubject } from 'rxjs';
 
@@ -214,9 +214,12 @@ export class DataService {
       )
     ]);
 
-    // Execute all operations and return summary
-    return from(operations).pipe(
-      mergeMap(op => op),
+    // Execute all operations and wait for all to complete
+    if (operations.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
+    return forkJoin(operations).pipe(
       map(() => ({ success: errors.length === 0, errors }))
     );
   }
@@ -242,8 +245,11 @@ export class DataService {
       )
     );
 
-    return from(operations).pipe(
-      mergeMap(op => op),
+    if (operations.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
+    return forkJoin(operations).pipe(
       map(() => ({ success: errors.length === 0, errors }))
     );
   }
@@ -283,8 +289,7 @@ export class DataService {
           return of({ success: true, errors: [] });
         }
 
-        return from(operations).pipe(
-          mergeMap(op => op),
+        return forkJoin(operations).pipe(
           map(() => ({ success: errors.length === 0, errors }))
         );
       })

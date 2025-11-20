@@ -70,26 +70,29 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   readonly showCelebrationAnimation = signal<boolean>(false);
 
   /**
-   * Gets all visible article IDs based on current filter
+   * Signal tracking visible article IDs based on current filter
    * Used for select-all functionality
    */
-  get visibleArticleIds(): string[] {
-    const groups = this.departmentGroups$.value;
-    return groups.flatMap(group => group.articles.map(article => article.id));
-  }
+  readonly visibleArticleIds = signal<string[]>([]);
+
+  /**
+   * Signal tracking the count of selected articles
+   * Updated reactively for change detection
+   */
+  readonly selectedCount = signal<number>(0);
 
   /**
    * Checks if all visible articles are selected
    */
   get areAllVisibleSelected(): boolean {
-    return this.selectionService?.areAllSelected(this.visibleArticleIds) || false;
+    return this.selectionService?.areAllSelected(this.visibleArticleIds()) || false;
   }
 
   /**
    * Checks if some (but not all) visible articles are selected
    */
   get areSomeVisibleSelected(): boolean {
-    return this.selectionService?.areSomeSelected(this.visibleArticleIds) || false;
+    return this.selectionService?.areSomeSelected(this.visibleArticleIds()) || false;
   }
 
   // === OBSERVABLES ===
@@ -160,6 +163,8 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     this.departmentGroups$.next(this.departmentGroups);
     this.searchQuery$.next(this.searchQuery || '');
     this.setupCompletionMonitoring();
+    this.setupVisibleArticlesTracking();
+    this.setupSelectionTracking();
   }
 
   ngOnDestroy(): void {
@@ -254,7 +259,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    */
   onToggleSelectAll(): void {
     if (!this.selectionService) return;
-    this.selectionService.toggleAll(this.visibleArticleIds);
+    this.selectionService.toggleAll(this.visibleArticleIds());
     this.cdr.detectChanges();
   }
 
@@ -363,6 +368,35 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
       clearTimeout(timeout);
       this.undoHintTimeouts.delete(articleId);
     }
+  }
+
+  /**
+   * Sets up tracking of visible article IDs for select-all functionality
+   * Updates signal whenever the filtered/enriched articles change
+   */
+  private setupVisibleArticlesTracking(): void {
+    this.enrichedDepartmentGroups$.pipe(
+      map(groups => groups.flatMap(g => g.articles.map(a => a.id))),
+      takeUntil(this.destroy$)
+    ).subscribe(articleIds => {
+      this.visibleArticleIds.set(articleIds);
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Sets up tracking of selection changes for action buttons
+   * Updates signal whenever selection count changes
+   */
+  private setupSelectionTracking(): void {
+    if (!this.selectionService) return;
+
+    this.selectionService.selectedCount$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(count => {
+      this.selectedCount.set(count);
+      this.cdr.markForCheck();
+    });
   }
 
   /**
