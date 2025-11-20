@@ -29,7 +29,8 @@ import {
   AIExecutionResult,
   PendingAction,
   MultiItemPendingAction,
-  DisambiguationOption
+  DisambiguationOption,
+  ActionButton
 } from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -70,6 +71,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   currentMessage = '';
   isProcessing = false;
   private isProcessingMessage = false;
+  currentActionButtons: ActionButton[] = [];
 
   // Input tracking & audio feedback
   private lastInputSource: 'voice' | 'text' = 'text';
@@ -368,21 +370,16 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     }
     
     this.isProcessingMessage = true; // Set flag immediately
-    
+
     const userMessage = this.currentMessage.trim();
     const lowerInput = userMessage.toLowerCase().trim();
-    
-    console.log('🔍 DEBUG: sendMessage() called at:', new Date().toLocaleTimeString());
-    console.log('🔍 DEBUG: Input:', userMessage);
-    
+
     // SIMPLIFIED: Just sync once and ensure AI service gets the context
     this.syncContextBidirectional();
     const currentContext = this.getCurrentActiveContext();
-    console.log('🔄 CURRENT CONTEXT:', currentContext);
-    
+
     // CRITICAL: Set context in AI service directly
     if (currentContext.waitingForArticles) {
-      console.log('🔄 FORCING context into AI service');
       this.aiService.setConversationContext(currentContext);
     }
     
@@ -437,14 +434,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         const targetList = this.getCurrentTargetList();
         if (targetList) {
           // End conversation check
-          if (lowerInput === 'nein' || lowerInput === 'fertig' || 
+          if (lowerInput === 'nein' || lowerInput === 'fertig' ||
               lowerInput === 'stop' || lowerInput === 'ende') {
             this.clearAllContexts();
             this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
             this.chatUI.scrollToBottom(this.messagesContainer, true);
             return;
           }
-          
+
           // FIXED: Process as contextual article with proper context sync
           this.syncContextBidirectional();
           const result = await this.aiService.executeCommand(userMessage);
@@ -452,10 +449,20 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
           return;
         }
       }
-      
+
+      // Check if we have a pending recipe choice - if so, DON'T clear context
+      const hasPendingRecipe = this.aiService.recipeProcessingService.hasPendingRecipeChoice();
+
+      if (hasPendingRecipe) {
+        // Execute command without clearing context
+        const result = await this.aiService.executeCommand(userMessage);
+        await this.handleAIResult(result);
+        return;
+      }
+
       // Regular processing - clear context for new commands
       this.clearAllContexts();
-      
+
       const result = await this.aiService.executeCommand(userMessage);
       await this.handleAIResult(result);
       
@@ -502,13 +509,20 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
     console.log('🤖 HANDLE AI RESULT:', result);
-    
+
+    // Handle action buttons from result
+    if (result.actionButtons && result.actionButtons.length > 0) {
+      this.currentActionButtons = result.actionButtons;
+    } else {
+      this.currentActionButtons = [];
+    }
+
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
-    
+
     // CRITICAL: Force scroll after message addition
     this.chatUI.scrollToBottom(this.messagesContainer, true);
-  
+
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
       console.log('🤖 Showing disambiguation');
@@ -1380,8 +1394,21 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       '• Filtert Überschriften und Anweisungen heraus<br>' +
       '• ⏭️ Skip-Option für vorhandene Zutaten<br>' +
       '• Funktioniert mit Copy-Paste aus Rezept-Websites';
-    
+
     this.chatPersistence.addMessage(helpMessage, 'assistant');
+  }
+
+  /**
+   * Handle action button click
+   */
+  async handleActionButtonClick(button: ActionButton): Promise<void> {
+    // Send the button's command
+    this.currentMessage = button.command;
+
+    // Clear action buttons after setting message
+    this.currentActionButtons = [];
+
+    await this.sendMessage();
   }
 
   // ========================================

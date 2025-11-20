@@ -214,10 +214,24 @@
 
       <!-- FIXED: Button layout with "Beenden" button when in conversation -->
       <div class="quick-actions">
+        <!-- Action buttons from AI response -->
+        <div class="action-buttons-container" *ngIf="currentActionButtons.length > 0">
+          <button
+            *ngFor="let button of currentActionButtons"
+            mat-raised-button
+            [color]="button.style === 'primary' ? 'primary' : button.style === 'warn' ? 'warn' : undefined"
+            (click)="handleActionButtonClick(button)"
+            [disabled]="isProcessing"
+            class="action-response-button">
+            <mat-icon *ngIf="button.icon">{{ button.icon }}</mat-icon>
+            <span>{{ button.label }}</span>
+          </button>
+        </div>
+
         <div class="quick-buttons">
           <!-- Send button - always visible -->
-          <button 
-            mat-raised-button 
+          <button
+            mat-raised-button
             (click)="sendMessage()"
             [disabled]="!currentMessage.trim() || isProcessing"
             [matTooltip]="getSendTooltip()"

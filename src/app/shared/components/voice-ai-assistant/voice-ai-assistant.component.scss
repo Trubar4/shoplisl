@@ -701,7 +701,45 @@
   margin-top: 0px; /* REDUCED: No margin at all */
   position: relative;
   z-index: 60;
-  
+
+  .action-buttons-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    width: 100%;
+
+    button.action-response-button {
+      flex: 1;
+      min-height: 40px;
+      font-weight: 500;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      border-radius: 20px;
+      padding: 0 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
   .quick-buttons {
     display: flex;
     gap: 6px;
