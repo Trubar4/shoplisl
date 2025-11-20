@@ -62,6 +62,25 @@ export class GroqApiService {
     return apiKey.startsWith('gsk_') && apiKey.length > 20;
   }
 
+  /**
+   * Get user-friendly message about missing API key with setup instructions
+   */
+  getNoApiKeyMessage(): string {
+    return `ℹ️ <strong>Tipp:</strong> Für komplexe Rezepte empfehle ich die Groq API (kostenlos).<br><br>` +
+           `<strong>Vorteile:</strong><br>` +
+           `• Automatische Erkennung von Abschnitten (Teig, Soße, etc.)<br>` +
+           `• Besser bei Spezialzeichen (*, •, >>>, ---)<br>` +
+           `• Genauere Mengenangaben (Type 405, 3,5%, etc.)<br><br>` +
+           `<strong>API-Schlüssel einrichten:</strong><br>` +
+           `1. Besuche <a href="https://console.groq.com" target="_blank">console.groq.com</a><br>` +
+           `2. Erstelle einen kostenlosen Account<br>` +
+           `3. Generiere einen API-Schlüssel (beginnt mit "gsk_")<br>` +
+           `4. Öffne die Browser-Konsole (F12)<br>` +
+           `5. Führe aus: <code>localStorage.setItem('groq-api-key', 'gsk_...')</code><br>` +
+           `6. Lade die App neu<br><br>` +
+           `<em>Hinweis: Der API-Schlüssel bleibt lokal in deinem Browser gespeichert.</em>`;
+  }
+
   // ========================================
   // API CALLS
   // ========================================

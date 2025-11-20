@@ -74,35 +74,42 @@ export class RecipeProcessingService {
       }
       
       let finalCommand: string;
-      
+      let apiKeyInfoMessage = '';
+
+      // Check if API key is configured and show helpful message if not
+      if (!this.groqApi.hasApiKey()) {
+        apiKeyInfoMessage = this.groqApi.getNoApiKeyMessage();
+        console.log('🍳 No API key - will show setup instructions to user');
+      }
+
       if (targetListName && targetListId) {
         console.log(`🍳 Using target list from context: ${targetListName}`);
-        
+
         if (this.groqApi.hasApiKey()) {
           console.log('🍳 Using Groq API for advanced recipe processing');
           try {
             const standardizedCommands = await this.groqApi.standardizeRecipeIngredients(recipeContent, targetListName);
-            
+
             if (!standardizedCommands || standardizedCommands.trim().length < 10) {
               throw new Error('AI returned empty result');
             }
-            
+
             const commands = this.parseStandardizedCommands(standardizedCommands);
-            
+
             if (commands.length === 0) {
               throw new Error('No valid commands from AI');
             }
-            
+
             const enhancedCommands = commands.map(cmd => {
               if (!cmd.includes(' zu ') && !cmd.includes(targetListName)) {
                 return cmd.replace(' hinzu', ` zu ${targetListName} hinzu`);
               }
               return cmd;
             });
-            
+
             finalCommand = this.combineCommandsToMultiItem(enhancedCommands);
             console.log('🍳 Groq processed recipe successfully:', finalCommand);
-            
+
           } catch (aiError) {
             console.error('🍳 Groq processing failed, using enhanced fallback:', aiError);
             finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
@@ -114,7 +121,7 @@ export class RecipeProcessingService {
       } else {
         // No target list - process normally
         console.log('🍳 No target list in context');
-        
+
         if (this.groqApi.hasApiKey()) {
           console.log('🍳 Using Groq API for recipe processing');
           try {
@@ -131,9 +138,16 @@ export class RecipeProcessingService {
           finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
         }
       }
-      
+
       console.log('🍳 Final recipe command:', finalCommand);
-      return await processMultiItemsCallback(finalCommand);
+      const result = await processMultiItemsCallback(finalCommand);
+
+      // If no API key was configured, prepend the informational message
+      if (apiKeyInfoMessage && result.success) {
+        result.message = apiKeyInfoMessage + '<br><br>─────────────────────<br><br>' + result.message;
+      }
+
+      return result;
       
     } catch (error) {
       console.error('🍳 Recipe processing error:', error);
