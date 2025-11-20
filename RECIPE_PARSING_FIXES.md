@@ -110,6 +110,11 @@ private splitSpaceSeparatedIngredients(text: string): string[] {
 - ✅ Splits ingredients at quantity boundaries
 - ✅ Handles decimal commas correctly (3,5%, 0,5l)
 - ✅ Returns single item if no splitting needed
+- ✅ **CRITICAL FIX (commit edee76b):** Filters out false positive matches:
+  - Skips "405" from "Type 405" (product specification)
+  - Skips "3,5" from "3,5%" (product specification)
+  - Skips standalone numbers without units not at word boundaries
+  - **Result:** 9 valid quantity markers detected (was 11 with false positives)
 
 ## Testing
 
@@ -152,3 +157,33 @@ Rezept: Für den Teig: 500g Weizenmehl Type 405 2 mittelgroße Eier 400ml Vollmi
 - No breaking changes to API or interfaces
 - Performance impact: Minimal (additional regex processing per ingredient)
 - Handles edge cases: decimal commas, special characters, section headers
+
+## Groq API Integration (Recommended)
+
+For **significantly better accuracy** with complex recipes, configure a Groq API key instead of relying on local parsing:
+
+**Setup Options:**
+1. **Environment file:** Set `groqApiKey` in `src/environments/environment.ts`
+2. **localStorage:** Save key with `localStorage.setItem('groq-api-key', 'gsk_...')`
+
+**Benefits of Groq API:**
+- ✅ AI-powered parsing specifically designed for German recipes
+- ✅ Handles section headers, special characters, product specs automatically
+- ✅ Comprehensive prompts with 15+ examples (see `groq-api.service.ts:126-187`)
+- ✅ More robust than regex-based local parsing
+- ✅ Worked correctly "some versions ago" according to user feedback
+
+**When to use:**
+- Complex recipes with section headers ("Für den Teig:", "Für die Soße:")
+- Recipes with special formatting (*, •, >>>, ---)
+- Recipes with product specifications ("Type 405", "3,5%", "mittelgroße")
+- Recipes with inconsistent formats (mixed quantity order)
+
+**Fallback behavior:**
+- If no API key: Falls back to local parsing (these fixes)
+- If API error: Falls back to local parsing with console warning
+
+**To get API key:**
+- Visit https://console.groq.com
+- Create account and generate API key
+- Key format: `gsk_...` (starts with "gsk_")
