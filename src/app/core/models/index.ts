@@ -129,4 +129,10 @@ export interface ConversationContext {
     listName: string;
     prompt: string;
   };
+  pendingRecipe?: {
+    content: string;
+    targetListName?: string;
+    targetListId?: string;
+  };
+  forceLocalParsing?: boolean;
 }
