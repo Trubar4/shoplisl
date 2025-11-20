@@ -412,15 +412,14 @@ export class AIMessagingService {
    * 🎯 Get list selection message
    */
   getListSelectionMessage(itemName: string, quantity?: string): string {
-    const quantityText = quantity ? ` (${quantity})` : '';
-    return `🎯 Zu welcher Liste soll "${itemName}"${quantityText} hinzugefügt werden?`;
+    return `Bitte wähle eine Liste.`;
   }
 
   /**
    * 🎯 Get multi-item list selection message
    */
   getMultiItemListSelectionMessage(count: number): string {
-    return `🎯 Zu welcher Liste sollen die ${count} Artikel hinzugefügt werden?`;
+    return `Bitte wähle eine Liste.`;
   }
 
   // ========================================

@@ -85,7 +85,8 @@ export class DisambiguationUIService {
    * Get header color for disambiguation panel
    */
   public getDisambiguationHeaderColor(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
+    if (disambiguation.pendingAction?.type === 'select_list' ||
+        disambiguation.pendingAction?.type === 'select_list_for_multi_items') {
       return '#2196f3';
     }
     return '#ff9800';
@@ -95,7 +96,8 @@ export class DisambiguationUIService {
    * Get header icon for disambiguation panel
    */
   public getDisambiguationHeaderIcon(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
+    if (disambiguation.pendingAction?.type === 'select_list' ||
+        disambiguation.pendingAction?.type === 'select_list_for_multi_items') {
       return 'playlist_add';
     }
     return 'help_outline';
@@ -105,7 +107,8 @@ export class DisambiguationUIService {
    * Get header title for disambiguation panel
    */
   public getDisambiguationHeaderTitle(disambiguation: any): string {
-    if (disambiguation.pendingAction?.type === 'select_list') {
+    if (disambiguation.pendingAction?.type === 'select_list' ||
+        disambiguation.pendingAction?.type === 'select_list_for_multi_items') {
       return 'Liste auswählen';
     }
 
