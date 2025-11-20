@@ -75,9 +75,7 @@ export class GroqApiService {
            `1. Besuche <a href="https://console.groq.com" target="_blank">console.groq.com</a><br>` +
            `2. Erstelle einen kostenlosen Account<br>` +
            `3. Generiere einen API-Schlüssel (beginnt mit "gsk_")<br>` +
-           `4. Öffne die Browser-Konsole (F12)<br>` +
-           `5. Führe aus: <code>localStorage.setItem('groq-api-key', 'gsk_...')</code><br>` +
-           `6. Lade die App neu<br><br>` +
+           `4. Schreibe "<strong>Set api key: gsk_...</strong>" hier in den Chat und ich setze den Schlüssel für dich<br><br>` +
            `<em>Hinweis: Der API-Schlüssel bleibt lokal in deinem Browser gespeichert.</em>`;
   }
 
