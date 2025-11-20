@@ -155,6 +155,10 @@ export class DataService {
     return this.listsRepo.addArticleToList(listId, articleId);
   }
 
+  addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
+    return this.listsRepo.addMultipleArticlesToList(listId, articleIds);
+  }
+
   removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
     return this.listsRepo.removeArticleFromList(listId, articleId);
   }
@@ -187,20 +191,15 @@ export class DataService {
 
     const errors: string[] = [];
 
-    // Phase 1: Add all articles to target list (in parallel)
-    const addOperations = articleIds.map(articleId =>
-      this.addArticleToList(targetListId, articleId).pipe(
-        catchError(err => {
-          errors.push(`Failed to add article ${articleId} to target list: ${err}`);
-          return of(false);
-        })
-      )
-    );
-
-    // Phase 2: Mark all articles as checked in source list (in parallel)
-    // This is done AFTER all articles are added to target
-    return forkJoin(addOperations).pipe(
+    // Phase 1: Add all articles to target list in a single batch operation
+    // This avoids race conditions from parallel individual adds
+    return this.addMultipleArticlesToList(targetListId, articleIds).pipe(
+      catchError(err => {
+        errors.push(`Failed to add articles to target list: ${err}`);
+        return of(false);
+      }),
       mergeMap(() => {
+        // Phase 2: Mark all articles as checked in source list
         // Get current list state once for all articles
         return this.getList(sourceListId).pipe(
           mergeMap(list => {

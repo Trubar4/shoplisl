@@ -207,15 +207,15 @@ export class ListsRepositoryService {
     return this.firebaseData.getList(listId).pipe(
       map(list => {
         if (!list) return false;
-        
-        const newArticleIds = list.articleIds.includes(articleId) 
-          ? list.articleIds 
+
+        const newArticleIds = list.articleIds.includes(articleId)
+          ? list.articleIds
           : [...list.articleIds, articleId];
-          
+
         const newItemStates = {
           ...list.itemStates,
-          [articleId]: { 
-            articleId, 
+          [articleId]: {
+            articleId,
             isChecked: false,
             amount: list.itemStates[articleId]?.amount || ''  // PRESERVE existing amount
           }
@@ -224,16 +224,16 @@ export class ListsRepositoryService {
         if (!this.connectionService.isOnline()) {
           // Update local state immediately
           const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l => 
-            l.id === listId ? { 
-              ...l, 
-              articleIds: newArticleIds, 
-              itemStates: newItemStates, 
-              updatedAt: new Date() 
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: new Date()
             } : l
           );
           this.firebaseData.updateLocalLists(updatedLists);
-        
+
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -254,6 +254,80 @@ export class ListsRepositoryService {
       }),
       catchError(error => {
         this.logger.error('data', 'Error adding article to list', error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * Adds multiple articles to a list in a single batch operation
+   * This avoids race conditions when adding multiple articles simultaneously
+   */
+  addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
+    if (articleIds.length === 0) {
+      return of(true);
+    }
+
+    return this.firebaseData.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
+
+        // Add all article IDs that aren't already in the list
+        const existingIds = new Set(list.articleIds);
+        const newIds = articleIds.filter(id => !existingIds.has(id));
+        const newArticleIds = [...list.articleIds, ...newIds];
+
+        // Create item states for all articles
+        const newItemStates = { ...list.itemStates };
+        articleIds.forEach(articleId => {
+          if (!newItemStates[articleId]) {
+            newItemStates[articleId] = {
+              articleId,
+              isChecked: false,
+              amount: ''
+            };
+          } else {
+            // If article already exists, reset to unchecked but preserve amount
+            newItemStates[articleId] = {
+              ...newItemStates[articleId],
+              isChecked: false
+            };
+          }
+        });
+
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.firebaseData.getCurrentLists();
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: new Date()
+            } : l
+          );
+          this.firebaseData.updateLocalLists(updatedLists);
+
+          // Queue for sync when online
+          this.offlineSync.queueOperation(async () => {
+            await this.firebaseData.updateListInFirebase(listId, {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          }, `Add ${articleIds.length} articles to list ${listId}`);
+        } else {
+          this.firebaseData.updateListInFirebase(listId, {
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
+
+        return true;
+      }),
+      catchError(error => {
+        this.logger.error('data', `Error adding ${articleIds.length} articles to list`, error);
         return of(false);
       })
     );
