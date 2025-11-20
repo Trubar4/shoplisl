@@ -10,16 +10,6 @@
     </div>
     <span class="spacer"></span>
 
-    <!-- Selection Mode Button (Shopping mode only) -->
-    <button
-      *ngIf="currentMode() === 'shopping' && !isSelectionMode()"
-      mat-raised-button
-      class="selection-button"
-      (click)="enterSelectionMode()"
-      [style.background-color]="getCurrentListColor()">
-      Auswählen
-    </button>
-
     <!-- Exit Selection Mode Button -->
     <button
       *ngIf="currentMode() === 'shopping' && isSelectionMode()"
@@ -57,15 +47,28 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search Component -->
-    <app-search-disambiguation
-      [(searchQuery)]="searchQuery"
-      [disambiguation]="searchDisambiguation$ | async"
-      [placeholder]="'Artikel suchen'"
-      (queryChange)="onSearchQueryChange()"
-      (selectOption)="onSelectSearchDisambiguation($event)"
-      (clearDisambiguation)="onClearSearchDisambiguation()">
-    </app-search-disambiguation>
+    <!-- Search and Selection Button Container -->
+    <div class="search-selection-container">
+      <!-- Search Component -->
+      <app-search-disambiguation
+        [(searchQuery)]="searchQuery"
+        [disambiguation]="searchDisambiguation$ | async"
+        [placeholder]="'Artikel suchen'"
+        (queryChange)="onSearchQueryChange()"
+        (selectOption)="onSelectSearchDisambiguation($event)"
+        (clearDisambiguation)="onClearSearchDisambiguation()">
+      </app-search-disambiguation>
+
+      <!-- Selection Mode Button -->
+      <button
+        *ngIf="!isSelectionMode()"
+        mat-raised-button
+        class="selection-button"
+        (click)="enterSelectionMode()"
+        [style.background-color]="getCurrentListColor()">
+        Auswählen
+      </button>
+    </div>
 
     <!-- Shopping Mode Component -->
     <app-shopping-mode
