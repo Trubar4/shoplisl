@@ -68,7 +68,9 @@
   // === CONTENT CONTAINER ===
   .content-container {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     background-color: white;
     padding-bottom: 180px; // Account for action buttons and tab bar
     -webkit-overflow-scrolling: touch;

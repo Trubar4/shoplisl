@@ -3,9 +3,12 @@
   // ===============================================
 
 .articles-list {
+  width: 100%;
+  box-sizing: border-box;
+
   .department-group {
     margin-bottom: 0;
-    
+
     &:not(:last-child) {
       border-bottom: 1px solid #e0e0e0;
     }
