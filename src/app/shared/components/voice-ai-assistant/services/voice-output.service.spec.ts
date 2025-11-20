@@ -11,7 +11,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { VoiceOutputService } from './voice-output.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, skip } from 'rxjs';
 
 describe('VoiceOutputService', () => {
   let service: VoiceOutputService;
@@ -181,13 +181,14 @@ describe('VoiceOutputService', () => {
     });
 
     it('should update speaking state observable', async () => {
-      const speakingPromise = firstValueFrom(service.isSpeaking$);
-
       service.speak('Test');
-      await new Promise(resolve => setTimeout(resolve, 10));
 
-      const isSpeaking = await speakingPromise;
-      expect(isSpeaking).toBe(true);
+      // Wait for the async onstart callback to fire
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Check that the observable emitted true
+      const currentValue = await firstValueFrom(service.isSpeaking$);
+      expect(currentValue).toBe(true);
     });
 
     it('should handle empty text after cleaning', () => {

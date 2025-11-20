@@ -11,7 +11,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { VoiceInputService, VoiceRecognitionResult, VoiceRecognitionError } from './voice-input.service';
-import { firstValueFrom, take } from 'rxjs';
+import { firstValueFrom, take, skip } from 'rxjs';
 
 describe('VoiceInputService', () => {
   let service: VoiceInputService;
@@ -118,7 +118,7 @@ describe('VoiceInputService', () => {
 
     it('should start recording successfully', async () => {
       const isRecordingPromise = firstValueFrom(
-        service.isRecording$.pipe(take(1))
+        service.isRecording$.pipe(skip(1), take(1))
       );
 
       const result = service.startRecording();
