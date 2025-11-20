@@ -1245,7 +1245,7 @@ export class DisambiguationService {
     const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
     return {
       success: true,
-      message: `🎯 Zu welcher Liste soll "${article.name}"${quantityText} hinzugefügt werden?`,
+      message: `Bitte wähle eine Liste.`,
       needsUserInput: true,
       disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
       pendingAction: listSelectionAction
@@ -1292,7 +1292,7 @@ export class DisambiguationService {
     const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
     return {
       success: true,
-      message: `🎯 Artikel "${newArticle.name}" wurde erstellt.\n\nZu welcher Liste soll er${quantityText} hinzugefügt werden?`,
+      message: `Bitte wähle eine Liste.`,
       needsUserInput: true,
       disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
       pendingAction: listSelectionAction

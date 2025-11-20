@@ -305,7 +305,7 @@ export class AIService {
     
     return {
       success: true,
-      message: `🎯 Zu welcher Liste soll "${quantityExtraction.itemName}"${quantityExtraction.quantity ? ` (${quantityExtraction.quantity})` : ''} hinzugefügt werden?`,
+      message: `Bitte wähle eine Liste.`,
       needsUserInput: true,
       disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
       pendingAction: listSelectionAction

@@ -80,7 +80,7 @@
           <!-- FIXED: Updated message text -->
           <div class="disambiguation-message">
             <span *ngIf="disambiguation.pendingAction?.type === 'select_list'; else articleSelection">
-              Zu welcher Liste sollen die Artikel hinzugefügt werden?
+              Bitte wähle eine Liste.
             </span>
             <ng-template #articleSelection>
               Für "{{ disambiguation.pendingAction.itemName }}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?

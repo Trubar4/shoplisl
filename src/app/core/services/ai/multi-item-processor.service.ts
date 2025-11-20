@@ -198,7 +198,7 @@ export class MultiItemProcessorService {
       success: false,
       result: {
         success: true,
-        message: `🎯 ${multiItemResult.items.length} Artikel erkannt. Zu welcher Liste sollen sie hinzugefügt werden?`,
+        message: `Bitte wähle eine Liste.`,
         needsUserInput: true,
         disambiguationOptions: this.disambiguation.convertListsToDisambiguationOptions(listOptions),
         pendingAction: listSelectionAction
