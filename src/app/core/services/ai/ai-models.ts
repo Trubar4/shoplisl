@@ -31,6 +31,15 @@ export interface AIExecutionResult {
   suggestedData?: any;
   conversationContext?: ConversationContext;
   followUpPrompt?: string;
+  actionButtons?: ActionButton[];
+}
+
+export interface ActionButton {
+  id: string;
+  label: string;
+  icon?: string;
+  command: string;
+  style?: 'primary' | 'secondary' | 'warn';
 }
 
 // ========================================

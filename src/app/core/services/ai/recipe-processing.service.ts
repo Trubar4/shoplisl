@@ -92,16 +92,30 @@ export class RecipeProcessingService {
 
         return {
           success: false,
-          message: `ℹ️ <strong>API-Schlüssel nicht konfiguriert</strong><br><br>` +
-                   `Möchtest du fortfahren?<br><br>` +
-                   `<strong>Option 1: Lokales Parsing</strong><br>` +
-                   `→ Antworte mit <strong>"lokal"</strong> oder <strong>"weiter"</strong><br>` +
+          message: `ℹ️ <strong>Groq API-Schlüssel nicht konfiguriert</strong><br><br>` +
+                   `Möchtest du das Rezept mit lokalem Parsing verarbeiten oder die Groq API einrichten?<br><br>` +
+                   `<strong>Lokales Parsing:</strong><br>` +
                    `→ Funktioniert gut für einfache Rezepte<br>` +
                    `→ Möglicherweise ungenau bei komplexen Formaten<br><br>` +
-                   `<strong>Option 2: Groq API einrichten (empfohlen)</strong><br>` +
-                   `→ Antworte mit <strong>"api"</strong> oder <strong>"anleitung"</strong><br>` +
+                   `<strong>Groq API (empfohlen):</strong><br>` +
                    `→ Kostenlos und deutlich genauer<br>` +
-                   `→ Besser bei Abschnitten, Spezialzeichen, Produktspezifikationen`
+                   `→ Besser bei Abschnitten, Spezialzeichen, Produktspezifikationen`,
+          actionButtons: [
+            {
+              id: 'recipe-parse-local',
+              label: 'Lokal',
+              icon: 'offline_bolt',
+              command: 'lokal',
+              style: 'secondary'
+            },
+            {
+              id: 'recipe-setup-api',
+              label: 'Anleitung API-Key',
+              icon: 'api',
+              command: 'api',
+              style: 'primary'
+            }
+          ]
         };
       }
 

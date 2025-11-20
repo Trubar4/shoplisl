@@ -29,7 +29,8 @@ import {
   AIExecutionResult,
   PendingAction,
   MultiItemPendingAction,
-  DisambiguationOption
+  DisambiguationOption,
+  ActionButton
 } from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -70,6 +71,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   currentMessage = '';
   isProcessing = false;
   private isProcessingMessage = false;
+  currentActionButtons: ActionButton[] = [];
 
   // Input tracking & audio feedback
   private lastInputSource: 'voice' | 'text' = 'text';
@@ -502,13 +504,21 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
     console.log('🤖 HANDLE AI RESULT:', result);
-    
+
+    // Handle action buttons from result
+    if (result.actionButtons && result.actionButtons.length > 0) {
+      this.currentActionButtons = result.actionButtons;
+      console.log('🔘 Action buttons set:', this.currentActionButtons);
+    } else {
+      this.currentActionButtons = [];
+    }
+
     // Add main message
     this.chatPersistence.addMessage(result.message, result.success ? 'assistant' : 'error');
-    
+
     // CRITICAL: Force scroll after message addition
     this.chatUI.scrollToBottom(this.messagesContainer, true);
-  
+
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
       console.log('🤖 Showing disambiguation');
@@ -1380,8 +1390,22 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       '• Filtert Überschriften und Anweisungen heraus<br>' +
       '• ⏭️ Skip-Option für vorhandene Zutaten<br>' +
       '• Funktioniert mit Copy-Paste aus Rezept-Websites';
-    
+
     this.chatPersistence.addMessage(helpMessage, 'assistant');
+  }
+
+  /**
+   * Handle action button click
+   */
+  async handleActionButtonClick(button: ActionButton): Promise<void> {
+    console.log('🔘 Action button clicked:', button);
+
+    // Clear current action buttons
+    this.currentActionButtons = [];
+
+    // Send the button's command
+    this.currentMessage = button.command;
+    await this.sendMessage();
   }
 
   // ========================================
