@@ -132,6 +132,7 @@ export class ArticleItemComponent {
   @Input() shouldHideWhenChecked = false;
   @Input() isSelectionMode: boolean = false;
   @Input() selectionService?: ArticleSelectionService;
+  @Input() selectedArticleIds?: Set<string>;
 
   @Output() toggle = new EventEmitter<ArticleItemData>();
   @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
@@ -153,6 +154,11 @@ export class ArticleItemComponent {
   }
 
   isArticleSelected(): boolean {
+    // Prefer using the input Set for better change detection
+    if (this.selectedArticleIds) {
+      return this.selectedArticleIds.has(this.article.id);
+    }
+    // Fallback to service if Set not provided
     return this.selectionService?.isArticleSelected(this.article.id) || false;
   }
 

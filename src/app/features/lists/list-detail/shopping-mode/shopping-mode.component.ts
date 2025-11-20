@@ -82,6 +82,12 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   readonly selectedCount = signal<number>(0);
 
   /**
+   * Signal tracking the set of selected article IDs
+   * Updated reactively to trigger change detection in child components
+   */
+  readonly selectedArticleIdsSet = signal<Set<string>>(new Set());
+
+  /**
    * Checks if all visible articles are selected
    */
   get areAllVisibleSelected(): boolean {
@@ -141,6 +147,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   private celebrationTimeout?: any;
   private readonly HIDE_DELAY_MS = 5000;
   private wasIncompleteLastCheck = false;
+  private selectionTrackingSetup = false;
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -155,6 +162,10 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     // Update search query observable when input changes
     if (changes['searchQuery']) {
       this.searchQuery$.next(changes['searchQuery'].currentValue || '');
+    }
+    // Setup selection tracking when selectionService becomes available
+    if (changes['selectionService'] && changes['selectionService'].currentValue) {
+      this.setupSelectionTracking();
     }
   }
 
@@ -386,15 +397,19 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
 
   /**
    * Sets up tracking of selection changes for action buttons
-   * Updates signal whenever selection count changes
+   * Updates signals whenever selection changes
    */
   private setupSelectionTracking(): void {
-    if (!this.selectionService) return;
+    if (!this.selectionService || this.selectionTrackingSetup) return;
 
-    this.selectionService.selectedCount$.pipe(
+    this.selectionTrackingSetup = true;
+
+    // Subscribe to selected IDs to update both count and set signals
+    this.selectionService.selectedArticleIds$.pipe(
       takeUntil(this.destroy$)
-    ).subscribe(count => {
-      this.selectedCount.set(count);
+    ).subscribe(selectedIds => {
+      this.selectedCount.set(selectedIds.size);
+      this.selectedArticleIdsSet.set(selectedIds);
       this.cdr.markForCheck();
     });
   }

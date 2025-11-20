@@ -19,6 +19,7 @@
       [shouldHideArticle]="shouldHideArticle"
       [isSelectionMode]="isSelectionMode"
       [selectionService]="selectionService"
+      [selectedArticleIds]="selectedArticleIdsSet()"
       (articleToggle)="onArticleToggle($event)"
       (editAmount)="onEditAmount($event)"
       (articleInfo)="onArticleInfo($event)"

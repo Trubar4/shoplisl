@@ -53,6 +53,7 @@ export type ViewMode = 'shopping' | 'edit';
           [shouldHideWhenChecked]="shouldHideArticle(article)"
           [isSelectionMode]="isSelectionMode"
           [selectionService]="selectionService"
+          [selectedArticleIds]="selectedArticleIds"
           (toggle)="articleToggle.emit($event)"
           (editAmount)="editAmount.emit($event)"
           (info)="articleInfo.emit($event)"
@@ -78,6 +79,7 @@ export class ArticleListComponent {
   @Input({ required: true }) shouldHideArticle!: (article: ArticleItemData) => boolean;
   @Input() isSelectionMode: boolean = false;
   @Input() selectionService?: ArticleSelectionService;
+  @Input() selectedArticleIds?: Set<string>;
 
   @Output() articleToggle = new EventEmitter<ArticleItemData>();
   @Output() editAmount = new EventEmitter<{ article: ArticleItemData; event: Event }>();
