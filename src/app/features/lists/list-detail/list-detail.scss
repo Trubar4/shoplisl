@@ -121,7 +121,7 @@
 
     .search-selection-container {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
       padding: 8px 16px;
       background-color: white;
@@ -143,7 +143,6 @@
         color: white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         transition: all 0.2s ease;
-        margin-top: 4px;
 
         &:hover {
           transform: translateY(-1px);
