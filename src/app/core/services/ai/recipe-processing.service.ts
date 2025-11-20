@@ -73,14 +73,39 @@ export class RecipeProcessingService {
         };
       }
       
-      let finalCommand: string;
-      let apiKeyInfoMessage = '';
+      // Check if user needs to choose between local parsing and API setup
+      const existingContext = this.contextManager.getConversationContext();
+      const forceLocalParsing = existingContext.forceLocalParsing;
 
-      // Check if API key is configured and show helpful message if not
-      if (!this.groqApi.hasApiKey()) {
-        apiKeyInfoMessage = this.groqApi.getNoApiKeyMessage();
-        console.log('🍳 No API key - will show setup instructions to user');
+      // If no API key and user hasn't chosen yet, ask them first
+      if (!this.groqApi.hasApiKey() && !forceLocalParsing) {
+        console.log('🍳 No API key - asking user to choose parsing method');
+
+        // Store the recipe content in context so we can process it after user chooses
+        this.contextManager.setConversationContext({
+          pendingRecipe: {
+            content: recipeContent,
+            targetListName: targetListName,
+            targetListId: targetListId
+          }
+        });
+
+        return {
+          success: false,
+          message: `ℹ️ <strong>API-Schlüssel nicht konfiguriert</strong><br><br>` +
+                   `Möchtest du fortfahren?<br><br>` +
+                   `<strong>Option 1: Lokales Parsing</strong><br>` +
+                   `→ Antworte mit <strong>"lokal"</strong> oder <strong>"weiter"</strong><br>` +
+                   `→ Funktioniert gut für einfache Rezepte<br>` +
+                   `→ Möglicherweise ungenau bei komplexen Formaten<br><br>` +
+                   `<strong>Option 2: Groq API einrichten (empfohlen)</strong><br>` +
+                   `→ Antworte mit <strong>"api"</strong> oder <strong>"anleitung"</strong><br>` +
+                   `→ Kostenlos und deutlich genauer<br>` +
+                   `→ Besser bei Abschnitten, Spezialzeichen, Produktspezifikationen`
+        };
       }
+
+      let finalCommand: string;
 
       if (targetListName && targetListId) {
         console.log(`🍳 Using target list from context: ${targetListName}`);
@@ -140,14 +165,7 @@ export class RecipeProcessingService {
       }
 
       console.log('🍳 Final recipe command:', finalCommand);
-      const result = await processMultiItemsCallback(finalCommand);
-
-      // If no API key was configured, prepend the informational message
-      if (apiKeyInfoMessage && result.success) {
-        result.message = apiKeyInfoMessage + '<br><br>─────────────────────<br><br>' + result.message;
-      }
-
-      return result;
+      return await processMultiItemsCallback(finalCommand);
       
     } catch (error) {
       console.error('🍳 Recipe processing error:', error);
@@ -422,7 +440,7 @@ export class RecipeProcessingService {
 
   private parseSimpleIngredients(recipeContent: string): string[] {
     console.log('🍳 Parsing simple ingredients:', recipeContent);
-    
+
     // Try comma/newline/semicolon separation first
     if (recipeContent.includes(',') || recipeContent.includes('\n') || recipeContent.includes(';')) {
       const items = recipeContent
@@ -430,25 +448,25 @@ export class RecipeProcessingService {
         .map(item => item.trim())
         .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
         .slice(0, 15);
-      
+
       if (items.length > 1) {
         console.log('🍳 Found comma/newline/semicolon separated items:', items);
         return items;
       }
     }
-    
+
     // Parse space-separated ingredients with quantities
     const ingredients: string[] = [];
     const words = recipeContent.trim().split(/\s+/);
     let currentIngredient = '';
-    
+
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
-      
+
       // Check if word starts with a number or contains common units
-      const hasQuantity = /^\d+/.test(word) || 
+      const hasQuantity = /^\d+/.test(word) ||
                          /\d+(g|kg|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|dose|flasche)$/i.test(word);
-      
+
       if (hasQuantity && currentIngredient) {
         // Start of new ingredient - save previous one
         ingredients.push(currentIngredient.trim());
@@ -458,24 +476,115 @@ export class RecipeProcessingService {
         currentIngredient += (currentIngredient ? ' ' : '') + word;
       }
     }
-    
+
     // Add the last ingredient
     if (currentIngredient) {
       ingredients.push(currentIngredient.trim());
     }
-    
+
     // Filter out empty and invalid items
     const validIngredients = ingredients
       .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
       .slice(0, 15);
-    
+
     console.log('🍳 Parsed ingredients:', validIngredients);
-    
+
     // Fallback: if parsing failed, return original as single item
     if (validIngredients.length === 0) {
       return [recipeContent.trim()];
     }
-    
+
     return validIngredients;
+  }
+
+  // ========================================
+  // USER CHOICE HANDLERS
+  // ========================================
+
+  /**
+   * Check if user wants to proceed with local parsing
+   */
+  isChooseLocalParsing(input: string): boolean {
+    const normalized = input.toLowerCase().trim();
+    return normalized === 'lokal' ||
+           normalized === 'local' ||
+           normalized === 'weiter' ||
+           normalized === 'continue' ||
+           normalized === 'ja' ||
+           normalized === 'yes' ||
+           normalized === 'option 1' ||
+           normalized === '1';
+  }
+
+  /**
+   * Check if user wants to see API setup instructions
+   */
+  isChooseApiSetup(input: string): boolean {
+    const normalized = input.toLowerCase().trim();
+    return normalized === 'api' ||
+           normalized === 'anleitung' ||
+           normalized === 'setup' ||
+           normalized === 'instructions' ||
+           normalized === 'groq' ||
+           normalized === 'option 2' ||
+           normalized === '2';
+  }
+
+  /**
+   * Process pending recipe with local parsing
+   */
+  async processPendingRecipeWithLocal(
+    processMultiItemsCallback: (command: string) => Promise<AIExecutionResult>
+  ): Promise<AIExecutionResult> {
+    const context = this.contextManager.getConversationContext();
+    const pendingRecipe = context.pendingRecipe;
+
+    if (!pendingRecipe) {
+      return {
+        success: false,
+        message: '❌ Kein Rezept gefunden. Bitte sende das Rezept erneut.'
+      };
+    }
+
+    console.log('🍳 Processing pending recipe with local parsing');
+
+    // Set flag to skip the choice prompt
+    this.contextManager.setConversationContext({
+      forceLocalParsing: true,
+      pendingRecipe: undefined // Clear pending recipe
+    });
+
+    // Process the recipe
+    return this.processRecipeCommand(
+      `Rezept: ${pendingRecipe.content}`,
+      processMultiItemsCallback
+    );
+  }
+
+  /**
+   * Show API setup instructions
+   */
+  showApiSetupInstructions(): AIExecutionResult {
+    console.log('🍳 Showing API setup instructions');
+
+    // Clear pending recipe context
+    this.contextManager.setConversationContext({
+      pendingRecipe: undefined
+    });
+
+    return {
+      success: false,
+      message: this.groqApi.getNoApiKeyMessage() +
+               '<br><br>─────────────────────<br><br>' +
+               '💡 <em>Nachdem du den API-Schlüssel eingerichtet hast, kannst du dein Rezept erneut senden.</em>'
+    };
+  }
+
+  /**
+   * Check if there's a pending recipe choice
+   */
+  hasPendingRecipeChoice(): boolean {
+    const context = this.contextManager.getConversationContext();
+    return !!context.pendingRecipe;
   }
 }

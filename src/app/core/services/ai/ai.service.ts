@@ -103,6 +103,29 @@ export class AIService {
   // ========================================
 
   private async routeCommand(input: string): Promise<AIExecutionResult> {
+    // Handle pending recipe choice (local vs API setup)
+    if (this.recipeProcessing.hasPendingRecipeChoice()) {
+      if (this.recipeProcessing.isChooseLocalParsing(input)) {
+        console.log('🍳 User chose local parsing');
+        return this.recipeProcessing.processPendingRecipeWithLocal(
+          (cmd) => this.handleMultiItemCommand(cmd)
+        );
+      }
+
+      if (this.recipeProcessing.isChooseApiSetup(input)) {
+        console.log('🍳 User chose API setup');
+        return this.recipeProcessing.showApiSetupInstructions();
+      }
+
+      // If user didn't choose, remind them
+      return {
+        success: false,
+        message: '❌ Bitte wähle eine Option:<br>' +
+                 '→ <strong>"lokal"</strong> für lokales Parsing<br>' +
+                 '→ <strong>"api"</strong> für Groq API Anleitung'
+      };
+    }
+
     // Recipe commands
     if (this.isRecipeCommand(input)) {
       return this.handleRecipeCommand(input);
