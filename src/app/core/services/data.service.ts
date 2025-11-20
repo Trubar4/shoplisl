@@ -226,23 +226,19 @@ export class DataService {
     listId: string,
     articleIds: string[]
   ): Observable<{ success: boolean; errors: string[] }> {
-    const errors: string[] = [];
-
-    const operations = articleIds.map(articleId =>
-      this.removeArticleFromList(listId, articleId).pipe(
-        catchError(err => {
-          errors.push(`Failed to remove article ${articleId}: ${err}`);
-          return of(false);
-        })
-      )
-    );
-
-    if (operations.length === 0) {
+    if (articleIds.length === 0) {
       return of({ success: true, errors: [] });
     }
 
-    return forkJoin(operations).pipe(
-      map(() => ({ success: errors.length === 0, errors }))
+    const errors: string[] = [];
+
+    // Use batch operation to remove all articles in a single update
+    return this.listsRepo.removeMultipleArticlesFromList(listId, articleIds).pipe(
+      map(() => ({ success: true, errors: [] })),
+      catchError(err => {
+        errors.push(`Failed to remove articles: ${err}`);
+        return of({ success: false, errors });
+      })
     );
   }
 
@@ -256,34 +252,18 @@ export class DataService {
     listId: string,
     articleIds: string[]
   ): Observable<{ success: boolean; errors: string[] }> {
+    if (articleIds.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
     const errors: string[] = [];
 
-    // Get current list state to check which articles are already checked
-    return this.getList(listId).pipe(
-      mergeMap(list => {
-        if (!list) {
-          return of({ success: false, errors: ['List not found'] });
-        }
-
-        // Only toggle articles that aren't already checked
-        const operations = articleIds
-          .filter(articleId => !list.itemStates[articleId]?.isChecked)
-          .map(articleId =>
-            this.toggleItemChecked(listId, articleId).pipe(
-              catchError(err => {
-                errors.push(`Failed to check article ${articleId}: ${err}`);
-                return of(false);
-              })
-            )
-          );
-
-        if (operations.length === 0) {
-          return of({ success: true, errors: [] });
-        }
-
-        return forkJoin(operations).pipe(
-          map(() => ({ success: errors.length === 0, errors }))
-        );
+    // Use batch operation to mark all articles as checked in a single update
+    return this.markMultipleArticlesAsChecked(listId, articleIds).pipe(
+      map(() => ({ success: true, errors: [] })),
+      catchError(err => {
+        errors.push(`Failed to mark articles as done: ${err}`);
+        return of({ success: false, errors });
       })
     );
   }

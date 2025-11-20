@@ -445,6 +445,67 @@ export class ListsRepositoryService {
     );
   }
 
+  /**
+   * Removes multiple articles from a list in a single batch operation
+   * This avoids race conditions when removing multiple articles simultaneously
+   */
+  removeMultipleArticlesFromList(listId: string, articleIds: string[]): Observable<boolean> {
+    if (articleIds.length === 0) {
+      return of(true);
+    }
+
+    return this.firebaseData.getList(listId).pipe(
+      map(list => {
+        if (!list) return false;
+
+        // Remove all specified article IDs
+        const idsToRemove = new Set(articleIds);
+        const newArticleIds = list.articleIds.filter(id => !idsToRemove.has(id));
+
+        // Remove item states for all deleted articles
+        const newItemStates = { ...list.itemStates };
+        articleIds.forEach(articleId => {
+          delete newItemStates[articleId];
+        });
+
+        if (!this.connectionService.isOnline()) {
+          // Update local state immediately
+          const currentLists = this.firebaseData.getCurrentLists();
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: new Date()
+            } : l
+          );
+          this.firebaseData.updateLocalLists(updatedLists);
+
+          // Queue for sync when online
+          this.offlineSync.queueOperation(async () => {
+            await this.firebaseData.updateListInFirebase(listId, {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+          }, `Remove ${articleIds.length} articles from list ${listId}`);
+        } else {
+          this.firebaseData.updateListInFirebase(listId, {
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: Timestamp.now()
+          });
+        }
+
+        return true;
+      }),
+      catchError(error => {
+        this.logger.error('data', `Error removing ${articleIds.length} articles from list`, error);
+        return of(false);
+      })
+    );
+  }
+
   updateListItemAmount(listId: string, articleId: string, amount: string): Observable<boolean> {
     return this.firebaseData.getList(listId).pipe(
       map(list => {
