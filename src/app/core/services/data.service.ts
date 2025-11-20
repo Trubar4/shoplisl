@@ -181,46 +181,56 @@ export class DataService {
     sourceListId: string,
     targetListId: string
   ): Observable<{ success: boolean; errors: string[] }> {
+    if (articleIds.length === 0) {
+      return of({ success: true, errors: [] });
+    }
+
     const errors: string[] = [];
 
-    // Create an array of observables for all operations
-    const operations = articleIds.flatMap(articleId => [
-      // Add article to target list (unchecked)
+    // Phase 1: Add all articles to target list (in parallel)
+    const addOperations = articleIds.map(articleId =>
       this.addArticleToList(targetListId, articleId).pipe(
         catchError(err => {
           errors.push(`Failed to add article ${articleId} to target list: ${err}`);
           return of(false);
         })
-      ),
-      // Mark article as checked in source list
-      this.getList(sourceListId).pipe(
-        mergeMap(list => {
-          if (!list) {
-            errors.push(`Source list ${sourceListId} not found`);
-            return of(false);
-          }
-          const isChecked = list.itemStates[articleId]?.isChecked || false;
-          // Only toggle if not already checked
-          if (!isChecked) {
-            return this.toggleItemChecked(sourceListId, articleId).pipe(
-              catchError(err => {
-                errors.push(`Failed to check article ${articleId} in source list: ${err}`);
-                return of(false);
-              })
-            );
-          }
-          return of(true);
-        })
       )
-    ]);
+    );
 
-    // Execute all operations and wait for all to complete
-    if (operations.length === 0) {
-      return of({ success: true, errors: [] });
-    }
+    // Phase 2: Mark all articles as checked in source list (in parallel)
+    // This is done AFTER all articles are added to target
+    return forkJoin(addOperations).pipe(
+      mergeMap(() => {
+        // Get current list state once for all articles
+        return this.getList(sourceListId).pipe(
+          mergeMap(list => {
+            if (!list) {
+              errors.push(`Source list ${sourceListId} not found`);
+              return of({ success: false, errors });
+            }
 
-    return forkJoin(operations).pipe(
-      map(() => ({ success: errors.length === 0, errors }))
+            // Create operations to check articles that aren't already checked
+            const checkOperations = articleIds
+              .filter(articleId => !list.itemStates[articleId]?.isChecked)
+              .map(articleId =>
+                this.toggleItemChecked(sourceListId, articleId).pipe(
+                  catchError(err => {
+                    errors.push(`Failed to check article ${articleId} in source list: ${err}`);
+                    return of(false);
+                  })
+                )
+              );
+
+            if (checkOperations.length === 0) {
+              return of({ success: errors.length === 0, errors });
+            }
+
+            return forkJoin(checkOperations).pipe(
+              map(() => ({ success: errors.length === 0, errors }))
+            );
+          })
+        );
+      })
     );
   }
 
