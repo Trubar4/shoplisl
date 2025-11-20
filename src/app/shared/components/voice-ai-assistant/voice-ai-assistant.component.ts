@@ -1398,14 +1398,20 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
    * Handle action button click
    */
   async handleActionButtonClick(button: ActionButton): Promise<void> {
-    console.log('🔘 Action button clicked:', button);
-
-    // Clear current action buttons
-    this.currentActionButtons = [];
+    console.log('🔘 ========== ACTION BUTTON CLICKED ==========');
+    console.log('🔘 Button:', button);
+    console.log('🔘 Current context:', this.aiService.getConversationContext());
 
     // Send the button's command
     this.currentMessage = button.command;
+    console.log('🔘 Set currentMessage to:', this.currentMessage);
+
+    // Clear action buttons after setting message
+    this.currentActionButtons = [];
+
+    console.log('🔘 Calling sendMessage()...');
     await this.sendMessage();
+    console.log('🔘 ========== BUTTON CLICK COMPLETE ==========');
   }
 
   // ========================================
