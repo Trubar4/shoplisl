@@ -205,9 +205,9 @@ export class RecipeProcessingService {
 
   parseAdvancedRecipe(recipeContent: string): string[] {
     console.log('🍳 Advanced parsing recipe:', recipeContent.substring(0, 100));
-    
+
     const trimmed = recipeContent.trim();
-    
+
     // Handle single ingredient case
     if (!trimmed.includes(',') && !trimmed.includes(';') && !trimmed.includes('\n')) {
       const singleItemMatch = trimmed.match(/^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)/);
@@ -217,92 +217,153 @@ export class RecipeProcessingService {
         return [cleanSingle];
       }
     }
-    
+
     const ingredients: string[] = [];
     const lines = recipeContent.split(/\r?\n/);
-    
+
     for (let line of lines) {
       // Skip explanatory lines
       if (this.shouldSkipLine(line)) {
         continue;
       }
-      
+
       // Check if line contains multiple items
       if (line.includes(',') || line.includes(';')) {
         const items = line.split(/\s*[,;]\s*/);
         for (let item of items) {
           const processedItem = this.processRecipeItem(item);
           if (processedItem) {
-            ingredients.push(processedItem);
+            // Check if processed item contains multiple space-separated ingredients
+            const splitItems = this.splitSpaceSeparatedIngredients(processedItem);
+            ingredients.push(...splitItems);
           }
         }
       } else {
         const processedItem = this.processRecipeItem(line);
         if (processedItem) {
-          ingredients.push(processedItem);
+          // Check if processed item contains multiple space-separated ingredients
+          const splitItems = this.splitSpaceSeparatedIngredients(processedItem);
+          ingredients.push(...splitItems);
         }
       }
     }
-    
+
     console.log('🍳 Advanced parsed ingredients:', ingredients);
-    
+
     // Fallback to simple parsing if advanced fails
     if (ingredients.length === 0) {
       return this.parseSimpleIngredients(recipeContent);
     }
-    
+
     return ingredients.length > 0 ? ingredients.slice(0, 15) : [recipeContent.trim()];
+  }
+
+  /**
+   * Split space-separated ingredients when they have quantity indicators
+   * Example: "500g Mehl 2 Eier 1l Milch" → ["500g Mehl", "2 Eier", "1l Milch"]
+   */
+  private splitSpaceSeparatedIngredients(text: string): string[] {
+    // Pattern to detect quantity indicators at start of ingredients
+    // Matches: "500g", "2", "400ml", "1 TL", "0,5l" etc.
+    const quantityPattern = /(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l|el|tl|gramm|liter|prise|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser|pck)?/gi;
+
+    const matches = [];
+
+    // Find all quantity positions in the text
+    let match;
+    while ((match = quantityPattern.exec(text)) !== null) {
+      matches.push({
+        index: match.index,
+        quantity: match[0],
+        fullMatch: match[0]
+      });
+    }
+
+    // If we found multiple quantities, split at those positions
+    if (matches.length >= 2) {
+      const ingredients: string[] = [];
+
+      // Add first ingredient (from start to second quantity)
+      const firstIngredient = text.substring(0, matches[1].index).trim();
+      if (firstIngredient.length > 0) {
+        ingredients.push(firstIngredient);
+      }
+
+      // Add middle ingredients
+      for (let i = 1; i < matches.length - 1; i++) {
+        const startPos = matches[i].index;
+        const endPos = matches[i + 1].index;
+
+        const ingredient = text.substring(startPos, endPos).trim();
+        if (ingredient.length > 0) {
+          ingredients.push(ingredient);
+        }
+      }
+
+      // Add last ingredient (from last quantity to end)
+      const lastIngredient = text.substring(matches[matches.length - 1].index).trim();
+      if (lastIngredient.length > 0) {
+        ingredients.push(lastIngredient);
+      }
+
+      console.log(`🍳 Split space-separated: "${text.substring(0, 80)}..." → ${ingredients.length} items`);
+      return ingredients.filter(i => i.length > 0);
+    }
+
+    // If only one or zero quantities, return the whole text as a single ingredient
+    return [text];
   }
 
   private shouldSkipLine(line: string): boolean {
     const lowerLine = line.toLowerCase();
-    return lowerLine.includes('da es nur') || 
+    return lowerLine.includes('da es nur') ||
            lowerLine.includes('ist die ausgabe') ||
            lowerLine.includes('hier ist') ||
            lowerLine.includes('ich kann');
   }
 
   private processRecipeItem(item: string): string | null {
+    // Remove section header prefixes first (but keep the ingredients)
     let cleaned = item
-      .replace(/^[-•◦▪▫*>]+\s*/, '')
-      .replace(/^[\d\.\)]+\s*/, '')
-      .replace(/^>\s*/, '')
-      .replace(/^\*+\s*/, '')
-      .replace(/\*+$/, '')
-      .replace(/^-+\s*/, '')
-      .replace(/\s*-+$/, '')
-      .replace(/^•+\s*/, '')
-      .replace(/•+$/, '')
+      .replace(/^(für den |für die |für das |für einen |für eine |für ein )[^:]*:\s*/gi, '') // Remove "Für den Teig:", "Für die Soße:" etc.
+      .replace(/^[-•◦▪▫*⦁>]+\s*/g, '') // Remove bullet points at start
+      .replace(/[-•◦▪▫*⦁>]+\s*/g, ' ') // Replace bullet points in middle with space
+      .replace(/^[\d\.\)]+\s*/, '') // Remove numbered list markers
+      .replace(/\s*-{3,}\s*/g, ' ') // Replace separator lines with space
+      .replace(/\s*={3,}\s*/g, ' ') // Replace equals separators with space
+      .replace(/\s+/g, ' ') // Normalize multiple spaces
       .trim();
-    
+
     // Skip section headers and empty lines
-    if (!cleaned || 
+    if (!cleaned ||
         cleaned.length < 3 ||
         this.isSectionHeader(cleaned)) {
       return null;
     }
-    
+
     // Check if line contains quantity or food keywords
     const hasQuantity = /\d+/.test(cleaned);
     const hasUnit = this.hasUnitKeyword(cleaned);
     const hasFoodWords = this.hasFoodKeyword(cleaned);
-    
+
     // Accept if it has quantity with unit OR food keywords
     if ((hasQuantity && hasUnit) || hasFoodWords || /^\d+\s+[a-zA-ZäöüÄÖÜß]/.test(cleaned)) {
       return cleaned;
     }
-    
+
     return null;
   }
 
   private isSectionHeader(text: string): boolean {
     const lower = text.toLowerCase();
-    return lower.includes('für den') ||
-           lower.includes('für die') ||
-           lower.includes('zum würzen') ||
-           lower.includes('zubereitung') ||
-           lower.includes('portionen') ||
-           /^-{3,}/.test(text);
+    // Only skip pure separator lines or instruction lines
+    // Don't skip lines that contain "für den/die" as they contain ingredients
+    return /^-{3,}$/.test(text.trim()) ||  // Lines that are just dashes
+           /^={3,}$/.test(text.trim()) ||  // Lines that are just equals
+           lower === 'zubereitung' ||
+           lower === 'zubereitung:' ||
+           lower.startsWith('portionen:') ||
+           lower.startsWith('portion:');
   }
 
   private hasUnitKeyword(text: string): boolean {
