@@ -1,12 +1,22 @@
 // src/app/shared/components/article-item/article-item.component.scss
 
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .article-item {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
+    padding: 12px 8px 12px 12px;
     transition: all 0.2s ease;
     min-height: 56px;
     background-color: #ffffff;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 
     &.checked {
       background-color: #f5f5f5;
@@ -46,9 +56,9 @@
     }
   
     .article-icon {
-      font-size: 28px;
-      margin-right: 16px;
-      min-width: 40px;
+      font-size: 24px;
+      margin-right: 12px;
+      min-width: 32px;
       text-align: center;
       flex-shrink: 0;
     }
@@ -59,6 +69,8 @@
       flex-direction: column;
       justify-content: center;
       position: relative;
+      min-width: 0;
+      overflow: hidden;
   
       &.clickable {
         cursor: pointer;
@@ -75,6 +87,9 @@
           font-weight: 400;
           color: #212121;
           flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
   
           &.strikethrough {
             text-decoration: line-through;
@@ -136,8 +151,9 @@
     .article-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
+      gap: 2px;
+      flex-shrink: 1;
+      min-width: 0;
       transition: opacity 0.3s ease, visibility 0.3s ease;
   
       &.hidden-by-undo {
@@ -149,15 +165,19 @@
       .article-amount {
         background-color: var(--list-primary-color, #1a9edb);
         color: var(--list-contrast-color, white);
-        padding: 6px 8px;
-        border-radius: 15px;
-        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
         font-weight: 500;
         line-height: 1;
         display: inline-flex;
         align-items: center;
-        min-height: 20px;
+        min-height: 18px;
         transition: all 0.2s ease;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
   
         &.clickable, &.editable {
           cursor: pointer;
@@ -186,16 +206,18 @@
       }
   
       .info-button {
-        width: 50px;
+        width: 32px;
         height: 32px;
         margin: 0;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        
+        flex-shrink: 0;
+
         mat-icon {
           color: #757575;
-          font-size: 20px;
+          font-size: 18px;
           line-height: 1;
         }
       }
@@ -203,8 +225,15 @@
   
     .article-toggle {
       flex-shrink: 0;
-      margin-left: 8px;
+      margin-left: 4px;
+      margin-right: 4px;
       align-self: center;
+
+      // Scale down the toggle in edit mode
+      ::ng-deep .mdc-switch {
+        transform: scale(0.85);
+        transform-origin: center;
+      }
     }
   }
   

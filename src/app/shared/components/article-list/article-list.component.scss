@@ -1,11 +1,27 @@
 // ===============================================
-  // article-list.component.scss  
+  // article-list.component.scss
   // ===============================================
 
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
 .articles-list {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+
   .department-group {
     margin-bottom: 0;
-    
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
     &:not(:last-child) {
       border-bottom: 1px solid #e0e0e0;
     }

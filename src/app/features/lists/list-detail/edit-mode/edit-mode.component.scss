@@ -2,6 +2,15 @@
 // EDIT MODE COMPONENT STYLES
 // ===============================================
 
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 .edit-mode {
   flex: 1;
   display: flex;
@@ -68,9 +77,11 @@
   // === CONTENT CONTAINER ===
   .content-container {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     background-color: white;
-    padding-bottom: 160px; // Account for action buttons
+    padding-bottom: 180px; // Account for action buttons and tab bar
     -webkit-overflow-scrolling: touch;
   }
 
@@ -139,7 +150,7 @@
 // Medium screens (tablets)
 @media screen and (max-width: 768px) {
   .edit-mode .content-container {
-    padding-bottom: 160px;
+    padding-bottom: 180px;
   }
 
   .edit-actions {
@@ -174,7 +185,7 @@
   }
 
   .edit-mode .content-container {
-    padding-bottom: 150px;
+    padding-bottom: 170px;
   }
 
   .edit-actions {
@@ -203,7 +214,7 @@
   }
 
   .edit-mode .content-container {
-    padding-bottom: 140px;
+    padding-bottom: 160px;
   }
 
   .edit-actions {
