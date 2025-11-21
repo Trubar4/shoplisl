@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { Store } from '@ngrx/store';
 
 // Optimized component imports
 import { SearchDisambiguationComponent } from '../../../shared/components/search-disambiguation/search-disambiguation.component';
@@ -20,6 +21,11 @@ import { EditModeComponent } from './edit-mode/edit-mode.component';
 
 // Services and Models
 import { ShoppingList, Article, Department } from '../../../core/models';
+import { AppState } from '../../../state/app.state';
+import * as ListsActions from '../../../state/lists/lists.actions';
+import * as ArticlesActions from '../../../state/articles/articles.actions';
+import { selectAllLists, selectListById } from '../../../state/lists/lists.selectors';
+import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { DataService } from '../../../core/services/data.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
@@ -83,7 +89,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly dataService: DataService,
+    private readonly store: Store<AppState>,
+    private readonly dataService: DataService, // Keep for operations not yet in NgRx
     private readonly departmentService: DepartmentService,
     public readonly listUtils: ListUtilsService,
     private readonly snackBar: MatSnackBar,
@@ -94,7 +101,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly dialog: MatDialog
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
-    this.list$ = this.dataService.getLists().pipe(
+
+    // Use NgRx store selector for list data
+    this.list$ = this.store.select(selectAllLists).pipe(
       map(lists => lists.find(list => list.id === this.listId)),
       takeUntil(this.destroy$)
     );
@@ -110,12 +119,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    * Initializes shopping mode with "offen" filter by default.
    *
    * Key initialization steps:
+   * - Dispatches NgRx actions to load list and articles data
    * - Subscribes to list data updates
    * - Sets up article filtering pipelines
    * - Initializes search functionality
    * - Configures completion monitoring for celebration animation
    */
   ngOnInit(): void {
+    // Dispatch NgRx actions to load data
+    this.store.dispatch(ListsActions.loadLists());
+    this.store.dispatch(ArticlesActions.loadArticles());
+
     this.initializeComponent();
     this.setupSubscriptions();
     this.setupSearchDisambiguation();
@@ -251,17 +265,25 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    *
    */
   onArticleToggle(article: ArticleItemData): void {
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => {
-        if (success) {
-          this.triggerChangeDetection();
-        }
-      },
-      error: (error) => console.error('Toggle error:', error)
-    });
+    // Dispatch NgRx action to toggle article checked state
+    this.store.dispatch(ListsActions.toggleArticleChecked({
+      listId: this.listId,
+      articleId: article.id
+    }));
+    this.triggerChangeDetection();
   }
 
   onUndoArticleCompletion(article: ArticleItemData): void {
+    // Dispatch NgRx action to toggle article (undo)
+    this.store.dispatch(ListsActions.toggleArticleChecked({
+      listId: this.listId,
+      articleId: article.id
+    }));
+    this.triggerChangeDetection();
+  }
+
+  private originalOnUndoArticleCompletion_oldDataServiceCode(article: ArticleItemData): void {
+    // OLD CODE KEPT FOR REFERENCE - DELETE AFTER TESTING
     this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
       next: (success) => success && console.log('Undo successful for:', article.name),
       error: (error) => console.error('Undo error:', error)
@@ -273,22 +295,26 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onToggleArticleInList(article: ArticleItemData): void {
-    const action = article.isInList 
-      ? this.dataService.removeArticleFromList(this.listId, article.id)
-      : this.dataService.addArticleToList(this.listId, article.id);
-    
-    action.subscribe({
-      next: (success) => {
-        if (success) {
-          this.snackBar.open(
-            `${article.name} ${article.isInList ? 'entfernt' : 'hinzugefügt'}`, 
-            '', { duration: 1000 }
-          );
-          this.triggerChangeDetection();
-        }
-      },
-      error: (error) => console.error('Toggle list error:', error)
-    });
+    // Dispatch NgRx action to add or remove article from list
+    if (article.isInList) {
+      this.store.dispatch(ListsActions.removeArticleFromList({
+        listId: this.listId,
+        articleId: article.id
+      }));
+    } else {
+      this.store.dispatch(ListsActions.addArticleToList({
+        listId: this.listId,
+        articleId: article.id,
+        amount: ''
+      }));
+    }
+
+    // Optimistic UI update
+    this.snackBar.open(
+      `${article.name} ${article.isInList ? 'entfernt' : 'hinzugefügt'}`,
+      '', { duration: 1000 }
+    );
+    this.triggerChangeDetection();
   }
 
   onArticleInfo(article: ArticleItemData): void {
@@ -522,16 +548,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     if (!this.currentList) return;
 
     // Confirmation is handled by edit-mode component
-    this.dataService.deleteList(this.listId).subscribe({
-      next: (success) => {
-        this.snackBar.open(
-          success ? 'Liste gelöscht' : 'Fehler beim Löschen',
-          '', { duration: 1500 }
-        );
-        if (success) this.router.navigate(['/lists']);
-      },
-      error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 2000 })
-    });
+    // Dispatch NgRx action to delete list
+    this.store.dispatch(ListsActions.deleteList({ listId: this.listId }));
+
+    // Optimistic UI update
+    this.snackBar.open('Liste gelöscht', '', { duration: 1500 });
+    this.router.navigate(['/lists']);
   }
 
   // === UTILITY METHODS FOR TEMPLATE ===
@@ -593,7 +615,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
     const articlesWithState$ = combineLatest([
       this.list$,
-      this.dataService.getArticles(),
+      this.store.select(selectAllArticles), // Use NgRx store for articles
       this.filterService.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()),
       filter$
     ]).pipe(
@@ -606,7 +628,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     );
 
     return combineLatest([
-      articlesWithState$, 
+      articlesWithState$,
       this.departmentService.getDepartments()
     ]).pipe(
       map(([articles, departments]) => {
@@ -791,12 +813,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private editArticleAmount(article: ArticleItemData): void {
     const currentAmount = article.listAmount || article.amount || '';
     const newAmount = prompt(`Menge für ${article.name}:`, currentAmount);
-    
+
     if (newAmount !== null) {
-      this.dataService.updateListItemAmount(this.listId, article.id, newAmount.trim()).subscribe({
-        next: () => this.snackBar.open('Menge aktualisiert', '', { duration: 1000 }),
-        error: (error) => console.error('Error updating amount:', error)
-      });
+      // Dispatch NgRx action to update article amount
+      this.store.dispatch(ListsActions.updateArticleAmount({
+        listId: this.listId,
+        articleId: article.id,
+        amount: newAmount.trim()
+      }));
+
+      // Optimistic UI feedback
+      this.snackBar.open('Menge aktualisiert', '', { duration: 1000 });
     }
   }
 
@@ -908,10 +935,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   debugArticleDepartments(): void {
-    this.dataService.getArticles().subscribe(articles => {
+    // Use NgRx store to get articles
+    this.store.select(selectAllArticles).pipe(take(1)).subscribe(articles => {
       const problematic = articles.filter(a => !a.departmentId || a.departmentId === '');
       console.log('Articles without departments:', problematic.length);
-      
+
       problematic.forEach(article => {
         console.log(`${article.name}:`, {
           departmentId: article.departmentId,
