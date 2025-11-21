@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { of, BehaviorSubject, Subject, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { signal, ChangeDetectorRef } from '@angular/core';
+import { Store } from '@ngrx/store';
 
 import { ListDetailComponent } from './list-detail';
 import { DataService } from '../../../core/services/data.service';
@@ -38,6 +39,7 @@ import { MatDialog } from '@angular/material/dialog';
 
 describe('ListDetailComponent', () => {
   let component: ListDetailComponent;
+  let storeMock: any;
   let dataServiceMock: any;
   let departmentServiceMock: any;
   let listUtilsMock: any;
@@ -93,6 +95,22 @@ describe('ListDetailComponent', () => {
 
   beforeEach(() => {
     // Create mocks
+    // NgRx Store mock
+    storeMock = {
+      select: vi.fn((selector: any) => {
+        // Mock selectAllLists
+        if (selector.toString().includes('selectAllLists') || selector === 'selectAllLists') {
+          return of([testList]);
+        }
+        // Mock selectAllArticles
+        if (selector.toString().includes('selectAllArticles') || selector === 'selectAllArticles') {
+          return of(testArticles);
+        }
+        return of([]);
+      }),
+      dispatch: vi.fn()
+    };
+
     dataServiceMock = {
       getLists: vi.fn(() => of([testList])),
       getArticles: vi.fn(() => of(testArticles)),
@@ -217,6 +235,7 @@ describe('ListDetailComponent', () => {
     component = new ListDetailComponent(
       activatedRouteMock as any,
       routerMock as any,
+      storeMock as Store<any>,
       dataServiceMock as DataService,
       departmentServiceMock as DepartmentService,
       listUtilsMock as ListUtilsService,

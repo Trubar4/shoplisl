@@ -1,0 +1,200 @@
+import { createReducer, on } from '@ngrx/store';
+import { EntityAdapter, createEntityAdapter } from '@ngrx/entity';
+import { ShoppingList } from '../../core/models';
+import { ListsState, initialListsState } from './lists.state';
+import * as ListsActions from './lists.actions';
+
+/**
+ * Entity adapter for shopping lists
+ * Provides standardized methods for managing list collection
+ */
+export const listsAdapter: EntityAdapter<ShoppingList> = createEntityAdapter<ShoppingList>({
+  selectId: (list: ShoppingList) => list.id,
+  sortComparer: (a: ShoppingList, b: ShoppingList) =>
+    b.updatedAt.getTime() - a.updatedAt.getTime(), // Most recently updated first
+});
+
+/**
+ * Initial state using entity adapter
+ */
+const initialState: ListsState = listsAdapter.getInitialState(initialListsState);
+
+/**
+ * Lists reducer
+ * Handles all list-related state changes
+ */
+export const listsReducer = createReducer(
+  initialState,
+
+  // ========================================
+  // Load Lists
+  // ========================================
+
+  on(ListsActions.loadLists, (state): ListsState => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+
+  on(ListsActions.loadListsSuccess, (state, { lists }): ListsState =>
+    listsAdapter.setAll(lists, {
+      ...state,
+      loading: false,
+      error: null,
+      lastSync: new Date(),
+    })
+  ),
+
+  on(ListsActions.loadListsFailure, (state, { error }): ListsState => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // ========================================
+  // Load Single List
+  // ========================================
+
+  on(ListsActions.loadList, (state): ListsState => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+
+  on(ListsActions.loadListSuccess, (state, { list }): ListsState =>
+    listsAdapter.upsertOne(list, {
+      ...state,
+      loading: false,
+      error: null,
+    })
+  ),
+
+  on(ListsActions.loadListFailure, (state, { error }): ListsState => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // ========================================
+  // Create List
+  // ========================================
+
+  on(ListsActions.createList, (state): ListsState => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+
+  on(ListsActions.createListSuccess, (state, { list }): ListsState =>
+    listsAdapter.addOne(list, {
+      ...state,
+      loading: false,
+      error: null,
+      selectedListId: list.id, // Auto-select newly created list
+    })
+  ),
+
+  on(ListsActions.createListFailure, (state, { error }): ListsState => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // ========================================
+  // Update List
+  // ========================================
+
+  on(ListsActions.updateList, (state): ListsState => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+
+  on(ListsActions.updateListSuccess, (state, { list }): ListsState =>
+    listsAdapter.upsertOne(list, {
+      ...state,
+      loading: false,
+      error: null,
+    })
+  ),
+
+  on(ListsActions.updateListFailure, (state, { error }): ListsState => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // ========================================
+  // Delete List
+  // ========================================
+
+  on(ListsActions.deleteList, (state): ListsState => ({
+    ...state,
+    loading: true,
+    error: null,
+  })),
+
+  on(ListsActions.deleteListSuccess, (state, { listId }): ListsState =>
+    listsAdapter.removeOne(listId, {
+      ...state,
+      loading: false,
+      error: null,
+      selectedListId: state.selectedListId === listId ? null : state.selectedListId,
+    })
+  ),
+
+  on(ListsActions.deleteListFailure, (state, { error }): ListsState => ({
+    ...state,
+    loading: false,
+    error,
+  })),
+
+  // ========================================
+  // Article Operations - Success Only
+  // These operations are optimistic updates
+  // ========================================
+
+  on(
+    ListsActions.addArticleToListSuccess,
+    ListsActions.removeArticleFromListSuccess,
+    ListsActions.toggleArticleCheckedSuccess,
+    ListsActions.updateArticleAmountSuccess,
+    ListsActions.updateDepartmentOrderSuccess,
+    (state, { list }): ListsState =>
+      listsAdapter.upsertOne(list, {
+        ...state,
+        loading: false,
+        error: null,
+      })
+  ),
+
+  on(
+    ListsActions.addArticleToListFailure,
+    ListsActions.removeArticleFromListFailure,
+    ListsActions.toggleArticleCheckedFailure,
+    ListsActions.updateArticleAmountFailure,
+    ListsActions.updateDepartmentOrderFailure,
+    (state, { error }): ListsState => ({
+      ...state,
+      loading: false,
+      error,
+    })
+  ),
+
+  // ========================================
+  // UI State
+  // ========================================
+
+  on(ListsActions.selectList, (state, { listId }): ListsState => ({
+    ...state,
+    selectedListId: listId,
+  })),
+
+  on(ListsActions.clearError, (state): ListsState => ({
+    ...state,
+    error: null,
+  }))
+);
+
+// Export state type
+export type { ListsState };

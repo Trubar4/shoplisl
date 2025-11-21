@@ -6,10 +6,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Store } from '@ngrx/store';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, take } from 'rxjs/operators';
 
-import { DataService } from '../../../core/services/data.service';
+import { AppState } from '../../../state/app.state';
+import * as ArticlesActions from '../../../state/articles/articles.actions';
+import * as ListsActions from '../../../state/lists/lists.actions';
+import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { Article, ShoppingList } from '../../../core/models';
 import { ArticleFormComponent, ArticleFormData } from '../../../shared/components/article-form/article-form.component';
 
@@ -36,7 +40,7 @@ export class EditArticleComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private dataService: DataService,
+    private store: Store<AppState>,
     private router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar
@@ -49,18 +53,18 @@ export class EditArticleComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.dataService.getArticle(articleId)
+    // Dispatch load action
+    this.store.dispatch(ArticlesActions.loadArticles());
+
+    // Get article from NgRx store
+    this.store.select(selectAllArticles)
       .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (article) => {
-            this.article = article || undefined;
-            this.isLoading = false;
-          },
-        error: (error) => {
-          console.error('Error loading article:', error);
-          this.article = undefined;;
-          this.isLoading = false;
-          this.snackBar.open('Fehler beim Laden', 'OK', { duration: 3000 });
+      .subscribe(articles => {
+        this.article = articles.find(a => a.id === articleId);
+        this.isLoading = false;
+
+        if (!this.article) {
+          console.warn('Article not found:', articleId);
         }
       });
   }
@@ -75,8 +79,7 @@ export class EditArticleComponent implements OnInit, OnDestroy {
 
     this.isSaving = true;
 
-    const updatedArticle = {
-      ...this.article,
+    const changes: Partial<Article> = {
       name: formData.name,
       amount: formData.amount || undefined,
       notes: formData.notes || undefined,
@@ -84,20 +87,16 @@ export class EditArticleComponent implements OnInit, OnDestroy {
       departmentId: formData.departmentId || undefined
     };
 
-    this.dataService.updateArticle(this.article.id, updatedArticle)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          this.isSaving = false;
-          this.snackBar.open('Artikel erfolgreich aktualisiert', 'OK', { duration: 2000 });
-          this.onBack();
-        },
-        error: (error) => {
-          this.isSaving = false;
-          console.error('Error updating article:', error);
-          this.snackBar.open('Fehler beim Aktualisieren', 'OK', { duration: 3000 });
-        }
-      });
+    // Dispatch NgRx action to update article
+    this.store.dispatch(ArticlesActions.updateArticle({
+      articleId: this.article.id,
+      changes
+    }));
+
+    // Optimistic UI update
+    this.isSaving = false;
+    this.snackBar.open('Artikel erfolgreich aktualisiert', 'OK', { duration: 2000 });
+    this.onBack();
   }
 
   onDelete(): void {
@@ -107,40 +106,31 @@ export class EditArticleComponent implements OnInit, OnDestroy {
       `Möchten Sie "${this.article.name}" wirklich löschen? ` +
       `Der Artikel wird auch aus allen Listen entfernt.`
     );
-    
+
     if (confirmed) {
       this.isDeleting = true;
 
-      this.dataService.deleteArticle(this.article.id)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.isDeleting = false;
-            this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
-            // ✨ FIXED: Use smart navigation like onBack() instead of always going to /articles
-            this.navigateAfterDelete();
-          },
-          error: (error) => {
-            this.isDeleting = false;
-            console.error('Error deleting article:', error);
-            this.snackBar.open('Fehler beim Löschen', 'OK', { duration: 3000 });
-          }
-        });
+      // Dispatch NgRx action to delete article with cleanup
+      this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId: this.article.id }));
+
+      // Optimistic UI update
+      this.isDeleting = false;
+      this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
+      this.navigateAfterDelete();
     }
   }
 
   onRemoveFromList(list: ShoppingList): void {
     if (!this.article) return;
 
-    this.dataService.removeArticleFromList(list.id, this.article.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(success => {
-        if (success) {
-          this.snackBar.open(`Aus "${list.name}" entfernt`, 'OK', { duration: 2000 });
-        } else {
-          this.snackBar.open('Fehler beim Entfernen', 'OK', { duration: 3000 });
-        }
-      });
+    // Dispatch NgRx action to remove article from list
+    this.store.dispatch(ListsActions.removeArticleFromList({
+      listId: list.id,
+      articleId: this.article.id
+    }));
+
+    // Optimistic UI update
+    this.snackBar.open(`Aus "${list.name}" entfernt`, 'OK', { duration: 2000 });
   }
 
   onCancel(): void {

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { map, debounceTime, distinctUntilChanged, takeUntil, take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -13,9 +13,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Store } from '@ngrx/store';
 
-import { Article } from '../../../core/models';
-import { DataService } from '../../../core/services/data.service';
+import { Article, ShoppingList } from '../../../core/models';
+import { AppState } from '../../../state/app.state';
+import * as ArticlesActions from '../../../state/articles/articles.actions';
+import { selectAllArticles } from '../../../state/articles/articles.selectors';
+import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
@@ -57,14 +61,14 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   
   constructor(
-    private dataService: DataService,
+    private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {
-    // Combine articles with search query for filtering
+    // Combine articles with search query for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
-      this.dataService.getArticles(),
+      this.store.select(selectAllArticles),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
@@ -74,7 +78,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
         if (!query.trim()) {
           return articles.sort((a, b) => a.name.localeCompare(b.name));
         }
-        
+
         return articles
           .filter(article =>
             article.name.toLowerCase().includes(query.toLowerCase().trim())
@@ -84,7 +88,10 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     );
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // Dispatch load action to populate NgRx store
+    this.store.dispatch(ArticlesActions.loadArticles());
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -271,25 +278,31 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   private onSwipeDelete(articleId: string): void {
-    // Find the article to get its name
-    this.dataService.getArticles().pipe(takeUntil(this.destroy$)).subscribe(articles => {
+    // Find the article from NgRx store
+    this.store.select(selectAllArticles).pipe(take(1)).subscribe(articles => {
       const article = articles.find(a => a.id === articleId);
       if (!article) return;
-      
+
       // Reset swipe immediately
       this.resetSwipe(articleId);
-      
+
       // Check if article is active in any lists first
-      this.dataService.getListsWithActiveArticle(articleId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(activeInLists => {
-          if (activeInLists.length > 0) {
-            const listNames = activeInLists.map(list => list.name).join(', ');
-            this.showActiveInListsDialog(article.name, listNames);
-          } else {
-            this.showDeleteConfirmation(article);
-          }
+      // Get lists from store and filter for those with active article
+      this.store.select(selectAllLists).pipe(take(1)).subscribe(lists => {
+        const activeInLists = lists.filter(list => {
+          // Check if article is in list and not checked
+          const hasArticle = list.articleIds.includes(articleId);
+          const isNotChecked = !list.itemStates?.[articleId]?.isChecked;
+          return hasArticle && isNotChecked;
         });
+
+        if (activeInLists.length > 0) {
+          const listNames = activeInLists.map(list => list.name).join(', ');
+          this.showActiveInListsDialog(article.name, listNames);
+        } else {
+          this.showDeleteConfirmation(article);
+        }
+      });
     });
   }
 
@@ -333,16 +346,11 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   private performDelete(article: Article): void {
-    this.dataService.deleteArticleAndCleanupLists(article.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(result => {
-        if (result.success) {
-          this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
-        } else if (result.activeInLists) {
-          this.snackBar.open('Artikel ist noch in aktiven Listen', 'OK', { duration: 3000 });
-        } else {
-          this.snackBar.open(result.error || 'Fehler beim Löschen', 'OK', { duration: 3000 });
-        }
-      });
+    // Dispatch NgRx action to delete article with cleanup
+    this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId: article.id }));
+
+    // Optimistic UI update - show success message immediately
+    // Effect will handle the actual deletion and any errors
+    this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
   }
 }
