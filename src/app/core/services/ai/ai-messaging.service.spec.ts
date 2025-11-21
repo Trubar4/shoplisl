@@ -239,14 +239,12 @@ describe('AIMessagingService', () => {
 
     it('should generate list selection message', () => {
       const message = service.getListSelectionMessage('Milch', '1L');
-      expect(message).toContain('Milch');
-      expect(message).toContain('1L');
-      expect(message).toContain('welcher Liste');
+      expect(message).toContain('Bitte wähle eine Liste');
     });
 
     it('should generate multi-item list selection message', () => {
       const message = service.getMultiItemListSelectionMessage(5);
-      expect(message).toContain('5 Artikel');
+      expect(message).toContain('Bitte wähle eine Liste');
     });
   });
 

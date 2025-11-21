@@ -114,7 +114,7 @@ describe('DataService', () => {
     });
 
     describe('moveArticlesBetweenLists', () => {
-      it('should use batch operations to add and check articles', (done) => {
+      it('should use batch operations to add and check articles', async () => {
         const articleIds = ['article1', 'article2', 'article3'];
         const sourceListId = 'source-list';
         const targetListId = 'target-list';
@@ -123,61 +123,56 @@ describe('DataService', () => {
         listsRepoSpy.addMultipleArticlesToList.mockReturnValue(of(true));
         listsRepoSpy.markMultipleArticlesAsChecked.mockReturnValue(of(true));
 
-        service.moveArticlesBetweenLists(articleIds, sourceListId, targetListId).subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
+        const result = await firstValueFrom(service.moveArticlesBetweenLists(articleIds, sourceListId, targetListId));
 
-          // Verify batch add was called ONCE with all articles
-          expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledTimes(1);
-          expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledWith(targetListId, articleIds);
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
 
-          // Verify batch check was called ONCE with all articles
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledTimes(1);
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledWith(sourceListId, articleIds);
+        // Verify batch add was called ONCE with all articles
+        expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledTimes(1);
+        expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledWith(targetListId, articleIds);
 
-          done();
-        });
+        // Verify batch check was called ONCE with all articles
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledTimes(1);
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledWith(sourceListId, articleIds);
       });
 
-      it('should handle empty article array', (done) => {
-        service.moveArticlesBetweenLists([], 'source', 'target').subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
+      it('should handle empty article array', async () => {
+        const result = await firstValueFrom(service.moveArticlesBetweenLists([], 'source', 'target'));
 
-          // Should not call repository methods
-          expect(listsRepoSpy.addMultipleArticlesToList).not.toHaveBeenCalled();
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).not.toHaveBeenCalled();
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
 
-          done();
-        });
+        // Should not call repository methods
+        expect(listsRepoSpy.addMultipleArticlesToList).not.toHaveBeenCalled();
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).not.toHaveBeenCalled();
       });
 
-      it('should handle errors during add operation', (done) => {
+      it('should handle errors during add operation', async () => {
         const articleIds = ['article1', 'article2'];
         listsRepoSpy.addMultipleArticlesToList.mockReturnValue(throwError(() => new Error('Add failed')));
+        listsRepoSpy.markMultipleArticlesAsChecked.mockReturnValue(of(true));
 
-        service.moveArticlesBetweenLists(articleIds, 'source', 'target').subscribe(result => {
-          expect(result.success).toBe(false);
-          expect(result.errors.length).toBeGreaterThan(0);
-          expect(result.errors[0]).toContain('Failed to add articles');
-          done();
-        });
+        const result = await firstValueFrom(service.moveArticlesBetweenLists(articleIds, 'source', 'target'));
+
+        expect(result.success).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]).toContain('Failed to add articles');
       });
 
-      it('should handle errors during check operation', (done) => {
+      it('should handle errors during check operation', async () => {
         const articleIds = ['article1', 'article2'];
         listsRepoSpy.addMultipleArticlesToList.mockReturnValue(of(true));
         listsRepoSpy.markMultipleArticlesAsChecked.mockReturnValue(throwError(() => new Error('Check failed')));
 
-        service.moveArticlesBetweenLists(articleIds, 'source', 'target').subscribe(result => {
-          expect(result.success).toBe(false);
-          expect(result.errors.length).toBeGreaterThan(0);
-          expect(result.errors[0]).toContain('Failed to mark articles');
-          done();
-        });
+        const result = await firstValueFrom(service.moveArticlesBetweenLists(articleIds, 'source', 'target'));
+
+        expect(result.success).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]).toContain('Failed to mark articles');
       });
 
-      it('should process operations sequentially (add then check)', (done) => {
+      it('should process operations sequentially (add then check)', async () => {
         const articleIds = ['article1', 'article2'];
         const callOrder: string[] = [];
 
@@ -191,99 +186,90 @@ describe('DataService', () => {
           return of(true);
         });
 
-        service.moveArticlesBetweenLists(articleIds, 'source', 'target').subscribe(() => {
-          // Verify operations happened in correct order
-          expect(callOrder).toEqual(['add', 'check']);
-          done();
-        });
+        await firstValueFrom(service.moveArticlesBetweenLists(articleIds, 'source', 'target'));
+
+        // Verify operations happened in correct order
+        expect(callOrder).toEqual(['add', 'check']);
       });
     });
 
     describe('markMultipleArticlesAsDone', () => {
-      it('should use batch operation to mark articles as checked', (done) => {
+      it('should use batch operation to mark articles as checked', async () => {
         const articleIds = ['article1', 'article2', 'article3'];
         const listId = 'test-list';
 
         listsRepoSpy.markMultipleArticlesAsChecked.mockReturnValue(of(true));
 
-        service.markMultipleArticlesAsDone(listId, articleIds).subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
+        const result = await firstValueFrom(service.markMultipleArticlesAsDone(listId, articleIds));
 
-          // Verify batch operation was called ONCE
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledTimes(1);
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledWith(listId, articleIds);
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
 
-          done();
-        });
+        // Verify batch operation was called ONCE
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledTimes(1);
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledWith(listId, articleIds);
       });
 
-      it('should handle empty article array', (done) => {
-        service.markMultipleArticlesAsDone('list1', []).subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
-          expect(listsRepoSpy.markMultipleArticlesAsChecked).not.toHaveBeenCalled();
-          done();
-        });
+      it('should handle empty article array', async () => {
+        const result = await firstValueFrom(service.markMultipleArticlesAsDone('list1', []));
+
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
+        expect(listsRepoSpy.markMultipleArticlesAsChecked).not.toHaveBeenCalled();
       });
 
-      it('should handle errors gracefully', (done) => {
+      it('should handle errors gracefully', async () => {
         listsRepoSpy.markMultipleArticlesAsChecked.mockReturnValue(
           throwError(() => new Error('Mark failed'))
         );
 
-        service.markMultipleArticlesAsDone('list1', ['article1']).subscribe(result => {
-          expect(result.success).toBe(false);
-          expect(result.errors.length).toBeGreaterThan(0);
-          expect(result.errors[0]).toContain('Failed to mark articles');
-          done();
-        });
+        const result = await firstValueFrom(service.markMultipleArticlesAsDone('list1', ['article1']));
+
+        expect(result.success).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]).toContain('Failed to mark articles');
       });
     });
 
     describe('removeMultipleArticlesFromList', () => {
-      it('should use batch operation to remove articles', (done) => {
+      it('should use batch operation to remove articles', async () => {
         const articleIds = ['article1', 'article2', 'article3'];
         const listId = 'test-list';
 
         listsRepoSpy.removeMultipleArticlesFromList.mockReturnValue(of(true));
 
-        service.removeMultipleArticlesFromList(listId, articleIds).subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
+        const result = await firstValueFrom(service.removeMultipleArticlesFromList(listId, articleIds));
 
-          // Verify batch operation was called ONCE
-          expect(listsRepoSpy.removeMultipleArticlesFromList).toHaveBeenCalledTimes(1);
-          expect(listsRepoSpy.removeMultipleArticlesFromList).toHaveBeenCalledWith(listId, articleIds);
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
 
-          done();
-        });
+        // Verify batch operation was called ONCE
+        expect(listsRepoSpy.removeMultipleArticlesFromList).toHaveBeenCalledTimes(1);
+        expect(listsRepoSpy.removeMultipleArticlesFromList).toHaveBeenCalledWith(listId, articleIds);
       });
 
-      it('should handle empty article array', (done) => {
-        service.removeMultipleArticlesFromList('list1', []).subscribe(result => {
-          expect(result.success).toBe(true);
-          expect(result.errors).toEqual([]);
-          expect(listsRepoSpy.removeMultipleArticlesFromList).not.toHaveBeenCalled();
-          done();
-        });
+      it('should handle empty article array', async () => {
+        const result = await firstValueFrom(service.removeMultipleArticlesFromList('list1', []));
+
+        expect(result.success).toBe(true);
+        expect(result.errors).toEqual([]);
+        expect(listsRepoSpy.removeMultipleArticlesFromList).not.toHaveBeenCalled();
       });
 
-      it('should handle errors gracefully', (done) => {
+      it('should handle errors gracefully', async () => {
         listsRepoSpy.removeMultipleArticlesFromList.mockReturnValue(
           throwError(() => new Error('Remove failed'))
         );
 
-        service.removeMultipleArticlesFromList('list1', ['article1']).subscribe(result => {
-          expect(result.success).toBe(false);
-          expect(result.errors.length).toBeGreaterThan(0);
-          expect(result.errors[0]).toContain('Failed to remove articles');
-          done();
-        });
+        const result = await firstValueFrom(service.removeMultipleArticlesFromList('list1', ['article1']));
+
+        expect(result.success).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]).toContain('Failed to remove articles');
       });
     });
   });
 });
 
 // Import additional dependencies needed for batch operation tests
-import { of, throwError } from 'rxjs';
+import { of, throwError, firstValueFrom } from 'rxjs';
