@@ -30,6 +30,7 @@ import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { isDevMode } from '@angular/core';
 import { reducers } from './app/state/app.state';
 import { ListsEffects } from './app/state/lists/lists.effects';
+import { ArticlesEffects } from './app/state/articles/articles.effects';
 
 
 const firebaseConfig = {
@@ -50,7 +51,7 @@ bootstrapApplication(AppComponent, {
     provideFirestore(() => getFirestore()),
     { provide: FIREBASE_OPTIONS, useValue: firebaseConfig },
     provideStore(reducers),
-    provideEffects([ListsEffects]),
+    provideEffects([ListsEffects, ArticlesEffects]),
     provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() })
 ]
 }).catch(err => console.error(err));
