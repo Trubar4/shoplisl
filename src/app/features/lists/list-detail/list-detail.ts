@@ -209,6 +209,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private setEditFilter(filter: EditFilter): void {
+    console.log('🔄 Switching edit filter to:', filter);
     this.currentEditFilter.set(filter);
     this.filterService.setEditFilter(filter);
     this.isFabExpanded.set(false);
@@ -643,21 +644,28 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       }
     } else {
       // EDIT MODE - Show ALL articles, not just those in the list
+      console.log('🔍 Edit mode filtering:', { filter, query, totalArticles: allArticles.length });
       articles = allArticles.map(article => this.mapToArticleItemData(article, list));
+      console.log('📊 Before filter:', { total: articles.length, inList: articles.filter(a => a.isInList).length, notInList: articles.filter(a => !a.isInList).length });
 
       // When searching, skip filter to show all matching results
       if (!query?.trim()) {
         switch (filter as EditFilter) {
           case 'gelistet':
             articles = articles.filter(a => a.isInList);
+            console.log('✅ Filtered to GELISTET:', articles.length);
             break;
           case 'fehlend':
             articles = articles.filter(a => !a.isInList);
+            console.log('✅ Filtered to FEHLEND:', articles.length);
             break;
           case 'alle':
             // Show all articles - no filtering
+            console.log('✅ Showing ALL:', articles.length);
             break;
         }
+      } else {
+        console.log('🔍 Skipping filter because search query exists:', query);
       }
     }
   
