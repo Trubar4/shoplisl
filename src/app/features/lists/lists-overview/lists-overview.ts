@@ -12,10 +12,14 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { Store } from '@ngrx/store';
 
 import { ShoppingList } from '../../../core/models';
-import { DataService } from '../../../core/services/data.service';
-
+import { AppState } from '../../../state/app.state';
+import * as ListsActions from '../../../state/lists/lists.actions';
+import * as ArticlesActions from '../../../state/articles/articles.actions';
+import { selectAllLists } from '../../../state/lists/lists.selectors';
+import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { ConnectionService } from '../../../core/services/connection.service';
 
 @Component({
@@ -60,23 +64,24 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
 
-  
+
   constructor(
-    private dataService: DataService,
+    private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
     private connectionService: ConnectionService
   ) {
     // Setup filtered and sorted lists observable WITH validation
+    // Now using NgRx store selectors instead of DataService
     this.lists$ = combineLatest([
-      this.dataService.getLists(),
-      this.dataService.getArticles(), // Add articles to get valid IDs
+      this.store.select(selectAllLists),
+      this.store.select(selectAllArticles), // Add articles to get valid IDs
       this.searchQuery$.pipe(debounceTime(300), distinctUntilChanged()),
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
         const validIds = new Set(articles.map(a => a.id));
-        
+
         // First clean the lists data
         const cleanedLists = lists.map(list => ({
           ...list,
@@ -88,22 +93,22 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
               .filter(([articleId]) => validIds.has(articleId))
           )
         }));
-        
+
         // Then apply search filter
         let filteredLists = cleanedLists;
         if (query?.trim()) {
-          filteredLists = cleanedLists.filter(list => 
+          filteredLists = cleanedLists.filter(list =>
             list.name.toLowerCase().includes(query.toLowerCase())
           );
         }
-        
+
         // Finally apply sorting
         switch (sortMode) {
           case 'alphabetical':
             return [...filteredLists].sort((a, b) => a.name.localeCompare(b.name));
           case 'lastChanged':
           default:
-            return [...filteredLists].sort((a, b) => 
+            return [...filteredLists].sort((a, b) =>
               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
             );
         }
@@ -112,11 +117,13 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Only force refresh when online - preserve offline changes when offline
+    // Load data from NgRx store (effects will call Firebase services)
+    // Only dispatch load actions when online - preserve offline changes when offline
     if (this.connectionService?.isOnline()) {
-      this.dataService.forceRefreshLists().subscribe();
+      this.store.dispatch(ListsActions.loadLists());
+      this.store.dispatch(ArticlesActions.loadArticles());
     }
-    
+
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
   }
@@ -334,11 +341,11 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   }
 
   private onSwipeDelete(listId: string): void {
-    // Find the list to get its name
-    this.dataService.getLists().subscribe(lists => {
+    // Find the list to get its name from NgRx store
+    this.store.select(selectAllLists).subscribe(lists => {
       const list = lists.find(l => l.id === listId);
       if (!list) return;
-      
+
       // Show confirmation snackbar with undo option
       const snackBarRef = this.snackBar.open(
         `Liste "${list.name}" löschen?`,
@@ -349,49 +356,33 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
           verticalPosition: 'bottom'
         }
       );
-      
+
       // Reset swipe immediately
       this.resetSwipe(listId);
-      
+
       // Handle delete confirmation
       snackBarRef.onAction().subscribe(() => {
         this.confirmDeleteList(listId, list.name);
       });
-      
+
       // Auto-reset if no action taken
       snackBarRef.afterDismissed().subscribe((info) => {
         if (!info.dismissedByAction) {
           // User didn't confirm, reset is already done
         }
       });
-    });
+    }).unsubscribe(); // Unsubscribe immediately after getting the value
   }
 
   private confirmDeleteList(listId: string, listName: string): void {
-    this.dataService.deleteList(listId).subscribe({
-      next: (success) => {
-        if (success) {
-          this.snackBar.open(`Liste "${listName}" gelöscht`, '', { 
-            duration: 2000,
-            horizontalPosition: 'center',
-            verticalPosition: 'bottom'
-          });
-        } else {
-          this.snackBar.open('Fehler beim Löschen', '', { 
-            duration: 2000,
-            horizontalPosition: 'center',
-            verticalPosition: 'bottom'
-          });
-        }
-      },
-      error: (error) => {
-        console.error('Error deleting list:', error);
-        this.snackBar.open('Fehler beim Löschen', '', { 
-          duration: 2000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
-        });
-      }
+    // Dispatch NgRx action to delete list (effect will handle Firebase call)
+    this.store.dispatch(ListsActions.deleteList({ listId }));
+
+    // Show optimistic success message (effect will handle errors)
+    this.snackBar.open(`Liste "${listName}" gelöscht`, '', {
+      duration: 2000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom'
     });
   }
 
@@ -474,9 +465,9 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   private handleVisibilityChange(): void {
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        // Page became visible, refresh data
+        // Page became visible, refresh data from NgRx store
         setTimeout(() => {
-          this.dataService.forceRefreshLists().subscribe();
+          this.store.dispatch(ListsActions.loadLists());
         }, 100);
       }
     });
