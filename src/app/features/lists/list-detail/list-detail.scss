@@ -119,22 +119,37 @@
     flex-direction: column;
     min-height: 0; // Important for flexbox scrolling
 
-    .search-selection-container {
+    // Search and Button Row
+    .search-button-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
-      padding: 8px 16px;
       background-color: white;
       border-bottom: 1px solid #e0e0e0;
 
       app-search-disambiguation {
         flex: 1;
         min-width: 0;
+
+        // Override component's internal padding for the search container
+        ::ng-deep .search-container {
+          padding: 8px 0 8px 16px; // No right padding
+          border-bottom: none;
+        }
+
+        // Override component's margins for the disambiguation dropdown
+        ::ng-deep .search-disambiguation {
+          margin: 8px 0 8px -8px; // Extend to full width
+          width: calc(100vw - 16px); // Full width minus small margin
+          max-width: calc(100vw - 16px);
+        }
       }
 
+      // Auswählen button
       .selection-button {
         flex-shrink: 0;
         height: 40px;
+        margin: 12px 16px 8px 0; // Align with search input (4px deeper)
         border-radius: 20px;
         font-size: 14px;
         font-weight: 500;
@@ -147,6 +162,18 @@
         &:hover {
           transform: translateY(-1px);
           box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+        }
+      }
+
+      // Exit selection mode button (X button)
+      .exit-selection-button {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        margin: 12px 16px 8px 0; // Same alignment as selection button
+
+        .mat-icon {
+          font-size: 24px;
         }
       }
     }
