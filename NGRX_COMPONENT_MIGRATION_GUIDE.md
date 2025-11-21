@@ -400,12 +400,12 @@ Based on analysis, here are the components that should be migrated:
 
 ### High Priority (Heavy State Management)
 1. ✅ **ListsOverviewComponent** - MIGRATED (ee1bb70)
-2. ⬜ **ListDetailComponent** (925 lines) - Most complex, highest ROI
-3. ⬜ **ArticleOverviewComponent** - Search, filter, delete operations
+2. ⬜ **ListDetailComponent** (925 lines) - Most complex, partially migrated (ea33b40)
+3. ✅ **ArticleOverviewComponent** - MIGRATED (088031e) - Search, filter, delete operations
 
 ### Medium Priority
-4. ⬜ **AddArticleComponent** - Create with duplicate validation
-5. ⬜ **EditArticleComponent** - Update operations
+4. ✅ **AddArticleComponent** - MIGRATED (088031e) - Create with duplicate validation
+5. ✅ **EditArticleComponent** - MIGRATED (088031e) - Update operations
 6. ⬜ **AddListComponent** - Simple CRUD
 
 ### Lower Priority
