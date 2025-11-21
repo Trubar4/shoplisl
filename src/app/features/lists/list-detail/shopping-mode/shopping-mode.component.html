@@ -27,8 +27,8 @@
     </app-article-list>
   </div>
 
-  <!-- Action Bar (visible only in selection mode) -->
-  <div class="selection-action-bar" *ngIf="isSelectionMode">
+  <!-- Action Bar (visible only in selection mode and when no dialog is open) -->
+  <div class="selection-action-bar" *ngIf="isSelectionMode && !isDialogOpen">
     <button
       mat-stroked-button
       class="action-button"

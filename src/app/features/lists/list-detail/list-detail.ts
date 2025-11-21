@@ -60,6 +60,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   readonly isLoading = signal<boolean>(true);
   readonly isFabExpanded = signal<boolean>(false);
   readonly isSelectionMode = signal<boolean>(false);
+  readonly isDialogOpen = signal<boolean>(false);
   
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -307,6 +308,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   onMoveSelectedArticles(articleIds: string[]): void {
     if (!this.currentList || articleIds.length === 0) return;
 
+    // Set dialog open state
+    this.isDialogOpen.set(true);
+
     // Open list picker dialog
     const dialogRef = this.dialog.open(ListPickerDialogComponent, {
       width: '400px',
@@ -318,6 +322,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     });
 
     dialogRef.afterClosed().subscribe((result: ListPickerDialogResult | null) => {
+      // Reset dialog open state
+      this.isDialogOpen.set(false);
+
       if (result) {
         this.dataService.moveArticlesBetweenLists(
           articleIds,

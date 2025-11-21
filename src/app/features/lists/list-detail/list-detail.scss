@@ -121,7 +121,7 @@
 
     .search-selection-container {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
       padding: 8px 16px;
       background-color: white;
@@ -135,6 +135,7 @@
       .selection-button {
         flex-shrink: 0;
         height: 40px;
+        margin-top: 4px; // Align with search input field
         border-radius: 20px;
         font-size: 14px;
         font-weight: 500;

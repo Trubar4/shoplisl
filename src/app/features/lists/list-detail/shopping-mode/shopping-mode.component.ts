@@ -55,6 +55,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   @Input() searchQuery: string = '';
   @Input() shoppingFilter: ShoppingFilter = 'offen';
   @Input() isSelectionMode: boolean = false;
+  @Input() isDialogOpen: boolean = false;
   @Input() selectionService!: ArticleSelectionService;
 
   // === OUTPUTS ===
