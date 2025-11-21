@@ -10,15 +10,6 @@
     </div>
     <span class="spacer"></span>
 
-    <!-- Exit Selection Mode Button -->
-    <button
-      *ngIf="currentMode() === 'shopping' && isSelectionMode()"
-      mat-icon-button
-      class="exit-selection-button"
-      (click)="exitSelectionMode()"
-      aria-label="Auswahl beenden">
-      <mat-icon>close</mat-icon>
-    </button>
 
     <!-- Mode Toggle Buttons (hidden during selection mode) -->
     <div class="mode-toggle" *ngIf="!isSelectionMode()">
@@ -47,8 +38,8 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search Container (full width for disambiguation dropdown) -->
-    <div class="search-container">
+    <!-- Search and Button Row -->
+    <div class="search-button-row">
       <app-search-disambiguation
         [(searchQuery)]="searchQuery"
         [disambiguation]="searchDisambiguation$ | async"
@@ -57,17 +48,27 @@
         (selectOption)="onSelectSearchDisambiguation($event)"
         (clearDisambiguation)="onClearSearchDisambiguation()">
       </app-search-disambiguation>
-    </div>
 
-    <!-- Selection Button (positioned separately to allow full-width search) -->
-    <button
-      *ngIf="!isSelectionMode()"
-      mat-raised-button
-      class="selection-button"
-      (click)="enterSelectionMode()"
-      [style.background-color]="getCurrentListColor()">
-      Auswählen
-    </button>
+      <!-- Auswählen Button (shown when NOT in selection mode) -->
+      <button
+        *ngIf="!isSelectionMode()"
+        mat-raised-button
+        class="selection-button"
+        (click)="enterSelectionMode()"
+        [style.background-color]="getCurrentListColor()">
+        Auswählen
+      </button>
+
+      <!-- Exit Selection Mode Button (shown when IN selection mode) -->
+      <button
+        *ngIf="isSelectionMode()"
+        mat-icon-button
+        class="exit-selection-button"
+        (click)="exitSelectionMode()"
+        aria-label="Auswahl beenden">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
 
     <!-- Shopping Mode Component -->
     <app-shopping-mode
