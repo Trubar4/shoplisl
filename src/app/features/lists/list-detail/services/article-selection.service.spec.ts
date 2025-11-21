@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ArticleSelectionService } from './article-selection.service';
+import { firstValueFrom, skip, take } from 'rxjs';
 
 describe('ArticleSelectionService', () => {
   let service: ArticleSelectionService;
@@ -16,11 +17,9 @@ describe('ArticleSelectionService', () => {
   });
 
   describe('Selection Mode', () => {
-    it('should start with selection mode disabled', (done) => {
-      service.isSelectionMode$.subscribe(isActive => {
-        expect(isActive).toBe(false);
-        done();
-      });
+    it('should start with selection mode disabled', async () => {
+      const isActive = await firstValueFrom(service.isSelectionMode$);
+      expect(isActive).toBe(false);
     });
 
     it('should enter selection mode', () => {
@@ -47,11 +46,9 @@ describe('ArticleSelectionService', () => {
   });
 
   describe('Article Selection', () => {
-    it('should start with no selections', (done) => {
-      service.selectedArticleIds$.subscribe(ids => {
-        expect(ids.size).toBe(0);
-        done();
-      });
+    it('should start with no selections', async () => {
+      const ids = await firstValueFrom(service.selectedArticleIds$);
+      expect(ids.size).toBe(0);
     });
 
     it('should select an article', () => {
@@ -135,39 +132,55 @@ describe('ArticleSelectionService', () => {
   });
 
   describe('Observable Emissions', () => {
-    it('should emit hasSelection based on selection state', (done) => {
-      let emissionCount = 0;
-      const expectedValues = [false, true, false];
-
-      service.hasSelection$.subscribe(hasSelection => {
-        expect(hasSelection).toBe(expectedValues[emissionCount]);
-        emissionCount++;
-
-        if (emissionCount === expectedValues.length) {
-          done();
-        }
+    it('should emit hasSelection based on selection state', async () => {
+      const emissions: boolean[] = [];
+      const subscription = service.hasSelection$.subscribe(hasSelection => {
+        emissions.push(hasSelection);
       });
 
+      // Initial emission: false
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[0]).toBe(false);
+
+      // Select an article: should emit true
       service.selectArticle('article1');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[1]).toBe(true);
+
+      // Clear selection: should emit false
       service.clearSelection();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[2]).toBe(false);
+
+      subscription.unsubscribe();
     });
 
-    it('should emit selectedCount when selection changes', (done) => {
-      let emissionCount = 0;
-      const expectedValues = [0, 1, 2, 0];
-
-      service.selectedCount$.subscribe(count => {
-        expect(count).toBe(expectedValues[emissionCount]);
-        emissionCount++;
-
-        if (emissionCount === expectedValues.length) {
-          done();
-        }
+    it('should emit selectedCount when selection changes', async () => {
+      const emissions: number[] = [];
+      const subscription = service.selectedCount$.subscribe(count => {
+        emissions.push(count);
       });
 
+      // Initial emission: 0
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[0]).toBe(0);
+
+      // Select article1: should emit 1
       service.selectArticle('article1');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[1]).toBe(1);
+
+      // Select article2: should emit 2
       service.selectArticle('article2');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[2]).toBe(2);
+
+      // Clear selection: should emit 0
       service.clearSelection();
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(emissions[3]).toBe(0);
+
+      subscription.unsubscribe();
     });
   });
 });

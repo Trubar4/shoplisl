@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Router, ActivatedRoute } from '@angular/router';
 import { of, BehaviorSubject, Subject, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { signal, ChangeDetectorRef } from '@angular/core';
 
 import { ListDetailComponent } from './list-detail';
@@ -9,8 +10,10 @@ import { DepartmentService } from '../../../core/services/department.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 import { DisambiguationService } from '../../../core/services/ai/disambiguation';
 import { ListFilterService } from './services/list-filter.service';
+import { ArticleSelectionService } from './services/article-selection.service';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 /**
  * List Detail Component Tests
@@ -40,6 +43,8 @@ describe('ListDetailComponent', () => {
   let listUtilsMock: any;
   let disambiguationMock: any;
   let filterServiceMock: any;
+  let selectionServiceMock: any;
+  let dialogMock: any;
   let snackBarMock: any;
   let routerMock: any;
   let activatedRouteMock: any;
@@ -146,6 +151,43 @@ describe('ListDetailComponent', () => {
       _searchQuerySubject: searchQuerySubject
     };
 
+    const selectionModeSubject = new BehaviorSubject<boolean>(false);
+    const selectedArticleIdsSubject = new BehaviorSubject<Set<string>>(new Set());
+
+    selectionServiceMock = {
+      isSelectionMode$: selectionModeSubject.asObservable(),
+      selectedArticleIds$: selectedArticleIdsSubject.asObservable(),
+      selectedCount$: selectedArticleIdsSubject.asObservable().pipe(map((ids: Set<string>) => ids.size)),
+      hasSelection$: selectedArticleIdsSubject.asObservable().pipe(map((ids: Set<string>) => ids.size > 0)),
+      get isSelectionMode() { return selectionModeSubject.value; },
+      get selectedArticleIds() { return new Set(selectedArticleIdsSubject.value); },
+      get selectedCount() { return selectedArticleIdsSubject.value.size; },
+      enterSelectionMode: vi.fn(() => selectionModeSubject.next(true)),
+      exitSelectionMode: vi.fn(() => {
+        selectionModeSubject.next(false);
+        selectedArticleIdsSubject.next(new Set());
+      }),
+      toggleSelectionMode: vi.fn(),
+      toggleArticle: vi.fn(),
+      selectArticle: vi.fn(),
+      deselectArticle: vi.fn(),
+      isArticleSelected: vi.fn(() => false),
+      selectAll: vi.fn(),
+      deselectAll: vi.fn(),
+      clearSelection: vi.fn(() => selectedArticleIdsSubject.next(new Set())),
+      areAllSelected: vi.fn(() => false),
+      areSomeSelected: vi.fn(() => false),
+      toggleAll: vi.fn(),
+      _selectionModeSubject: selectionModeSubject,
+      _selectedArticleIdsSubject: selectedArticleIdsSubject
+    };
+
+    dialogMock = {
+      open: vi.fn(() => ({
+        afterClosed: () => of(null)
+      }))
+    };
+
     snackBarMock = {
       open: vi.fn()
     };
@@ -181,7 +223,9 @@ describe('ListDetailComponent', () => {
       snackBarMock as MatSnackBar,
       cdrMock as ChangeDetectorRef,
       disambiguationMock as DisambiguationService,
-      filterServiceMock as ListFilterService
+      filterServiceMock as ListFilterService,
+      selectionServiceMock as ArticleSelectionService,
+      dialogMock as MatDialog
     );
   });
 
@@ -229,7 +273,9 @@ describe('ListDetailComponent', () => {
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
         disambiguationMock as DisambiguationService,
-        filterServiceMock as ListFilterService
+        filterServiceMock as ListFilterService,
+        selectionServiceMock as ArticleSelectionService,
+        dialogMock as MatDialog
       );
 
       newComponent.ngOnInit();
@@ -261,7 +307,9 @@ describe('ListDetailComponent', () => {
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
         disambiguationMock as DisambiguationService,
-        filterServiceMock as ListFilterService
+        filterServiceMock as ListFilterService,
+        selectionServiceMock as ArticleSelectionService,
+        dialogMock as MatDialog
       );
 
       newComponent.ngOnInit();
@@ -754,7 +802,9 @@ describe('ListDetailComponent', () => {
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
         disambiguationMock as DisambiguationService,
-        filterServiceMock as ListFilterService
+        filterServiceMock as ListFilterService,
+        selectionServiceMock as ArticleSelectionService,
+        dialogMock as MatDialog
       );
 
       newComponent.ngOnInit();
@@ -966,7 +1016,9 @@ describe('ListDetailComponent', () => {
         snackBarMock as MatSnackBar,
         cdrMock as ChangeDetectorRef,
         disambiguationMock as DisambiguationService,
-        filterServiceMock as ListFilterService
+        filterServiceMock as ListFilterService,
+        selectionServiceMock as ArticleSelectionService,
+        dialogMock as MatDialog
       );
 
       newComponent.ngOnInit();
