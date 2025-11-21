@@ -35,7 +35,7 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.loadArticlesSuccess, (state, { articles }): ArticlesState =>
+  on(ArticlesActions.loadArticlesSuccess, (state: ArticlesState, { articles }: { articles: Article[] }): ArticlesState =>
     articlesAdapter.setAll(articles, {
       ...state,
       loading: false,
@@ -44,7 +44,7 @@ export const articlesReducer = createReducer(
     })
   ),
 
-  on(ArticlesActions.loadArticlesFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.loadArticlesFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -60,7 +60,7 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.loadArticleSuccess, (state, { article }): ArticlesState =>
+  on(ArticlesActions.loadArticleSuccess, (state: ArticlesState, { article }: { article: Article }): ArticlesState =>
     articlesAdapter.upsertOne(article, {
       ...state,
       loading: false,
@@ -68,7 +68,7 @@ export const articlesReducer = createReducer(
     })
   ),
 
-  on(ArticlesActions.loadArticleFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.loadArticleFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -84,7 +84,7 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.createArticleSuccess, (state, { article }): ArticlesState =>
+  on(ArticlesActions.createArticleSuccess, (state: ArticlesState, { article }: { article: Article }): ArticlesState =>
     articlesAdapter.addOne(article, {
       ...state,
       loading: false,
@@ -93,7 +93,7 @@ export const articlesReducer = createReducer(
     })
   ),
 
-  on(ArticlesActions.createArticleFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.createArticleFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -111,7 +111,7 @@ export const articlesReducer = createReducer(
 
   on(
     ArticlesActions.createArticleWithCheckSuccess,
-    (state, { article }): ArticlesState =>
+    (state: ArticlesState, { article }: { article: Article; isDuplicate: boolean }): ArticlesState =>
       articlesAdapter.addOne(article, {
         ...state,
         loading: false,
@@ -120,7 +120,7 @@ export const articlesReducer = createReducer(
       })
   ),
 
-  on(ArticlesActions.createArticleWithCheckFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.createArticleWithCheckFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -136,7 +136,7 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.updateArticleSuccess, (state, { article }): ArticlesState =>
+  on(ArticlesActions.updateArticleSuccess, (state: ArticlesState, { article }: { article: Article }): ArticlesState =>
     articlesAdapter.upsertOne(article, {
       ...state,
       loading: false,
@@ -144,7 +144,7 @@ export const articlesReducer = createReducer(
     })
   ),
 
-  on(ArticlesActions.updateArticleFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.updateArticleFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -160,7 +160,7 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.deleteArticleSuccess, (state, { articleId }): ArticlesState =>
+  on(ArticlesActions.deleteArticleSuccess, (state: ArticlesState, { articleId }: { articleId: string }): ArticlesState =>
     articlesAdapter.removeOne(articleId, {
       ...state,
       loading: false,
@@ -169,7 +169,7 @@ export const articlesReducer = createReducer(
     })
   ),
 
-  on(ArticlesActions.deleteArticleFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.deleteArticleFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -187,7 +187,7 @@ export const articlesReducer = createReducer(
 
   on(
     ArticlesActions.deleteArticleWithCleanupSuccess,
-    (state, { articleId }): ArticlesState =>
+    (state: ArticlesState, { articleId }: { articleId: string }): ArticlesState =>
       articlesAdapter.removeOne(articleId, {
         ...state,
         loading: false,
@@ -196,7 +196,7 @@ export const articlesReducer = createReducer(
       })
   ),
 
-  on(ArticlesActions.deleteArticleWithCleanupFailure, (state, { error }): ArticlesState => ({
+  on(ArticlesActions.deleteArticleWithCleanupFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
     loading: false,
     error,
@@ -214,7 +214,7 @@ export const articlesReducer = createReducer(
   // UI State
   // ========================================
 
-  on(ArticlesActions.selectArticle, (state, { articleId }): ArticlesState => ({
+  on(ArticlesActions.selectArticle, (state: ArticlesState, { articleId }: { articleId: string | null }): ArticlesState => ({
     ...state,
     selectedArticleId: articleId,
   })),
