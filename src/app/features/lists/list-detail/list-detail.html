@@ -47,9 +47,8 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search and Selection Button Container -->
-    <div class="search-selection-container">
-      <!-- Search Component -->
+    <!-- Search Container (full width for disambiguation dropdown) -->
+    <div class="search-container">
       <app-search-disambiguation
         [(searchQuery)]="searchQuery"
         [disambiguation]="searchDisambiguation$ | async"
@@ -58,17 +57,17 @@
         (selectOption)="onSelectSearchDisambiguation($event)"
         (clearDisambiguation)="onClearSearchDisambiguation()">
       </app-search-disambiguation>
-
-      <!-- Selection Mode Button -->
-      <button
-        *ngIf="!isSelectionMode()"
-        mat-raised-button
-        class="selection-button"
-        (click)="enterSelectionMode()"
-        [style.background-color]="getCurrentListColor()">
-        Auswählen
-      </button>
     </div>
+
+    <!-- Selection Button (positioned separately to allow full-width search) -->
+    <button
+      *ngIf="!isSelectionMode()"
+      mat-raised-button
+      class="selection-button"
+      (click)="enterSelectionMode()"
+      [style.background-color]="getCurrentListColor()">
+      Auswählen
+    </button>
 
     <!-- Shopping Mode Component -->
     <app-shopping-mode

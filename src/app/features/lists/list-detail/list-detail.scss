@@ -118,37 +118,39 @@
     display: flex;
     flex-direction: column;
     min-height: 0; // Important for flexbox scrolling
+    position: relative; // For absolute positioning of selection button
 
-    .search-selection-container {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+    // Search container (full width for disambiguation dropdown)
+    .search-container {
       padding: 8px 16px;
+      padding-right: 96px; // Make space for selection button
       background-color: white;
       border-bottom: 1px solid #e0e0e0;
 
       app-search-disambiguation {
-        flex: 1;
-        min-width: 0;
+        width: 100%; // Full width allows disambiguation to expand fully
       }
+    }
 
-      .selection-button {
-        flex-shrink: 0;
-        height: 40px;
-        margin-top: 4px; // Align with search input field
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 500;
-        text-transform: none;
-        padding: 0 20px;
-        color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transition: all 0.2s ease;
+    // Selection button (positioned separately from search)
+    .selection-button {
+      position: absolute;
+      top: 16px; // Aligned with search input field (8px padding + 8px offset)
+      right: 16px;
+      height: 40px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: none;
+      padding: 0 20px;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: all 0.2s ease;
+      z-index: 10; // Above search but below dialogs
 
-        &:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 3px 6px rgba(0,0,0,0.25);
-        }
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.25);
       }
     }
 
