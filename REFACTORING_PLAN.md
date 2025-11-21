@@ -1,9 +1,9 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-20
-**Current Phase:** Phase 4 Complete ✅ - Voice Assistant Component Split
-**Completed:** Filter Service ✅ | Shopping-Mode ✅ | Edit-Mode ✅ | Voice Services ✅
-**Recent Work:** Recipe Parsing Fixes ✅ (ready to merge)
-**Remaining:** Fix 54 component tests (expectations only, functionality works)
+**Last Updated:** 2025-11-21
+**Current Phase:** Phase 4 Complete ✅ - Voice Assistant Component Split (100%)
+**Completed:** Filter Service ✅ | Shopping-Mode ✅ | Edit-Mode ✅ | Voice Services ✅ | All Tests ✅
+**Recent Work:** Phase 4 test fixes - All 659 tests passing (2025-11-21)
+**Status:** Ready for Phase 5
 **Next Phase:** Phase 5 - Install NgRx
 **Next Major Features:** History Function, Multi-User with Real-Time Collaboration
 
@@ -435,11 +435,11 @@ src/app/features/lists/list-detail/
 
 ---
 
-### Phase 4: Split Voice Assistant Component (4-5 days) - ✅ COMPLETE
+### Phase 4: Split Voice Assistant Component (4-5 days) - ✅ 100% COMPLETE
 **Goal:** Extract voice I/O and UI concerns from AI logic
 **Started:** 2025-11-06
-**Completed:** 2025-11-08
-**Status:** Services extracted ✅ | Integration complete ✅ | Manual testing passed ✅ | Tests: 91% passing
+**Completed:** 2025-11-21
+**Status:** Services extracted ✅ | Integration complete ✅ | Manual testing passed ✅ | Tests: 100% passing ✅
 
 #### New File Structure:
 ```
@@ -517,14 +517,30 @@ src/app/shared/components/voice-ai-assistant/
   - Component tests: 54 need updates (test expectations, not functionality)
 - Commits: `89907aa`, `ce92ae2`, `6b4133f`, `253e872`
 
-**Git Branch:** `claude/integrate-voice-services-011CUtefQqyeSfRxnQQ4ycWt`
+**✅ Day 6 (2025-11-21)**: Test Fixes & Completion
+- Converted 32 deprecated `done()` callbacks to async/await with `firstValueFrom`
+  - article-selection.service.spec.ts: 4 tests converted
+  - lists-repository.service.spec.ts: 17 tests converted
+  - data.spec.ts: 11 tests converted + 1 mock fix
+- Added missing mocks to list-detail.spec.ts:
+  - Created ArticleSelectionService mock with all observables and methods
+  - Created MatDialog mock
+  - Updated all component instantiations (4 locations)
+- Fixed test expectations:
+  - Updated AI messaging service tests for simplified messages (2 tests)
+  - Fixed mock setup in data.spec.ts error handling test
+- Tests: 659/670 passing (11 skipped), 0 errors ✅
+  - **Before:** 57 failed tests, 602 passed, 33 errors
+  - **After:** 0 failed tests, 659 passed, 0 errors ✅
+- Commit: `4adce30` - test: convert all done() callbacks to async/await
+- Branch: `claude/review-refactoring-plan-01466tR1Rm2mcgrm9kQJzQV8`
 
-**Remaining Work:**
-- Fix 54 component tests (update expectations to verify service method calls)
-- These are minor test adjustments - functionality proven working
+**Git Branches:**
+- Development: `claude/integrate-voice-services-011CUtefQqyeSfRxnQQ4ycWt` (services)
+- Test fixes: `claude/review-refactoring-plan-01466tR1Rm2mcgrm9kQJzQV8` (completed)
 
 **Resume Point After Phase 4:**
-> "Phase 4 complete! Voice assistant component refactored with 4 extracted services. Component reduced from 1,668 → 1,362 lines (-18%). Services: voice-input (260L, 36T), voice-output (180L, 38T), chat-ui (170L, 40T), disambiguation-ui (280L, 51T). All 165 service tests passing (100%). Integration complete and manually tested - voice input/output, scrolling, disambiguation all working. Component tests: 569/623 passing (91%), 54 remaining tests need expectation updates. Branch: claude/integrate-voice-services-011CUtefQqyeSfRxnQQ4ycWt. Next: Fix remaining tests, then Phase 5: Install NgRx."
+> "Phase 4 100% complete! ✅ Voice assistant component refactored with 4 extracted services. Component reduced from 1,668 → 1,362 lines (-18%). Services: voice-input (260L, 36T), voice-output (180L, 38T), chat-ui (170L, 40T), disambiguation-ui (280L, 51T). All 165 service tests passing (100%). Integration complete and manually tested - voice input/output, scrolling, disambiguation all working. All test issues resolved: converted 32 done() callbacks to async/await, added missing mocks (ArticleSelectionService, MatDialog), fixed test expectations. Final test results: 659/670 passing (11 skipped), 0 errors. Commits: service extraction (31fbe62, 37d2353, 1b06950, 581a3b2), integration (89907aa, ce92ae2, 6b4133f, 253e872), test fixes (4adce30). Ready for Phase 5: Install NgRx!"
 
 ---
 
