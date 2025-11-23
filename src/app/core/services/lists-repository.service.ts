@@ -8,6 +8,7 @@ import { FirebaseDataService } from './firebase-data.service';
 import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
+import { HistoryService } from './history.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,8 @@ export class ListsRepositoryService {
     private firebaseData: FirebaseDataService,
     private offlineSync: OfflineSyncService,
     private connectionService: ConnectionService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private historyService: HistoryService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -142,18 +144,24 @@ export class ListsRepositoryService {
     return this.firebaseData.getList(listId).pipe(
       map(list => {
         if (!list) return false;
-        
+
         const currentState = list.itemStates[articleId]?.isChecked || false;
-        this.logger.debug('data', `TOGGLE: ${articleId} currently ${currentState ? 'CHECKED' : 'UNCHECKED'}`);
-        
+        const newAction = currentState ? 'unchecked' : 'checked';
+        const currentAmount = list.itemStates[articleId]?.amount || '';
+
+        this.logger.debug('data', `TOGGLE: ${articleId} currently ${currentState ? 'CHECKED' : 'UNCHECKED'} -> ${newAction.toUpperCase()}`);
+
+        // Phase 6: Use HistoryService to create updated state with history tracking
+        const updatedItemState = this.historyService.createUpdatedItemState(
+          list.itemStates[articleId],
+          articleId,
+          newAction,
+          currentAmount
+        );
+
         const newItemStates = {
           ...list.itemStates,
-          [articleId]: {
-            ...list.itemStates[articleId],
-            articleId,
-            isChecked: !currentState,
-            checkedAt: new Date()
-          }
+          [articleId]: updatedItemState
         };
   
         if (!this.connectionService.isOnline()) {
@@ -346,20 +354,22 @@ export class ListsRepositoryService {
       map(list => {
         if (!list) return false;
 
-        // Update item states for all articles
+        // Update item states for all articles with history tracking
         const newItemStates = { ...list.itemStates };
-        const now = new Date();
 
         articleIds.forEach(articleId => {
           const currentState = newItemStates[articleId]?.isChecked || false;
           // Only update if not already checked
           if (!currentState) {
-            newItemStates[articleId] = {
-              ...newItemStates[articleId],
+            const currentAmount = newItemStates[articleId]?.amount || '';
+
+            // Phase 6: Use HistoryService to create updated state with history tracking
+            newItemStates[articleId] = this.historyService.createUpdatedItemState(
+              newItemStates[articleId],
               articleId,
-              isChecked: true,
-              checkedAt: now
-            };
+              'checked',
+              currentAmount
+            );
           }
         });
 
