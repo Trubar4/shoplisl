@@ -301,19 +301,19 @@ export class ListsRepositoryService {
           }
         });
 
-        if (!this.connectionService.isOnline()) {
-          // Update local state immediately
-          const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l =>
-            l.id === listId ? {
-              ...l,
-              articleIds: newArticleIds,
-              itemStates: newItemStates,
-              updatedAt: new Date()
-            } : l
-          );
-          this.firebaseData.updateLocalLists(updatedLists);
+        // Update local state immediately for optimistic UI
+        const currentLists = this.firebaseData.getCurrentLists();
+        const updatedLists = currentLists.map(l =>
+          l.id === listId ? {
+            ...l,
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: new Date()
+          } : l
+        );
+        this.firebaseData.updateLocalLists(updatedLists);
 
+        if (!this.connectionService.isOnline()) {
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -323,6 +323,7 @@ export class ListsRepositoryService {
             });
           }, `Add ${articleIds.length} articles to list ${listId}`);
         } else {
+          // Update Firebase
           this.firebaseData.updateListInFirebase(listId, {
             articleIds: newArticleIds,
             itemStates: newItemStates,
@@ -371,18 +372,18 @@ export class ListsRepositoryService {
           }
         });
 
-        if (!this.connectionService.isOnline()) {
-          // Update local state immediately
-          const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l =>
-            l.id === listId ? {
-              ...l,
-              itemStates: newItemStates,
-              updatedAt: new Date()
-            } : l
-          );
-          this.firebaseData.updateLocalLists(updatedLists);
+        // Update local state immediately for optimistic UI
+        const currentLists = this.firebaseData.getCurrentLists();
+        const updatedLists = currentLists.map(l =>
+          l.id === listId ? {
+            ...l,
+            itemStates: newItemStates,
+            updatedAt: new Date()
+          } : l
+        );
+        this.firebaseData.updateLocalLists(updatedLists);
 
+        if (!this.connectionService.isOnline()) {
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -391,6 +392,7 @@ export class ListsRepositoryService {
             });
           }, `Mark ${articleIds.length} articles as checked in list ${listId}`);
         } else {
+          // Update Firebase
           this.firebaseData.updateListInFirebase(listId, {
             itemStates: newItemStates,
             updatedAt: Timestamp.now()
@@ -477,19 +479,19 @@ export class ListsRepositoryService {
           delete newItemStates[articleId];
         });
 
-        if (!this.connectionService.isOnline()) {
-          // Update local state immediately
-          const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l =>
-            l.id === listId ? {
-              ...l,
-              articleIds: newArticleIds,
-              itemStates: newItemStates,
-              updatedAt: new Date()
-            } : l
-          );
-          this.firebaseData.updateLocalLists(updatedLists);
+        // Update local state immediately for optimistic UI
+        const currentLists = this.firebaseData.getCurrentLists();
+        const updatedLists = currentLists.map(l =>
+          l.id === listId ? {
+            ...l,
+            articleIds: newArticleIds,
+            itemStates: newItemStates,
+            updatedAt: new Date()
+          } : l
+        );
+        this.firebaseData.updateLocalLists(updatedLists);
 
+        if (!this.connectionService.isOnline()) {
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -499,6 +501,7 @@ export class ListsRepositoryService {
             });
           }, `Remove ${articleIds.length} articles from list ${listId}`);
         } else {
+          // Update Firebase
           this.firebaseData.updateListInFirebase(listId, {
             articleIds: newArticleIds,
             itemStates: newItemStates,
