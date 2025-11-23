@@ -75,8 +75,8 @@
               <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
             </div>
             <div class="article-stats" *ngIf="article.stats?.lastCheckedDate || article.stats?.lastAddedToListDate">
-              <app-date-chip *ngIf="article.stats.lastCheckedDate" [date]="article.stats.lastCheckedDate" type="checked" />
-              <app-date-chip *ngIf="article.stats.lastAddedToListDate" [date]="article.stats.lastAddedToListDate" type="added" />
+              <app-date-chip *ngIf="article.stats?.lastCheckedDate" [date]="article.stats.lastCheckedDate!" type="checked" />
+              <app-date-chip *ngIf="article.stats?.lastAddedToListDate" [date]="article.stats.lastAddedToListDate!" type="added" />
             </div>
             <div class="article-notes" *ngIf="article.notes">
               {{ article.notes }}

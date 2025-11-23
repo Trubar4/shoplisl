@@ -15,7 +15,6 @@ import { Store } from '@ngrx/store';
 import { Observable, Subject, combineLatest } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 
-import { ArticleListComponent, DepartmentGroup } from '../../../../shared/components/article-list/article-list.component';
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
 import { ShoppingList, Article, ListItemState } from '../../../../core/models';
 import { HistoryService } from '../../../../core/services/history.service';
@@ -35,7 +34,7 @@ import { selectCompletedArticlesFromList } from '../../../../state/lists/lists.s
 @Component({
   selector: 'app-history-mode',
   standalone: true,
-  imports: [CommonModule, ArticleListComponent],
+  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './history-mode.component.html',
   styleUrls: ['./history-mode.component.scss']
