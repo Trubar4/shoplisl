@@ -106,6 +106,7 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
               departmentId: article.departmentId,
               amount: state.amount || '',
               isChecked: state.isChecked,
+              isInList: true,
               checkedAt: state.checkedAt,
               checkedBy: state.checkedBy,
               history: state.history || []

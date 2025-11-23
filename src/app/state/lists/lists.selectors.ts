@@ -157,10 +157,7 @@ export const selectCompletedArticlesFromList = (listId: string) =>
 
     return Object.entries(list.itemStates)
       .filter(([_, state]) => state.isChecked)
-      .map(([articleId, state]) => ({
-        articleId,
-        ...state
-      }))
+      .map(([_, state]) => state)
       .sort((a, b) => {
         // Sort by checkedAt date, most recent first
         const dateA = a.checkedAt?.getTime() || 0;
@@ -176,8 +173,5 @@ export const selectUncompletedArticlesFromList = (listId: string) =>
 
     return Object.entries(list.itemStates)
       .filter(([_, state]) => !state.isChecked)
-      .map(([articleId, state]) => ({
-        articleId,
-        ...state
-      }));
+      .map(([_, state]) => state);
   });
