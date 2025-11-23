@@ -21,6 +21,13 @@ import * as ArticlesActions from '../../../state/articles/articles.actions';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { DateChipComponent } from '../../../shared/components/date-chip/date-chip.component';
+import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+
+/** Article with statistics */
+export interface ArticleWithStats extends Article {
+  stats?: ArticleStats;
+}
 
 @Component({
   selector: 'app-article-overview',
@@ -36,50 +43,60 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     MatInputModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    DateChipComponent
   ],
   templateUrl: './article-overview.html',
   styleUrls: ['./article-overview.scss']
 })
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
   searchQuery$ = new BehaviorSubject<string>('');
-  filteredArticles$: Observable<Article[]>;
+  filteredArticles$: Observable<ArticleWithStats[]>;
   searchQuery = '';
-  
+
   // Swipe state management (same as lists-overview)
-  swipeStates: { [articleId: string]: { 
-    isSwipeActive: boolean; 
+  swipeStates: { [articleId: string]: {
+    isSwipeActive: boolean;
     swipeDistance: number;
     startX: number;
     currentX: number;
     startY: number;
     currentY: number;
   } } = {};
-  
+
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
   private destroy$ = new Subject<void>();
-  
+
   constructor(
     private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private articleStatsService: ArticleStatsService
   ) {
-    // Combine articles with search query for filtering using NgRx store
+    // Combine articles with stats and search query for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
       this.store.select(selectAllArticles),
+      this.articleStatsService.getAllArticleStats(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
       )
     ]).pipe(
-      map(([articles, query]) => {
+      map(([articles, statsMap, query]) => {
+        // Merge articles with their stats
+        const articlesWithStats: ArticleWithStats[] = articles.map(article => ({
+          ...article,
+          stats: statsMap.get(article.id)
+        }));
+
+        // Filter by search query
         if (!query.trim()) {
-          return articles.sort((a, b) => a.name.localeCompare(b.name));
+          return articlesWithStats.sort((a, b) => a.name.localeCompare(b.name));
         }
 
-        return articles
+        return articlesWithStats
           .filter(article =>
             article.name.toLowerCase().includes(query.toLowerCase().trim())
           )
