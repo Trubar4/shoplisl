@@ -129,8 +129,8 @@ export class FirebaseDataService {
       // Articles listener
       const articlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
       const articlesQuery = query(articlesRef, orderBy('name'));
-      
-      this.articlesUnsubscribe = onSnapshot(articlesQuery, 
+
+      this.articlesUnsubscribe = onSnapshot(articlesQuery,
         (snapshot) => {
           this.logger.debug('data', `Fresh articles received: ${snapshot.size}`);
           const articles: Article[] = [];
@@ -150,7 +150,7 @@ export class FirebaseDataService {
               usageCount: data['usageCount'] || 0
             });
           });
-          
+
           this.articlesSubject.next(articles);
           this.cacheService.cacheArticles(articles);
         },
@@ -163,7 +163,7 @@ export class FirebaseDataService {
       // Lists listener
       const listsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
       const listsQuery = query(listsRef, orderBy('name'));
-      
+
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
@@ -177,13 +177,13 @@ export class FirebaseDataService {
               icon: data['icon'],
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
-              itemStates: data['itemStates'] || {},
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
             });
           });
-          
+
           this.listsSubject.next(lists);
           this.cacheService.cacheLists(lists);
         },
@@ -196,6 +196,29 @@ export class FirebaseDataService {
       this.logger.error('data', 'Error setting up listeners', error);
       this.loadCachedData();
     }
+  }
+
+  /**
+   * Convert itemStates from Firestore format to application format
+   * Converts Firestore Timestamps to JavaScript Dates in checkedAt and history events
+   */
+  private convertItemStatesFromFirestore(firestoreItemStates: any): { [articleId: string]: any } {
+    const itemStates: any = {};
+
+    for (const [articleId, state] of Object.entries(firestoreItemStates || {})) {
+      const itemState = state as any;
+
+      itemStates[articleId] = {
+        ...itemState,
+        checkedAt: itemState.checkedAt?.toDate ? itemState.checkedAt.toDate() : itemState.checkedAt,
+        history: (itemState.history || []).map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp?.toDate ? event.timestamp.toDate() : event.timestamp
+        }))
+      };
+    }
+
+    return itemStates;
   }
 
   private cleanupListeners(): void {
@@ -264,12 +287,12 @@ export class FirebaseDataService {
   getList(id: string): Observable<ShoppingList | undefined> {
     const currentLists = this.listsSubject.value;
     const localList = currentLists.find(l => l.id === id);
-    
+
     if (localList) {
       this.logger.debug('data', `Found list "${localList.name}" in local state`);
       return of(localList);
     }
-  
+
     if (this.connectionService.isOnline() && this.firestore) {
       this.logger.debug('data', `List ${id} not in local state, fetching from Firebase`);
       return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
@@ -283,7 +306,7 @@ export class FirebaseDataService {
               icon: data['icon'],
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
-              itemStates: data['itemStates'] || {},
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
@@ -297,7 +320,7 @@ export class FirebaseDataService {
         })
       );
     }
-  
+
     this.logger.warn('data', `List ${id} not found (offline)`);
     return of(undefined);
   }
