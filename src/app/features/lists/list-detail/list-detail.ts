@@ -18,6 +18,7 @@ import { FilterFabComponent } from '../../../shared/components/filter-fab/filter
 import { ArticleItemData } from '../../../shared/components/article-item/article-item.component';
 import { ShoppingModeComponent } from './shopping-mode/shopping-mode.component';
 import { EditModeComponent } from './edit-mode/edit-mode.component';
+import { HistoryModeComponent } from './history-mode/history-mode.component';
 
 // Services and Models
 import { ShoppingList, Article, Department } from '../../../core/models';
@@ -50,7 +51,8 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
     SearchDisambiguationComponent,
     FilterFabComponent,
     ShoppingModeComponent,
-    EditModeComponent
+    EditModeComponent,
+    HistoryModeComponent
   ],
   providers: [ArticleSelectionService],
   changeDetection: ChangeDetectionStrategy.OnPush,

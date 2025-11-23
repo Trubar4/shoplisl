@@ -38,8 +38,8 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search and Button Row -->
-    <div class="search-button-row">
+    <!-- Search and Button Row (hidden in history mode) -->
+    <div class="search-button-row" *ngIf="currentShoppingFilter() !== 'erledigt'">
       <app-search-disambiguation
         [(searchQuery)]="searchQuery"
         [disambiguation]="searchDisambiguation$ | async"
@@ -70,8 +70,18 @@
       </button>
     </div>
 
-    <!-- Shopping Mode Component -->
+    <!-- History Mode Component (shown when filter is 'erledigt') -->
+    <app-history-mode
+      *ngIf="currentShoppingFilter() === 'erledigt'"
+      [list]="currentList"
+      [searchQuery]="searchQuery"
+      (articleRestore)="onArticleToggle($event)"
+      (articleInfo)="onArticleInfo($event)">
+    </app-history-mode>
+
+    <!-- Shopping Mode Component (shown for other filters) -->
     <app-shopping-mode
+      *ngIf="currentShoppingFilter() !== 'erledigt'"
       [list]="currentList"
       [departmentGroups]="(departmentGroups$ | async) || []"
       [searchQuery]="searchQuery"

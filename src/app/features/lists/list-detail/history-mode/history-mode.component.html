@@ -1,0 +1,59 @@
+<div class="history-mode">
+  <!-- Header with count -->
+  <div class="history-header">
+    <h3 class="history-title">Erledigte Artikel</h3>
+    <span class="completed-count">{{ completedCount() }}</span>
+  </div>
+
+  <!-- Empty state -->
+  @if ((completedArticles$ | async)?.length === 0) {
+    <div class="empty-state">
+      @if (searchQuery) {
+        <p class="empty-message">Keine erledigten Artikel gefunden für "{{ searchQuery }}"</p>
+      } @else {
+        <p class="empty-message">Noch keine erledigten Artikel</p>
+        <p class="empty-hint">Artikel erscheinen hier sobald sie abgehakt werden</p>
+      }
+    </div>
+  }
+
+  <!-- Completed Articles List -->
+  @if ((completedArticles$ | async)?.length ?? 0 > 0) {
+    <div class="completed-articles-list">
+      @for (article of (completedArticles$ | async); track article.id) {
+        <div class="completed-article-item" (click)="onArticleClick(article)">
+          <div class="article-main">
+            <!-- Article Icon & Name -->
+            <div class="article-header">
+              @if (article.icon) {
+                <span class="article-icon">{{ article.icon }}</span>
+              }
+              <span class="article-name">{{ article.name }}</span>
+              @if (article.amount) {
+                <span class="article-amount">{{ article.amount }}</span>
+              }
+            </div>
+
+            <!-- Check Info -->
+            <div class="check-info">
+              <span class="check-date">
+                📅 {{ formatDate(article.checkedAt) }}
+              </span>
+              <span class="check-time">
+                🕐 {{ formatTime(article.checkedAt) }}
+              </span>
+              <span class="check-user">
+                👤 {{ getUserDisplayName(article.checkedBy) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Action Hint -->
+          <div class="restore-hint">
+            <span class="hint-text">Tippen zum Wiederherstellen</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
