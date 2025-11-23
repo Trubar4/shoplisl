@@ -1,10 +1,10 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-21
-**Current Phase:** Phase 5 - Install NgRx (100% Complete) ✅
-**Completed:** Phases 0-5 ✅ | NgRx ✅ | States ✅ | 112 Tests ✅ | 5 Components Migrated ✅
-**Recent Work:** Article components migrated to NgRx (Add, Edit, Overview) - (2025-11-21)
-**Status:** 754/782 tests passing ✅ | Build successful ✅ | 5 components using NgRx ✅
-**Next Phase:** Phase 6 - History Feature (optional: finish ListDetail tests first)
+**Last Updated:** 2025-11-23
+**Current Phase:** Phase 6 - Prepare for History Feature (Planning Complete) ✅
+**Completed:** Phases 0-5 ✅ | NgRx ✅ | States ✅ | 112 Tests ✅ | 5 Components Migrated ✅ | All Tests Fixed ✅
+**Recent Work:** History Feature planning + Test fixes - (2025-11-23)
+**Status:** 771/782 tests passing ✅ (0 failing!) | Build successful ✅ | Ready for Phase 6 implementation
+**Next Phase:** Phase 6 - History Feature Implementation (2-3 weeks)
 **Next Major Features:** History Function → Multi-User Authentication → Real-Time Collaboration
 
 ---
@@ -699,50 +699,131 @@ See `NGRX_COMPONENT_MIGRATION_GUIDE.md` for step-by-step migration pattern.
 
 ---
 
-### Phase 6: Prepare for History Feature (2-3 days)
-**Goal:** Add data models and services for tick-off history
+### Phase 6: History Feature (2-3 weeks) - ✅ PLANNING COMPLETE
+**Goal:** Track article check-off history and usage statistics
+**Started:** 2025-11-23
+**Status:** Planning complete, ready for implementation ✅
 
-#### Model Changes:
+#### Planning Session (2025-11-23):
+- ✅ Requirements gathering & analysis
+- ✅ Answered all strategic questions (History first vs Multi-user)
+- ✅ Created comprehensive implementation plan (HISTORY_FEATURE_PLAN.md)
+- ✅ Designed data model with 365-day retention
+- ✅ Created Firebase dev environment setup guide
+- ✅ Created backup/restore scripts for safe development
+- ✅ Fixed all 17 failing ListDetail tests (771/782 passing)
+- ✅ Committed test fixes (fefcc0a)
+
+#### Key Decisions Made:
+1. **Implement History BEFORE Multi-User** (Lower risk, immediate value)
+2. **Storage**: In-line in `ListItemState.history[]` array (simpler, per-list scope)
+3. **Retention**: 365 days, then auto-cleanup
+4. **Scope**: Per-list only (not global across lists)
+5. **Deleted Articles**: Restore with original ID (Firestore allows ID reuse)
+6. **User Tracking**: Prepare `checkedBy` field now, use 'shared-shoplisl-user' until Phase 7
+
+#### Feature Requirements:
+
+**1. "Erledigte" (Completed) View:**
+- 4th FAB option in shopping mode
+- Flat list (no department grouping)
+- Shows: Article, Amount, Date checked, User ("Du" for now)
+- Click article → Restore to main list
+- Search & selection mode supported
+
+**2. Article Overview Enhancements:**
+- New chips: `-22.11.2025` (last checked), `+23.11.2025` (last added)
+- FAB for sort/filter:
+  - Alphabet (A-Z, Z-A)
+  - Number of checks (most/least)
+  - Last checked date (newest/oldest)
+  - Last added date (newest/oldest)
+
+**3. Article Details:**
+- Editable stats: last added (+), last checked (-), number of checks (#)
+- Manual update buttons for corrections
+
+#### Implementation Sub-Phases:
+
+**Phase 6A: Data Model & History Tracking** (3 days)
+- Update TypeScript interfaces
+- Create HistoryService
+- Update ListsRepositoryService.toggleItemChecked()
+- Update NgRx actions/reducers
+- Write unit tests
+
+**Phase 6B: "Erledigte" UI Mode** (3 days)
+- Add 4th FAB option
+- Create history-mode component
+- Implement search in history
+- Add click-to-restore
+- Write component tests
+
+**Phase 6C: Chips in Article Overview** (2 days)
+- Create date-chip component
+- Add chips to template
+- Update NgRx selectors
+- Write tests
+
+**Phase 6D: Sort/Filter FAB** (2 days)
+- Add FAB in ArticleOverview
+- Create sort/filter dialog
+- Implement sorting logic
+- Write tests
+
+**Phase 6E: Article Detail Stats** (2 days)
+- Add editable fields
+- Create update dialogs
+- Update NgRx actions
+- Write tests
+
+#### Data Model Changes:
 ```typescript
-// In src/app/core/models/index.ts
-
+// Extended ListItemState
 export interface ListItemState {
   articleId: string;
   isChecked: boolean;
   amount?: string;
-  checkedAt?: Date;              // Already exists ✅
-  checkedBy?: string;             // NEW: user ID
-  tickedOffHistory?: TickEvent[]; // NEW: full history
+  checkedAt?: Date;           // ✅ Already exists!
+  checkedBy?: string;          // NEW: User ID
+  history: CheckEvent[];       // NEW: Full check/uncheck history
 }
 
-export interface TickEvent {
+export interface CheckEvent {
   timestamp: Date;
-  userId: string;
-  userName: string;    // Cached for display
+  userId: string;              // 'shared-shoplisl-user' for now
+  userName: string;            // 'Du' for now
   action: 'checked' | 'unchecked';
+  amount?: string;
+}
+
+// Extended Article
+export interface Article {
+  // ... existing fields ...
+  lastCheckedDate?: Date;      // NEW: Most recent check across all lists
+  lastAddedToListDate?: Date;  // NEW: Most recent addition
+  numberOfChecks?: number;     // NEW: Total check count
 }
 ```
 
-#### New Services:
-1. **history.service.ts** (200 lines)
-   - `recordTickOff(listId, articleId, userId, action)`
-   - `getArticleHistory(listId, articleId): TickEvent[]`
-   - `getListHistory(listId): Map<articleId, TickEvent[]>`
+#### Files Created:
+- `HISTORY_FEATURE_PLAN.md` - Complete implementation guide (4,350 lines)
+- `FIREBASE_DEV_SETUP.md` - Dev environment setup instructions
+- `scripts/backup-firestore.ts` - Backup script
+- `scripts/restore-firestore.ts` - Restore script
+- `scripts/README.md` - Backup/restore documentation
 
-2. **history-ui.component.ts** (NEW component)
-   - Display timeline of tick events
-   - Filter by user, date range
-   - Export history as CSV
+#### Safety Infrastructure:
+- ✅ Backup scripts ready for data protection
+- ✅ Dev environment guide for safe testing
+- ✅ Migration script designed with rollback capability
+- ✅ All changes additive (backward compatible)
 
-**Migration Plan:**
-1. Update models
-2. Modify `toggleItemChecked` in data.service.ts to record history
-3. Create history.service.ts with NgRx integration
-4. Add history panel to list-detail
-5. Add tests
+**Git Branch:** `claude/prepare-history-feature-01X2GbTkcaHD58ejWUxNjV3i`
+**Commits:** `fefcc0a` (test fixes)
 
-**Resume Point After Phase 6:**
-> "History feature models added. ListItemState now tracks tickedOffHistory. history.service.ts created. UI shows tick timeline. Tests passing. Next: Multi-user authentication."
+**Resume Point After Phase 6 Planning:**
+> "Phase 6 planning 100% complete! ✅ All tests fixed (771/782 passing, 0 failing). Comprehensive implementation plan created with 5 sub-phases (6A-6E). Data model designed with 365-day retention. Dev environment setup guide ready. Backup/restore scripts created. Safety infrastructure in place. Decision: History feature FIRST (lower risk, immediate value), then multi-user. Ready to start Phase 6A implementation. See HISTORY_FEATURE_PLAN.md for complete details."
 
 ---
 
