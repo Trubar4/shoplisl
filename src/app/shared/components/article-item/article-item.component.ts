@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ArticleSelectionService } from '../../../features/lists/list-detail/services/article-selection.service';
+import { CheckEvent } from '../../../core/models';
 
 export interface ArticleItemData {
   id: string;
@@ -19,6 +20,10 @@ export interface ArticleItemData {
   listAmount?: string;
   pendingHideTimestamp?: number;
   showUndoHint?: boolean;
+  // History-related fields (optional, used by history mode)
+  checkedAt?: Date;
+  checkedBy?: string;
+  history?: CheckEvent[];
 }
 
 export type ArticleViewMode = 'shopping' | 'edit';
