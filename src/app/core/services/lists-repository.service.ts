@@ -217,10 +217,16 @@ export class ListsRepositoryService {
           ? list.articleIds
           : [...list.articleIds, articleId];
 
+        // Get article name for history display
+        const articles = this.firebaseData.getCurrentArticles();
+        const article = articles.find(a => a.id === articleId);
+        const articleName = article?.name;
+
         const newItemStates = {
           ...list.itemStates,
           [articleId]: {
             articleId,
+            articleName,  // Store name for history display after deletion
             isChecked: false,
             amount: list.itemStates[articleId]?.amount || ''  // PRESERVE existing amount
           }
@@ -283,19 +289,28 @@ export class ListsRepositoryService {
         const newIds = articleIds.filter(id => !existingIds.has(id));
         const newArticleIds = [...list.articleIds, ...newIds];
 
+        // Get articles for name lookup
+        const articles = this.firebaseData.getCurrentArticles();
+        const articlesMap = new Map(articles.map(a => [a.id, a]));
+
         // Create item states for all articles
         const newItemStates = { ...list.itemStates };
         articleIds.forEach(articleId => {
+          const article = articlesMap.get(articleId);
+          const articleName = article?.name;
+
           if (!newItemStates[articleId]) {
             newItemStates[articleId] = {
               articleId,
+              articleName,  // Store name for history display after deletion
               isChecked: false,
               amount: ''
             };
           } else {
-            // If article already exists, reset to unchecked but preserve amount
+            // If article already exists, reset to unchecked but preserve amount and name
             newItemStates[articleId] = {
               ...newItemStates[articleId],
+              articleName: articleName || newItemStates[articleId].articleName,  // Update name if available
               isChecked: false
             };
           }

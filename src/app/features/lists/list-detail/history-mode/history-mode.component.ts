@@ -97,13 +97,15 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
         return completedStates
           .map(state => {
             const article = articlesMap.get(state.articleId);
-            if (!article) return null;
+
+            // If article doesn't exist but we have a stored name, use that
+            if (!article && !state.articleName) return null;
 
             return {
-              id: article.id,
-              name: article.name,
-              icon: article.icon,
-              departmentId: article.departmentId,
+              id: state.articleId,
+              name: article?.name || state.articleName || 'Gelöschter Artikel',
+              icon: article?.icon || '❓',
+              departmentId: article?.departmentId,
               amount: state.amount || '',
               isChecked: state.isChecked,
               isInList: true,

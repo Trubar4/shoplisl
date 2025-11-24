@@ -53,6 +53,7 @@ export interface CheckEvent {
  */
 export interface ListItemState {
   articleId: string;
+  articleName?: string;      // Snapshot of article name (for display after article deletion)
   isChecked: boolean;
   amount?: string;           // List-specific amount
   checkedAt?: Date;          // ✅ Already exists! When last checked
