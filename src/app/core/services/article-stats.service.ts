@@ -88,12 +88,10 @@ export class ArticleStatsService {
         return;
       }
 
-      // Update lastAddedToListDate (we can use list.updatedAt or createdAt as proxy)
-      // In a real implementation, we'd track when the article was added to each list
-      // For now, we'll use the list's createdAt if the article is in the list
-      if (list.createdAt) {
-        if (!lastAddedToListDate || list.createdAt > lastAddedToListDate) {
-          lastAddedToListDate = list.createdAt;
+      // Update lastAddedToListDate using the itemState.addedAt timestamp
+      if (itemState.addedAt) {
+        if (!lastAddedToListDate || itemState.addedAt > lastAddedToListDate) {
+          lastAddedToListDate = itemState.addedAt;
         }
       }
 

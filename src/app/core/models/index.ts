@@ -56,6 +56,7 @@ export interface ListItemState {
   articleName?: string;      // Snapshot of article name (for display after article deletion)
   isChecked: boolean;
   amount?: string;           // List-specific amount
+  addedAt?: Date;            // When article was added to this list
   checkedAt?: Date;          // ✅ Already exists! When last checked
   checkedBy?: string;        // Phase 6: User ID who last checked (default: 'shared-shoplisl-user')
   history?: CheckEvent[];    // Phase 6: Full check/uncheck history (365 days retention)

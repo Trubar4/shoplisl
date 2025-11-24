@@ -210,6 +210,7 @@ export class FirebaseDataService {
 
       itemStates[articleId] = {
         ...itemState,
+        addedAt: itemState.addedAt?.toDate ? itemState.addedAt.toDate() : itemState.addedAt,
         checkedAt: itemState.checkedAt?.toDate ? itemState.checkedAt.toDate() : itemState.checkedAt,
         history: (itemState.history || []).map((event: any) => ({
           ...event,

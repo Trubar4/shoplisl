@@ -228,7 +228,8 @@ export class ListsRepositoryService {
             articleId,
             articleName,  // Store name for history display after deletion
             isChecked: false,
-            amount: list.itemStates[articleId]?.amount || ''  // PRESERVE existing amount
+            amount: list.itemStates[articleId]?.amount || '',  // PRESERVE existing amount
+            addedAt: list.itemStates[articleId]?.addedAt || new Date()  // Set addedAt only for new articles
           }
         };
 
@@ -304,10 +305,11 @@ export class ListsRepositoryService {
               articleId,
               articleName,  // Store name for history display after deletion
               isChecked: false,
-              amount: ''
+              amount: '',
+              addedAt: new Date()  // Set addedAt for new articles
             };
           } else {
-            // If article already exists, reset to unchecked but preserve amount and name
+            // If article already exists, reset to unchecked but preserve amount, name, and addedAt
             newItemStates[articleId] = {
               ...newItemStates[articleId],
               articleName: articleName || newItemStates[articleId].articleName,  // Update name if available
