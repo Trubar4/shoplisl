@@ -57,11 +57,13 @@ export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdd
   styleUrls: ['./article-overview.scss']
 })
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
+  private readonly SORT_STORAGE_KEY = 'article-overview-sort-option';
+
   searchQuery$ = new BehaviorSubject<string>('');
-  sortOption$ = new BehaviorSubject<ArticleSortOption>('name');
+  sortOption$ = new BehaviorSubject<ArticleSortOption>(this.loadSavedSortOption());
   filteredArticles$: Observable<ArticleWithStats[]>;
   searchQuery = '';
-  sortOption: ArticleSortOption = 'name';
+  sortOption: ArticleSortOption = this.loadSavedSortOption();
 
   // Swipe state management (same as lists-overview)
   swipeStates: { [articleId: string]: {
@@ -131,6 +133,27 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   onSortChange(sortOption: ArticleSortOption): void {
     this.sortOption = sortOption;
     this.sortOption$.next(sortOption);
+    this.saveSortOption(sortOption);
+  }
+
+  private loadSavedSortOption(): ArticleSortOption {
+    try {
+      const saved = localStorage.getItem(this.SORT_STORAGE_KEY);
+      if (saved && ['name', 'checkCount', 'lastChecked', 'lastAdded'].includes(saved)) {
+        return saved as ArticleSortOption;
+      }
+    } catch (error) {
+      console.warn('Failed to load saved sort option:', error);
+    }
+    return 'name'; // Default fallback
+  }
+
+  private saveSortOption(sortOption: ArticleSortOption): void {
+    try {
+      localStorage.setItem(this.SORT_STORAGE_KEY, sortOption);
+    } catch (error) {
+      console.warn('Failed to save sort option:', error);
+    }
   }
 
   private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
