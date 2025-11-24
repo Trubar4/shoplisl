@@ -178,11 +178,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   
   switchToShoppingMode(): void {
     this.currentMode.set('shopping');
+    // Sync search query with filter service when switching modes
+    this.filterService.setSearchQuery(this.searchQuery.trim());
     this.cdr.detectChanges();
   }
-  
-  switchToEditMode(): void { 
+
+  switchToEditMode(): void {
     this.currentMode.set('edit');
+    // Sync search query with filter service when switching modes
+    this.filterService.setSearchQuery(this.searchQuery.trim());
     this.cdr.detectChanges();
   }
 
