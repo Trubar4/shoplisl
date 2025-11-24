@@ -31,6 +31,9 @@ export interface ArticleWithStats extends Article {
   stats?: ArticleStats;
 }
 
+/** Article sort options */
+export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdded';
+
 @Component({
   selector: 'app-article-overview',
   standalone: true,
@@ -53,8 +56,6 @@ export interface ArticleWithStats extends Article {
   templateUrl: './article-overview.html',
   styleUrls: ['./article-overview.scss']
 })
-export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdded';
-
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
   searchQuery$ = new BehaviorSubject<string>('');
   sortOption$ = new BehaviorSubject<ArticleSortOption>('name');
