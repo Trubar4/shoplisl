@@ -240,6 +240,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   // Stats editing methods
   onEditLastAdded(): void {
+    if (!this.articleStats$) return;
+
     this.articleStats$.pipe(take(1)).subscribe(stats => {
       const currentDate = this.statOverrides.lastAddedDate || stats?.lastAddedToListDate;
 
@@ -261,6 +263,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   }
 
   onEditLastChecked(): void {
+    if (!this.articleStats$) return;
+
     this.articleStats$.pipe(take(1)).subscribe(stats => {
       const currentDate = this.statOverrides.lastCheckedDate || stats?.lastCheckedDate;
 
@@ -282,6 +286,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   }
 
   onEditCheckCount(): void {
+    if (!this.articleStats$) return;
+
     this.articleStats$.pipe(take(1)).subscribe(stats => {
       const currentCount = this.statOverrides.numberOfChecks ?? stats?.numberOfChecks ?? 0;
 

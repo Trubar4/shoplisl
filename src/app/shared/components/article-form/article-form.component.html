@@ -249,9 +249,9 @@
         </div>
 
         <!-- Number of Checks -->
-        <div class="stat-item" *ngIf="(getDisplayCheckCount() ?? stats.numberOfChecks) && (getDisplayCheckCount() ?? stats.numberOfChecks) > 0">
+        <div class="stat-item" *ngIf="(getDisplayCheckCount() || stats.numberOfChecks) && (getDisplayCheckCount() || stats.numberOfChecks) > 0">
           <div class="stat-content">
-            <app-count-chip [count]="getDisplayCheckCount() ?? stats.numberOfChecks ?? 0" />
+            <app-count-chip [count]="getDisplayCheckCount() || stats.numberOfChecks || 0" />
             <button
               mat-icon-button
               type="button"

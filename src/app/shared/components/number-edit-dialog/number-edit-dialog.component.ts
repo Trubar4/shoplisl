@@ -39,7 +39,7 @@ export interface NumberEditDialogResult {
           type="number"
           [(ngModel)]="selectedValue"
           [min]="data.min || 0"
-          [max]="data.max"
+          [attr.max]="data.max || null"
           placeholder="Anzahl eingeben">
       </mat-form-field>
       <p class="hint-text">
