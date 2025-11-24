@@ -11,8 +11,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
-import { Subject, Observable } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Subject, Observable, BehaviorSubject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
 
 import { Article, Department, ShoppingList, CheckEvent } from '../../../core/models';
 import { DepartmentService } from '../../../core/services/department.service';
@@ -21,6 +22,8 @@ import { ArticleStatsService, ArticleStats } from '../../../core/services/articl
 import { HistoryService } from '../../../core/services/history.service';
 import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
+import { DateEditDialogComponent, DateEditDialogData, DateEditDialogResult } from '../date-edit-dialog/date-edit-dialog.component';
+import { NumberEditDialogComponent, NumberEditDialogData, NumberEditDialogResult } from '../number-edit-dialog/number-edit-dialog.component';
 
 export interface ArticleFormData {
   name: string;
@@ -45,6 +48,7 @@ export interface ArticleFormData {
     MatRadioModule,
     MatCardModule,
     MatChipsModule,
+    MatDialogModule,
     DateChipComponent,
     CountChipComponent
   ],
@@ -75,6 +79,14 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   containingLists$: Observable<ShoppingList[]> | null = null;
   articleStats$: Observable<ArticleStats> | null = null;
   articleHistory: Array<CheckEvent & { listName: string }> = [];
+
+  // Manual stat overrides (temporary, will be overwritten on next action)
+  statOverrides: {
+    lastAddedDate?: Date;
+    lastCheckedDate?: Date;
+    numberOfChecks?: number;
+  } = {};
+
   private destroy$ = new Subject<void>();
 
   commonEmojis = [
@@ -88,7 +100,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private dataService: DataService,
     private articleStatsService: ArticleStatsService,
     private historyService: HistoryService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -225,17 +238,83 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     return this.departments.find(d => d.id === this.formData.departmentId) || null;
   }
 
-  // Stats editing methods (to be implemented with dialogs)
+  // Stats editing methods
   onEditLastAdded(): void {
-    this.snackBar.open('Funktion "Zuletzt hinzugefügt bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentDate = this.statOverrides.lastAddedDate || stats?.lastAddedToListDate;
+
+      const dialogRef = this.dialog.open(DateEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Zuletzt hinzugefügt bearbeiten',
+          currentDate: currentDate
+        } as DateEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: DateEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.lastAddedDate = result.date;
+          this.snackBar.open('Datum aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
   }
 
   onEditLastChecked(): void {
-    this.snackBar.open('Funktion "Zuletzt abgehakt bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentDate = this.statOverrides.lastCheckedDate || stats?.lastCheckedDate;
+
+      const dialogRef = this.dialog.open(DateEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Zuletzt abgehakt bearbeiten',
+          currentDate: currentDate
+        } as DateEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: DateEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.lastCheckedDate = result.date;
+          this.snackBar.open('Datum aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
   }
 
   onEditCheckCount(): void {
-    this.snackBar.open('Funktion "Anzahl Abhakungen bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentCount = this.statOverrides.numberOfChecks ?? stats?.numberOfChecks ?? 0;
+
+      const dialogRef = this.dialog.open(NumberEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Anzahl Abhakungen bearbeiten',
+          label: 'Anzahl',
+          currentValue: currentCount,
+          min: 0
+        } as NumberEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: NumberEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.numberOfChecks = result.value;
+          this.snackBar.open('Anzahl aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
+  }
+
+  // Get the display value for stats (with overrides)
+  getDisplayLastAdded(): Date | undefined {
+    return this.statOverrides.lastAddedDate;
+  }
+
+  getDisplayLastChecked(): Date | undefined {
+    return this.statOverrides.lastCheckedDate;
+  }
+
+  getDisplayCheckCount(): number | undefined {
+    return this.statOverrides.numberOfChecks;
   }
 
   // Format history event for display

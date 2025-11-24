@@ -217,9 +217,9 @@
     <div class="stats-container" *ngIf="articleStats$ | async as stats; else loadingStats">
       <div class="stats-grid">
         <!-- Last Added Date -->
-        <div class="stat-item" *ngIf="stats.lastAddedToListDate">
+        <div class="stat-item" *ngIf="getDisplayLastAdded() || stats.lastAddedToListDate">
           <div class="stat-content">
-            <app-date-chip [date]="stats.lastAddedToListDate" type="added" />
+            <app-date-chip [date]="getDisplayLastAdded() || stats.lastAddedToListDate!" type="added" />
             <button
               mat-icon-button
               type="button"
@@ -233,9 +233,9 @@
         </div>
 
         <!-- Last Checked Date -->
-        <div class="stat-item" *ngIf="stats.lastCheckedDate">
+        <div class="stat-item" *ngIf="getDisplayLastChecked() || stats.lastCheckedDate">
           <div class="stat-content">
-            <app-date-chip [date]="stats.lastCheckedDate" type="checked" />
+            <app-date-chip [date]="getDisplayLastChecked() || stats.lastCheckedDate!" type="checked" />
             <button
               mat-icon-button
               type="button"
@@ -249,9 +249,9 @@
         </div>
 
         <!-- Number of Checks -->
-        <div class="stat-item" *ngIf="stats.numberOfChecks > 0">
+        <div class="stat-item" *ngIf="(getDisplayCheckCount() ?? stats.numberOfChecks) && (getDisplayCheckCount() ?? stats.numberOfChecks) > 0">
           <div class="stat-content">
-            <app-count-chip [count]="stats.numberOfChecks" />
+            <app-count-chip [count]="getDisplayCheckCount() ?? stats.numberOfChecks ?? 0" />
             <button
               mat-icon-button
               type="button"
