@@ -112,16 +112,16 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   }
 
   private loadArticleHistory(articleId: string): void {
-    this.dataService.getAllLists()
+    this.dataService.getLists()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(lists => {
+      .subscribe((lists: ShoppingList[]) => {
         const history: Array<CheckEvent & { listName: string }> = [];
 
-        lists.forEach(list => {
+        lists.forEach((list: ShoppingList) => {
           if (list.articleIds.includes(articleId)) {
             const itemState = list.itemStates[articleId];
             if (itemState?.history && itemState.history.length > 0) {
-              itemState.history.forEach(event => {
+              itemState.history.forEach((event: CheckEvent) => {
                 history.push({
                   ...event,
                   listName: list.name
