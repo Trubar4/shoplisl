@@ -1,308 +1,283 @@
-# Next Session: Phase 5 Complete - Ready for Phase 6
+# Next Session Prompt - History Feature Completion
 
-## 🎉 Phase 5 Status: 100% COMPLETE ✅
-
-**Date Completed:** 2025-11-21
-**Branch:** `claude/review-refactoring-plan-01FXu2zvBYiEE85TFi26Txgg`
-**Test Results:** 754/782 passing ✅ (11 skipped, 17 ListDetail failures)
-**Build Status:** Successful ✅
-**Bundle Size:** Main 281.21 KB ✅
+**Session Date:** Updated 2025-11-24
+**Current Branch:** `claude/prepare-history-feature-01X2GbTkcaHD58ejWUxNjV3i`
+**Status:** History Feature (Phases 6A, 6B, 6C) Complete ✅ | Bug Fixes Complete ✅ | UI Enhancements Pending
 
 ---
 
-## What Was Completed
-
-### NgRx State Management - COMPLETE ✅
-
-**1. Installation & Configuration**
-- ✅ Installed NgRx packages (store, effects, entity, devtools) v20.1.0
-- ✅ Configured root state with reducer map
-- ✅ Set up Redux DevTools integration
-- ✅ Registered effects in main.ts
-
-**2. Lists State Module** (50 tests, 100% coverage)
-- ✅ 45 actions (load, CRUD, article operations, UI state)
-- ✅ Entity adapter with optimistic updates
-- ✅ Effects calling ListsRepositoryService & FirebaseDataService
-- ✅ 20+ selectors (filtered, sorted, computed)
-- ✅ Complete test coverage: 30 reducer + 20 selector tests
-
-**3. Articles State Module** (62 tests, 100% coverage)
-- ✅ 54 actions (load, CRUD, duplicate check, cleanup)
-- ✅ Entity adapter with auto-selection
-- ✅ Effects calling ArticlesRepositoryService & FirebaseDataService
-- ✅ 25+ selectors (search, filter, time-based)
-- ✅ Complete test coverage: 29 reducer + 33 selector tests
-
-**4. Auth State Skeleton** (Ready for Phase 7)
-- ✅ State interface defined
-- ✅ Minimal reducer in place
-- ✅ Ready for authentication implementation
-
-**5. Component Migration** ✨ EXTENDED!
-- ✅ Migrated ListsOverviewComponent to use NgRx Store (commit: ee1bb70)
-- ✅ Partially migrated ListDetailComponent (commit: ea33b40, 17 tests need updates)
-- ✅ Migrated AddArticleComponent to use NgRx Store (commit: 088031e)
-- ✅ Migrated EditArticleComponent to use NgRx Store (commit: 088031e)
-- ✅ Migrated ArticleOverviewComponent to use NgRx Store (commit: 088031e)
-- ✅ Replaced DataService with store selectors and actions
-- ✅ Created comprehensive `NGRX_COMPONENT_MIGRATION_GUIDE.md`
-- ✅ Migration pattern validated across 5 components
-
----
-
-## Key Achievements
-
-### ✅ Zero Breaking Changes
-All NgRx effects call your existing Firebase services:
-- Offline handling preserved
-- Error recovery unchanged
-- Data validation intact
-- Same business logic, new state layer
-
-### ✅ 100% Test Coverage
-- 112 new tests added
-- All reducers tested (pure functions)
-- All selectors tested (memoization)
-- Edge cases covered
-
-### ✅ Production Ready
-- TypeScript type safety throughout
-- Entity adapters for standardized operations
-- Immutable state tree
-- Redux DevTools for debugging
-
----
-
-## File Structure Created
+## 📋 Copy This Prompt for Next Session
 
 ```
-src/app/state/
-├── app.state.ts                          Root state with reducer map
-├── lists/                                Lists state (50 tests)
-│   ├── lists.state.ts
-│   ├── lists.actions.ts                  45 actions
-│   ├── lists.reducer.ts                  Entity adapter
-│   ├── lists.effects.ts                  Firebase integration
-│   ├── lists.selectors.ts                20+ selectors
-│   ├── lists.reducer.spec.ts             30 tests
-│   ├── lists.selectors.spec.ts           20 tests
-│   └── index.ts
-├── articles/                             Articles state (62 tests)
-│   ├── articles.state.ts
-│   ├── articles.actions.ts               54 actions
-│   ├── articles.reducer.ts               Entity adapter
-│   ├── articles.effects.ts               Firebase integration
-│   ├── articles.selectors.ts             25+ selectors
-│   ├── articles.reducer.spec.ts          29 tests
-│   ├── articles.selectors.spec.ts        33 tests
-│   └── index.ts
-└── auth/                                 Auth skeleton (Phase 7)
-    ├── auth.state.ts
-    └── auth.reducer.ts
-```
+I'm continuing development on the shoplisl app (Angular 20 + NgRx + Firebase + TypeScript).
+The History Feature (Phases 6A, 6B, 6C) is complete and all critical bugs are fixed.
 
-**Total:** 26 files, ~4,350 lines of code (including tests)
+Branch: claude/prepare-history-feature-01X2GbTkcaHD58ejWUxNjV3i
 
----
+Please read:
+- /home/user/shoplisl/SESSION_CONTINUATION_SUMMARY.md (recent bug fixes)
+- /home/user/shoplisl/HISTORY_FEATURE_PLAN.md (feature specification)
+- /home/user/shoplisl/REFACTORING_PLAN.md (overall architecture)
 
-## Commits Made
+I need help completing these remaining UI enhancements:
 
-1. `d0b3b89` - feat(ngrx): install NgRx and implement Lists state
-2. `84390d5` - docs: update refactoring plan with Phase 5 Session 1 progress
-3. `93d407e` - feat(ngrx): implement Articles state management
-4. `1a9d9dc` - test(ngrx): add comprehensive tests for Articles state
-5. `686dec4` - docs: update refactoring plan - Phase 5 95% complete
-6. `06c8337` - fix(ngrx): add explicit type annotations for TypeScript strict mode
-7. `ee1bb70` - feat(ngrx): migrate ListsOverviewComponent to use NgRx store
-8. `ea33b40` - feat(ngrx): migrate ListDetailComponent to use NgRx store (partial)
-9. `088031e` - feat(ngrx): migrate article components to NgRx store (Add, Edit, Overview)
+1. Display Number of Checks Chip in Articles Overview (HIGH PRIORITY)
+   - We calculate numberOfChecks but don't display it
+   - Need to create CountChipComponent and add to article-overview.html
+   - Format: #N (e.g., #42 for 42 checks)
 
----
+2. Add Stats Display and Editing to Article Details Page (HIGH PRIORITY)
+   - Article form needs a "Statistiken" section showing:
+     * Last added date with + button to edit
+     * Last checked date with − button to edit
+     * Number of checks with # button to edit
+   - Use ArticleStatsService to fetch stats
+   - Create date/number picker dialogs for editing
 
-## Testing Summary
+3. Verify Article Overview Sorting Features (MEDIUM PRIORITY)
+   - Check if sorting by check count and dates is implemented
+   - Add if missing
 
-### Automated Tests ✅
-```bash
-npm test -- --run
-# Result: 771/782 passing (11 skipped)
-# Coverage: 100% on all state modules
-```
-
-### Build Verification ✅
-```bash
-npm run build
-# Result: Successful
-# Output: dist/shoplisl-app
-```
-
-### What Was Tested
-- ✅ All reducer pure functions
-- ✅ All selector memoization
-- ✅ Entity adapter operations (CRUD)
-- ✅ Error handling in reducers
-- ✅ Loading states
-- ✅ Auto-selection logic
-- ✅ Filtering and sorting
-- ✅ Edge cases (empty state, null handling)
-
----
-
-## Next Steps - Three Options
-
-### Option 1: Continue to Phase 6 (Recommended) 🚀
-**Phase 6: Prepare for History Feature (2-3 days)**
-
-Add data models and services for tick-off history tracking:
-- Update `ListItemState` model with `checkedBy` and `tickedOffHistory`
-- Create `history.service.ts` for recording tick events
-- Add `history-ui.component.ts` for displaying timeline
-- Integrate with NgRx state (via effects)
-
-**Start with:**
-```
-I'm continuing the Shoplisl refactoring project. Please read
-/home/user/shoplisl/REFACTORING_PLAN.md to understand the full context.
-
-Current Phase: Phase 6 - Prepare for History Feature
-Last Completed: Phase 5 - NgRx state management (95% complete)
-Next Task: Update models to support history tracking
-
-Please:
-1. Review Phase 6 details in the refactoring plan
-2. Update ListItemState model with history fields
-3. Create history.service.ts
-4. Add tests for history service
-5. Update documentation
+All technical context and implementation details are in SESSION_CONTINUATION_SUMMARY.md
 ```
 
 ---
 
-### Option 2: Continue Component Migration ✅ (COMPLETE!)
-**Phase 5 component migrations: 5 components migrated successfully!**
+## ✅ What's Complete
 
-✅ **Migration Progress:**
-- ✅ ListsOverviewComponent (commit: ee1bb70)
-- ⬜ ListDetailComponent - Partially migrated (ea33b40, 17 test failures to fix)
-- ✅ AddArticleComponent (commit: 088031e)
-- ✅ EditArticleComponent (commit: 088031e)
-- ✅ ArticleOverviewComponent (commit: 088031e)
+### History Feature Implementation (Phases 6A, 6B, 6C)
+- ✅ Full history tracking for list items (check/uncheck events with 365-day retention)
+- ✅ "Erledigte" (Completed) view showing checked-off articles with search and restore
+- ✅ Article name snapshots preserved in history after article deletion
+- ✅ ArticleStatsService calculating stats across all lists
+- ✅ Date chips displaying last checked and last added dates in articles overview
+- ✅ HistoryService with cleanup and date formatting
+- ✅ Optimistic UI updates for all list operations
 
-**Remaining Components:**
-- AddListComponent - Simple CRUD operations
-- DepartmentSortComponent - Reordering operations
-
-**Migration Guide:**
-- See `NGRX_COMPONENT_MIGRATION_GUIDE.md` for step-by-step pattern
-- Multiple components serve as reference examples
-- Template usually requires zero changes (if using async pipes)
-
-**Benefits Proven:**
-- ✅ Centralized state management
-- ✅ Cleaner component code
-- ✅ Redux DevTools debugging
-- ✅ Reduced service dependencies
-
-**Note:** ListDetailComponent needs 17 test updates to complete migration
+### Bug Fixes (Session 2025-11-24)
+- ✅ Fixed search filter not clearing after mode switches
+- ✅ Fixed article stats showing wrong dates (added `addedAt` field to ListItemState)
+- ✅ All tests passing, build successful
 
 ---
 
-### Option 3: Skip to Phase 7 (Multi-User Auth)
-**Jump ahead to authentication**
+## 🚧 Outstanding Tasks
 
-If you want to prioritize multi-user features:
-- Phase 7: Multi-User Authentication (Google OAuth)
-- Phase 8: Real-Time Collaboration
-- Come back to Phase 6 (History) later
+### 1. Display Number of Checks Chip (Priority: HIGH)
 
----
+**Current State:**
+- `ArticleStatsService` correctly calculates `numberOfChecks`
+- NOT displayed in articles overview UI
 
-## Important Notes
-
-### Firebase Services Unchanged ✅
-Your application will continue to work exactly as before:
-- All offline functionality preserved
-- Error handling unchanged
-- Business logic intact
-- NgRx is an additional layer, not a replacement
-
-### Redux DevTools
-Install Redux DevTools browser extension to debug state:
-- Chrome: Redux DevTools Extension
-- Firefox: Redux DevTools Extension
-- View all state changes in real-time
-- Time-travel debugging
-
-### State Management Benefits
-Now available for future development:
-- ✅ Centralized state (single source of truth)
-- ✅ Real-time sync foundation (for Phase 8)
-- ✅ Undo/redo capability (if needed)
-- ✅ State persistence (if needed)
-- ✅ Optimistic updates with rollback
-
----
-
-## Questions & Troubleshooting
-
-### Q: Will my Firebase data be affected?
-**A:** No! NgRx only manages in-memory state. All Firebase operations use your existing services.
-
-### Q: Do I need to migrate all components now?
-**A:** No! Components can continue using services directly. NgRx is available when you want to use it.
-
-### Q: What about offline mode?
-**A:** Fully preserved! Effects call your services, which handle offline logic.
-
-### Q: Can I use both services and store?
-**A:** Yes! You can gradually migrate. Some components can use services, others can use store.
-
----
-
-## Recommended Reading
-
-Before Phase 6, review:
-- `/home/user/shoplisl/REFACTORING_PLAN.md` - Complete refactoring plan
-- `/home/user/shoplisl/src/app/state/lists/` - Example state implementation
-- `/home/user/shoplisl/src/app/state/articles/` - Example state implementation
-
----
-
-## 💬 Prompt for Next Session
-
-Copy this when ready to continue:
-
+**Implementation:**
+```typescript
+// Create: src/app/shared/components/count-chip/count-chip.component.ts
+@Component({
+  selector: 'app-count-chip',
+  template: `
+    @if (count > 0) {
+      <span class="count-chip">#{{ count }}</span>
+    }
+  `,
+  styles: [`
+    .count-chip {
+      display: inline-flex;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: 4px;
+      background: #f3e5f5;
+      color: #7b1fa2;
+      font-weight: 500;
+    }
+  `]
+})
+export class CountChipComponent {
+  @Input() count: number = 0;
+}
 ```
-I'm continuing the Shoplisl refactoring project. Please read
-/home/user/shoplisl/REFACTORING_PLAN.md to understand the full context.
 
-Current Phase: Phase 6 - Prepare for History Feature
-Last Completed: Phase 5 - NgRx state management (95% complete, 771 tests passing)
-Branch: claude/review-refactoring-plan-01FXu2zvBYiEE85TFi26Txgg
-
-Please:
-1. Review Phase 6 details in the refactoring plan
-2. Start implementing history tracking feature
-3. Update this prompt file with progress
+**Update:**
+```html
+<!-- src/app/features/articles/article-overview/article-overview.html:78-80 -->
+<div class="article-stats" *ngIf="article.stats?.lastCheckedDate || article.stats?.lastAddedToListDate || article.stats?.numberOfChecks">
+  <app-date-chip *ngIf="article.stats?.lastCheckedDate" [date]="article.stats?.lastCheckedDate!" type="checked" />
+  <app-date-chip *ngIf="article.stats?.lastAddedToListDate" [date]="article.stats?.lastAddedToListDate!" type="added" />
+  <app-count-chip *ngIf="article.stats?.numberOfChecks" [count]="article.stats?.numberOfChecks!" />
+</div>
 ```
 
 ---
 
-## Summary of Completed Phases
+### 2. Article Details Stats Display & Editing (Priority: HIGH)
 
-✅ **Phase 0:** Quick Wins (department utils, AI consolidation, JSDoc, coverage)
-✅ **Phase 1:** Test Foundation (simplified-disambiguation, list-detail, voice-assistant)
-✅ **Phase 2:** Split Disambiguation Service (article-matcher, list-selection services)
-✅ **Phase 3:** Split List Detail Component (filter service, shopping-mode, edit-mode)
-✅ **Phase 4:** Split Voice Assistant Component (voice-input, voice-output, chat-ui, disambiguation-ui)
-✅ **Phase 5:** Install NgRx (Lists ✅, Articles ✅, Auth skeleton ✅, 112 tests ✅, 5 components migrated ✅)
+**Current State:**
+- Article edit form shows name, amount, notes, icon, department, lists
+- NO stats displayed or editable
 
-**Component Migrations Completed:**
-- ListsOverviewComponent, AddArticleComponent, EditArticleComponent, ArticleOverviewComponent
-- ListDetailComponent (partial - 17 tests need updates)
+**Implementation:**
 
-**Next:** Phase 6 - Prepare for History Feature OR finish ListDetailComponent tests OR migrate remaining components
+**Step 1:** Fetch stats in `edit-article.ts`:
+```typescript
+// Add to EditArticleComponent
+articleStats$: Observable<ArticleStats | undefined>;
+
+constructor(
+  private articleStatsService: ArticleStatsService,
+  // ... existing dependencies
+) {}
+
+ngOnInit(): void {
+  const articleId = this.route.snapshot.paramMap.get('id');
+  // ... existing code ...
+
+  this.articleStats$ = this.articleStatsService.getArticleStats(articleId);
+}
+```
+
+**Step 2:** Add stats section to `article-form.component.html`:
+```html
+<!-- Add after "Lists" section -->
+<div *ngIf="isEditMode && articleStats" class="stats-section">
+  <h3 class="section-title">Statistiken</h3>
+
+  <div class="stat-row">
+    <span class="stat-label">Zuletzt hinzugefügt</span>
+    <app-date-chip [date]="articleStats.lastAddedToListDate" type="added" />
+    <button mat-icon-button (click)="onEditLastAdded()" aria-label="Datum bearbeiten">
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+
+  <div class="stat-row">
+    <span class="stat-label">Zuletzt abgehakt</span>
+    <app-date-chip [date]="articleStats.lastCheckedDate" type="checked" />
+    <button mat-icon-button (click)="onEditLastChecked()" aria-label="Datum bearbeiten">
+      <mat-icon>remove</mat-icon>
+    </button>
+  </div>
+
+  <div class="stat-row">
+    <span class="stat-label">Anzahl Abhakungen</span>
+    <app-count-chip [count]="articleStats.numberOfChecks || 0" />
+    <button mat-icon-button (click)="onEditCheckCount()" aria-label="Anzahl bearbeiten">
+      <mat-icon>tag</mat-icon>
+    </button>
+  </div>
+</div>
+```
+
+**Step 3:** Create edit dialogs for date and count pickers
+
+**Step 4:** Update the most recent list's itemState when saving edits
+
+**Note:** Stats are calculated from list itemStates, so editing means updating the most recent list entry, not the Article model itself.
 
 ---
 
-**End of Session Summary**
+### 3. Article Overview Sorting (Priority: MEDIUM)
+
+**Check Implementation:**
+According to `HISTORY_FEATURE_PLAN.md`, article overview should support:
+- Sort by number of checks (most/least checked)
+- Sort by last checked date (newest/oldest)
+- Sort by last added date (newest/oldest)
+
+**TODO:** Verify if these are already implemented in the FAB. If not, add them.
+
+---
+
+## 📁 Key Files
+
+### Recently Modified (Session 2025-11-24)
+- `src/app/features/lists/list-detail/list-detail.ts:179-187,503-507`
+- `src/app/core/models/index.ts:59` (added `addedAt` field)
+- `src/app/core/services/firebase-data.service.ts:213`
+- `src/app/core/services/lists-repository.service.ts:232,309`
+- `src/app/core/services/article-stats.service.ts:91-96`
+
+### Relevant for Next Session
+- `src/app/features/articles/article-overview/article-overview.html:77-80` (add count chip)
+- `src/app/features/articles/edit-article/edit-article.html`
+- `src/app/shared/components/article-form/article-form.component.html`
+- `src/app/core/services/article-stats.service.ts`
+
+---
+
+## 🔧 Technical Context
+
+### Data Models
+```typescript
+// ListItemState (in models/index.ts)
+interface ListItemState {
+  articleId: string;
+  articleName?: string;    // Snapshot for history persistence
+  isChecked: boolean;
+  amount?: string;
+  addedAt?: Date;          // NEW: When article was added to list
+  checkedAt?: Date;        // When last checked
+  checkedBy?: string;      // User ID
+  history?: CheckEvent[];  // 365-day history
+}
+
+// ArticleStats (calculated across all lists)
+interface ArticleStats {
+  articleId: string;
+  lastCheckedDate?: Date;
+  lastAddedToListDate?: Date;
+  numberOfChecks: number;
+}
+```
+
+### Key Services
+- **ArticleStatsService** - Calculates stats from list history
+- **FirebaseDataService** - Handles Firestore operations and Timestamp conversions
+- **ListsRepositoryService** - Manages list operations with optimistic UI updates
+- **HistoryService** - Creates history events and formats dates
+
+### Patterns to Follow
+- Use optimistic UI updates for all operations
+- Convert Firestore Timestamps to JavaScript Dates
+- Keep change detection efficient with OnPush strategy
+- Follow existing component structure and naming conventions
+
+---
+
+## 📊 Build Status
+
+**Last Build:** 2025-11-24
+```
+✅ Build successful
+Bundle size: 1.60 MB (350.10 kB estimated transfer)
+Build time: 10.294 seconds
+```
+
+**Last Commit:**
+```
+commit aaf81b7
+fix: search filter clearing and article stats dates
+```
+
+---
+
+## 📖 Documentation
+
+- **SESSION_CONTINUATION_SUMMARY.md** - Detailed summary of recent bug fixes
+- **HISTORY_FEATURE_PLAN.md** - Complete feature specification (all phases)
+- **REFACTORING_PLAN.md** - Overall architecture and refactoring status
+
+---
+
+## ⏭️ After Completion
+
+When the above tasks are complete, consider:
+1. User testing of all history features
+2. Performance optimization for large history datasets
+3. Additional sort/filter options based on user feedback
+4. Multi-user authentication (Phase 7)
+5. Real-time collaboration (Phase 8)
+
+---
+
+**Last Updated:** 2025-11-24
+**Next Session:** Continue with UI enhancements (count chip + stats editing)

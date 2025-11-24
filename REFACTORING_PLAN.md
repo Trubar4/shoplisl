@@ -1,11 +1,11 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-23
-**Current Phase:** Phase 6 - Prepare for History Feature (Planning Complete) ✅
-**Completed:** Phases 0-5 ✅ | NgRx ✅ | States ✅ | 112 Tests ✅ | 5 Components Migrated ✅ | All Tests Fixed ✅
-**Recent Work:** History Feature planning + Test fixes - (2025-11-23)
-**Status:** 771/782 tests passing ✅ (0 failing!) | Build successful ✅ | Ready for Phase 6 implementation
-**Next Phase:** Phase 6 - History Feature Implementation (2-3 weeks)
-**Next Major Features:** History Function → Multi-User Authentication → Real-Time Collaboration
+**Last Updated:** 2025-11-24
+**Current Phase:** Phase 6 - History Feature (Phases 6A-C Complete) ✅
+**Completed:** Phases 0-5 ✅ | Phase 6A-C ✅ | Bug Fixes ✅ | UI Enhancements Pending 🚧
+**Recent Work:** History feature bugs fixed + Documentation (2025-11-24)
+**Status:** All tests passing ✅ | Build successful ✅ | Core history features working
+**Remaining:** Phase 6C (count chip) | Phase 6D (verify sorting) | Phase 6E (stats editing)
+**Next Major Features:** Complete Phase 6 UI → Multi-User Authentication → Real-Time Collaboration
 
 ---
 
@@ -699,10 +699,11 @@ See `NGRX_COMPONENT_MIGRATION_GUIDE.md` for step-by-step migration pattern.
 
 ---
 
-### Phase 6: History Feature (2-3 weeks) - ✅ PLANNING COMPLETE
+### Phase 6: History Feature (2-3 weeks) - ✅ MOSTLY COMPLETE
 **Goal:** Track article check-off history and usage statistics
 **Started:** 2025-11-23
-**Status:** Planning complete, ready for implementation ✅
+**Completed:** 2025-11-24 (Phases 6A, 6B, 6C complete + bug fixes)
+**Status:** Core features complete ✅ | UI enhancements pending 🚧
 
 #### Planning Session (2025-11-23):
 - ✅ Requirements gathering & analysis
@@ -745,48 +746,84 @@ See `NGRX_COMPONENT_MIGRATION_GUIDE.md` for step-by-step migration pattern.
 
 #### Implementation Sub-Phases:
 
-**Phase 6A: Data Model & History Tracking** (3 days)
-- Update TypeScript interfaces
-- Create HistoryService
-- Update ListsRepositoryService.toggleItemChecked()
-- Update NgRx actions/reducers
-- Write unit tests
+**Phase 6A: Data Model & History Tracking** (3 days) - ✅ COMPLETE
+- ✅ Updated TypeScript interfaces (ListItemState, CheckEvent)
+- ✅ Created HistoryService with event creation and cleanup
+- ✅ Updated ListsRepositoryService for all list operations
+- ✅ Added optimistic UI updates for all operations
+- ✅ Added article name snapshots for history persistence
+- ✅ Added addedAt field for accurate "last added" tracking
+- ✅ Timestamp conversion from Firestore
+- ✅ Unit tests passing
+- **Completed:** Previous session + 2025-11-24
 
-**Phase 6B: "Erledigte" UI Mode** (3 days)
-- Add 4th FAB option
-- Create history-mode component
-- Implement search in history
-- Add click-to-restore
-- Write component tests
+**Phase 6B: "Erledigte" UI Mode** (3 days) - ✅ COMPLETE
+- ✅ Added 4th FAB option ("Erledigte")
+- ✅ Created history-mode component
+- ✅ Implemented search in history
+- ✅ Added click-to-restore functionality
+- ✅ Preserved deleted article names in history
+- ✅ Component tests passing
+- **Completed:** Previous session + 2025-11-24
 
-**Phase 6C: Chips in Article Overview** (2 days)
-- Create date-chip component
-- Add chips to template
-- Update NgRx selectors
-- Write tests
+**Phase 6C: Chips in Article Overview** (2 days) - ✅ PARTIAL
+- ✅ Created date-chip component (DateChipComponent)
+- ✅ Added last checked chip (-DD.MM.YYYY)
+- ✅ Added last added chip (+DD.MM.YYYY)
+- ✅ Created ArticleStatsService for calculation
+- ⬜ Number of checks chip (#N) NOT YET DISPLAYED
+- **Status:** 2/3 chips complete, calculation exists for 3rd chip
 
-**Phase 6D: Sort/Filter FAB** (2 days)
-- Add FAB in ArticleOverview
-- Create sort/filter dialog
-- Implement sorting logic
-- Write tests
+**Phase 6D: Sort/Filter FAB** (2 days) - ⬜ TO VERIFY
+- ⬜ Verify if FAB sorting is implemented
+- ⬜ Check: Sort by check count
+- ⬜ Check: Sort by last checked date
+- ⬜ Check: Sort by last added date
+- **Status:** Need to verify implementation
 
-**Phase 6E: Article Detail Stats** (2 days)
-- Add editable fields
-- Create update dialogs
-- Update NgRx actions
-- Write tests
+**Phase 6E: Article Detail Stats** (2 days) - ⬜ PENDING
+- ⬜ Display stats in article form
+- ⬜ Add edit buttons for each stat
+- ⬜ Create date picker dialog
+- ⬜ Create number picker dialog
+- ⬜ Update itemState when saving edits
+- ⬜ Write tests
+- **Status:** Not yet implemented
+
+#### Bug Fix Session (2025-11-24):
+After user testing of Phases 6A-C, two critical bugs were found and fixed:
+
+**Bug Fix 1: Search Filter Clearing**
+- ✅ Fixed filter not clearing after mode switches
+- ✅ Added immediate filterService.setSearchQuery('') on clear
+- ✅ Removed redundant sync calls causing interference
+- **Files:** list-detail.ts:503-507,179-187
+
+**Bug Fix 2: Article Stats Wrong Dates**
+- ✅ Added addedAt field to ListItemState interface
+- ✅ Track actual article addition time (not list creation time)
+- ✅ Updated ArticleStatsService to use addedAt
+- ✅ Updated Firestore Timestamp conversion
+- ✅ Updated lists-repository to set addedAt on add operations
+- **Files:** models/index.ts, firebase-data.service.ts, lists-repository.service.ts, article-stats.service.ts
+- **Commit:** aaf81b7
+
+**Test Status:** ✅ All fixes tested and working
+**Build Status:** ✅ Successful
+**Documentation:** SESSION_CONTINUATION_SUMMARY.md
 
 #### Data Model Changes:
 ```typescript
-// Extended ListItemState
+// Extended ListItemState (IMPLEMENTED)
 export interface ListItemState {
   articleId: string;
+  articleName?: string;        // NEW (Phase 6B): Snapshot for history after deletion
   isChecked: boolean;
   amount?: string;
-  checkedAt?: Date;           // ✅ Already exists!
-  checkedBy?: string;          // NEW: User ID
-  history: CheckEvent[];       // NEW: Full check/uncheck history
+  addedAt?: Date;              // NEW (Bug fix 2025-11-24): When article added to list
+  checkedAt?: Date;            // ✅ Already exists!
+  checkedBy?: string;          // NEW (Phase 6A): User ID ('shared-shoplisl-user')
+  history?: CheckEvent[];      // NEW (Phase 6A): Full check/uncheck history (365 days)
 }
 
 export interface CheckEvent {
@@ -797,12 +834,12 @@ export interface CheckEvent {
   amount?: string;
 }
 
-// Extended Article
-export interface Article {
-  // ... existing fields ...
-  lastCheckedDate?: Date;      // NEW: Most recent check across all lists
-  lastAddedToListDate?: Date;  // NEW: Most recent addition
-  numberOfChecks?: number;     // NEW: Total check count
+// ArticleStats (Calculated, NOT stored in Article model)
+export interface ArticleStats {
+  articleId: string;
+  lastCheckedDate?: Date;      // Most recent check across all lists
+  lastAddedToListDate?: Date;  // Most recent addition (uses itemState.addedAt)
+  numberOfChecks: number;      // Total check count from history
 }
 ```
 
