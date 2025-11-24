@@ -27,30 +27,51 @@
     }
   }
 
-  // === SEARCH CONTAINER ===
-  .search-container {
+  // === SEARCH AND SORT CONTAINER ===
+  .search-sort-container {
     background: white;
-    padding: 10px 16px 0px 16px; /* CHANGED: Remove bottom padding completely */
-    border-bottom: none; /* CHANGED: Remove border that adds visual space */
-    margin: 0; /* ENSURE: No margins */
-    max-height: 70px;        /* Controls maximum height */
-    min-height: 60px;        /* Optional: minimum height */
-    overflow: hidden;        /* Prevents content overflow */
-    box-sizing: border-box;  /* Include padding in height calculation */
+    padding: 10px 16px 0px 16px;
+    border-bottom: none;
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    overflow: hidden;
+    box-sizing: border-box;
 
     .search-field {
-      width: 100%;
-      margin-bottom: 0px; /* ADD: Small margin to search field itself */
-      
+      flex: 1;
+      min-width: 0;
+      margin-bottom: 0px;
+
       .mat-mdc-text-field-wrapper {
         background-color: #f8f9fa;
       }
-      
+
       /* Force remove Material Design spacing */
       .mat-mdc-form-field {
         margin-bottom: 0 !important;
       }
-      
+
+      .mat-mdc-form-field-wrapper {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+      }
+    }
+
+    .sort-field {
+      flex: 0 0 140px;
+      margin-bottom: 0px;
+
+      .mat-mdc-text-field-wrapper {
+        background-color: #f8f9fa;
+      }
+
+      /* Force remove Material Design spacing */
+      .mat-mdc-form-field {
+        margin-bottom: 0 !important;
+      }
+
       .mat-mdc-form-field-wrapper {
         margin-bottom: 0 !important;
         padding-bottom: 0 !important;

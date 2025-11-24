@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -22,6 +23,7 @@ import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { DateChipComponent } from '../../../shared/components/date-chip/date-chip.component';
+import { CountChipComponent } from '../../../shared/components/count-chip/count-chip.component';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 
 /** Article with statistics */
@@ -44,15 +46,21 @@ export interface ArticleWithStats extends Article {
     MatSnackBarModule,
     MatDialogModule,
     MatProgressSpinnerModule,
-    DateChipComponent
+    MatSelectModule,
+    DateChipComponent,
+    CountChipComponent
   ],
   templateUrl: './article-overview.html',
   styleUrls: ['./article-overview.scss']
 })
+export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdded';
+
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
   searchQuery$ = new BehaviorSubject<string>('');
+  sortOption$ = new BehaviorSubject<ArticleSortOption>('name');
   filteredArticles$: Observable<ArticleWithStats[]>;
   searchQuery = '';
+  sortOption: ArticleSortOption = 'name';
 
   // Swipe state management (same as lists-overview)
   swipeStates: { [articleId: string]: {
@@ -75,16 +83,17 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private articleStatsService: ArticleStatsService
   ) {
-    // Combine articles with stats and search query for filtering using NgRx store
+    // Combine articles with stats, search query, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
       this.store.select(selectAllArticles),
       this.articleStatsService.getAllArticleStats(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
-      )
+      ),
+      this.sortOption$
     ]).pipe(
-      map(([articles, statsMap, query]) => {
+      map(([articles, statsMap, query, sortOption]) => {
         // Merge articles with their stats
         const articlesWithStats: ArticleWithStats[] = articles.map(article => ({
           ...article,
@@ -92,15 +101,14 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
         }));
 
         // Filter by search query
-        if (!query.trim()) {
-          return articlesWithStats.sort((a, b) => a.name.localeCompare(b.name));
-        }
+        const filtered = query.trim()
+          ? articlesWithStats.filter(article =>
+              article.name.toLowerCase().includes(query.toLowerCase().trim())
+            )
+          : articlesWithStats;
 
-        return articlesWithStats
-          .filter(article =>
-            article.name.toLowerCase().includes(query.toLowerCase().trim())
-          )
-          .sort((a, b) => a.name.localeCompare(b.name));
+        // Apply sorting
+        return this.sortArticles(filtered, sortOption);
       })
     );
   }
@@ -117,6 +125,59 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
   onSearchQueryChange(): void {
     this.searchQuery$.next(this.searchQuery.trim());
+  }
+
+  onSortChange(sortOption: ArticleSortOption): void {
+    this.sortOption = sortOption;
+    this.sortOption$.next(sortOption);
+  }
+
+  private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
+    const sorted = [...articles];
+
+    switch (sortOption) {
+      case 'name':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+
+      case 'checkCount':
+        return sorted.sort((a, b) => {
+          const countA = a.stats?.numberOfChecks ?? 0;
+          const countB = b.stats?.numberOfChecks ?? 0;
+          // Sort descending (most checks first)
+          if (countA !== countB) {
+            return countB - countA;
+          }
+          // If same count, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      case 'lastChecked':
+        return sorted.sort((a, b) => {
+          const dateA = a.stats?.lastCheckedDate?.getTime() ?? 0;
+          const dateB = b.stats?.lastCheckedDate?.getTime() ?? 0;
+          // Sort descending (most recent first)
+          if (dateA !== dateB) {
+            return dateB - dateA;
+          }
+          // If same date, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      case 'lastAdded':
+        return sorted.sort((a, b) => {
+          const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
+          const dateB = b.stats?.lastAddedToListDate?.getTime() ?? 0;
+          // Sort descending (most recent first)
+          if (dateA !== dateB) {
+            return dateB - dateA;
+          }
+          // If same date, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      default:
+        return sorted;
+    }
   }
 
   onArticleClick(article: Article): void {

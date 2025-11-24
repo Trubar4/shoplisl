@@ -17,6 +17,9 @@ import { takeUntil } from 'rxjs/operators';
 import { Article, Department, ShoppingList } from '../../../core/models';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DataService } from '../../../core/services/data.service';
+import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+import { DateChipComponent } from '../date-chip/date-chip.component';
+import { CountChipComponent } from '../count-chip/count-chip.component';
 
 export interface ArticleFormData {
   name: string;
@@ -40,7 +43,9 @@ export interface ArticleFormData {
     MatProgressSpinnerModule,
     MatRadioModule,
     MatCardModule,
-    MatChipsModule
+    MatChipsModule,
+    DateChipComponent,
+    CountChipComponent
   ],
   templateUrl: './article-form.component.html',
   styleUrls: ['./article-form.component.scss']
@@ -67,6 +72,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   departments: Department[] = [];
   containingLists$: Observable<ShoppingList[]> | null = null;
+  articleStats$: Observable<ArticleStats> | null = null;
   private destroy$ = new Subject<void>();
 
   commonEmojis = [
@@ -78,6 +84,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   constructor(
     private departmentService: DepartmentService,
     private dataService: DataService,
+    private articleStatsService: ArticleStatsService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -86,10 +93,12 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     
     if (this.article) {
       this.populateForm();
-      
+
       // Load lists containing this article (edit mode only)
       if (this.isEditMode) {
         this.containingLists$ = this.dataService.getListsContainingArticle(this.article.id);
+        // Load article statistics
+        this.articleStats$ = this.articleStatsService.getArticleStats(this.article.id);
       }
     } else if (this.prefilledName) {
       // Pre-fill the name for new articles
@@ -184,5 +193,18 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   getSelectedDepartment(): Department | null {
     if (!this.formData.departmentId) return null;
     return this.departments.find(d => d.id === this.formData.departmentId) || null;
+  }
+
+  // Stats editing methods (to be implemented with dialogs)
+  onEditLastAdded(): void {
+    this.snackBar.open('Funktion "Zuletzt hinzugefügt bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+  }
+
+  onEditLastChecked(): void {
+    this.snackBar.open('Funktion "Zuletzt abgehakt bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+  }
+
+  onEditCheckCount(): void {
+    this.snackBar.open('Funktion "Anzahl Abhakungen bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
   }
 }
