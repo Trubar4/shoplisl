@@ -127,6 +127,67 @@
       font-size: 0.875rem;
     }
   }
+
+  .history-log {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .history-title {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 12px 0;
+    color: #333;
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .history-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: #f8f9fa;
+
+    .history-prefix {
+      font-weight: 600;
+      width: 16px;
+      text-align: center;
+
+      &.checked {
+        color: #1976d2;
+      }
+
+      &.unchecked {
+        color: #388e3c;
+      }
+    }
+
+    .history-date {
+      color: #666;
+      min-width: 75px;
+    }
+
+    .history-time {
+      color: #999;
+      min-width: 40px;
+    }
+
+    .history-list-name {
+      color: #333;
+      font-weight: 500;
+      flex: 1;
+    }
+  }
 }
 
 /* ============ LIST MEMBERSHIP SECTION ============ */

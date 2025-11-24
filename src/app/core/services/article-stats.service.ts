@@ -88,7 +88,7 @@ export class ArticleStatsService {
         return;
       }
 
-      // Update lastAddedToListDate using the itemState.addedAt timestamp
+      // Track initial add to list using addedAt timestamp
       if (itemState.addedAt) {
         if (!lastAddedToListDate || itemState.addedAt > lastAddedToListDate) {
           lastAddedToListDate = itemState.addedAt;
@@ -104,6 +104,11 @@ export class ArticleStatsService {
             // Update lastCheckedDate
             if (!lastCheckedDate || event.timestamp > lastCheckedDate) {
               lastCheckedDate = event.timestamp;
+            }
+          } else if (event.action === 'unchecked') {
+            // Track uncheck events as "adding to list" (put back on list)
+            if (!lastAddedToListDate || event.timestamp > lastAddedToListDate) {
+              lastAddedToListDate = event.timestamp;
             }
           }
         });

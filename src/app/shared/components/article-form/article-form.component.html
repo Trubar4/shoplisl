@@ -39,71 +39,6 @@
       </textarea>
     </mat-form-field>
 
-    <!-- Stats Section (Edit Mode Only) -->
-    <div *ngIf="isEditMode && articleStats$" class="stats-section">
-      <h3 class="section-title">Statistiken</h3>
-
-      <div class="stats-container" *ngIf="articleStats$ | async as stats; else loadingStats">
-        <div class="stats-grid">
-          <!-- Last Added Date -->
-          <div class="stat-item" *ngIf="stats.lastAddedToListDate">
-            <div class="stat-content">
-              <app-date-chip [date]="stats.lastAddedToListDate" type="added" />
-              <button
-                mat-icon-button
-                class="stat-edit-button"
-                (click)="onEditLastAdded()"
-                [disabled]="isSubmitting || isDeleting"
-                [attr.aria-label]="'Zuletzt hinzugefügt bearbeiten'">
-                <mat-icon>edit</mat-icon>
-              </button>
-            </div>
-          </div>
-
-          <!-- Last Checked Date -->
-          <div class="stat-item" *ngIf="stats.lastCheckedDate">
-            <div class="stat-content">
-              <app-date-chip [date]="stats.lastCheckedDate" type="checked" />
-              <button
-                mat-icon-button
-                class="stat-edit-button"
-                (click)="onEditLastChecked()"
-                [disabled]="isSubmitting || isDeleting"
-                [attr.aria-label]="'Zuletzt abgehakt bearbeiten'">
-                <mat-icon>edit</mat-icon>
-              </button>
-            </div>
-          </div>
-
-          <!-- Number of Checks -->
-          <div class="stat-item" *ngIf="stats.numberOfChecks > 0">
-            <div class="stat-content">
-              <app-count-chip [count]="stats.numberOfChecks" />
-              <button
-                mat-icon-button
-                class="stat-edit-button"
-                (click)="onEditCheckCount()"
-                [disabled]="isSubmitting || isDeleting"
-                [attr.aria-label]="'Anzahl Abhakungen bearbeiten'">
-                <mat-icon>edit</mat-icon>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <p class="no-stats-message" *ngIf="!stats.lastAddedToListDate && !stats.lastCheckedDate && stats.numberOfChecks === 0">
-          Noch keine Statistiken vorhanden.
-        </p>
-      </div>
-
-      <ng-template #loadingStats>
-        <div class="loading-stats">
-          <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
-          <span>Statistiken werden geladen...</span>
-        </div>
-      </ng-template>
-    </div>
-
     <!-- Lists Info (Edit Mode Only) -->
     <div *ngIf="isEditMode && containingLists$" class="list-membership-section">
       <h3 class="section-title">In diesen Listen enthalten</h3>
@@ -274,4 +209,87 @@
       </button>
     </div>
   </form>
+
+  <!-- Stats Section (Edit Mode Only) - Outside form, at bottom -->
+  <div *ngIf="isEditMode && articleStats$" class="stats-section">
+    <h3 class="section-title">Statistiken</h3>
+
+    <div class="stats-container" *ngIf="articleStats$ | async as stats; else loadingStats">
+      <div class="stats-grid">
+        <!-- Last Added Date -->
+        <div class="stat-item" *ngIf="stats.lastAddedToListDate">
+          <div class="stat-content">
+            <app-date-chip [date]="stats.lastAddedToListDate" type="added" />
+            <button
+              mat-icon-button
+              type="button"
+              class="stat-edit-button"
+              (click)="onEditLastAdded()"
+              [disabled]="isSubmitting || isDeleting"
+              [attr.aria-label]="'Zuletzt hinzugefügt bearbeiten'">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Last Checked Date -->
+        <div class="stat-item" *ngIf="stats.lastCheckedDate">
+          <div class="stat-content">
+            <app-date-chip [date]="stats.lastCheckedDate" type="checked" />
+            <button
+              mat-icon-button
+              type="button"
+              class="stat-edit-button"
+              (click)="onEditLastChecked()"
+              [disabled]="isSubmitting || isDeleting"
+              [attr.aria-label]="'Zuletzt abgehakt bearbeiten'">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Number of Checks -->
+        <div class="stat-item" *ngIf="stats.numberOfChecks > 0">
+          <div class="stat-content">
+            <app-count-chip [count]="stats.numberOfChecks" />
+            <button
+              mat-icon-button
+              type="button"
+              class="stat-edit-button"
+              (click)="onEditCheckCount()"
+              [disabled]="isSubmitting || isDeleting"
+              [attr.aria-label]="'Anzahl Abhakungen bearbeiten'">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="no-stats-message" *ngIf="!stats.lastAddedToListDate && !stats.lastCheckedDate && stats.numberOfChecks === 0">
+        Noch keine Statistiken vorhanden.
+      </p>
+
+      <!-- History Log -->
+      <div class="history-log" *ngIf="articleHistory.length > 0">
+        <h4 class="history-title">Verlauf</h4>
+        <div class="history-list">
+          <div *ngFor="let event of articleHistory" class="history-entry">
+            <span class="history-prefix" [class.checked]="event.action === 'checked'" [class.unchecked]="event.action === 'unchecked'">
+              {{ getHistoryPrefix(event.action) }}
+            </span>
+            <span class="history-date">{{ formatHistoryDate(event.timestamp) }}</span>
+            <span class="history-time">{{ formatHistoryTime(event.timestamp) }}</span>
+            <span class="history-list-name">{{ event.listName }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #loadingStats>
+      <div class="loading-stats">
+        <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+        <span>Statistiken werden geladen...</span>
+      </div>
+    </ng-template>
+  </div>
 </div>

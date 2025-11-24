@@ -14,10 +14,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { Article, Department, ShoppingList } from '../../../core/models';
+import { Article, Department, ShoppingList, CheckEvent } from '../../../core/models';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DataService } from '../../../core/services/data.service';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+import { HistoryService } from '../../../core/services/history.service';
 import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
 
@@ -73,6 +74,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   departments: Department[] = [];
   containingLists$: Observable<ShoppingList[]> | null = null;
   articleStats$: Observable<ArticleStats> | null = null;
+  articleHistory: Array<CheckEvent & { listName: string }> = [];
   private destroy$ = new Subject<void>();
 
   commonEmojis = [
@@ -85,6 +87,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private departmentService: DepartmentService,
     private dataService: DataService,
     private articleStatsService: ArticleStatsService,
+    private historyService: HistoryService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -99,11 +102,38 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
         this.containingLists$ = this.dataService.getListsContainingArticle(this.article.id);
         // Load article statistics
         this.articleStats$ = this.articleStatsService.getArticleStats(this.article.id);
+        // Load article history
+        this.loadArticleHistory(this.article.id);
       }
     } else if (this.prefilledName) {
       // Pre-fill the name for new articles
       this.formData.name = this.prefilledName;
     }
+  }
+
+  private loadArticleHistory(articleId: string): void {
+    this.dataService.getAllLists()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(lists => {
+        const history: Array<CheckEvent & { listName: string }> = [];
+
+        lists.forEach(list => {
+          if (list.articleIds.includes(articleId)) {
+            const itemState = list.itemStates[articleId];
+            if (itemState?.history && itemState.history.length > 0) {
+              itemState.history.forEach(event => {
+                history.push({
+                  ...event,
+                  listName: list.name
+                });
+              });
+            }
+          }
+        });
+
+        // Sort by timestamp, most recent first
+        this.articleHistory = history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      });
   }
 
   ngOnDestroy(): void {
@@ -206,5 +236,21 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   onEditCheckCount(): void {
     this.snackBar.open('Funktion "Anzahl Abhakungen bearbeiten" wird bald implementiert', 'OK', { duration: 3000 });
+  }
+
+  // Format history event for display
+  formatHistoryDate(date: Date): string {
+    return this.historyService.formatDate(date);
+  }
+
+  formatHistoryTime(date: Date): string {
+    const d = date instanceof Date ? date : new Date(date);
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  getHistoryPrefix(action: 'checked' | 'unchecked'): string {
+    return action === 'checked' ? '−' : '+';
   }
 }
