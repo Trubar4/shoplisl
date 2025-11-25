@@ -12,6 +12,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Store } from '@ngrx/store';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 
@@ -24,6 +25,8 @@ import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
 import { DateEditDialogComponent, DateEditDialogData, DateEditDialogResult } from '../date-edit-dialog/date-edit-dialog.component';
 import { NumberEditDialogComponent, NumberEditDialogData, NumberEditDialogResult } from '../number-edit-dialog/number-edit-dialog.component';
+import { AppState } from '../../../state/app.state';
+import { selectAllLists } from '../../../state/lists/lists.selectors';
 
 export interface ArticleFormData {
   name: string;
@@ -101,7 +104,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private articleStatsService: ArticleStatsService,
     private historyService: HistoryService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private store: Store<AppState>
   ) {}
 
   ngOnInit(): void {
@@ -125,7 +129,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   }
 
   private loadArticleHistory(articleId: string): void {
-    this.dataService.getLists()
+    // Use NgRx store selector to get fully loaded lists with history
+    this.store.select(selectAllLists)
       .pipe(takeUntil(this.destroy$))
       .subscribe((lists: ShoppingList[]) => {
         const history: Array<CheckEvent & { listName: string }> = [];

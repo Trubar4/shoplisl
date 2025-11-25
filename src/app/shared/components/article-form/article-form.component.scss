@@ -81,8 +81,8 @@
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 600px; // Match departments section width
-  margin: 0 auto 80px; // Center and add bottom margin for tab bar
+  max-width: 600px; // Match form width
+  margin: 0 16px 80px; // Add side margins to match form padding, bottom margin for tab bar
 
   .stats-grid {
     display: flex;
