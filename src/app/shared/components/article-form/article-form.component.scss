@@ -7,13 +7,12 @@
 }
 
 .article-form {
-  padding: 24px 16px;
+  padding: 24px 16px 0; // Remove bottom padding - action buttons are fixed at bottom
   max-width: 600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px; // Reduced from 24px to minimize vertical space
-  padding-bottom: 16px; // Match gap spacing for consistent vertical rhythm
+  gap: 16px;
 }
 
 .full-width {
@@ -82,7 +81,7 @@
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-width: calc(600px - 32px); // Match form's content area (600px - 16px padding on each side)
-  margin: 0 auto 80px; // Center with auto margins, bottom margin for tab bar
+  margin: 16px auto 80px; // Minimal top spacing, center, bottom margin for tab bar
 
   .stats-grid {
     display: flex;
