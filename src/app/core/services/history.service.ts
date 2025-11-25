@@ -219,6 +219,7 @@ export class HistoryService {
       articleName: currentState?.articleName,  // Preserve article name
       isChecked: action === 'checked',
       amount: amount || currentState?.amount || '',
+      addedAt: currentState?.addedAt,  // Preserve addedAt timestamp
       checkedAt: action === 'checked' ? new Date() : currentState?.checkedAt,
       checkedBy: userId || this.DEFAULT_USER_ID,
       history: updatedHistory
