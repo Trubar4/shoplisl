@@ -19,6 +19,7 @@ import { Store } from '@ngrx/store';
 import { Article, ShoppingList } from '../../../core/models';
 import { AppState } from '../../../state/app.state';
 import * as ArticlesActions from '../../../state/articles/articles.actions';
+import * as ListsActions from '../../../state/lists/lists.actions';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
@@ -117,8 +118,10 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Dispatch load action to populate NgRx store
+    // Dispatch load actions to populate NgRx store with both articles and lists
+    // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
+    this.store.dispatch(ListsActions.loadLists());
   }
 
   ngOnDestroy(): void {

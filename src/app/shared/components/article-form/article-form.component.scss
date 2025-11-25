@@ -79,10 +79,10 @@
 .stats-section {
   background-color: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 20px 16px; // Match form's side padding (16px instead of 20px)
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-width: 600px; // Match form width
-  margin: 0 16px 80px; // Add side margins to match form padding, bottom margin for tab bar
+  margin: 0 auto 80px; // Center with auto margins, bottom margin for tab bar
 
   .stats-grid {
     display: flex;
