@@ -81,7 +81,7 @@
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-width: 568px; // Match form's content area (600px - 32px from side padding)
-  margin: 0 auto 80px; // Center, bottom margin for tab bar
+  margin: 16px auto 80px; // 16px top matches form's gap, center, bottom for tab bar
 
   .stats-grid {
     display: flex;
@@ -656,10 +656,14 @@
   }
   
   .list-membership-section,
-  .department-selector,
   .icon-section {
     padding: 16px;
     margin-bottom: 16px;
+  }
+
+  .department-selector {
+    padding: 16px;
+    // No margin-bottom - form's gap provides spacing
   }
   
   .department-grid {
@@ -682,6 +686,11 @@
       padding: 0 8px;
       border-radius: 18px;
     }
+  }
+
+  .stats-section {
+    // Match form's content area in mobile (600px - 16px from 8px padding on each side)
+    max-width: 584px;
   }
 }
 
