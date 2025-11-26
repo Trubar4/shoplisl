@@ -222,6 +222,33 @@ export class FirebaseDataService {
     return itemStates;
   }
 
+  /**
+   * Convert itemStates from application format to Firestore format
+   * Converts JavaScript Dates to Firestore Timestamps in checkedAt, addedAt, and history events
+   * This is CRITICAL for persistence - Firestore needs Timestamp objects, not Date objects
+   */
+  private convertItemStatesToFirestore(appItemStates: any): { [articleId: string]: any } {
+    const itemStates: any = {};
+
+    for (const [articleId, state] of Object.entries(appItemStates || {})) {
+      const itemState = state as any;
+
+      itemStates[articleId] = {
+        ...itemState,
+        // Convert Date objects to Firestore Timestamps
+        addedAt: itemState.addedAt instanceof Date ? Timestamp.fromDate(itemState.addedAt) : itemState.addedAt,
+        checkedAt: itemState.checkedAt instanceof Date ? Timestamp.fromDate(itemState.checkedAt) : itemState.checkedAt,
+        // Convert timestamps in history events
+        history: (itemState.history || []).map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp instanceof Date ? Timestamp.fromDate(event.timestamp) : event.timestamp
+        }))
+      };
+    }
+
+    return itemStates;
+  }
+
   private cleanupListeners(): void {
     if (this.articlesUnsubscribe) {
       this.articlesUnsubscribe();
@@ -346,13 +373,28 @@ export class FirebaseDataService {
 
   async createListInFirebase(listData: any): Promise<string> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData);
+
+    // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
+    const firestoreData = { ...listData };
+    if (firestoreData.itemStates) {
+      firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+    }
+
+    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), firestoreData);
     return docRef.id;
   }
 
   async updateListInFirebase(id: string, updateData: any): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData);
+
+    // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
+    // This is CRITICAL for persistence of history data
+    const firestoreData = { ...updateData };
+    if (firestoreData.itemStates) {
+      firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+    }
+
+    await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), firestoreData);
   }
 
   async deleteListInFirebase(id: string): Promise<void> {
