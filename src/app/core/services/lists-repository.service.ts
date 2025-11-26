@@ -140,12 +140,12 @@ export class ListsRepositoryService {
   toggleItemChecked(listId: string, articleId: string): Observable<boolean> {
     this.logger.debug('data', `TOGGLE-ITEM-CHECKED: ${listId}, ${articleId}`);
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
-        
+      mergeMap(list => {
+        if (!list) return of(false);
+
         const currentState = list.itemStates[articleId]?.isChecked || false;
         this.logger.debug('data', `TOGGLE: ${articleId} currently ${currentState ? 'CHECKED' : 'UNCHECKED'}`);
-        
+
         const newItemStates = {
           ...list.itemStates,
           [articleId]: {
@@ -155,28 +155,28 @@ export class ListsRepositoryService {
             checkedAt: new Date()
           }
         };
-  
+
         if (!this.connectionService.isOnline()) {
           this.logger.debug('data', 'TOGGLE: Offline - updating local state');
-          
+
           // Update local state immediately
           const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l => 
-            l.id === listId ? { 
-              ...l, 
-              itemStates: newItemStates, 
-              updatedAt: new Date() 
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              itemStates: newItemStates,
+              updatedAt: new Date()
             } : l
           );
-          
+
           const updatedList = updatedLists.find(l => l.id === listId);
           if (updatedList) {
             const newState = updatedList.itemStates[articleId]?.isChecked;
             this.logger.debug('data', `TOGGLE: Verified new state for ${articleId}: ${newState ? 'CHECKED' : 'UNCHECKED'}`);
           }
-          
+
           this.firebaseData.updateLocalLists(updatedLists);
-  
+
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -184,17 +184,25 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Toggle item ${articleId} in list ${listId}`);
-  
-          return true;
-        } else {
-          // Online - update Firebase directly
-          this.firebaseData.updateListInFirebase(listId, {
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
-  
-        return true;
+
+        // Online - update Firebase directly and wait for completion
+        this.logger.debug('data', 'TOGGLE: Online - updating Firebase');
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => {
+            this.logger.debug('data', 'TOGGLE: Firebase update successful');
+            return true;
+          }),
+          catchError(error => {
+            this.logger.error('data', 'TOGGLE: Firebase update failed', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', 'Error toggling item', error);
@@ -205,8 +213,8 @@ export class ListsRepositoryService {
 
   addArticleToList(listId: string, articleId: string): Observable<boolean> {
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
+      mergeMap(list => {
+        if (!list) return of(false);
 
         const newArticleIds = list.articleIds.includes(articleId)
           ? list.articleIds
@@ -242,15 +250,22 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Add article ${articleId} to list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when adding article', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', 'Error adding article to list', error);
@@ -269,8 +284,8 @@ export class ListsRepositoryService {
     }
 
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
+      mergeMap(list => {
+        if (!list) return of(false);
 
         // Add all article IDs that aren't already in the list
         const existingIds = new Set(list.articleIds);
@@ -316,15 +331,22 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Add ${articleIds.length} articles to list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when adding multiple articles', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', `Error adding ${articleIds.length} articles to list`, error);
@@ -343,8 +365,8 @@ export class ListsRepositoryService {
     }
 
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
+      mergeMap(list => {
+        if (!list) return of(false);
 
         // Update item states for all articles
         const newItemStates = { ...list.itemStates };
@@ -382,14 +404,21 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Mark ${articleIds.length} articles as checked in list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when marking multiple articles as checked', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', `Error marking ${articleIds.length} articles as checked`, error);
@@ -400,9 +429,9 @@ export class ListsRepositoryService {
 
   removeArticleFromList(listId: string, articleId: string): Observable<boolean> {
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
-        
+      mergeMap(list => {
+        if (!list) return of(false);
+
         const newArticleIds = list.articleIds.filter(id => id !== articleId);
         const newItemStates = { ...list.itemStates };
         delete newItemStates[articleId];
@@ -410,16 +439,16 @@ export class ListsRepositoryService {
         if (!this.connectionService.isOnline()) {
           // Update local state immediately
           const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l => 
-            l.id === listId ? { 
-              ...l, 
-              articleIds: newArticleIds, 
-              itemStates: newItemStates, 
-              updatedAt: new Date() 
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: new Date()
             } : l
           );
           this.firebaseData.updateLocalLists(updatedLists);
-        
+
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -428,15 +457,22 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Remove article ${articleId} from list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when removing article', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', 'Error removing article from list', error);
@@ -455,8 +491,8 @@ export class ListsRepositoryService {
     }
 
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
+      mergeMap(list => {
+        if (!list) return of(false);
 
         // Remove all specified article IDs
         const idsToRemove = new Set(articleIds);
@@ -489,15 +525,22 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Remove ${articleIds.length} articles from list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when removing multiple articles', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', `Error removing ${articleIds.length} articles from list`, error);
@@ -508,9 +551,9 @@ export class ListsRepositoryService {
 
   updateListItemAmount(listId: string, articleId: string, amount: string): Observable<boolean> {
     return this.firebaseData.getList(listId).pipe(
-      map(list => {
-        if (!list) return false;
-        
+      mergeMap(list => {
+        if (!list) return of(false);
+
         const newItemStates = {
           ...list.itemStates,
           [articleId]: {
@@ -523,15 +566,15 @@ export class ListsRepositoryService {
         if (!this.connectionService.isOnline()) {
           // Update local state immediately
           const currentLists = this.firebaseData.getCurrentLists();
-          const updatedLists = currentLists.map(l => 
-            l.id === listId ? { 
-              ...l, 
-              itemStates: newItemStates, 
-              updatedAt: new Date() 
+          const updatedLists = currentLists.map(l =>
+            l.id === listId ? {
+              ...l,
+              itemStates: newItemStates,
+              updatedAt: new Date()
             } : l
           );
           this.firebaseData.updateLocalLists(updatedLists);
-        
+
           // Queue for sync when online
           this.offlineSync.queueOperation(async () => {
             await this.firebaseData.updateListInFirebase(listId, {
@@ -539,14 +582,21 @@ export class ListsRepositoryService {
               updatedAt: Timestamp.now()
             });
           }, `Update amount for article ${articleId} in list ${listId}`);
-        } else {
-          this.firebaseData.updateListInFirebase(listId, {
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+
+          return of(true);
         }
 
-        return true;
+        // Online - update Firebase directly and wait for completion
+        return from(this.firebaseData.updateListInFirebase(listId, {
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        })).pipe(
+          map(() => true),
+          catchError(error => {
+            this.logger.error('data', 'Error updating Firebase when updating item amount', error);
+            return of(false);
+          })
+        );
       }),
       catchError(error => {
         this.logger.error('data', 'Error updating item amount', error);
