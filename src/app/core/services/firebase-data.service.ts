@@ -234,25 +234,38 @@ export class FirebaseDataService {
     for (const [articleId, state] of Object.entries(appItemStates || {})) {
       const itemState = state as any;
 
-      const convertedState: any = {
-        ...itemState,
-        // Convert Date objects to Firestore Timestamps
-        addedAt: itemState.addedAt instanceof Date ? Timestamp.fromDate(itemState.addedAt) : itemState.addedAt,
-        checkedAt: itemState.checkedAt instanceof Date ? Timestamp.fromDate(itemState.checkedAt) : itemState.checkedAt,
-        // Convert timestamps in history events
-        history: (itemState.history || []).map((event: any) => ({
-          ...event,
-          timestamp: event.timestamp instanceof Date ? Timestamp.fromDate(event.timestamp) : event.timestamp
-        }))
-      };
-
-      // CRITICAL: Remove undefined values - Firestore doesn't support them
-      // This prevents "Unsupported field value: undefined" errors
+      // Build cleanedState by only adding defined values
       const cleanedState: any = {};
-      for (const [key, value] of Object.entries(convertedState)) {
-        if (value !== undefined) {
-          cleanedState[key] = value;
-        }
+
+      // Add each property only if it's defined
+      if (itemState.articleId !== undefined) cleanedState.articleId = itemState.articleId;
+      if (itemState.articleName !== undefined) cleanedState.articleName = itemState.articleName;
+      if (itemState.isChecked !== undefined) cleanedState.isChecked = itemState.isChecked;
+      if (itemState.amount !== undefined) cleanedState.amount = itemState.amount;
+      if (itemState.checkedBy !== undefined) cleanedState.checkedBy = itemState.checkedBy;
+
+      // Convert and add addedAt only if defined
+      if (itemState.addedAt !== undefined) {
+        cleanedState.addedAt = itemState.addedAt instanceof Date
+          ? Timestamp.fromDate(itemState.addedAt)
+          : itemState.addedAt;
+      }
+
+      // Convert and add checkedAt only if defined
+      if (itemState.checkedAt !== undefined) {
+        cleanedState.checkedAt = itemState.checkedAt instanceof Date
+          ? Timestamp.fromDate(itemState.checkedAt)
+          : itemState.checkedAt;
+      }
+
+      // Convert timestamps in history events (only if history exists)
+      if (itemState.history !== undefined) {
+        cleanedState.history = itemState.history.map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp instanceof Date
+            ? Timestamp.fromDate(event.timestamp)
+            : event.timestamp
+        }));
       }
 
       itemStates[articleId] = cleanedState;
