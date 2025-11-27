@@ -12,7 +12,9 @@
     "test:karma": "ng test",
     "serve:pwa": "ng build && npx http-server dist/shoplisl-app -p 8080",
     "firebase:emulator": "firebase emulators:start",
-    "i18n:extract": "ng extract-i18n"
+    "i18n:extract": "ng extract-i18n",
+    "backup:firestore": "echo 'See scripts/backup-firestore.ts for backup instructions'",
+    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'"
   },
   "private": true,
   "dependencies": {

@@ -145,3 +145,33 @@ export const selectListsByShopId = (shopId: string) =>
   createSelector(selectAllLists, (lists) =>
     lists.filter((list) => list.shopId === shopId)
   );
+
+// ========================================
+// History & Completed Items Selectors
+// ========================================
+
+/** Select completed (checked) articles from a specific list */
+export const selectCompletedArticlesFromList = (listId: string) =>
+  createSelector(selectListById(listId), (list) => {
+    if (!list) return [];
+
+    return Object.entries(list.itemStates)
+      .filter(([_, state]) => state.isChecked)
+      .map(([_, state]) => state)
+      .sort((a, b) => {
+        // Sort by checkedAt date, most recent first
+        const dateA = a.checkedAt?.getTime() || 0;
+        const dateB = b.checkedAt?.getTime() || 0;
+        return dateB - dateA;
+      });
+  });
+
+/** Select uncompleted (unchecked) articles from a specific list */
+export const selectUncompletedArticlesFromList = (listId: string) =>
+  createSelector(selectListById(listId), (list) => {
+    if (!list) return [];
+
+    return Object.entries(list.itemStates)
+      .filter(([_, state]) => !state.isChecked)
+      .map(([_, state]) => state);
+  });

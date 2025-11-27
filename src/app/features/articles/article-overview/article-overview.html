@@ -8,12 +8,13 @@
     </button>
   </mat-toolbar>
 
-  <!-- Search Field -->
-  <div class="search-container">
+  <!-- Search and Sort -->
+  <div class="search-sort-container">
+    <!-- Search Field -->
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Artikel suchen</mat-label>
-      <input 
-        matInput 
+      <input
+        matInput
         [(ngModel)]="searchQuery"
         (input)="onSearchQueryChange()"
         placeholder="Artikel suchen..."
@@ -25,6 +26,17 @@
       } @else {
         <mat-icon matSuffix>search</mat-icon>
       }
+    </mat-form-field>
+
+    <!-- Sort Dropdown -->
+    <mat-form-field appearance="outline" class="sort-field">
+      <mat-label>Sortieren</mat-label>
+      <mat-select [(ngModel)]="sortOption" (selectionChange)="onSortChange($any($event).value)">
+        <mat-option value="name">Name (A-Z)</mat-option>
+        <mat-option value="checkCount">Häufigkeit (#)</mat-option>
+        <mat-option value="lastChecked">Zuletzt abgehakt (−)</mat-option>
+        <mat-option value="lastAdded">Zuletzt hinzugefügt (+)</mat-option>
+      </mat-select>
     </mat-form-field>
   </div>
 
@@ -73,6 +85,11 @@
             <div class="article-header">
               <span class="article-name">{{ article.name }}</span>
               <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
+            </div>
+            <div class="article-stats" *ngIf="article.stats?.lastCheckedDate || article.stats?.lastAddedToListDate || article.stats?.numberOfChecks">
+              <app-count-chip *ngIf="article.stats?.numberOfChecks" [count]="article.stats?.numberOfChecks!" />
+              <app-date-chip *ngIf="article.stats?.lastCheckedDate" [date]="article.stats?.lastCheckedDate!" type="checked" />
+              <app-date-chip *ngIf="article.stats?.lastAddedToListDate" [date]="article.stats?.lastAddedToListDate!" type="added" />
             </div>
             <div class="article-notes" *ngIf="article.notes">
               {{ article.notes }}

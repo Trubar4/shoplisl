@@ -11,12 +11,22 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
-import { Subject, Observable } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Store } from '@ngrx/store';
+import { Subject, Observable, BehaviorSubject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
 
-import { Article, Department, ShoppingList } from '../../../core/models';
+import { Article, Department, ShoppingList, CheckEvent } from '../../../core/models';
 import { DepartmentService } from '../../../core/services/department.service';
 import { DataService } from '../../../core/services/data.service';
+import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+import { HistoryService } from '../../../core/services/history.service';
+import { DateChipComponent } from '../date-chip/date-chip.component';
+import { CountChipComponent } from '../count-chip/count-chip.component';
+import { DateEditDialogComponent, DateEditDialogData, DateEditDialogResult } from '../date-edit-dialog/date-edit-dialog.component';
+import { NumberEditDialogComponent, NumberEditDialogData, NumberEditDialogResult } from '../number-edit-dialog/number-edit-dialog.component';
+import { AppState } from '../../../state/app.state';
+import { selectAllLists } from '../../../state/lists/lists.selectors';
 
 export interface ArticleFormData {
   name: string;
@@ -40,7 +50,10 @@ export interface ArticleFormData {
     MatProgressSpinnerModule,
     MatRadioModule,
     MatCardModule,
-    MatChipsModule
+    MatChipsModule,
+    MatDialogModule,
+    DateChipComponent,
+    CountChipComponent
   ],
   templateUrl: './article-form.component.html',
   styleUrls: ['./article-form.component.scss']
@@ -67,6 +80,16 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   departments: Department[] = [];
   containingLists$: Observable<ShoppingList[]> | null = null;
+  articleStats$: Observable<ArticleStats> | null = null;
+  articleHistory: Array<CheckEvent & { listName: string }> = [];
+
+  // Manual stat overrides (temporary, will be overwritten on next action)
+  statOverrides: {
+    lastAddedDate?: Date;
+    lastCheckedDate?: Date;
+    numberOfChecks?: number;
+  } = {};
+
   private destroy$ = new Subject<void>();
 
   commonEmojis = [
@@ -78,7 +101,11 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   constructor(
     private departmentService: DepartmentService,
     private dataService: DataService,
-    private snackBar: MatSnackBar
+    private articleStatsService: ArticleStatsService,
+    private historyService: HistoryService,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog,
+    private store: Store<AppState>
   ) {}
 
   ngOnInit(): void {
@@ -86,15 +113,45 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     
     if (this.article) {
       this.populateForm();
-      
+
       // Load lists containing this article (edit mode only)
       if (this.isEditMode) {
         this.containingLists$ = this.dataService.getListsContainingArticle(this.article.id);
+        // Load article statistics
+        this.articleStats$ = this.articleStatsService.getArticleStats(this.article.id);
+        // Load article history
+        this.loadArticleHistory(this.article.id);
       }
     } else if (this.prefilledName) {
       // Pre-fill the name for new articles
       this.formData.name = this.prefilledName;
     }
+  }
+
+  private loadArticleHistory(articleId: string): void {
+    // Use NgRx store selector to get fully loaded lists with history
+    this.store.select(selectAllLists)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((lists: ShoppingList[]) => {
+        const history: Array<CheckEvent & { listName: string }> = [];
+
+        lists.forEach((list: ShoppingList) => {
+          if (list.articleIds.includes(articleId)) {
+            const itemState = list.itemStates[articleId];
+            if (itemState?.history && itemState.history.length > 0) {
+              itemState.history.forEach((event: CheckEvent) => {
+                history.push({
+                  ...event,
+                  listName: list.name
+                });
+              });
+            }
+          }
+        });
+
+        // Sort by timestamp, most recent first
+        this.articleHistory = history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      });
   }
 
   ngOnDestroy(): void {
@@ -184,5 +241,106 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   getSelectedDepartment(): Department | null {
     if (!this.formData.departmentId) return null;
     return this.departments.find(d => d.id === this.formData.departmentId) || null;
+  }
+
+  // Stats editing methods
+  onEditLastAdded(): void {
+    if (!this.articleStats$) return;
+
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentDate = this.statOverrides.lastAddedDate || stats?.lastAddedToListDate;
+
+      const dialogRef = this.dialog.open(DateEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Zuletzt hinzugefügt bearbeiten',
+          currentDate: currentDate
+        } as DateEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: DateEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.lastAddedDate = result.date;
+          this.snackBar.open('Datum aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
+  }
+
+  onEditLastChecked(): void {
+    if (!this.articleStats$) return;
+
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentDate = this.statOverrides.lastCheckedDate || stats?.lastCheckedDate;
+
+      const dialogRef = this.dialog.open(DateEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Zuletzt abgehakt bearbeiten',
+          currentDate: currentDate
+        } as DateEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: DateEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.lastCheckedDate = result.date;
+          this.snackBar.open('Datum aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
+  }
+
+  onEditCheckCount(): void {
+    if (!this.articleStats$) return;
+
+    this.articleStats$.pipe(take(1)).subscribe(stats => {
+      const currentCount = this.statOverrides.numberOfChecks ?? stats?.numberOfChecks ?? 0;
+
+      const dialogRef = this.dialog.open(NumberEditDialogComponent, {
+        width: '400px',
+        data: {
+          title: 'Anzahl Abhakungen bearbeiten',
+          label: 'Anzahl',
+          currentValue: currentCount,
+          min: 0
+        } as NumberEditDialogData
+      });
+
+      dialogRef.afterClosed().subscribe((result: NumberEditDialogResult | undefined) => {
+        if (result) {
+          this.statOverrides.numberOfChecks = result.value;
+          this.snackBar.open('Anzahl aktualisiert (wird beim nächsten Abhaken überschrieben)', 'OK', { duration: 3000 });
+        }
+      });
+    });
+  }
+
+  // Get the display value for stats (with overrides)
+  getDisplayLastAdded(): Date | undefined {
+    return this.statOverrides.lastAddedDate;
+  }
+
+  getDisplayLastChecked(): Date | undefined {
+    return this.statOverrides.lastCheckedDate;
+  }
+
+  getDisplayCheckCount(): number | undefined {
+    return this.statOverrides.numberOfChecks;
+  }
+
+  // Format history event for display
+  formatHistoryDate(date: Date): string {
+    return this.historyService.formatDate(date);
+  }
+
+  formatHistoryTime(date: Date): string {
+    const d = date instanceof Date ? date : new Date(date);
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  getHistoryPrefix(action: 'checked' | 'unchecked'): string {
+    return action === 'checked' ? '−' : '+';
   }
 }

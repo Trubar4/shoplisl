@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Router, ActivatedRoute } from '@angular/router';
-import { of, BehaviorSubject, Subject, throwError } from 'rxjs';
+import { of, BehaviorSubject, Subject, throwError, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { signal, ChangeDetectorRef } from '@angular/core';
 import { Store } from '@ngrx/store';
@@ -15,6 +15,9 @@ import { ArticleSelectionService } from './services/article-selection.service';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import * as ListsActions from '../../../state/lists/lists.actions';
+import { selectAllLists } from '../../../state/lists/lists.selectors';
+import { selectAllArticles } from '../../../state/articles/articles.selectors';
 
 /**
  * List Detail Component Tests
@@ -98,12 +101,11 @@ describe('ListDetailComponent', () => {
     // NgRx Store mock
     storeMock = {
       select: vi.fn((selector: any) => {
-        // Mock selectAllLists
-        if (selector.toString().includes('selectAllLists') || selector === 'selectAllLists') {
+        // Match actual selectors by function reference
+        if (selector === selectAllLists) {
           return of([testList]);
         }
-        // Mock selectAllArticles
-        if (selector.toString().includes('selectAllArticles') || selector === 'selectAllArticles') {
+        if (selector === selectAllArticles) {
           return of(testArticles);
         }
         return of([]);
@@ -264,9 +266,7 @@ describe('ListDetailComponent', () => {
 
   describe('Initialization', () => {
     it('should load list from route parameter', async () => {
-      const list = await new Promise((resolve) => {
-        component.list$.subscribe(list => resolve(list));
-      });
+      const list = await firstValueFrom(component.list$);
 
       expect(list).toBeDefined();
       expect((list as any)?.id).toBe('list1');
@@ -286,6 +286,7 @@ describe('ListDetailComponent', () => {
       const newComponent = new ListDetailComponent(
         activatedRouteMock as any,
         routerMock as any,
+        storeMock as Store<any>,
         dataServiceMock as DataService,
         departmentServiceMock as DepartmentService,
         listUtilsMock as ListUtilsService,
@@ -315,11 +316,20 @@ describe('ListDetailComponent', () => {
     });
 
     it('should navigate to lists if list not found', async () => {
-      dataServiceMock.getLists.mockReturnValue(of([]));
+      // Mock store to return empty list
+      const emptyStoreMock = {
+        select: vi.fn((selector: any) => {
+          if (selector === selectAllLists) return of([]);
+          if (selector === selectAllArticles) return of(testArticles);
+          return of([]);
+        }),
+        dispatch: vi.fn()
+      };
 
       const newComponent = new ListDetailComponent(
         activatedRouteMock as any,
         routerMock as any,
+        emptyStoreMock as Store<any>,
         dataServiceMock as DataService,
         departmentServiceMock as DepartmentService,
         listUtilsMock as ListUtilsService,
@@ -357,9 +367,7 @@ describe('ListDetailComponent', () => {
       component.onFilterChange({ mode: 'shopping', filter: 'alle' });
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       expect(allArticles.length).toBe(3);
@@ -369,9 +377,7 @@ describe('ListDetailComponent', () => {
       component.onFilterChange({ mode: 'shopping', filter: 'erledigt' });
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       const allChecked = allArticles.every((a: any) => a.isChecked);
@@ -401,9 +407,7 @@ describe('ListDetailComponent', () => {
       component.onFilterChange({ mode: 'edit', filter: 'alle' });
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroupsEdit$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroupsEdit$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       expect(allArticles.length).toBe(4);
@@ -413,9 +417,7 @@ describe('ListDetailComponent', () => {
       component.onFilterChange({ mode: 'edit', filter: 'gelistet' });
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroupsEdit$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroupsEdit$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       const allInList = allArticles.every((a: any) => a.isInList);
@@ -426,9 +428,7 @@ describe('ListDetailComponent', () => {
       component.onFilterChange({ mode: 'edit', filter: 'fehlend' });
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroupsEdit$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroupsEdit$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       const allNotInList = allArticles.every((a: any) => !a.isInList);
@@ -463,13 +463,12 @@ describe('ListDetailComponent', () => {
 
       component.onArticleToggle(article);
 
-      expect(dataServiceMock.toggleItemChecked).toHaveBeenCalledWith('list1', 'article1');
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.toggleArticleChecked({ listId: 'list1', articleId: 'article1' })
+      );
     });
 
-    it('should handle toggle errors gracefully', () => {
-      dataServiceMock.toggleItemChecked.mockReturnValue(throwError(() => new Error('Toggle failed')));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+    it('should dispatch toggle action', () => {
       const article: any = {
         id: 'article1',
         name: 'Milch',
@@ -478,9 +477,10 @@ describe('ListDetailComponent', () => {
 
       component.onArticleToggle(article);
 
-      // Should handle error without crashing
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      // Should dispatch action (error handling is in NgRx effects)
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.toggleArticleChecked({ listId: 'list1', articleId: 'article1' })
+      );
     });
   });
 
@@ -502,7 +502,9 @@ describe('ListDetailComponent', () => {
 
       component.onToggleArticleInList(article);
 
-      expect(dataServiceMock.addArticleToList).toHaveBeenCalledWith('list1', 'article4');
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.addArticleToList({ listId: 'list1', articleId: 'article4', amount: '' })
+      );
     });
 
     it('should remove article from list', () => {
@@ -514,7 +516,9 @@ describe('ListDetailComponent', () => {
 
       component.onToggleArticleInList(article);
 
-      expect(dataServiceMock.removeArticleFromList).toHaveBeenCalledWith('list1', 'article1');
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.removeArticleFromList({ listId: 'list1', articleId: 'article1' })
+      );
     });
 
     it('should show snackbar after adding article', async () => {
@@ -551,10 +555,7 @@ describe('ListDetailComponent', () => {
       );
     });
 
-    it('should handle toggle list errors', () => {
-      dataServiceMock.addArticleToList.mockReturnValue(throwError(() => new Error('Add failed')));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+    it('should dispatch add action', () => {
       const article: any = {
         id: 'article4',
         name: 'Käse',
@@ -563,8 +564,10 @@ describe('ListDetailComponent', () => {
 
       component.onToggleArticleInList(article);
 
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      // Should dispatch action (error handling is in NgRx effects)
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.addArticleToList({ listId: 'list1', articleId: 'article4', amount: '' })
+      );
     });
   });
 
@@ -590,9 +593,7 @@ describe('ListDetailComponent', () => {
 
       await new Promise(resolve => setTimeout(resolve, 350));
 
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       const milchArticle = allArticles.find((a: any) => a.name === 'Milch');
@@ -746,7 +747,9 @@ describe('ListDetailComponent', () => {
       // Confirmation is handled by edit-mode component
       component.onDeleteList();
 
-      expect(dataServiceMock.deleteList).toHaveBeenCalledWith('list1');
+      expect(storeMock.dispatch).toHaveBeenCalledWith(
+        ListsActions.deleteList({ listId: 'list1' })
+      );
     });
 
     it('should navigate after successful delete', async () => {
@@ -779,9 +782,7 @@ describe('ListDetailComponent', () => {
     });
 
     it('should group articles by department', async () => {
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       expect(groups.length).toBeGreaterThan(0);
 
@@ -793,9 +794,7 @@ describe('ListDetailComponent', () => {
     });
 
     it('should respect department order from list', async () => {
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       // Should follow departmentOrder: ['dairy', 'fruits', 'bakery']
       if (groups.length > 0) {
@@ -810,11 +809,24 @@ describe('ListDetailComponent', () => {
         createTestArticle('article6', 'Another Test', '')
       ];
 
-      dataServiceMock.getArticles.mockReturnValue(of([...testArticles, ...articlesWithEmptyDept]));
+      // Mock store to return articles with empty departments
+      const customStoreMock = {
+        select: vi.fn((selector: any) => {
+          if (selector === selectAllLists) {
+            return of([testList]);
+          }
+          if (selector === selectAllArticles) {
+            return of([...testArticles, ...articlesWithEmptyDept]);
+          }
+          return of([]);
+        }),
+        dispatch: vi.fn()
+      };
 
       const newComponent = new ListDetailComponent(
         activatedRouteMock as any,
         routerMock as any,
+        customStoreMock as Store<any>,
         dataServiceMock as DataService,
         departmentServiceMock as DepartmentService,
         listUtilsMock as ListUtilsService,
@@ -829,9 +841,7 @@ describe('ListDetailComponent', () => {
       newComponent.ngOnInit();
 
       // Component should handle empty departments by assigning to 'miscellaneous'
-      const groups = await new Promise<any>((resolve) => {
-        newComponent.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(newComponent.departmentGroups$);
 
       const allArticles = groups.flatMap((g: any) => g.articles);
       // Should have at least the original articles
@@ -841,9 +851,7 @@ describe('ListDetailComponent', () => {
     });
 
     it('should sort articles within departments', async () => {
-      const groups = await new Promise<any>((resolve) => {
-        component.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(component.departmentGroups$);
 
       groups.forEach((group: any) => {
         const names = group.articles.map((a: any) => a.name);
@@ -1021,14 +1029,29 @@ describe('ListDetailComponent', () => {
   describe('Edge Cases', () => {
     beforeEach(() => {
       component.ngOnInit();
+      // Reset mocks after initialization
+      vi.clearAllMocks();
     });
 
     it('should handle empty article list', async () => {
-      dataServiceMock.getArticles.mockReturnValue(of([]));
+      // Mock store to return empty articles
+      const emptyArticlesStoreMock = {
+        select: vi.fn((selector: any) => {
+          if (selector === selectAllLists) {
+            return of([testList]);
+          }
+          if (selector === selectAllArticles) {
+            return of([]);
+          }
+          return of([]);
+        }),
+        dispatch: vi.fn()
+      };
 
       const newComponent = new ListDetailComponent(
         activatedRouteMock as any,
         routerMock as any,
+        emptyArticlesStoreMock as Store<any>,
         dataServiceMock as DataService,
         departmentServiceMock as DepartmentService,
         listUtilsMock as ListUtilsService,
@@ -1042,9 +1065,7 @@ describe('ListDetailComponent', () => {
 
       newComponent.ngOnInit();
 
-      const groups = await new Promise<any>((resolve) => {
-        newComponent.departmentGroups$.subscribe(groups => resolve(groups));
-      });
+      const groups = await firstValueFrom(newComponent.departmentGroups$);
 
       expect(groups).toBeDefined();
       expect(Array.isArray(groups)).toBe(true);

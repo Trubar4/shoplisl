@@ -997,30 +997,16 @@ export class DisambiguationService {
   }
 
   private async addArticleToList(articleId: string, listId: string, amount: string): Promise<void> {
-    const targetList = await this.listSelection.findListById(listId);
-    if (!targetList) {
-      throw new Error(`Target list not found: ${listId}`);
-    }
+    // Use repository's addArticleToList for optimistic UI updates
+    const result = await this.dataService.addArticleToList(listId, articleId).pipe(take(1)).toPromise();
 
-    const updatedArticleIds = [...targetList.articleIds];
-    if (!updatedArticleIds.includes(articleId)) {
-      updatedArticleIds.push(articleId);
-    }
-
-    const updatedItemStates = { ...targetList.itemStates };
-    updatedItemStates[articleId] = {
-      articleId: articleId,
-      isChecked: false,
-      amount: amount
-    };
-
-    const updateResult = await this.dataService.updateList(targetList.id, {
-      articleIds: updatedArticleIds,
-      itemStates: updatedItemStates
-    }).pipe(take(1)).toPromise();
-
-    if (!updateResult) {
+    if (!result) {
       throw new Error(`Failed to add article to list`);
+    }
+
+    // Update amount if specified
+    if (amount) {
+      await this.dataService.updateListItemAmount(listId, articleId, amount).pipe(take(1)).toPromise();
     }
   }
 
@@ -1029,25 +1015,9 @@ export class DisambiguationService {
     multipleArticleIds: string[],
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
-    const updatedArticleIds = [...targetList.articleIds];
-    const updatedItemStates = { ...targetList.itemStates };
-
-    for (const articleId of multipleArticleIds) {
-      if (!updatedArticleIds.includes(articleId)) {
-        updatedArticleIds.push(articleId);
-      }
-
-      updatedItemStates[articleId] = {
-        articleId: articleId,
-        isChecked: false,
-        amount: ''
-      };
-    }
-
-    const updateResult = await this.dataService.updateList(targetList.id, {
-      articleIds: updatedArticleIds,
-      itemStates: updatedItemStates
-    }).pipe(take(1)).toPromise();
+    // Use repository's addMultipleArticlesToList for optimistic UI updates and race condition prevention
+    const updateResult = await this.dataService.addMultipleArticlesToList(targetList.id, multipleArticleIds)
+      .pipe(take(1)).toPromise();
 
     if (updateResult) {
       const processedItems = (pendingAction as any).processedItems || [];

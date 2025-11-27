@@ -4,6 +4,7 @@ import { FirebaseDataService } from './firebase-data.service';
 import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
+import { HistoryService } from './history.service';
 import { Timestamp } from '@angular/fire/firestore';
 
 describe('ListsRepositoryService - Batch Operations', () => {
@@ -12,6 +13,7 @@ describe('ListsRepositoryService - Batch Operations', () => {
   let offlineSyncSpy: any;
   let connectionServiceSpy: any;
   let loggerSpy: any;
+  let historyServiceSpy: any;
 
   const mockList = {
     id: 'list1',
@@ -50,11 +52,30 @@ describe('ListsRepositoryService - Batch Operations', () => {
       debug: vi.fn()
     };
 
+    historyServiceSpy = {
+      createUpdatedItemState: vi.fn().mockImplementation((currentState, articleId, action, amount) => ({
+        ...currentState,
+        articleId,
+        isChecked: action === 'checked',
+        checkedAt: new Date(),
+        amount,
+        checkedBy: 'shared-shoplisl-user',
+        history: [{
+          timestamp: new Date(),
+          userId: 'shared-shoplisl-user',
+          userName: 'Du',
+          action,
+          amount
+        }]
+      }))
+    };
+
     service = new ListsRepositoryService(
       firebaseDataSpy as any,
       offlineSyncSpy as any,
       connectionServiceSpy as any,
-      loggerSpy as any
+      loggerSpy as any,
+      historyServiceSpy as any
     );
   });
 

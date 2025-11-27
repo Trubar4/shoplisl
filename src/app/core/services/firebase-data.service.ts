@@ -129,8 +129,8 @@ export class FirebaseDataService {
       // Articles listener
       const articlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
       const articlesQuery = query(articlesRef, orderBy('name'));
-      
-      this.articlesUnsubscribe = onSnapshot(articlesQuery, 
+
+      this.articlesUnsubscribe = onSnapshot(articlesQuery,
         (snapshot) => {
           this.logger.debug('data', `Fresh articles received: ${snapshot.size}`);
           const articles: Article[] = [];
@@ -150,7 +150,7 @@ export class FirebaseDataService {
               usageCount: data['usageCount'] || 0
             });
           });
-          
+
           this.articlesSubject.next(articles);
           this.cacheService.cacheArticles(articles);
         },
@@ -163,7 +163,7 @@ export class FirebaseDataService {
       // Lists listener
       const listsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
       const listsQuery = query(listsRef, orderBy('name'));
-      
+
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
@@ -177,13 +177,13 @@ export class FirebaseDataService {
               icon: data['icon'],
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
-              itemStates: data['itemStates'] || {},
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
             });
           });
-          
+
           this.listsSubject.next(lists);
           this.cacheService.cacheLists(lists);
         },
@@ -196,6 +196,82 @@ export class FirebaseDataService {
       this.logger.error('data', 'Error setting up listeners', error);
       this.loadCachedData();
     }
+  }
+
+  /**
+   * Convert itemStates from Firestore format to application format
+   * Converts Firestore Timestamps to JavaScript Dates in checkedAt and history events
+   */
+  private convertItemStatesFromFirestore(firestoreItemStates: any): { [articleId: string]: any } {
+    const itemStates: any = {};
+
+    for (const [articleId, state] of Object.entries(firestoreItemStates || {})) {
+      const itemState = state as any;
+
+      itemStates[articleId] = {
+        ...itemState,
+        addedAt: itemState.addedAt?.toDate ? itemState.addedAt.toDate() : itemState.addedAt,
+        checkedAt: itemState.checkedAt?.toDate ? itemState.checkedAt.toDate() : itemState.checkedAt,
+        history: (itemState.history || []).map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp?.toDate ? event.timestamp.toDate() : event.timestamp
+        }))
+      };
+    }
+
+    return itemStates;
+  }
+
+  /**
+   * Convert itemStates from application format to Firestore format
+   * Converts JavaScript Dates to Firestore Timestamps in checkedAt, addedAt, and history events
+   * This is CRITICAL for persistence - Firestore needs Timestamp objects, not Date objects
+   * Also removes undefined values as Firestore doesn't support them
+   */
+  private convertItemStatesToFirestore(appItemStates: any): { [articleId: string]: any } {
+    const itemStates: any = {};
+
+    for (const [articleId, state] of Object.entries(appItemStates || {})) {
+      const itemState = state as any;
+
+      // Build cleanedState by only adding defined values
+      const cleanedState: any = {};
+
+      // Add each property only if it's defined
+      if (itemState.articleId !== undefined) cleanedState.articleId = itemState.articleId;
+      if (itemState.articleName !== undefined) cleanedState.articleName = itemState.articleName;
+      if (itemState.isChecked !== undefined) cleanedState.isChecked = itemState.isChecked;
+      if (itemState.amount !== undefined) cleanedState.amount = itemState.amount;
+      if (itemState.checkedBy !== undefined) cleanedState.checkedBy = itemState.checkedBy;
+
+      // Convert and add addedAt only if defined
+      if (itemState.addedAt !== undefined) {
+        cleanedState.addedAt = itemState.addedAt instanceof Date
+          ? Timestamp.fromDate(itemState.addedAt)
+          : itemState.addedAt;
+      }
+
+      // Convert and add checkedAt only if defined
+      if (itemState.checkedAt !== undefined) {
+        cleanedState.checkedAt = itemState.checkedAt instanceof Date
+          ? Timestamp.fromDate(itemState.checkedAt)
+          : itemState.checkedAt;
+      }
+
+      // Convert timestamps in history events (only if history exists)
+      if (itemState.history !== undefined) {
+        cleanedState.history = itemState.history.map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp instanceof Date
+            ? Timestamp.fromDate(event.timestamp)
+            : event.timestamp
+        }));
+      }
+
+      itemStates[articleId] = cleanedState;
+    }
+
+    return itemStates;
   }
 
   private cleanupListeners(): void {
@@ -264,12 +340,12 @@ export class FirebaseDataService {
   getList(id: string): Observable<ShoppingList | undefined> {
     const currentLists = this.listsSubject.value;
     const localList = currentLists.find(l => l.id === id);
-    
+
     if (localList) {
       this.logger.debug('data', `Found list "${localList.name}" in local state`);
       return of(localList);
     }
-  
+
     if (this.connectionService.isOnline() && this.firestore) {
       this.logger.debug('data', `List ${id} not in local state, fetching from Firebase`);
       return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
@@ -283,7 +359,7 @@ export class FirebaseDataService {
               icon: data['icon'],
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
-              itemStates: data['itemStates'] || {},
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
@@ -297,7 +373,7 @@ export class FirebaseDataService {
         })
       );
     }
-  
+
     this.logger.warn('data', `List ${id} not found (offline)`);
     return of(undefined);
   }
@@ -322,13 +398,37 @@ export class FirebaseDataService {
 
   async createListInFirebase(listData: any): Promise<string> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), listData);
+
+    // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
+    const firestoreData = { ...listData };
+    if (firestoreData.itemStates) {
+      firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+    }
+
+    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), firestoreData);
     return docRef.id;
   }
 
   async updateListInFirebase(id: string, updateData: any): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), updateData);
+
+    try {
+      // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
+      // This is CRITICAL for persistence of history data
+      const firestoreData = { ...updateData };
+      if (firestoreData.itemStates) {
+        this.logger.debug('data', `Converting ${Object.keys(firestoreData.itemStates).length} itemStates for Firebase write`);
+        firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+      }
+
+      this.logger.info('data', `Writing to Firebase: users/${this.SHARED_USER_ID}/lists/${id}`);
+      await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), firestoreData);
+      this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
+    } catch (error: any) {
+      this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
+      this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
+      throw error; // Re-throw so caller can handle
+    }
   }
 
   async deleteListInFirebase(id: string): Promise<void> {

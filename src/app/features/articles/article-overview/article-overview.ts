@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -18,9 +19,21 @@ import { Store } from '@ngrx/store';
 import { Article, ShoppingList } from '../../../core/models';
 import { AppState } from '../../../state/app.state';
 import * as ArticlesActions from '../../../state/articles/articles.actions';
+import * as ListsActions from '../../../state/lists/lists.actions';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { DateChipComponent } from '../../../shared/components/date-chip/date-chip.component';
+import { CountChipComponent } from '../../../shared/components/count-chip/count-chip.component';
+import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+
+/** Article with statistics */
+export interface ArticleWithStats extends Article {
+  stats?: ArticleStats;
+}
+
+/** Article sort options */
+export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdded';
 
 @Component({
   selector: 'app-article-overview',
@@ -36,61 +49,79 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     MatInputModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    DateChipComponent,
+    CountChipComponent
   ],
   templateUrl: './article-overview.html',
   styleUrls: ['./article-overview.scss']
 })
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
+  private readonly SORT_STORAGE_KEY = 'article-overview-sort-option';
+
   searchQuery$ = new BehaviorSubject<string>('');
-  filteredArticles$: Observable<Article[]>;
+  sortOption$ = new BehaviorSubject<ArticleSortOption>(this.loadSavedSortOption());
+  filteredArticles$: Observable<ArticleWithStats[]>;
   searchQuery = '';
-  
+  sortOption: ArticleSortOption = this.loadSavedSortOption();
+
   // Swipe state management (same as lists-overview)
-  swipeStates: { [articleId: string]: { 
-    isSwipeActive: boolean; 
+  swipeStates: { [articleId: string]: {
+    isSwipeActive: boolean;
     swipeDistance: number;
     startX: number;
     currentX: number;
     startY: number;
     currentY: number;
   } } = {};
-  
+
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
   private destroy$ = new Subject<void>();
-  
+
   constructor(
     private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private articleStatsService: ArticleStatsService
   ) {
-    // Combine articles with search query for filtering using NgRx store
+    // Combine articles with stats, search query, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
       this.store.select(selectAllArticles),
+      this.articleStatsService.getAllArticleStats(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
-      )
+      ),
+      this.sortOption$
     ]).pipe(
-      map(([articles, query]) => {
-        if (!query.trim()) {
-          return articles.sort((a, b) => a.name.localeCompare(b.name));
-        }
+      map(([articles, statsMap, query, sortOption]) => {
+        // Merge articles with their stats
+        const articlesWithStats: ArticleWithStats[] = articles.map(article => ({
+          ...article,
+          stats: statsMap.get(article.id)
+        }));
 
-        return articles
-          .filter(article =>
-            article.name.toLowerCase().includes(query.toLowerCase().trim())
-          )
-          .sort((a, b) => a.name.localeCompare(b.name));
+        // Filter by search query
+        const filtered = query.trim()
+          ? articlesWithStats.filter(article =>
+              article.name.toLowerCase().includes(query.toLowerCase().trim())
+            )
+          : articlesWithStats;
+
+        // Apply sorting
+        return this.sortArticles(filtered, sortOption);
       })
     );
   }
 
   ngOnInit(): void {
-    // Dispatch load action to populate NgRx store
+    // Dispatch load actions to populate NgRx store with both articles and lists
+    // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
+    this.store.dispatch(ListsActions.loadLists());
   }
 
   ngOnDestroy(): void {
@@ -100,6 +131,80 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
   onSearchQueryChange(): void {
     this.searchQuery$.next(this.searchQuery.trim());
+  }
+
+  onSortChange(sortOption: ArticleSortOption): void {
+    this.sortOption = sortOption;
+    this.sortOption$.next(sortOption);
+    this.saveSortOption(sortOption);
+  }
+
+  private loadSavedSortOption(): ArticleSortOption {
+    try {
+      const saved = localStorage.getItem(this.SORT_STORAGE_KEY);
+      if (saved && ['name', 'checkCount', 'lastChecked', 'lastAdded'].includes(saved)) {
+        return saved as ArticleSortOption;
+      }
+    } catch (error) {
+      console.warn('Failed to load saved sort option:', error);
+    }
+    return 'name'; // Default fallback
+  }
+
+  private saveSortOption(sortOption: ArticleSortOption): void {
+    try {
+      localStorage.setItem(this.SORT_STORAGE_KEY, sortOption);
+    } catch (error) {
+      console.warn('Failed to save sort option:', error);
+    }
+  }
+
+  private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
+    const sorted = [...articles];
+
+    switch (sortOption) {
+      case 'name':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+
+      case 'checkCount':
+        return sorted.sort((a, b) => {
+          const countA = a.stats?.numberOfChecks ?? 0;
+          const countB = b.stats?.numberOfChecks ?? 0;
+          // Sort descending (most checks first)
+          if (countA !== countB) {
+            return countB - countA;
+          }
+          // If same count, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      case 'lastChecked':
+        return sorted.sort((a, b) => {
+          const dateA = a.stats?.lastCheckedDate?.getTime() ?? 0;
+          const dateB = b.stats?.lastCheckedDate?.getTime() ?? 0;
+          // Sort descending (most recent first)
+          if (dateA !== dateB) {
+            return dateB - dateA;
+          }
+          // If same date, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      case 'lastAdded':
+        return sorted.sort((a, b) => {
+          const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
+          const dateB = b.stats?.lastAddedToListDate?.getTime() ?? 0;
+          // Sort descending (most recent first)
+          if (dateA !== dateB) {
+            return dateB - dateA;
+          }
+          // If same date, sort by name
+          return a.name.localeCompare(b.name);
+        });
+
+      default:
+        return sorted;
+    }
   }
 
   onArticleClick(article: Article): void {

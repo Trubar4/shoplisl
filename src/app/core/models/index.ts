@@ -11,6 +11,10 @@ export interface Article {
   // Future: shop availability, usage stats
   availableInShops?: string[];
   usageCount?: number;
+  // Phase 6: History feature - usage statistics
+  lastCheckedDate?: Date;      // Most recent check across all lists
+  lastAddedToListDate?: Date;  // Most recent addition to any list
+  numberOfChecks?: number;     // Total check count across all lists
 }
 
 // Keep your existing Department interface
@@ -31,11 +35,31 @@ export interface ArticleCategory {
   createdAt: Date;
 }
 
+/**
+ * Represents a single check/uncheck event in the history
+ * Phase 6: History feature
+ */
+export interface CheckEvent {
+  timestamp: Date;           // When the action occurred
+  userId: string;            // User ID ('shared-shoplisl-user' for now, real ID in Phase 7)
+  userName: string;          // Cached display name ('Du' for now, real name in Phase 7)
+  action: 'checked' | 'unchecked';  // What action was performed
+  amount?: string;           // Amount at time of action
+}
+
+/**
+ * Represents the state of an article within a specific list
+ * Phase 6: Extended with history tracking
+ */
 export interface ListItemState {
   articleId: string;
+  articleName?: string;      // Snapshot of article name (for display after article deletion)
   isChecked: boolean;
-  amount?: string; // List-specific amount
-  checkedAt?: Date;
+  amount?: string;           // List-specific amount
+  addedAt?: Date;            // When article was added to this list
+  checkedAt?: Date;          // ✅ Already exists! When last checked
+  checkedBy?: string;        // Phase 6: User ID who last checked (default: 'shared-shoplisl-user')
+  history?: CheckEvent[];    // Phase 6: Full check/uncheck history (365 days retention)
 }
 
 // UPDATED: Added departmentOrder field
