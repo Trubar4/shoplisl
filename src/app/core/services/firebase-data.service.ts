@@ -226,6 +226,7 @@ export class FirebaseDataService {
    * Convert itemStates from application format to Firestore format
    * Converts JavaScript Dates to Firestore Timestamps in checkedAt, addedAt, and history events
    * This is CRITICAL for persistence - Firestore needs Timestamp objects, not Date objects
+   * Also removes undefined values as Firestore doesn't support them
    */
   private convertItemStatesToFirestore(appItemStates: any): { [articleId: string]: any } {
     const itemStates: any = {};
@@ -233,7 +234,7 @@ export class FirebaseDataService {
     for (const [articleId, state] of Object.entries(appItemStates || {})) {
       const itemState = state as any;
 
-      itemStates[articleId] = {
+      const convertedState: any = {
         ...itemState,
         // Convert Date objects to Firestore Timestamps
         addedAt: itemState.addedAt instanceof Date ? Timestamp.fromDate(itemState.addedAt) : itemState.addedAt,
@@ -244,6 +245,17 @@ export class FirebaseDataService {
           timestamp: event.timestamp instanceof Date ? Timestamp.fromDate(event.timestamp) : event.timestamp
         }))
       };
+
+      // CRITICAL: Remove undefined values - Firestore doesn't support them
+      // This prevents "Unsupported field value: undefined" errors
+      const cleanedState: any = {};
+      for (const [key, value] of Object.entries(convertedState)) {
+        if (value !== undefined) {
+          cleanedState[key] = value;
+        }
+      }
+
+      itemStates[articleId] = cleanedState;
     }
 
     return itemStates;
