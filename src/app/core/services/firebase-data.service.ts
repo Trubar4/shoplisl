@@ -387,14 +387,23 @@ export class FirebaseDataService {
   async updateListInFirebase(id: string, updateData: any): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
 
-    // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
-    // This is CRITICAL for persistence of history data
-    const firestoreData = { ...updateData };
-    if (firestoreData.itemStates) {
-      firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
-    }
+    try {
+      // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
+      // This is CRITICAL for persistence of history data
+      const firestoreData = { ...updateData };
+      if (firestoreData.itemStates) {
+        this.logger.debug('data', `Converting ${Object.keys(firestoreData.itemStates).length} itemStates for Firebase write`);
+        firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+      }
 
-    await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), firestoreData);
+      this.logger.info('data', `Writing to Firebase: users/${this.SHARED_USER_ID}/lists/${id}`);
+      await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), firestoreData);
+      this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
+    } catch (error: any) {
+      this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
+      this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
+      throw error; // Re-throw so caller can handle
+    }
   }
 
   async deleteListInFirebase(id: string): Promise<void> {
