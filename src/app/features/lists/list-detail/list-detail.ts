@@ -84,9 +84,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   // === COMPONENT STATE ===
   searchQuery = '';
   currentList: ShoppingList | null = null;
-  
+
   // === PRIVATE PROPERTIES ===
   private autoSwitchTimer?: any;
+  private disambiguationManuallyClosed = false;
   
   constructor(
     private readonly route: ActivatedRoute,
@@ -222,6 +223,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.filterService.setShoppingFilter(filter);
     this.isFabExpanded.set(false);
     this.searchDisambiguation$.next(null);
+    this.disambiguationManuallyClosed = false;
   }
 
   private setEditFilter(filter: EditFilter): void {
@@ -451,6 +453,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.filterService.setSearchQuery(this.searchQuery.trim());
     this.searchDisambiguation$.next(null);
 
+    // Reset disambiguation flag when search is cleared
+    if (!this.searchQuery.trim()) {
+      this.disambiguationManuallyClosed = false;
+    }
+
     this.clearAutoSwitchTimer();
     this.autoSwitchTimer = setTimeout(() => {
       this.checkAndAutoSwitchFilter();
@@ -497,9 +504,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onClearSearchDisambiguation(): void {
-    this.searchQuery = '';
-    this.filterService.setSearchQuery('');
+    // Only close disambiguation, keep search text and filtered results
     this.searchDisambiguation$.next(null);
+    this.disambiguationManuallyClosed = true;
   }
 
   // === LIST ACTIONS ===
@@ -783,8 +790,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       if (!query.trim()) {
         this.searchDisambiguation$.next(null);
       } else if (this.currentMode() === 'shopping') {
-        // Show disambiguation whenever searching in shopping mode
-        this.handleNoSearchResults(query.trim(), allArticles);
+        // Don't show disambiguation in history mode ('erledigt') or if manually closed
+        if (this.currentShoppingFilter() === 'erledigt' || this.disambiguationManuallyClosed) {
+          this.searchDisambiguation$.next(null);
+        } else {
+          this.handleNoSearchResults(query.trim(), allArticles);
+        }
       } else {
         this.searchDisambiguation$.next(null);
       }
@@ -909,6 +920,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.searchQuery = '';
     this.filterService.clearSearch();
     this.searchDisambiguation$.next(null);
+    this.disambiguationManuallyClosed = false;
 
     // Restore previous filter if it was auto-switched
     this.restorePreviousFilter();

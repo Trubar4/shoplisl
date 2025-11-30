@@ -38,8 +38,8 @@
   <!-- SHOPPING MODE -->
   <div *ngIf="!isLoading() && currentMode() === 'shopping'" class="mode-content-wrapper">
 
-    <!-- Search and Button Row (hidden in history mode) -->
-    <div class="search-button-row" *ngIf="currentShoppingFilter() !== 'erledigt'">
+    <!-- Search and Button Row -->
+    <div class="search-button-row">
       <app-search-disambiguation
         [(searchQuery)]="searchQuery"
         [disambiguation]="searchDisambiguation$ | async"
@@ -49,9 +49,9 @@
         (clearDisambiguation)="onClearSearchDisambiguation()">
       </app-search-disambiguation>
 
-      <!-- Auswählen Button (shown when NOT in selection mode) -->
+      <!-- Auswählen Button (shown when NOT in selection mode and NOT in history mode) -->
       <button
-        *ngIf="!isSelectionMode()"
+        *ngIf="!isSelectionMode() && currentShoppingFilter() !== 'erledigt'"
         mat-raised-button
         class="selection-button"
         (click)="enterSelectionMode()"
@@ -59,9 +59,9 @@
         Auswählen
       </button>
 
-      <!-- Exit Selection Mode Button (shown when IN selection mode) -->
+      <!-- Exit Selection Mode Button (shown when IN selection mode and NOT in history mode) -->
       <button
-        *ngIf="isSelectionMode()"
+        *ngIf="isSelectionMode() && currentShoppingFilter() !== 'erledigt'"
         mat-icon-button
         class="exit-selection-button"
         (click)="exitSelectionMode()"
