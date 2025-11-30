@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Store } from '@ngrx/store';
-import { Observable, Subject, combineLatest } from 'rxjs';
+import { Observable, Subject, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
@@ -50,6 +50,7 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
 
   // === OBSERVABLES ===
   private destroy$ = new Subject<void>();
+  private searchQuery$ = new BehaviorSubject<string>('');
   completedArticles$!: Observable<ArticleItemData[]>;
   articles$!: Observable<Article[]>;
 
@@ -62,12 +63,16 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.searchQuery$.next(this.searchQuery);
     this.setupObservables();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['list'] && this.list) {
       this.setupObservables();
+    }
+    if (changes['searchQuery']) {
+      this.searchQuery$.next(this.searchQuery);
     }
   }
 
@@ -86,12 +91,13 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
       selectCompletedArticlesFromList(this.list.id)
     );
 
-    // Combine with article details
+    // Combine with article details and search query
     this.completedArticles$ = combineLatest([
       completedItemStates$,
-      this.articles$
+      this.articles$,
+      this.searchQuery$
     ]).pipe(
-      map(([completedStates, articles]) => {
+      map(([completedStates, articles, searchQuery]) => {
         const articlesMap = new Map(articles.map(a => [a.id, a]));
 
         return completedStates
@@ -117,8 +123,8 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
           .filter((item): item is ArticleItemData => item !== null)
           .filter(item => {
             // Apply search filter if present
-            if (!this.searchQuery) return true;
-            return item.name.toLowerCase().includes(this.searchQuery.toLowerCase());
+            if (!searchQuery) return true;
+            return item.name.toLowerCase().includes(searchQuery.toLowerCase());
           });
       }),
       takeUntil(this.destroy$)
