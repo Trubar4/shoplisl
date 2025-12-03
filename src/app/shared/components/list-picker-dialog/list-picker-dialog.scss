@@ -20,9 +20,10 @@
   }
 
   mat-dialog-content {
-    padding: 0 24px 24px;
-    max-height: 60vh;
+    padding: 0 16px 24px;
+    max-height: none;
     overflow-y: auto;
+    flex: 1;
 
     .dialog-message {
       margin: 0 0 16px 0;
