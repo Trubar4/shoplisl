@@ -2,6 +2,10 @@
   <h2 mat-dialog-title>
     <mat-icon class="dialog-icon">list_alt</mat-icon>
     {{ data.title }}
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="onClose()" class="close-button" matTooltip="Schließen">
+      <mat-icon>close</mat-icon>
+    </button>
   </h2>
 
   <mat-dialog-content>
@@ -11,7 +15,6 @@
       <div
         *ngFor="let list of (availableLists$ | async)"
         class="disambiguation-option"
-        [class.selected]="isListSelected(list.id)"
         (click)="onListSelect(list)">
         <div class="option-main">
           <div class="option-icon">
@@ -34,21 +37,4 @@
       <p>Keine anderen Listen verfügbar</p>
     </div>
   </mat-dialog-content>
-
-  <mat-dialog-actions align="end">
-    <button
-      mat-button
-      (click)="onCancel()"
-      class="cancel-button">
-      Abbrechen
-    </button>
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="onConfirm()"
-      [disabled]="!selectedListId"
-      class="confirm-button">
-      Verschieben
-    </button>
-  </mat-dialog-actions>
 </div>

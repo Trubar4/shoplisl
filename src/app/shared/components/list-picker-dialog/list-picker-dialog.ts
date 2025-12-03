@@ -33,7 +33,6 @@ export interface ListPickerDialogResult {
 })
 export class ListPickerDialogComponent implements OnInit {
   availableLists$!: Observable<ShoppingList[]>;
-  selectedListId: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<ListPickerDialogComponent>,
@@ -49,31 +48,14 @@ export class ListPickerDialogComponent implements OnInit {
   }
 
   onListSelect(list: ShoppingList): void {
-    this.selectedListId = list.id;
+    // Immediately close dialog with selected list
+    this.dialogRef.close({
+      selectedListId: list.id,
+      selectedListName: list.name
+    } as ListPickerDialogResult);
   }
 
-  onConfirm(): void {
-    if (!this.selectedListId) {
-      return;
-    }
-
-    // Get the selected list to return both ID and name
-    this.availableLists$.subscribe(lists => {
-      const selectedList = lists.find(list => list.id === this.selectedListId);
-      if (selectedList) {
-        this.dialogRef.close({
-          selectedListId: selectedList.id,
-          selectedListName: selectedList.name
-        } as ListPickerDialogResult);
-      }
-    }).unsubscribe();
-  }
-
-  onCancel(): void {
+  onClose(): void {
     this.dialogRef.close(null);
-  }
-
-  isListSelected(listId: string): boolean {
-    return this.selectedListId === listId;
   }
 }
