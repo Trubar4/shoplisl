@@ -192,4 +192,12 @@ app-bottom-tabs .bottom-navigation .nav-item span {
     max-width: 100vw !important;
     max-height: 100vh !important;
   }
+
+  .mdc-dialog__surface {
+    border-radius: 0 !important;
+  }
+
+  .mat-mdc-dialog-surface {
+    border-radius: 0 !important;
+  }
 }
