@@ -17,20 +17,6 @@
       width: 28px;
       height: 28px;
     }
-
-    .close-button {
-      color: #666;
-
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.04);
-      }
-
-      mat-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
-      }
-    }
   }
 
   mat-dialog-content {
@@ -187,6 +173,17 @@
       }
     }
   }
+
+  mat-dialog-actions {
+    padding: 16px 24px 20px;
+    margin: 0;
+    display: flex;
+    gap: 8px;
+
+    .cancel-button {
+      color: #666;
+    }
+  }
 }
 
 // Mobile responsive adjustments
@@ -239,6 +236,10 @@
           }
         }
       }
+    }
+
+    mat-dialog-actions {
+      padding: 12px 20px 16px;
     }
   }
 }

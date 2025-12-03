@@ -2,10 +2,6 @@
   <h2 mat-dialog-title>
     <mat-icon class="dialog-icon">list_alt</mat-icon>
     {{ data.title }}
-    <span class="spacer"></span>
-    <button mat-icon-button (click)="onClose()" class="close-button" matTooltip="Schließen">
-      <mat-icon>close</mat-icon>
-    </button>
   </h2>
 
   <mat-dialog-content>
@@ -37,4 +33,13 @@
       <p>Keine anderen Listen verfügbar</p>
     </div>
   </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      (click)="onClose()"
+      class="cancel-button">
+      Abbrechen
+    </button>
+  </mat-dialog-actions>
 </div>
