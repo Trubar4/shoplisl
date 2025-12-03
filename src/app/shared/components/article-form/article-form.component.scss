@@ -507,13 +507,18 @@
       }
 
       &:disabled {
-        background-color: #e0e0e0;
-        color: #9e9e9e;
+        background-color: #a0d4ed; // Lighter blue for better visibility
+        color: white !important; // White text for better contrast
         transform: none;
         box-shadow: none;
 
         span {
-          color: #9e9e9e !important;
+          color: white !important; // White text for better contrast
+        }
+
+        // Ensure spinner is also white
+        .mat-progress-spinner ::ng-deep circle {
+          stroke: white !important;
         }
       }
 
