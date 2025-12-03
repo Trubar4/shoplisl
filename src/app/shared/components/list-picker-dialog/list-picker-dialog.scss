@@ -1,6 +1,5 @@
 .list-picker-dialog {
-  min-width: 320px;
-  max-width: 500px;
+  // Width is controlled by dialog config
 
   h2 {
     display: flex;
@@ -60,7 +59,7 @@
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px;
+          padding: 12px 16px 12px 12px;
           width: 100%;
 
           .list-icon {
@@ -179,7 +178,7 @@
       padding: 0 20px 20px;
 
       .lists-container .list-option .list-item {
-        padding: 10px;
+        padding: 10px 14px 10px 10px;
 
         .list-icon {
           width: 36px;
