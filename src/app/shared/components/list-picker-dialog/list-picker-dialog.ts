@@ -48,11 +48,11 @@ export class ListPickerDialogComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Scroll to top when dialog opens
+    // Scroll list options to top when dialog opens
     setTimeout(() => {
-      const dialogContent = document.querySelector('.list-picker-dialog mat-dialog-content');
-      if (dialogContent) {
-        dialogContent.scrollTop = 0;
+      const optionsContainer = document.querySelector('.list-picker-dialog .disambiguation-options');
+      if (optionsContainer) {
+        optionsContainer.scrollTop = 0;
       }
     }, 0);
   }

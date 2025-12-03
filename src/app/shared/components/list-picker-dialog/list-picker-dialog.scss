@@ -22,8 +22,9 @@
   mat-dialog-content {
     padding: 0 16px 24px;
     max-height: none;
-    overflow-y: auto;
-    flex: 1;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
 
     .dialog-message {
       margin: 0 0 16px 0;
@@ -42,6 +43,7 @@
       overflow-x: hidden;
       padding-right: 4px;
       margin: 0 -4px;
+      max-height: calc(100vh - 250px);
 
       /* Custom scrollbar */
       &::-webkit-scrollbar {
