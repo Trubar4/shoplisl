@@ -344,7 +344,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     // Open list picker dialog
     const dialogRef = this.dialog.open(ListPickerDialogComponent, {
       width: '95vw',
-      maxWidth: '600px',
+      maxWidth: '800px',
       data: {
         title: 'Artikel verschieben',
         message: `${articleIds.length} Artikel ${articleIds.length === 1 ? 'wurde' : 'wurden'} ausgewählt`,
