@@ -44,9 +44,24 @@ html, body {
 // Override Material primary buttons to use our blue
 .mat-mdc-raised-button.mat-primary {
   background-color: #1a9edb !important;
-  
+
   &:hover:not(:disabled) {
     background-color: #1976d2 !important;
+  }
+
+  // Improve contrast for disabled state
+  &:disabled {
+    background-color: #a0d4ed !important; // Lighter blue
+    color: white !important; // White text for better contrast
+
+    .mdc-button__label {
+      color: white !important;
+    }
+
+    // Ensure spinner is also white
+    .mat-progress-spinner circle {
+      stroke: white !important;
+    }
   }
 }
 
