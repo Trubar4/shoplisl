@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,7 +31,7 @@ export interface ListPickerDialogResult {
   templateUrl: './list-picker-dialog.html',
   styleUrls: ['./list-picker-dialog.scss']
 })
-export class ListPickerDialogComponent implements OnInit {
+export class ListPickerDialogComponent implements OnInit, AfterViewInit {
   availableLists$!: Observable<ShoppingList[]>;
 
   constructor(
@@ -45,6 +45,16 @@ export class ListPickerDialogComponent implements OnInit {
     this.availableLists$ = this.dataService.getLists().pipe(
       map(lists => lists.filter(list => list.id !== this.data.currentListId))
     );
+  }
+
+  ngAfterViewInit(): void {
+    // Scroll to top when dialog opens
+    setTimeout(() => {
+      const dialogContent = document.querySelector('.list-picker-dialog mat-dialog-content');
+      if (dialogContent) {
+        dialogContent.scrollTop = 0;
+      }
+    }, 0);
   }
 
   onListSelect(list: ShoppingList): void {
