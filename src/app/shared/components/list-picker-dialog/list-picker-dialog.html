@@ -15,10 +15,14 @@
         (click)="onListSelect(list)">
         <div class="list-item">
           <span class="list-icon">{{ list.icon || '📋' }}</span>
-          <span class="list-name">{{ list.name }}</span>
-          <span class="list-count" *ngIf="list.articleIds?.length">
-            ({{ list.articleIds.length }})
-          </span>
+          <div class="list-details">
+            <div class="list-name">{{ list.name }}</div>
+            <div class="list-count">{{ list.articleIds?.length || 0 }} Artikel</div>
+          </div>
+          <div class="list-action">
+            <span class="action-hint">Zu "{{ list.name }}" hinzufügen</span>
+            <mat-icon>chevron_right</mat-icon>
+          </div>
         </div>
       </div>
     </div>
