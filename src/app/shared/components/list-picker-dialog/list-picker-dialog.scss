@@ -32,15 +32,51 @@
       line-height: 1.5;
     }
 
-    .lists-container {
-      padding: 0;
+    /* Use exact AI assistant disambiguation styles */
+    .disambiguation-options {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+      margin: 0 -4px;
 
-      .list-option {
+      /* Custom scrollbar */
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+
+        &:hover {
+          background: #a8a8a8;
+        }
+      }
+
+      .option-department {
+        font-size: 0.8em;
+        color: #666;
+        margin-bottom: 1px;
+      }
+
+      .disambiguation-option {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 12px;
         border: 2px solid #e0e0e0;
         border-radius: 8px;
-        margin-bottom: 8px;
-        transition: all 0.3s ease;
         cursor: pointer;
+        transition: all 0.3s ease;
         background: #fafafa;
 
         &:hover {
@@ -53,17 +89,15 @@
         &.selected {
           background: #f0f0f0;
           border-color: #2196f3;
-          border-width: 2px;
         }
 
-        .list-item {
+        .option-main {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 12px;
           width: 100%;
+          gap: 12px;
 
-          .list-icon {
+          .option-icon {
             width: 40px;
             height: 40px;
             display: flex;
@@ -75,11 +109,11 @@
             flex-shrink: 0;
           }
 
-          .list-details {
+          .option-details {
             flex: 1;
             min-width: 0;
 
-            .list-name {
+            .option-name {
               font-weight: 600;
               font-size: 0.95em;
               color: #333;
@@ -87,14 +121,14 @@
               line-height: 1.2;
             }
 
-            .list-count {
+            .option-department {
               font-size: 0.8em;
               color: #666;
               margin-bottom: 1px;
             }
           }
 
-          .list-action {
+          .option-action {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -102,14 +136,14 @@
             flex-shrink: 0;
 
             .action-hint {
-              display: none; // Hide on mobile for better space usage
+              font-size: 0.8em;
+              text-align: right;
+              white-space: nowrap;
             }
 
             mat-icon {
               color: #999;
-              font-size: 20px;
-              width: 20px;
-              height: 20px;
+              font-size: 18px;
             }
           }
         }
@@ -176,36 +210,36 @@
     }
 
     mat-dialog-content {
-      padding: 0 20px 20px;
+      padding: 0 12px 20px;
 
-      .lists-container .list-option .list-item {
+      .disambiguation-options .disambiguation-option {
         padding: 10px;
 
-        .list-icon {
-          width: 36px;
-          height: 36px;
-          font-size: 16px;
-        }
-
-        .list-details {
-          .list-name {
-            font-size: 14px;
+        .option-main {
+          .option-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
           }
 
-          .list-count {
-            font-size: 12px;
-          }
-        }
+          .option-details {
+            .option-name {
+              font-size: 0.9em;
+            }
 
-        .list-action {
-          .action-hint {
-            display: none; // Hide on mobile for better space usage
+            .option-department {
+              font-size: 0.75em;
+            }
           }
 
-          mat-icon {
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
+          .option-action {
+            .action-hint {
+              font-size: 0.75em;
+            }
+
+            mat-icon {
+              font-size: 16px;
+            }
           }
         }
       }

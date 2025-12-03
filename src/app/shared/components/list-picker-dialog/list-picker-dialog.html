@@ -7,19 +7,21 @@
   <mat-dialog-content>
     <p *ngIf="data.message" class="dialog-message">{{ data.message }}</p>
 
-    <div class="lists-container" *ngIf="(availableLists$ | async)?.length">
+    <div class="disambiguation-options" *ngIf="(availableLists$ | async)?.length">
       <div
         *ngFor="let list of (availableLists$ | async)"
-        class="list-option"
+        class="disambiguation-option"
         [class.selected]="isListSelected(list.id)"
         (click)="onListSelect(list)">
-        <div class="list-item">
-          <span class="list-icon">{{ list.icon || '📋' }}</span>
-          <div class="list-details">
-            <div class="list-name">{{ list.name }}</div>
-            <div class="list-count">{{ list.articleIds.length || 0 }} Artikel</div>
+        <div class="option-main">
+          <div class="option-icon">
+            <span>{{ list.icon || '📋' }}</span>
           </div>
-          <div class="list-action">
+          <div class="option-details">
+            <div class="option-name">{{ list.name }}</div>
+            <div class="option-department">{{ list.articleIds.length || 0 }} Artikel</div>
+          </div>
+          <div class="option-action">
             <span class="action-hint">Zu "{{ list.name }}" hinzufügen</span>
             <mat-icon>chevron_right</mat-icon>
           </div>
