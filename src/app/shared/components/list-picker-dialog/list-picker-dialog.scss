@@ -1,6 +1,5 @@
 .list-picker-dialog {
-  min-width: 320px;
-  max-width: 500px;
+  // Width is controlled by dialog config
 
   h2 {
     display: flex;
@@ -21,9 +20,11 @@
   }
 
   mat-dialog-content {
-    padding: 0 24px 24px;
-    max-height: 60vh;
-    overflow-y: auto;
+    padding: 0 16px 24px;
+    max-height: none;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
 
     .dialog-message {
       margin: 0 0 16px 0;
@@ -32,54 +33,120 @@
       line-height: 1.5;
     }
 
-    .lists-container {
-      padding: 0;
+    /* Use exact AI assistant disambiguation styles */
+    .disambiguation-options {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+      margin: 0 -4px;
+      max-height: calc(100vh - 250px);
 
-      .list-option {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        transition: all 0.2s ease;
-        cursor: pointer;
+      /* Custom scrollbar */
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
 
         &:hover {
-          background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.05);
-          border-color: var(--list-primary-color, #1a9edb);
+          background: #a8a8a8;
+        }
+      }
+
+      .option-department {
+        font-size: 0.8em;
+        color: #666;
+        margin-bottom: 1px;
+      }
+
+      .disambiguation-option {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafafa;
+
+        &:hover {
+          background: #f0f0f0;
+          border-color: #2196f3;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
         }
 
         &.selected {
-          background-color: rgba(var(--list-primary-color-rgb, 26, 158, 219), 0.1);
-          border-color: var(--list-primary-color, #1a9edb);
-          border-width: 2px;
+          background: #f0f0f0;
+          border-color: #2196f3;
         }
 
-        .list-item {
+        .option-main {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 12px;
           width: 100%;
+          gap: 12px;
 
-          .list-icon {
-            font-size: 24px;
-            min-width: 32px;
-            text-align: center;
+          .option-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #e3f2fd;
+            font-size: 18px;
+            flex-shrink: 0;
           }
 
-          .list-name {
+          .option-details {
             flex: 1;
-            font-size: 16px;
-            font-weight: 500;
-            color: #212121;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            min-width: 0;
+
+            .option-name {
+              font-weight: 600;
+              font-size: 0.95em;
+              color: #333;
+              margin-bottom: 2px;
+              line-height: 1.2;
+            }
+
+            .option-department {
+              font-size: 0.8em;
+              color: #666;
+              margin-bottom: 1px;
+            }
           }
 
-          .list-count {
-            font-size: 14px;
+          .option-action {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             color: #666;
-            font-weight: 400;
+            flex-shrink: 0;
+
+            .action-hint {
+              font-size: 0.8em;
+              text-align: right;
+              white-space: nowrap;
+            }
+
+            mat-icon {
+              color: #999;
+              font-size: 18px;
+            }
           }
         }
       }
@@ -118,13 +185,6 @@
     .cancel-button {
       color: #666;
     }
-
-    .confirm-button {
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
   }
 }
 
@@ -145,22 +205,37 @@
     }
 
     mat-dialog-content {
-      padding: 0 20px 20px;
+      padding: 0 12px 20px;
 
-      .list-item {
+      .disambiguation-options .disambiguation-option {
         padding: 10px;
 
-        .list-icon {
-          font-size: 20px;
-          min-width: 28px;
-        }
+        .option-main {
+          .option-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+          }
 
-        .list-name {
-          font-size: 14px;
-        }
+          .option-details {
+            .option-name {
+              font-size: 0.9em;
+            }
 
-        .list-count {
-          font-size: 12px;
+            .option-department {
+              font-size: 0.75em;
+            }
+          }
+
+          .option-action {
+            .action-hint {
+              font-size: 0.75em;
+            }
+
+            mat-icon {
+              font-size: 16px;
+            }
+          }
         }
       }
     }

@@ -106,13 +106,18 @@
                     {{ option.displayName }}
                   </div>
                   
-                  <!-- 🎯 ENHANCED: Show department suggestion for new articles -->
-                  <div class="option-department" *ngIf="option.department && option.type !== 'skip'">
-                    <span *ngIf="option.type === 'new'" class="suggestion-label">Vorschlag für Abteilung: </span>{{ getDepartmentName(option.department) }}
+                  <!-- For list selection: show item count -->
+                  <div class="option-department" *ngIf="option.department && option.type !== 'skip' && (disambiguation.pendingAction?.type === 'select_list' || disambiguation.pendingAction?.type === 'select_list_for_multi_items')">
+                    {{ option.department }}
                   </div>
-                                    
-                  <!-- Show confidence for existing articles -->
-                  <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing'">
+
+                  <!-- For article disambiguation: show department suggestion for new articles -->
+                  <div class="option-department" *ngIf="option.department && option.type !== 'skip' && option.type === 'new' && disambiguation.pendingAction?.type !== 'select_list' && disambiguation.pendingAction?.type !== 'select_list_for_multi_items'">
+                    <span class="suggestion-label">Vorschlag für Abteilung: </span>{{ getDepartmentName(option.department) }}
+                  </div>
+
+                  <!-- For article disambiguation: show confidence for existing articles -->
+                  <div class="option-confidence" *ngIf="option.confidence && option.type === 'existing' && disambiguation.pendingAction?.type !== 'select_list' && disambiguation.pendingAction?.type !== 'select_list_for_multi_items'">
                     {{ getConfidenceText(option.confidence) }}
                   </div>
                   

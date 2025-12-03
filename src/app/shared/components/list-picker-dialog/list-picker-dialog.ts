@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,9 +31,8 @@ export interface ListPickerDialogResult {
   templateUrl: './list-picker-dialog.html',
   styleUrls: ['./list-picker-dialog.scss']
 })
-export class ListPickerDialogComponent implements OnInit {
+export class ListPickerDialogComponent implements OnInit, AfterViewInit {
   availableLists$!: Observable<ShoppingList[]>;
-  selectedListId: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<ListPickerDialogComponent>,
@@ -48,32 +47,25 @@ export class ListPickerDialogComponent implements OnInit {
     );
   }
 
-  onListSelect(list: ShoppingList): void {
-    this.selectedListId = list.id;
-  }
-
-  onConfirm(): void {
-    if (!this.selectedListId) {
-      return;
-    }
-
-    // Get the selected list to return both ID and name
-    this.availableLists$.subscribe(lists => {
-      const selectedList = lists.find(list => list.id === this.selectedListId);
-      if (selectedList) {
-        this.dialogRef.close({
-          selectedListId: selectedList.id,
-          selectedListName: selectedList.name
-        } as ListPickerDialogResult);
+  ngAfterViewInit(): void {
+    // Scroll list options to top when dialog opens
+    setTimeout(() => {
+      const optionsContainer = document.querySelector('.list-picker-dialog .disambiguation-options');
+      if (optionsContainer) {
+        optionsContainer.scrollTop = 0;
       }
-    }).unsubscribe();
+    }, 0);
   }
 
-  onCancel(): void {
+  onListSelect(list: ShoppingList): void {
+    // Immediately close dialog with selected list
+    this.dialogRef.close({
+      selectedListId: list.id,
+      selectedListName: list.name
+    } as ListPickerDialogResult);
+  }
+
+  onClose(): void {
     this.dialogRef.close(null);
-  }
-
-  isListSelected(listId: string): boolean {
-    return this.selectedListId === listId;
   }
 }
