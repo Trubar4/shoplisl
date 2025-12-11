@@ -1,59 +1,88 @@
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  Firestore,
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   getDocs,
   getDoc,
   onSnapshot,
   query,
   orderBy,
+  where,
+  collectionGroup,
   Timestamp
-} from 'firebase/firestore';
+} from '@angular/fire/firestore';
 
 import { Article, ShoppingList } from '../models';
 import { environment } from '../../../environments/environment';
 import { ConnectionService } from './connection.service';
 import { OfflineCacheService } from './offline-cache.service';
 import { LoggerService } from './logger.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FirebaseDataService {
-  private firestore: any;
-  private readonly SHARED_USER_ID = 'shared-shoplisl-user';
-  
+  private readonly SHARED_USER_ID = 'shared-shoplisl-user'; // Fallback for unauthenticated users
+
   private articlesSubject = new BehaviorSubject<Article[]>([]);
   private listsSubject = new BehaviorSubject<ShoppingList[]>([]);
-  
+
+  // Phase 8: Separate tracking for owned and shared lists
+  private ownedLists: ShoppingList[] = [];
+  private sharedLists: ShoppingList[] = [];
+
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
+  private sharedListsUnsubscribe?: () => void;
 
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private authService: AuthService,
+    private firestore: Firestore
   ) {
-    this.initializeFirebase();
+    this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
+    this.setupAuthListener();
   }
 
-  private initializeFirebase(): void {
-    try {
-      const app = initializeApp(environment.firebase);
-      this.firestore = getFirestore(app);
-      this.logger.info('data', 'Firebase initialized successfully');
-    } catch (error) {
-      this.logger.error('data', 'Firebase initialization failed', error);
-    }
+  /**
+   * Listen for auth state changes and reload data when user changes
+   */
+  private setupAuthListener(): void {
+    this.authService.getCurrentUser().subscribe(user => {
+      if (user) {
+        this.logger.info('data', `User changed to ${user.email}, reloading data`);
+        this.loadFreshData();
+      } else {
+        this.logger.info('data', 'User logged out, clearing data');
+        this.cleanupListeners();
+        this.articlesSubject.next([]);
+        this.listsSubject.next([]);
+      }
+    });
   }
+
+  /**
+   * Get the user-specific base path for Firestore collections
+   */
+  private getUserBasePath(): string {
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No authenticated user, using shared user ID');
+      return `users/${this.SHARED_USER_ID}`;
+    }
+    return `users-v2/${userId}`;
+  }
+
 
   private initializeDataLoading(): void {
     const currentStatus = this.connectionService.getCurrentStatus();
@@ -126,8 +155,10 @@ export class FirebaseDataService {
     this.cleanupListeners();
 
     try {
+      const basePath = this.getUserBasePath();
+
       // Articles listener
-      const articlesRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`);
+      const articlesRef = collection(this.firestore, `${basePath}/articles`);
       const articlesQuery = query(articlesRef, orderBy('name'));
 
       this.articlesUnsubscribe = onSnapshot(articlesQuery,
@@ -147,7 +178,9 @@ export class FirebaseDataService {
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               availableInShops: data['availableInShops'] || [],
-              usageCount: data['usageCount'] || 0
+              usageCount: data['usageCount'] || 0,
+              // Phase 8: Include ownership field
+              ownerId: data['ownerId'] || ''
             });
           });
 
@@ -161,7 +194,7 @@ export class FirebaseDataService {
       );
 
       // Lists listener
-      const listsRef = collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`);
+      const listsRef = collection(this.firestore, `${basePath}/lists`);
       const listsQuery = query(listsRef, orderBy('name'));
 
       this.listsUnsubscribe = onSnapshot(listsQuery,
@@ -180,21 +213,221 @@ export class FirebaseDataService {
               itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
-              updatedAt: data['updatedAt']?.toDate() || new Date()
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              // Phase 8: Include ownership and sharing fields
+              ownerId: data['ownerId'] || '',
+              sharedWith: data['sharedWith'] || []
             });
           });
 
-          this.listsSubject.next(lists);
-          this.cacheService.cacheLists(lists);
+          // Phase 8: Store owned lists separately
+          this.ownedLists = lists;
+          this.mergeLists();
         },
         (error) => {
           this.logger.error('data', 'Lists listener error', error);
           this.loadCachedData();
         }
       );
+
+      // Phase 8: Shared lists listener (collection group query)
+      const userId = this.authService.getCurrentUserId();
+      if (userId) {
+        this.logger.info('data', `Setting up shared lists listener for user ${userId}`);
+
+        const sharedListsQuery = query(
+          collectionGroup(this.firestore, 'lists'),
+          where('sharedWith', 'array-contains', userId)
+        );
+
+        this.sharedListsUnsubscribe = onSnapshot(sharedListsQuery,
+          (snapshot) => {
+            this.logger.info('data', `Fresh shared lists received: ${snapshot.size}`);
+            const sharedLists: ShoppingList[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              const listPath = doc.ref.path;
+              this.logger.debug('data', `Shared list found: ${data['name']} at ${listPath}`);
+
+              sharedLists.push({
+                id: doc.id,
+                name: data['name'],
+                color: data['color'],
+                icon: data['icon'],
+                shopId: data['shopId'],
+                articleIds: data['articleIds'] || [],
+                itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+                departmentOrder: data['departmentOrder'],
+                createdAt: data['createdAt']?.toDate() || new Date(),
+                updatedAt: data['updatedAt']?.toDate() || new Date(),
+                // Phase 8: Include ownership and sharing fields
+                ownerId: data['ownerId'] || '',
+                sharedWith: data['sharedWith'] || []
+              });
+            });
+
+            // Phase 8: Store shared lists separately
+            this.sharedLists = sharedLists;
+            this.logger.info('data', `Stored ${sharedLists.length} shared lists, merging with owned lists`);
+            this.mergeLists();
+          },
+          (error: any) => {
+            this.logger.error('data', 'Shared lists listener error', error);
+            this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
+            this.logger.error('data', `Error details: ${JSON.stringify(error, null, 2)}`);
+
+            // Check if it's a permission error
+            if (error.code === 'permission-denied') {
+              this.logger.error('data', '⚠️  PERMISSION DENIED: Collection group query blocked by Firestore rules');
+              this.logger.error('data', '⚠️  Make sure Firestore indexes are deployed: firebase deploy --only firestore:indexes');
+              this.logger.error('data', '⚠️  Check Firestore rules allow collection group queries for shared lists');
+            }
+
+            // Check if it's an index error
+            if (error.message && error.message.includes('index')) {
+              this.logger.error('data', '⚠️  INDEX MISSING: Collection group query requires a Firestore index');
+              this.logger.error('data', '⚠️  Deploy indexes: firebase deploy --only firestore:indexes');
+            }
+          }
+        );
+      } else {
+        this.logger.warn('data', 'No user ID available, skipping shared lists listener');
+      }
     } catch (error) {
       this.logger.error('data', 'Error setting up listeners', error);
       this.loadCachedData();
+    }
+  }
+
+  /**
+   * Phase 8: Merge owned and shared lists and update the listsSubject
+   * This is called whenever owned or shared lists update
+   */
+  private mergeLists(): void {
+    // Combine owned and shared lists
+    const allLists = [...this.ownedLists, ...this.sharedLists];
+
+    // Remove duplicates (in case a list is both owned and shared - shouldn't happen but be safe)
+    const uniqueLists = Array.from(
+      new Map(allLists.map(list => [list.id, list])).values()
+    );
+
+    this.logger.debug('data', `Merged lists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
+
+    this.listsSubject.next(uniqueLists);
+    this.cacheService.cacheLists(uniqueLists);
+
+    // Phase 8: Load articles from shared list owners
+    this.loadArticlesFromSharedListOwners();
+  }
+
+  /**
+   * Phase 8: Load articles from the owners of shared lists
+   * IMPORTANT: Only load articles that are actually ON the shared lists (not all owner's articles)
+   * This preserves privacy - collaborators only see articles on shared lists
+   */
+  private async loadArticlesFromSharedListOwners(): Promise<void> {
+    if (this.sharedLists.length === 0) {
+      this.logger.debug('data', 'No shared lists, skipping article loading');
+      return; // No shared lists, nothing to do
+    }
+
+    // Collect all unique article IDs from shared lists
+    const sharedArticleIds = new Set<string>();
+    this.sharedLists.forEach(list => {
+      list.articleIds.forEach(articleId => sharedArticleIds.add(articleId));
+    });
+
+    if (sharedArticleIds.size === 0) {
+      this.logger.debug('data', 'No articles on shared lists');
+      return;
+    }
+
+    this.logger.info('data', `Found ${sharedArticleIds.size} unique articles across ${this.sharedLists.length} shared lists`);
+
+    // Group article IDs by owner
+    const articlesByOwner = new Map<string, Set<string>>();
+    this.sharedLists.forEach(list => {
+      const ownerId = list.ownerId;
+      if (!ownerId) return;
+
+      if (!articlesByOwner.has(ownerId)) {
+        articlesByOwner.set(ownerId, new Set());
+      }
+
+      list.articleIds.forEach(articleId => {
+        articlesByOwner.get(ownerId)!.add(articleId);
+      });
+    });
+
+    // Load articles from each owner (excluding current user - already loaded)
+    const currentUserId = this.authService.getCurrentUserId();
+    const currentArticles = this.articlesSubject.value;
+    const currentArticleIds = new Set(currentArticles.map(a => a.id));
+    const newArticles: Article[] = [];
+
+    for (const [ownerId, articleIds] of articlesByOwner.entries()) {
+      if (ownerId === currentUserId) {
+        continue; // Skip current user - already loaded
+      }
+
+      try {
+        this.logger.debug('data', `Loading ${articleIds.size} articles from owner ${ownerId}`);
+
+        // Load each article individually to only get the ones we need
+        for (const articleId of articleIds) {
+          // Skip if we already have this article
+          if (currentArticleIds.has(articleId)) {
+            continue;
+          }
+
+          try {
+            const articleRef = doc(this.firestore, `users-v2/${ownerId}/articles/${articleId}`);
+            const docSnap = await getDoc(articleRef);
+
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              newArticles.push({
+                id: docSnap.id,
+                name: data['name'],
+                amount: data['amount'],
+                notes: data['notes'],
+                icon: data['icon'],
+                categoryId: data['categoryId'],
+                departmentId: data['departmentId'],
+                createdAt: data['createdAt']?.toDate() || new Date(),
+                updatedAt: data['updatedAt']?.toDate() || new Date(),
+                availableInShops: data['availableInShops'] || [],
+                usageCount: data['usageCount'] || 0,
+                ownerId: data['ownerId'] || ownerId
+              });
+            } else {
+              this.logger.warn('data', `Article ${articleId} not found for owner ${ownerId}`);
+            }
+          } catch (error: any) {
+            // Log error but continue loading other articles
+            this.logger.warn('data', `Failed to load article ${articleId} from owner ${ownerId}: ${error.message}`);
+          }
+        }
+
+        this.logger.info('data', `Loaded ${newArticles.length} new articles from owner ${ownerId}`);
+      } catch (error: any) {
+        this.logger.error('data', `Failed to load articles from owner ${ownerId}`, error);
+      }
+    }
+
+    if (newArticles.length > 0) {
+      // Merge with existing articles
+      const allArticles = [...currentArticles, ...newArticles];
+
+      // Remove duplicates by ID (shouldn't happen but be safe)
+      const uniqueArticles = Array.from(
+        new Map(allArticles.map(article => [article.id, article])).values()
+      );
+
+      this.logger.info('data', `Total articles after merge: ${uniqueArticles.length} (added ${newArticles.length} from shared lists)`);
+      this.articlesSubject.next(uniqueArticles);
+      this.cacheService.cacheArticles(uniqueArticles);
     }
   }
 
@@ -283,6 +516,11 @@ export class FirebaseDataService {
       this.listsUnsubscribe();
       this.listsUnsubscribe = undefined;
     }
+    // Phase 8: Cleanup shared lists listener
+    if (this.sharedListsUnsubscribe) {
+      this.sharedListsUnsubscribe();
+      this.sharedListsUnsubscribe = undefined;
+    }
   }
 
   // === PUBLIC API ===
@@ -305,8 +543,9 @@ export class FirebaseDataService {
     }
   
     if (this.connectionService.isOnline() && this.firestore) {
+      const basePath = this.getUserBasePath();
       this.logger.debug('data', `Article ${id} not in local state, fetching from Firebase`);
-      return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`))).pipe(
+      return from(getDoc(doc(this.firestore, `${basePath}/articles/${id}`))).pipe(
         map(docSnap => {
           if (docSnap.exists()) {
             const data = docSnap.data();
@@ -347,8 +586,9 @@ export class FirebaseDataService {
     }
 
     if (this.connectionService.isOnline() && this.firestore) {
+      const basePath = this.getUserBasePath();
       this.logger.debug('data', `List ${id} not in local state, fetching from Firebase`);
-      return from(getDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`))).pipe(
+      return from(getDoc(doc(this.firestore, `${basePath}/lists/${id}`))).pipe(
         map(docSnap => {
           if (docSnap.exists()) {
             const data = docSnap.data();
@@ -382,18 +622,21 @@ export class FirebaseDataService {
 
   async createArticleInFirebase(articleData: any): Promise<string> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`), articleData);
+    const basePath = this.getUserBasePath();
+    const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
     return docRef.id;
   }
 
   async updateArticleInFirebase(id: string, updateData: any): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`), updateData);
+    const basePath = this.getUserBasePath();
+    await updateDoc(doc(this.firestore, `${basePath}/articles/${id}`), updateData);
   }
 
   async deleteArticleInFirebase(id: string): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    await deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/articles/${id}`));
+    const basePath = this.getUserBasePath();
+    await deleteDoc(doc(this.firestore, `${basePath}/articles/${id}`));
   }
 
   async createListInFirebase(listData: any): Promise<string> {
@@ -405,7 +648,8 @@ export class FirebaseDataService {
       firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
     }
 
-    const docRef = await addDoc(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`), firestoreData);
+    const basePath = this.getUserBasePath();
+    const docRef = await addDoc(collection(this.firestore, `${basePath}/lists`), firestoreData);
     return docRef.id;
   }
 
@@ -421,8 +665,9 @@ export class FirebaseDataService {
         firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
       }
 
-      this.logger.info('data', `Writing to Firebase: users/${this.SHARED_USER_ID}/lists/${id}`);
-      await updateDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`), firestoreData);
+      const basePath = this.getUserBasePath();
+      this.logger.info('data', `Writing to Firebase: ${basePath}/lists/${id}`);
+      await updateDoc(doc(this.firestore, `${basePath}/lists/${id}`), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
     } catch (error: any) {
       this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
@@ -433,12 +678,14 @@ export class FirebaseDataService {
 
   async deleteListInFirebase(id: string): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    await deleteDoc(doc(this.firestore, `users/${this.SHARED_USER_ID}/lists/${id}`));
+    const basePath = this.getUserBasePath();
+    await deleteDoc(doc(this.firestore, `${basePath}/lists/${id}`));
   }
 
   async getAllArticlesFromFirebase(): Promise<Article[]> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    const snapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
+    const basePath = this.getUserBasePath();
+    const snapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
     const articles: Article[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -453,7 +700,8 @@ export class FirebaseDataService {
         createdAt: data['createdAt']?.toDate() || new Date(),
         updatedAt: data['updatedAt']?.toDate() || new Date(),
         availableInShops: data['availableInShops'] || [],
-        usageCount: data['usageCount'] || 0
+        usageCount: data['usageCount'] || 0,
+        ownerId: data['ownerId'] || ''  // Phase 8: Include ownerId
       });
     });
     return articles;
@@ -461,7 +709,8 @@ export class FirebaseDataService {
 
   async getAllListsFromFirebase(): Promise<ShoppingList[]> {
     if (!this.firestore) throw new Error('Firestore not initialized');
-    const snapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
+    const basePath = this.getUserBasePath();
+    const snapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
     const lists: ShoppingList[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -475,7 +724,9 @@ export class FirebaseDataService {
         itemStates: data['itemStates'] || {},
         departmentOrder: data['departmentOrder'],
         createdAt: data['createdAt']?.toDate() || new Date(),
-        updatedAt: data['updatedAt']?.toDate() || new Date()
+        updatedAt: data['updatedAt']?.toDate() || new Date(),
+        ownerId: data['ownerId'] || '',  // Phase 8: Include ownerId
+        sharedWith: data['sharedWith'] || []  // Phase 8: Include sharedWith
       });
     });
     return lists;
@@ -521,8 +772,8 @@ export class FirebaseDataService {
   }
 
   async refreshData(): Promise<void> {
-    this.logger.info('data', 'Manually refreshing shared data');
-    
+    this.logger.info('data', 'Manually refreshing user data');
+
     if (!this.connectionService.isOnline()) {
       this.logger.warn('data', 'Offline: Cannot refresh, using cached data');
       this.loadCachedData();
@@ -531,10 +782,11 @@ export class FirebaseDataService {
 
     try {
       this.setupRealtimeListeners();
-      
-      const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
-      const listsSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/lists`));
-      this.logger.info('data', `Current shared data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
+
+      const basePath = this.getUserBasePath();
+      const articlesSnapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
+      const listsSnapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
+      this.logger.info('data', `Current user data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
     } catch (error) {
       this.logger.error('data', 'Error refreshing data', error);
       this.loadCachedData();
