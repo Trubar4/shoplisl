@@ -258,7 +258,12 @@ export class ArticleUploadService {
       for (let i = 0; i < articles.length; i += batchSize) {
         const batch = articles.slice(i, i + batchSize);
         const promises = batch.map(async (article) => {
-          return addDoc(articlesCollection, article);
+          // Phase 8: Add ownerId to each article
+          const articleWithOwner = {
+            ...article,
+            ownerId: this.SHARED_USER_ID
+          };
+          return addDoc(articlesCollection, articleWithOwner);
         });
 
         await Promise.all(promises);
