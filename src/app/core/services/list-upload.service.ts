@@ -73,7 +73,8 @@ export class ListUploadService {
           icon: data['icon'],
           departmentId: data['departmentId'],
           createdAt: data['createdAt']?.toDate() || new Date(),
-          updatedAt: data['updatedAt']?.toDate() || new Date()
+          updatedAt: data['updatedAt']?.toDate() || new Date(),
+          ownerId: data['ownerId'] || this.SHARED_USER_ID  // Phase 8: Include ownerId
         });
       });
 
