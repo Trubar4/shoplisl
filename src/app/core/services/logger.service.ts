@@ -35,14 +35,15 @@ export class LoggerService {
 
   private topicEmojis: Record<LogTopic, string> = {
     'ai': '🤖',
-    'recipe': '🍳', 
+    'recipe': '🍳',
     'context': '🔄',
     'disambiguation': '🎯',
     'voice': '🎤',
     'data': '📱',
     'sync': '🔄',
     'cache': '💾',
-    'general': '💬'
+    'general': '💬',
+    'auth': '🔐'  // Phase 8: Authentication logging
   };
 
   private levelPriority: Record<LogLevel, number> = {
