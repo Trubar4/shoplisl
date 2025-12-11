@@ -34,7 +34,8 @@ export class ArticleUploadService {
   }
 
   async uploadArticles(): Promise<void> {
-    const articles: Omit<Article, 'id'>[] = [
+    // Phase 8: Articles without id and ownerId (ownerId is added dynamically below)
+    const articles: Omit<Article, 'id' | 'ownerId'>[] = [
       { name: 'Absolute Vodka', amount: '', notes: '', icon: '🍸', departmentId: 'beverages-alcohol', createdAt: new Date(), updatedAt: new Date() },
       { name: 'Ahornsirup', amount: '', notes: '', icon: '🍯', departmentId: 'tins-jars', createdAt: new Date(), updatedAt: new Date() },
       { name: 'Amertini Soft', amount: '', notes: '', icon: '🍪', departmentId: 'sweet-salty', createdAt: new Date(), updatedAt: new Date() },
