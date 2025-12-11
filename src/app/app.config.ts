@@ -5,6 +5,12 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'; // ✅ Try this approach
 
+// Phase 8: Firebase providers for Auth and Firestore
+import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
+import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import { environment } from '../environments/environment';
+
 import { FirebaseDataService } from './core/services/firebase-data.service';
 import { OfflineSyncService } from './core/services/offline-sync.service';
 import { ArticlesRepositoryService } from './core/services/articles-repository.service';
@@ -24,8 +30,13 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000'
     }),
+    // Phase 8: Firebase initialization
+    provideFirebaseApp(() => initializeApp(environment.firebase)),
+    provideAuth(() => getAuth()),
+    provideFirestore(() => getFirestore()),
+    // Application services
     FirebaseDataService,
-    OfflineSyncService, 
+    OfflineSyncService,
     ArticlesRepositoryService,
     ListsRepositoryService,
     DataMigrationService
