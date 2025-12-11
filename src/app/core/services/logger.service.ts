@@ -3,7 +3,8 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'sync' | 'cache' | 'general';
+// Phase 8: Added 'auth' topic for authentication logging
+export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'sync' | 'cache' | 'general' | 'auth';
 
 interface LogConfig {
   enabled: boolean;
