@@ -9,6 +9,7 @@ import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
 import { HistoryService } from './history.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,25 +21,37 @@ export class ListsRepositoryService {
     private offlineSync: OfflineSyncService,
     private connectionService: ConnectionService,
     private logger: LoggerService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    private authService: AuthService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
 
-  createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt'>): Observable<ShoppingList> {
+  // Phase 8: ownerId and sharedWith are added automatically by the service, so callers don't need to provide them
+  createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt' | 'ownerId' | 'sharedWith'>): Observable<ShoppingList> {
+    // Phase 8: Get current user ID for ownership
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User must be authenticated to create a list');
+    }
+
     const listData = {
       ...list,
+      ownerId: currentUserId,           // Phase 8: Set list owner
+      sharedWith: [],                   // Phase 8: Initialize empty shared array
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
 
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: List creation will be synced when online');
-      
+
       const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const tempList: ShoppingList = {
         id: tempId,
         ...list,
+        ownerId: currentUserId,             // Phase 8: Include owner in temp list
+        sharedWith: [],                     // Phase 8: Initialize empty shared array
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -60,6 +73,8 @@ export class ListsRepositoryService {
       map(docId => ({
         id: docId,
         ...list,
+        ownerId: currentUserId,             // Phase 8: Include owner in returned list
+        sharedWith: [],                     // Phase 8: Initialize empty shared array
         createdAt: new Date(),
         updatedAt: new Date()
       } as ShoppingList)),
