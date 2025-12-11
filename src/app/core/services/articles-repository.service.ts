@@ -9,6 +9,7 @@ import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
 import { DataMigrationService } from './data-migration.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,12 +21,20 @@ export class ArticlesRepositoryService {
     private offlineSync: OfflineSyncService,
     private connectionService: ConnectionService,
     private logger: LoggerService,
-    private dataMigrationService: DataMigrationService
+    private dataMigrationService: DataMigrationService,
+    private authService: AuthService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
 
-  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
+  // Phase 8: ownerId is added automatically by the service, so callers don't need to provide it
+  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>): Observable<Article> {
+    // Phase 8: Get current user ID for ownership
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User must be authenticated to create an article');
+    }
+
     const articleData = {
       name: article.name,
       amount: article.amount || '',
@@ -35,6 +44,7 @@ export class ArticlesRepositoryService {
       departmentId: article.departmentId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
+      ownerId: currentUserId,  // Phase 8: Set article owner
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -49,6 +59,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
+        ownerId: currentUserId,  // Phase 8: Include owner in temp article
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -75,6 +86,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
+        ownerId: currentUserId,  // Phase 8: Include owner in returned article
         createdAt: new Date(),
         updatedAt: new Date()
       } as Article)),
@@ -184,7 +196,8 @@ export class ArticlesRepositoryService {
     );
   }
 
-  createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<{
+  // Phase 8: ownerId is added automatically by the service
+  createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>): Observable<{
     success: boolean;
     article?: Article;
     isDuplicate?: boolean;
