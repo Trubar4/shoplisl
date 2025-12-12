@@ -14,16 +14,8 @@ bootstrapApplication(AppComponent, {
 */
 
 import { bootstrapApplication } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
 import { AppComponent } from './app/app';
-import { routes } from './app/app.routes';
 import { appConfig } from './app/app.config';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-
-// Firebase Imports hinzufügen:
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-import { FIREBASE_OPTIONS } from '@angular/fire/compat';
 import { provideStore } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
@@ -32,26 +24,13 @@ import { reducers } from './app/state/app.state';
 import { ListsEffects } from './app/state/lists/lists.effects';
 import { ArticlesEffects } from './app/state/articles/articles.effects';
 
-
-const firebaseConfig = {
-    projectId: 'shoplisl',
-    apiKey: 'AIzaSyADgZN2cKD43ABoVmaCX3UfCbmkcrbYslg',
-    authDomain: 'shoplisl.firebaseapp.com',
-    storageBucket: 'shoplisl.appspot.com', 
-    messagingSenderId: '238499687274',
-    appId: '1:238499687274:web:c54bad5031d5531be8d313'
-};
-
+// Phase 8: Use centralized appConfig and add NgRx state management
 bootstrapApplication(AppComponent, {
   providers: [
-    provideRouter(routes),
-    provideAnimationsAsync(),
-    // Firebase-Provider hinzufügen:
-    provideFirebaseApp(() => initializeApp(firebaseConfig)),
-    provideFirestore(() => getFirestore()),
-    { provide: FIREBASE_OPTIONS, useValue: firebaseConfig },
+    ...appConfig.providers,
+    // NgRx State Management
     provideStore(reducers),
     provideEffects([ListsEffects, ArticlesEffects]),
     provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() })
-]
+  ]
 }).catch(err => console.error(err));
