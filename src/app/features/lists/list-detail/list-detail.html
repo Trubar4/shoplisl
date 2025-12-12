@@ -7,9 +7,27 @@
     <div class="header-content">
       <span class="list-icon">{{ currentList?.icon || '📋' }}</span>
       <span class="list-name">{{ currentList?.name || 'Loading...' }}</span>
+      <!-- Phase 8C: Collaborator badge -->
+      <span
+        *ngIf="currentList?.sharedWith && (currentList?.sharedWith?.length || 0) > 0"
+        class="collaborator-badge"
+        [matTooltip]="getCollaboratorTooltip()"
+        matTooltipPosition="below">
+        <mat-icon class="badge-icon">people</mat-icon>
+        <span class="badge-count">{{ (currentList?.sharedWith?.length || 0) + 1 }}</span>
+      </span>
     </div>
     <span class="spacer"></span>
 
+    <!-- Phase 8C: Share Button (hidden during selection mode) -->
+    <button
+      *ngIf="!isSelectionMode()"
+      mat-icon-button
+      (click)="openShareDialog()"
+      matTooltip="Liste teilen"
+      aria-label="Liste teilen">
+      <mat-icon>ios_share</mat-icon>
+    </button>
 
     <!-- Mode Toggle Buttons (hidden during selection mode) -->
     <div class="mode-toggle" *ngIf="!isSelectionMode()">

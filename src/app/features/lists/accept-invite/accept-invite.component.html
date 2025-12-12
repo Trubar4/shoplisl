@@ -1,0 +1,26 @@
+<div class="accept-invite-container">
+  <!-- Loading state -->
+  <div *ngIf="loading" class="state-content loading">
+    <mat-spinner diameter="60"></mat-spinner>
+    <h2>Einladung wird verarbeitet...</h2>
+    <p>Bitte warten Sie einen Moment</p>
+  </div>
+
+  <!-- Success state -->
+  <div *ngIf="success && !loading" class="state-content success">
+    <mat-icon class="success-icon">check_circle</mat-icon>
+    <h2>Erfolgreich hinzugefügt!</h2>
+    <p class="list-name">{{ listName }}</p>
+    <p class="redirect-message">Sie werden zur Liste weitergeleitet...</p>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="error && !loading" class="state-content error">
+    <mat-icon class="error-icon">error</mat-icon>
+    <h2>Fehler</h2>
+    <p class="error-message">{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="goHome()">
+      Zur Startseite
+    </button>
+  </div>
+</div>

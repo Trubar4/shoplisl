@@ -1,0 +1,99 @@
+.accept-invite-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.state-content {
+  background: white;
+  border-radius: 16px;
+  padding: 48px 32px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+  h2 {
+    margin: 24px 0 16px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  p {
+    margin: 8px 0;
+    color: #666;
+    font-size: 16px;
+  }
+}
+
+// Loading state
+.state-content.loading {
+  mat-spinner {
+    margin: 0 auto;
+  }
+}
+
+// Success state
+.state-content.success {
+  .success-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #4caf50;
+  }
+
+  .list-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 16px 0;
+  }
+
+  .redirect-message {
+    font-size: 14px;
+    color: #999;
+  }
+}
+
+// Error state
+.state-content.error {
+  .error-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #f44336;
+  }
+
+  .error-message {
+    font-size: 16px;
+    color: #666;
+    margin: 16px 0 24px;
+  }
+
+  button {
+    margin-top: 8px;
+  }
+}
+
+// Responsive
+@media (max-width: 600px) {
+  .accept-invite-container {
+    padding: 16px;
+  }
+
+  .state-content {
+    padding: 32px 24px;
+
+    h2 {
+      font-size: 20px;
+    }
+
+    p {
+      font-size: 14px;
+    }
+  }
+}

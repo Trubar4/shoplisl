@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Store } from '@ngrx/store';
 
 // Optimized component imports
@@ -36,6 +37,8 @@ import { DEFAULT_DEPARTMENT_ORDER } from '../../../core/models';
 import { ListFilterService } from './services/list-filter.service';
 import { ArticleSelectionService } from './services/article-selection.service';
 import { ListPickerDialogComponent, ListPickerDialogData, ListPickerDialogResult } from '../../../shared/components/list-picker-dialog/list-picker-dialog';
+import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
+import { SharingService } from '../../../core/services/sharing.service';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -47,7 +50,7 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatToolbarModule, MatIconModule,
-    MatButtonModule, MatSnackBarModule, MatDialogModule,
+    MatButtonModule, MatSnackBarModule, MatDialogModule, MatTooltipModule,
     SearchDisambiguationComponent,
     FilterFabComponent,
     ShoppingModeComponent,
@@ -101,7 +104,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly disambiguationService: DisambiguationService,
     private readonly filterService: ListFilterService,
     public readonly selectionService: ArticleSelectionService,
-    private readonly dialog: MatDialog
+    private readonly dialog: MatDialog,
+    private readonly sharingService: SharingService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -938,6 +942,44 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private triggerChangeDetection(): void {
     setTimeout(() => this.cdr.detectChanges(), 100);
+  }
+
+  /**
+   * Phase 8C: Opens share dialog to manage list sharing
+   */
+  openShareDialog(): void {
+    console.log('🔍 Share button clicked!');
+    console.log('  Current list:', this.currentList);
+
+    if (!this.currentList) {
+      console.error('❌ No current list available');
+      return;
+    }
+
+    console.log('  Opening dialog with list:', {
+      id: this.currentList.id,
+      name: this.currentList.name,
+      ownerId: this.currentList.ownerId,
+      sharedWith: this.currentList.sharedWith
+    });
+
+    this.dialog.open(ShareDialogComponent, {
+      width: '600px',
+      maxWidth: '95vw',
+      data: {
+        list: this.currentList
+      } as ShareDialogData
+    });
+  }
+
+  /**
+   * Phase 8C: Gets tooltip text for collaborator badge
+   */
+  getCollaboratorTooltip(): string {
+    if (!this.currentList) return '';
+
+    const totalUsers = 1 + (this.currentList.sharedWith?.length || 0);
+    return `Geteilt mit ${totalUsers} ${totalUsers === 1 ? 'Person' : 'Personen'}`;
   }
 
   private cleanup(): void {
