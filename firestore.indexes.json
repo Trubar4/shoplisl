@@ -12,6 +12,13 @@
       "collectionGroup": "lists",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
+        { "fieldPath": "sharedWith", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "lists",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
         { "fieldPath": "sharedWith", "arrayConfig": "CONTAINS" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
