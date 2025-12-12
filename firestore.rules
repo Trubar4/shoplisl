@@ -69,7 +69,7 @@ service cloud.firestore {
         // Owner can read their lists anywhere (collection group queries)
         resource.data.ownerId == request.auth.uid ||
         // Shared lists (user is in sharedWith array - works for collection group queries)
-        request.auth.uid in resource.data.sharedWith
+        (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith)
       );
 
       // Update: Owner or collaborator (all have edit access)
