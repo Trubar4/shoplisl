@@ -795,9 +795,23 @@ export class FirebaseDataService {
         firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
       }
 
-      const basePath = this.getUserBasePath();
-      this.logger.info('data', `Writing to Firebase: ${basePath}/lists/${id}`);
-      await updateDoc(doc(this.firestore, `${basePath}/lists/${id}`), firestoreData);
+      // Phase 8: Use owner's path for shared lists
+      // Find the list to get its ownerId
+      const currentLists = this.listsSubject.value;
+      const list = currentLists.find(l => l.id === id);
+
+      let listPath: string;
+      if (list && list.ownerId) {
+        // Use the owner's path (works for both owned and shared lists)
+        listPath = `users-v2/${list.ownerId}/lists/${id}`;
+      } else {
+        // Fallback to current user's path
+        const basePath = this.getUserBasePath();
+        listPath = `${basePath}/lists/${id}`;
+      }
+
+      this.logger.info('data', `Writing to Firebase: ${listPath}`);
+      await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
     } catch (error: any) {
       this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
