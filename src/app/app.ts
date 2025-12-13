@@ -7,7 +7,6 @@ import { filter } from 'rxjs/operators';
 
 import { BottomTabsComponent } from './shared/components/bottom-tabs/bottom-tabs';
 import { CacheStatusComponent } from './shared/components/cache-status/cache-status.component';
-import { AuthButtonComponent } from './shared/components/auth-button/auth-button.component';
 import { LoggerService } from './core/services/logger.service';
 import { ConnectionService } from './core/services/connection.service';
 import { OfflineCacheService } from './core/services/offline-cache.service';
@@ -26,13 +25,9 @@ import * as AuthActions from './state/auth/auth.actions';
     CommonModule,
     RouterOutlet,
     BottomTabsComponent,
-    CacheStatusComponent,
-    AuthButtonComponent
+    CacheStatusComponent
   ],
   template: `
-    <div class="app-header">
-      <app-auth-button></app-auth-button>
-    </div>
     <router-outlet></router-outlet>
     <app-bottom-tabs></app-bottom-tabs>
     <app-cache-status></app-cache-status>

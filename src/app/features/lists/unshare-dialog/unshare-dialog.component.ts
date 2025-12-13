@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 export interface UnshareDialogData {
   listName: string;
   isOwnerRemoving: boolean; // true if owner is removing collaborator, false if collaborator is leaving
+  collaboratorEmail?: string; // Email of the user being removed (only set when owner is removing someone)
 }
 
 export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
@@ -20,10 +21,18 @@ export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
   ],
   template: `
     <div class="unshare-dialog">
-      <h2 mat-dialog-title>Liste nicht mehr teilen?</h2>
+      <h2 mat-dialog-title>
+        {{ data.isOwnerRemoving ? 'Nutzer entfernen?' : 'Liste nicht mehr teilen?' }}
+      </h2>
 
       <mat-dialog-content>
-        <p class="message">
+        <!-- Owner removing a collaborator -->
+        <p *ngIf="data.isOwnerRemoving" class="message">
+          Möchten Sie <strong>{{ data.collaboratorEmail }}</strong> von der Liste "<strong>{{ data.listName }}</strong>" entfernen?
+        </p>
+
+        <!-- Collaborator leaving -->
+        <p *ngIf="!data.isOwnerRemoving" class="message">
           Möchten Sie die Liste "<strong>{{ data.listName }}</strong>" nicht mehr teilen?
         </p>
 
@@ -47,7 +56,7 @@ export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
           color="warn"
           (click)="close('delete')"
           class="delete-button">
-          Für mich löschen
+          {{ data.isOwnerRemoving ? 'Entfernen' : 'Für mich löschen' }}
         </button>
 
         <button

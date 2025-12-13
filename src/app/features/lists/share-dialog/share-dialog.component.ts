@@ -12,6 +12,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { take } from 'rxjs/operators';
 
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+
 import { SharingService } from '../../../core/services/sharing.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ShoppingList } from '../../../core/models';
@@ -58,6 +60,7 @@ export class ShareDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: ShareDialogData,
     private sharingService: SharingService,
     private authService: AuthService,
+    private firestore: Firestore,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog
@@ -103,24 +106,46 @@ export class ShareDialogComponent implements OnInit {
     const collabs: Collaborator[] = [];
 
     // Add owner (always first)
+    const ownerEmail = await this.getUserEmail(this.data.list.ownerId);
     collabs.push({
       userId: this.data.list.ownerId,
-      email: 'Besitzer', // TODO: Could fetch actual email from user profile
+      email: ownerEmail ? `${ownerEmail} (Besitzer)` : 'Besitzer',
       canRemove: false
     });
 
     // Add collaborators from sharedWith array
     if (this.data.list.sharedWith && this.data.list.sharedWith.length > 0) {
       for (const userId of this.data.list.sharedWith) {
+        const userEmail = await this.getUserEmail(userId);
         collabs.push({
           userId,
-          email: `${userId.substring(0, 8)}...`, // TODO: Could fetch actual email from user profile
+          email: userEmail || `${userId.substring(0, 8)}...`,
           canRemove: this.isOwner
         });
       }
     }
 
     this.collaborators = collabs;
+  }
+
+  /**
+   * Fetch user email from Firestore user profile
+   */
+  private async getUserEmail(userId: string): Promise<string | null> {
+    try {
+      const profileRef = doc(this.firestore, `users-v2/${userId}/profile/info`);
+      const profileSnap = await getDoc(profileRef);
+
+      if (profileSnap.exists()) {
+        const data = profileSnap.data();
+        return data['email'] || null;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch email for user ${userId}:`, error);
+      return null;
+    }
   }
 
   async addCollaborator(): Promise<void> {
@@ -200,7 +225,8 @@ export class ShareDialogComponent implements OnInit {
       width: '400px',
       data: {
         listName: this.data.list.name,
-        isOwnerRemoving: this.isOwner
+        isOwnerRemoving: this.isOwner,
+        collaboratorEmail: this.isOwner ? collaborator.email : undefined
       } as UnshareDialogData
     });
 
