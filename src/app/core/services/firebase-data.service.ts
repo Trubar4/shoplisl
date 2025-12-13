@@ -230,64 +230,87 @@ export class FirebaseDataService {
         }
       );
 
-      // Phase 8: Shared lists listener (collection group query)
+      // Phase 8: Shared lists listener
+      // WORKAROUND: Collection group queries have auth token issues in Angular Fire.
+      // Instead, we query share-invites to find which users have shared lists,
+      // then load each list directly with proper authentication.
       const userId = this.authService.getCurrentUserId();
       if (userId) {
         this.logger.info('data', `Setting up shared lists listener for user ${userId}`);
 
-        const sharedListsQuery = query(
-          collectionGroup(this.firestore, 'lists'),
-          where('sharedWith', 'array-contains', userId)
+        // Query share-invites to find accepted invites for this user
+        const invitesRef = collection(this.firestore, 'share-invites');
+        const acceptedInvitesQuery = query(
+          invitesRef,
+          where('acceptedByUserId', '==', userId),
+          where('status', '==', 'accepted')
         );
 
-        this.sharedListsUnsubscribe = onSnapshot(sharedListsQuery,
-          (snapshot) => {
-            this.logger.info('data', `Fresh shared lists received: ${snapshot.size}`);
-            const sharedLists: ShoppingList[] = [];
-            snapshot.forEach((doc) => {
-              const data = doc.data();
-              const listPath = doc.ref.path;
-              this.logger.debug('data', `Shared list found: ${data['name']} at ${listPath}`);
+        this.sharedListsUnsubscribe = onSnapshot(acceptedInvitesQuery,
+          async (inviteSnapshot) => {
+            this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
 
-              sharedLists.push({
-                id: doc.id,
-                name: data['name'],
-                color: data['color'],
-                icon: data['icon'],
-                shopId: data['shopId'],
-                articleIds: data['articleIds'] || [],
-                itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
-                departmentOrder: data['departmentOrder'],
-                createdAt: data['createdAt']?.toDate() || new Date(),
-                updatedAt: data['updatedAt']?.toDate() || new Date(),
-                // Phase 8: Include ownership and sharing fields
-                ownerId: data['ownerId'] || '',
-                sharedWith: data['sharedWith'] || []
-              });
+            // Extract list info from invites
+            const listIds = new Map<string, string>(); // listId -> ownerId
+
+            inviteSnapshot.forEach((doc) => {
+              const data = doc.data();
+              const listId = data['listId'];
+              const fromUserId = data['fromUserId'];
+              if (listId && fromUserId) {
+                listIds.set(listId, fromUserId);
+              }
             });
 
-            // Phase 8: Store shared lists separately
+            this.logger.info('data', `Loading ${listIds.size} shared lists`);
+
+            // Load each shared list directly (avoids collection group query)
+            const sharedLists: ShoppingList[] = [];
+
+            for (const [listId, ownerId] of listIds.entries()) {
+              try {
+                const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
+                const listDoc = await getDoc(listRef);
+
+                if (listDoc.exists()) {
+                  const data = listDoc.data();
+
+                  // Verify user is still in sharedWith array
+                  const sharedWith = data['sharedWith'] || [];
+                  if (sharedWith.includes(userId)) {
+                    sharedLists.push({
+                      id: listDoc.id,
+                      name: data['name'],
+                      color: data['color'],
+                      icon: data['icon'],
+                      shopId: data['shopId'],
+                      articleIds: data['articleIds'] || [],
+                      itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+                      departmentOrder: data['departmentOrder'],
+                      createdAt: data['createdAt']?.toDate() || new Date(),
+                      updatedAt: data['updatedAt']?.toDate() || new Date(),
+                      ownerId: data['ownerId'] || ownerId,
+                      sharedWith: sharedWith
+                    });
+                    this.logger.debug('data', `Loaded shared list: ${data['name']}`);
+                  } else {
+                    this.logger.warn('data', `List ${listId} no longer shared with user`);
+                  }
+                } else {
+                  this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+                }
+              } catch (error: any) {
+                this.logger.error('data', `Failed to load shared list ${listId}:`, error);
+              }
+            }
+
+            // Store shared lists
             this.sharedLists = sharedLists;
-            this.logger.info('data', `Stored ${sharedLists.length} shared lists, merging with owned lists`);
+            this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
             this.mergeLists();
           },
           (error: any) => {
-            this.logger.error('data', 'Shared lists listener error', error);
-            this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
-            this.logger.error('data', `Error details: ${JSON.stringify(error, null, 2)}`);
-
-            // Check if it's a permission error
-            if (error.code === 'permission-denied') {
-              this.logger.error('data', '⚠️  PERMISSION DENIED: Collection group query blocked by Firestore rules');
-              this.logger.error('data', '⚠️  Make sure Firestore indexes are deployed: firebase deploy --only firestore:indexes');
-              this.logger.error('data', '⚠️  Check Firestore rules allow collection group queries for shared lists');
-            }
-
-            // Check if it's an index error
-            if (error.message && error.message.includes('index')) {
-              this.logger.error('data', '⚠️  INDEX MISSING: Collection group query requires a Firestore index');
-              this.logger.error('data', '⚠️  Deploy indexes: firebase deploy --only firestore:indexes');
-            }
+            this.logger.error('data', 'Share invites listener error', error);
           }
         );
       } else {
