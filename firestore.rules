@@ -72,16 +72,22 @@ service cloud.firestore {
         (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith)
       );
 
-      // Update: Owner or collaborator (all have edit access)
-      // OR user is accepting an invite (adding themselves to sharedWith)
-      allow update: if canEdit(resource) ||
+      // Update: Owner OR collaborator (with safety checks)
+      allow update: if isAuthenticated() && (
+        // Owner can update anything in their own path
+        (userId == request.auth.uid && resource.data.ownerId == request.auth.uid) ||
+
+        // Collaborators can update BUT cannot change ownership or sharing
+        (resource.data.sharedWith != null &&
+         request.auth.uid in resource.data.sharedWith &&
+         request.resource.data.ownerId == resource.data.ownerId &&
+         request.resource.data.sharedWith == resource.data.sharedWith) ||
+
         // Special case: Allow adding yourself to sharedWith (invite acceptance)
-        (isAuthenticated() &&
-         // User is adding themselves to the sharedWith array
-         request.auth.uid in request.resource.data.sharedWith &&
+        (request.auth.uid in request.resource.data.sharedWith &&
          !(request.auth.uid in resource.data.sharedWith) &&
-         // ownerId must not change
-         request.resource.data.ownerId == resource.data.ownerId);
+         request.resource.data.ownerId == resource.data.ownerId)
+      );
 
       // Create: Only in own user path, must set ownerId
       allow create: if isAuthenticated() &&
