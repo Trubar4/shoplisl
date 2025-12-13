@@ -27,19 +27,15 @@ export class ArticlesRepositoryService {
 
   // === BASIC CRUD OPERATIONS ===
 
-  // Phase 8: ownerId can be provided for shared lists, otherwise uses current user
+  // Phase 8: ownerId is added automatically (creator owns the article)
   createArticle(
-    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>,
-    explicitOwnerId?: string  // Optional: for creating articles in shared lists
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>
   ): Observable<Article> {
     // Phase 8: Get current user ID for ownership
     const currentUserId = this.authService.getCurrentUserId();
     if (!currentUserId) {
       throw new Error('User must be authenticated to create an article');
     }
-
-    // Use explicit ownerId if provided (for shared lists), otherwise use current user
-    const ownerId = explicitOwnerId || currentUserId;
 
     const articleData = {
       name: article.name,
@@ -50,7 +46,7 @@ export class ArticlesRepositoryService {
       departmentId: article.departmentId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
-      ownerId: ownerId,  // Phase 8: Use explicit owner or current user
+      ownerId: currentUserId,  // Phase 8: Creator owns the article
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -65,7 +61,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
-        ownerId: ownerId,  // Phase 8: Use explicit owner or current user
+        ownerId: currentUserId,  // Phase 8: Creator owns the article
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -92,7 +88,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
-        ownerId: ownerId,  // Phase 8: Use explicit owner or current user
+        ownerId: currentUserId,  // Phase 8: Creator owns the article
         createdAt: new Date(),
         updatedAt: new Date()
       } as Article)),

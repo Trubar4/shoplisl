@@ -753,19 +753,11 @@ export class FirebaseDataService {
   async createArticleInFirebase(articleData: any): Promise<string> {
     if (!this.firestore) throw new Error('Firestore not initialized');
 
-    // Phase 8: Use ownerId from articleData if provided (for shared list articles)
-    // Otherwise use current user's path (for own articles)
-    let articlesPath: string;
-    if (articleData.ownerId) {
-      articlesPath = `users-v2/${articleData.ownerId}/articles`;
-      this.logger.debug('data', `Creating article in owner's path: ${articlesPath}`);
-    } else {
-      const basePath = this.getUserBasePath();
-      articlesPath = `${basePath}/articles`;
-      this.logger.debug('data', `Creating article in user's path: ${articlesPath}`);
-    }
+    // Phase 8: Articles are always created in the creator's collection
+    const basePath = this.getUserBasePath();
+    this.logger.debug('data', `Creating article in creator's path: ${basePath}/articles`);
 
-    const docRef = await addDoc(collection(this.firestore, articlesPath), articleData);
+    const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
     return docRef.id;
   }
 
