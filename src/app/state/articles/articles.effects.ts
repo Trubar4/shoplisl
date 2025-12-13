@@ -78,7 +78,7 @@ export class ArticlesEffects {
   createArticle$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ArticlesActions.createArticle),
-      mergeMap(({ name, amount, notes, icon, categoryId, departmentId }) =>
+      mergeMap(({ name, amount, notes, icon, categoryId, departmentId, ownerId }) =>
         this.articlesRepository
           .createArticle({
             name,
@@ -89,7 +89,7 @@ export class ArticlesEffects {
             departmentId,
             availableInShops: [],
             usageCount: 0,
-          })
+          }, ownerId)  // Phase 8: Pass ownerId for shared lists
           .pipe(
             map((article) => ArticlesActions.createArticleSuccess({ article })),
             catchError((error) =>

@@ -58,6 +58,7 @@ export const createArticle = createAction(
     icon?: string;
     categoryId?: string;
     departmentId?: string;
+    ownerId?: string;  // Phase 8: Optional for creating articles in shared lists
   }>()
 );
 
