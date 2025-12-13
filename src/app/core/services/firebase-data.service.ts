@@ -41,6 +41,8 @@ export class FirebaseDataService {
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
   private sharedListsUnsubscribe?: () => void;
+  // Phase 8: Per-list listeners for real-time content sync
+  private sharedListListeners = new Map<string, () => void>();
 
   constructor(
     private connectionService: ConnectionService,
@@ -308,6 +310,10 @@ export class FirebaseDataService {
             this.sharedLists = sharedLists;
             this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
             this.mergeLists();
+
+            // Phase 8: Set up real-time listeners for each shared list's content
+            // This ensures item check/uncheck and other changes sync in real-time
+            this.setupSharedListContentListeners(sharedLists);
           },
           (error: any) => {
             this.logger.error('data', 'Share invites listener error', error);
@@ -342,6 +348,105 @@ export class FirebaseDataService {
 
     // Phase 8: Load articles from shared list owners
     this.loadArticlesFromSharedListOwners();
+  }
+
+  /**
+   * Phase 8: Set up real-time listeners for shared list content changes
+   * This enables real-time sync for item check/uncheck, additions, removals, etc.
+   */
+  private setupSharedListContentListeners(sharedLists: ShoppingList[]): void {
+    // Clean up existing listeners first
+    this.cleanupSharedListListeners();
+
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No user ID, cannot set up shared list content listeners');
+      return;
+    }
+
+    this.logger.info('data', `Setting up content listeners for ${sharedLists.length} shared lists`);
+
+    // Set up a listener for each shared list
+    for (const list of sharedLists) {
+      const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
+
+      const unsubscribe = onSnapshot(listRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+
+            // Verify user still has access
+            const sharedWith = data['sharedWith'] || [];
+            if (!sharedWith.includes(userId)) {
+              this.logger.warn('data', `Lost access to list ${list.id}, removing from shared lists`);
+              this.removeSharedList(list.id);
+              return;
+            }
+
+            // Update the list in sharedLists array
+            const index = this.sharedLists.findIndex(l => l.id === list.id);
+            if (index !== -1) {
+              this.sharedLists[index] = {
+                ...this.sharedLists[index],
+                name: data['name'],
+                color: data['color'],
+                icon: data['icon'],
+                shopId: data['shopId'],
+                itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+                articleIds: data['articleIds'] || [],
+                departmentOrder: data['departmentOrder'],
+                updatedAt: data['updatedAt']?.toDate() || new Date(),
+                sharedWith: sharedWith
+              };
+
+              this.logger.debug('data', `Real-time update for shared list: ${data['name']}`);
+              this.mergeLists(); // Trigger UI update
+            }
+          } else {
+            // List was deleted
+            this.logger.warn('data', `Shared list ${list.id} was deleted by owner`);
+            this.removeSharedList(list.id);
+          }
+        },
+        (error: any) => {
+          this.logger.error('data', `Content listener error for list ${list.id}:`, error);
+        }
+      );
+
+      // Store unsubscribe function for cleanup
+      this.sharedListListeners.set(list.id, unsubscribe);
+    }
+
+    this.logger.info('data', `✅ Set up ${this.sharedListListeners.size} shared list content listeners`);
+  }
+
+  /**
+   * Phase 8: Remove a shared list from the local state
+   */
+  private removeSharedList(listId: string): void {
+    const index = this.sharedLists.findIndex(l => l.id === listId);
+    if (index !== -1) {
+      this.sharedLists.splice(index, 1);
+      this.mergeLists();
+    }
+
+    // Clean up the listener
+    const unsubscribe = this.sharedListListeners.get(listId);
+    if (unsubscribe) {
+      unsubscribe();
+      this.sharedListListeners.delete(listId);
+    }
+  }
+
+  /**
+   * Phase 8: Clean up all shared list content listeners
+   */
+  private cleanupSharedListListeners(): void {
+    this.logger.debug('data', `Cleaning up ${this.sharedListListeners.size} shared list content listeners`);
+    this.sharedListListeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    this.sharedListListeners.clear();
   }
 
   /**
@@ -544,6 +649,8 @@ export class FirebaseDataService {
       this.sharedListsUnsubscribe();
       this.sharedListsUnsubscribe = undefined;
     }
+    // Phase 8: Cleanup per-list content listeners
+    this.cleanupSharedListListeners();
   }
 
   // === PUBLIC API ===
