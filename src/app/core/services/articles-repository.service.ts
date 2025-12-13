@@ -27,13 +27,19 @@ export class ArticlesRepositoryService {
 
   // === BASIC CRUD OPERATIONS ===
 
-  // Phase 8: ownerId is added automatically by the service, so callers don't need to provide it
-  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>): Observable<Article> {
+  // Phase 8: ownerId can be provided for shared lists, otherwise uses current user
+  createArticle(
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>,
+    explicitOwnerId?: string  // Optional: for creating articles in shared lists
+  ): Observable<Article> {
     // Phase 8: Get current user ID for ownership
     const currentUserId = this.authService.getCurrentUserId();
     if (!currentUserId) {
       throw new Error('User must be authenticated to create an article');
     }
+
+    // Use explicit ownerId if provided (for shared lists), otherwise use current user
+    const ownerId = explicitOwnerId || currentUserId;
 
     const articleData = {
       name: article.name,
@@ -44,7 +50,7 @@ export class ArticlesRepositoryService {
       departmentId: article.departmentId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
-      ownerId: currentUserId,  // Phase 8: Set article owner
+      ownerId: ownerId,  // Phase 8: Use explicit owner or current user
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
@@ -59,7 +65,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
-        ownerId: currentUserId,  // Phase 8: Include owner in temp article
+        ownerId: ownerId,  // Phase 8: Use explicit owner or current user
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -86,7 +92,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
-        ownerId: currentUserId,  // Phase 8: Include owner in returned article
+        ownerId: ownerId,  // Phase 8: Use explicit owner or current user
         createdAt: new Date(),
         updatedAt: new Date()
       } as Article)),

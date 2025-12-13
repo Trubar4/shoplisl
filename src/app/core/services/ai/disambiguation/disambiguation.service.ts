@@ -624,6 +624,12 @@ export class DisambiguationService {
       if (selectedArticle) {
         articleId = selectedArticle.id;
       } else {
+        // Phase 8: Get target list to determine owner (for shared lists)
+        const targetList = await this.dataService.getList(targetListId).pipe(take(1)).toPromise();
+        if (!targetList) {
+          throw new Error(`Target list ${targetListId} not found`);
+        }
+
         // Create new article with enhanced suggestions
         const suggestions = await this.getEnhancedSuggestions(currentItem.itemName);
         const articleData = {
@@ -633,7 +639,8 @@ export class DisambiguationService {
           icon: suggestions.icon
         };
 
-        const newArticle = await this.dataService.createArticle(articleData).toPromise();
+        // Phase 8: Pass list ownerId so article is created in owner's collection
+        const newArticle = await this.dataService.createArticle(articleData, targetList.ownerId).toPromise();
         if (!newArticle) {
           throw new Error(`Failed to create article: ${currentItem.itemName}`);
         }
@@ -925,6 +932,23 @@ export class DisambiguationService {
 
   private async executeActionWithNewArticle(pendingAction: PendingAction): Promise<AIExecutionResult> {
     try {
+      // Phase 8: Find target list FIRST to get ownerId for article creation
+      const targetInfo = this.getTargetListInfo(pendingAction);
+      let targetListOwnerId: string | undefined;
+
+      if (targetInfo.listName) {
+        const targetList = await this.findTargetList(targetInfo);
+
+        if (!targetList) {
+          return {
+            success: false,
+            message: `❌ Liste "${targetInfo.listName}" nicht gefunden.`
+          };
+        }
+
+        targetListOwnerId = targetList.ownerId;
+      }
+
       // Create new article with enhanced suggestions
       const suggestions = await this.getEnhancedSuggestions(pendingAction.itemName);
       const articleData = {
@@ -934,7 +958,8 @@ export class DisambiguationService {
         icon: suggestions.icon
       };
 
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
+      // Phase 8: Pass ownerId if creating for shared list
+      const newArticle = await this.dataService.createArticle(articleData, targetListOwnerId).toPromise();
 
       if (!newArticle) {
         return {
@@ -944,8 +969,6 @@ export class DisambiguationService {
       }
 
       // Handle target list
-      const targetInfo = this.getTargetListInfo(pendingAction);
-
       if (targetInfo.listName) {
         const targetList = await this.findTargetList(targetInfo);
 
@@ -1083,12 +1106,13 @@ export class DisambiguationService {
 
       // Create new article
       const suggestions = await this.getEnhancedSuggestions(articleData.name);
+      // Phase 8: Pass targetList.ownerId so article is created in owner's collection
       const newArticle = await this.dataService.createArticle({
         name: articleData.name,
         amount: articleData.amount || '',
         departmentId: suggestions.departmentId,
         icon: suggestions.icon
-      }).pipe(take(1), timeout(5000)).toPromise();
+      }, targetList.ownerId).pipe(take(1), timeout(5000)).toPromise();
 
       if (!newArticle) {
         return {

@@ -67,8 +67,11 @@ export class DataService {
   }
 
   // Phase 8: ownerId is added automatically by repository, so callers don't need to provide it
-  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>): Observable<Article> {
-    return this.articlesRepo.createArticle(article);
+  createArticle(
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>,
+    explicitOwnerId?: string  // Phase 8: for creating articles in shared lists
+  ): Observable<Article> {
+    return this.articlesRepo.createArticle(article, explicitOwnerId);
   }
 
   updateArticle(id: string, updates: Partial<Article>): Observable<Article | undefined> {
