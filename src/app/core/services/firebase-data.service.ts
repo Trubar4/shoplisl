@@ -811,6 +811,9 @@ export class FirebaseDataService {
       }
 
       this.logger.info('data', `Writing to Firebase: ${listPath}`);
+      if (firestoreData.articleIds) {
+        this.logger.info('data', `📝 articleIds being written: [${firestoreData.articleIds.join(', ')}] (${firestoreData.articleIds.length} total)`);
+      }
       await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
     } catch (error: any) {
