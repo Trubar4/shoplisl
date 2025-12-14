@@ -473,76 +473,74 @@ export class FirebaseDataService {
 
     this.logger.info('data', `Found ${sharedArticleIds.size} unique articles across ${this.sharedLists.length} shared lists`);
 
-    // Group article IDs by owner
-    const articlesByOwner = new Map<string, Set<string>>();
+    // Phase 8: Collect all possible article owners (list owners + collaborators)
+    const possibleOwners = new Set<string>();
     this.sharedLists.forEach(list => {
-      const ownerId = list.ownerId;
-      if (!ownerId) return;
-
-      if (!articlesByOwner.has(ownerId)) {
-        articlesByOwner.set(ownerId, new Set());
+      if (list.ownerId) {
+        possibleOwners.add(list.ownerId);
       }
-
-      list.articleIds.forEach(articleId => {
-        articlesByOwner.get(ownerId)!.add(articleId);
-      });
+      if (list.sharedWith) {
+        list.sharedWith.forEach(userId => possibleOwners.add(userId));
+      }
     });
 
-    // Load articles from each owner (excluding current user - already loaded)
+    // Load articles (excluding current user - already loaded)
     const currentUserId = this.authService.getCurrentUserId();
+    possibleOwners.delete(currentUserId); // Remove current user from search
+
     const currentArticles = this.articlesSubject.value;
     const currentArticleIds = new Set(currentArticles.map(a => a.id));
     const newArticles: Article[] = [];
 
-    for (const [ownerId, articleIds] of articlesByOwner.entries()) {
-      if (ownerId === currentUserId) {
-        continue; // Skip current user - already loaded
+    this.logger.debug('data', `Searching for articles across ${possibleOwners.size} users`);
+
+    // For each article, try loading from all possible owners until found
+    for (const articleId of sharedArticleIds) {
+      // Skip if we already have this article
+      if (currentArticleIds.has(articleId)) {
+        continue;
       }
 
-      try {
-        this.logger.debug('data', `Loading ${articleIds.size} articles from owner ${ownerId}`);
+      let foundArticle = false;
 
-        // Load each article individually to only get the ones we need
-        for (const articleId of articleIds) {
-          // Skip if we already have this article
-          if (currentArticleIds.has(articleId)) {
-            continue;
+      // Try each possible owner until we find the article
+      for (const ownerId of possibleOwners) {
+        try {
+          const articleRef = doc(this.firestore, `users-v2/${ownerId}/articles/${articleId}`);
+          const docSnap = await getDoc(articleRef);
+
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            newArticles.push({
+              id: docSnap.id,
+              name: data['name'],
+              amount: data['amount'],
+              notes: data['notes'],
+              icon: data['icon'],
+              categoryId: data['categoryId'],
+              departmentId: data['departmentId'],
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              availableInShops: data['availableInShops'] || [],
+              usageCount: data['usageCount'] || 0,
+              ownerId: data['ownerId'] || ownerId
+            });
+            foundArticle = true;
+            this.logger.debug('data', `Found article ${articleId} owned by ${ownerId}`);
+            break; // Found it, stop searching
           }
-
-          try {
-            const articleRef = doc(this.firestore, `users-v2/${ownerId}/articles/${articleId}`);
-            const docSnap = await getDoc(articleRef);
-
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              newArticles.push({
-                id: docSnap.id,
-                name: data['name'],
-                amount: data['amount'],
-                notes: data['notes'],
-                icon: data['icon'],
-                categoryId: data['categoryId'],
-                departmentId: data['departmentId'],
-                createdAt: data['createdAt']?.toDate() || new Date(),
-                updatedAt: data['updatedAt']?.toDate() || new Date(),
-                availableInShops: data['availableInShops'] || [],
-                usageCount: data['usageCount'] || 0,
-                ownerId: data['ownerId'] || ownerId
-              });
-            } else {
-              this.logger.warn('data', `Article ${articleId} not found for owner ${ownerId}`);
-            }
-          } catch (error: any) {
-            // Log error but continue loading other articles
-            this.logger.warn('data', `Failed to load article ${articleId} from owner ${ownerId}: ${error.message}`);
-          }
+        } catch (error: any) {
+          // Continue searching with next owner
+          this.logger.debug('data', `Article ${articleId} not in ${ownerId}'s collection`);
         }
+      }
 
-        this.logger.info('data', `Loaded ${newArticles.length} new articles from owner ${ownerId}`);
-      } catch (error: any) {
-        this.logger.error('data', `Failed to load articles from owner ${ownerId}`, error);
+      if (!foundArticle) {
+        this.logger.warn('data', `Article ${articleId} not found in any collaborator's collection`);
       }
     }
+
+    this.logger.info('data', `Loaded ${newArticles.length} new articles from collaborators`)
 
     if (newArticles.length > 0) {
       // Merge with existing articles
