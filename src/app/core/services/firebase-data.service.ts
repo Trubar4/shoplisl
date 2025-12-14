@@ -484,12 +484,7 @@ export class FirebaseDataService {
       }
     });
 
-    // Load articles (excluding current user - already loaded)
-    const currentUserId = this.authService.getCurrentUserId();
-    if (currentUserId) {
-      possibleOwners.delete(currentUserId); // Remove current user from search
-    }
-
+    // Phase 8: Load articles from all collaborators (including current user for newly created articles)
     const currentArticles = this.articlesSubject.value;
     const currentArticleIds = new Set(currentArticles.map(a => a.id));
     const newArticles: Article[] = [];
