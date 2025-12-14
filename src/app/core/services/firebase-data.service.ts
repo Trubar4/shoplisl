@@ -816,6 +816,14 @@ export class FirebaseDataService {
       }
       await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
+
+      // DEBUG: Verify the write actually persisted
+      const verifyRef = doc(this.firestore, listPath);
+      const verifySnap = await getDoc(verifyRef);
+      if (verifySnap.exists()) {
+        const actualArticleIds = verifySnap.data()['articleIds'] || [];
+        this.logger.info('data', `🔍 Verified articleIds in Firestore: [${actualArticleIds.join(', ')}] (${actualArticleIds.length} total)`);
+      }
     } catch (error: any) {
       this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
       this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
