@@ -455,14 +455,20 @@ export class FirebaseDataService {
    * This preserves privacy - collaborators only see articles on shared lists
    */
   private async loadArticlesFromSharedListOwners(): Promise<void> {
-    if (this.sharedLists.length === 0) {
+    // Phase 8: Include both lists shared WITH us and lists we OWN that are shared with others
+    const listsToProcess = [
+      ...this.sharedLists,
+      ...this.ownedLists.filter(list => list.sharedWith && list.sharedWith.length > 0)
+    ];
+
+    if (listsToProcess.length === 0) {
       this.logger.debug('data', 'No shared lists, skipping article loading');
-      return; // No shared lists, nothing to do
+      return;
     }
 
-    // Collect all unique article IDs from shared lists
+    // Collect all unique article IDs from all shared lists
     const sharedArticleIds = new Set<string>();
-    this.sharedLists.forEach(list => {
+    listsToProcess.forEach(list => {
       list.articleIds.forEach(articleId => sharedArticleIds.add(articleId));
     });
 
@@ -471,11 +477,11 @@ export class FirebaseDataService {
       return;
     }
 
-    this.logger.info('data', `Found ${sharedArticleIds.size} unique articles across ${this.sharedLists.length} shared lists`);
+    this.logger.info('data', `Found ${sharedArticleIds.size} unique articles across ${listsToProcess.length} shared lists`);
 
     // Phase 8: Collect all possible article owners (list owners + collaborators)
     const possibleOwners = new Set<string>();
-    this.sharedLists.forEach(list => {
+    listsToProcess.forEach(list => {
       if (list.ownerId) {
         possibleOwners.add(list.ownerId);
       }
