@@ -494,7 +494,7 @@ export class FirebaseDataService {
     const currentArticleIds = new Set(currentArticles.map(a => a.id));
     const newArticles: Article[] = [];
 
-    this.logger.debug('data', `Searching for articles across ${possibleOwners.size} users`);
+    this.logger.info('data', `Searching for ${sharedArticleIds.size} articles across ${possibleOwners.size} users: [${Array.from(possibleOwners).join(', ')}]`);
 
     // For each article, try loading from all possible owners until found
     for (const articleId of sharedArticleIds) {
@@ -755,9 +755,10 @@ export class FirebaseDataService {
 
     // Phase 8: Articles are always created in the creator's collection
     const basePath = this.getUserBasePath();
-    this.logger.debug('data', `Creating article in creator's path: ${basePath}/articles`);
+    this.logger.info('data', `Creating article in creator's path: ${basePath}/articles`);
 
     const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
+    this.logger.info('data', `✅ Article created with ID: ${docRef.id}`);
     return docRef.id;
   }
 
