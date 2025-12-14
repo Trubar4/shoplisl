@@ -27,6 +27,33 @@ export class ArticlesRepositoryService {
 
   // === BASIC CRUD OPERATIONS ===
 
+  /**
+   * Phase 8.2: Create a local copy of an article
+   * Used when adding a non-owned article to user's own (non-shared) list
+   */
+  createLocalCopy(originalArticle: Article): Observable<Article> {
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User must be authenticated to create a local copy');
+    }
+
+    // Create copy with current user as owner
+    const copyData: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'> = {
+      name: originalArticle.name,
+      amount: originalArticle.amount,
+      notes: originalArticle.notes,
+      icon: originalArticle.icon,
+      categoryId: originalArticle.categoryId,
+      departmentId: originalArticle.departmentId,
+      availableInShops: originalArticle.availableInShops,
+      usageCount: originalArticle.usageCount,
+      copiedFrom: originalArticle.id  // Track original article
+    };
+
+    this.logger.info('data', `Creating local copy of article "${originalArticle.name}" (${originalArticle.id})`);
+    return this.createArticle(copyData);
+  }
+
   // Phase 8: ownerId is added automatically (creator owns the article)
   createArticle(
     article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>

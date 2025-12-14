@@ -17,6 +17,7 @@ export interface Article {
   numberOfChecks?: number;     // Total check count across all lists
   // Phase 8: List sharing - ownership
   ownerId: string;             // User who created this article (required for access control)
+  copiedFrom?: string;         // Phase 8.2: ID of original article if this is a local copy
 }
 
 // Keep your existing Department interface

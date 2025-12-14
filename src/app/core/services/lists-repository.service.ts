@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, forwardRef } from '@angular/core';
 import { Observable, from, of } from 'rxjs';
-import { map, catchError, mergeMap } from 'rxjs/operators';
+import { map, catchError, mergeMap, switchMap, toArray } from 'rxjs/operators';
 import { Timestamp } from 'firebase/firestore';
 
 import { ShoppingList, DEFAULT_DEPARTMENT_ORDER } from '../models';
@@ -10,6 +10,7 @@ import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
 import { HistoryService } from './history.service';
 import { AuthService } from './auth.service';
+import { ArticlesRepositoryService } from './articles-repository.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +23,8 @@ export class ListsRepositoryService {
     private connectionService: ConnectionService,
     private logger: LoggerService,
     private historyService: HistoryService,
-    private authService: AuthService
+    private authService: AuthService,
+    @Inject(forwardRef(() => ArticlesRepositoryService)) private articlesRepository: ArticlesRepositoryService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -234,67 +236,46 @@ export class ListsRepositoryService {
   }
 
   addArticleToList(listId: string, articleId: string): Observable<boolean> {
+    // Phase 8.2: Check if we need to create a local copy first
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      this.logger.error('data', 'User must be authenticated to add articles to list');
+      return of(false);
+    }
+
     return this.firebaseData.getList(listId).pipe(
       mergeMap(list => {
         if (!list) return of(false);
 
-        const newArticleIds = list.articleIds.includes(articleId)
-          ? list.articleIds
-          : [...list.articleIds, articleId];
-
-        // Get article name for history display
+        // Get the article to check ownership
         const articles = this.firebaseData.getCurrentArticles();
         const article = articles.find(a => a.id === articleId);
-        const articleName = article?.name;
-
-        const newItemStates = {
-          ...list.itemStates,
-          [articleId]: {
-            articleId,
-            articleName,  // Store name for history display after deletion
-            isChecked: false,
-            amount: list.itemStates[articleId]?.amount || '',  // PRESERVE existing amount
-            addedAt: list.itemStates[articleId]?.addedAt || new Date()  // Set addedAt only for new articles
-          }
-        };
-
-        // Update local state immediately for optimistic UI
-        const currentLists = this.firebaseData.getCurrentLists();
-        const updatedLists = currentLists.map(l =>
-          l.id === listId ? {
-            ...l,
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: new Date()
-          } : l
-        );
-        this.firebaseData.updateLocalLists(updatedLists);
-
-        if (!this.connectionService.isOnline()) {
-          // Queue for sync when online
-          this.offlineSync.queueOperation(async () => {
-            await this.firebaseData.updateListInFirebase(listId, {
-              articleIds: newArticleIds,
-              itemStates: newItemStates,
-              updatedAt: Timestamp.now()
-            });
-          }, `Add article ${articleId} to list ${listId}`);
-
-          return of(true);
+        if (!article) {
+          this.logger.error('data', `Article ${articleId} not found`);
+          return of(false);
         }
 
-        // Online - update Firebase directly and wait for completion
-        return from(this.firebaseData.updateListInFirebase(listId, {
-          articleIds: newArticleIds,
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        })).pipe(
-          map(() => true),
-          catchError(error => {
-            this.logger.error('data', 'Error updating Firebase when adding article', error);
-            return of(false);
-          })
-        );
+        // Phase 8.2: Check if we need to create a local copy
+        // Copy is needed if:
+        // 1. Article is NOT owned by current user, AND
+        // 2. List is NOT shared (i.e., it's the user's own list)
+        const isArticleOwnedByUser = article.ownerId === currentUserId;
+        const isListShared = list.sharedWith && list.sharedWith.length > 0;
+        const needsLocalCopy = !isArticleOwnedByUser && !isListShared;
+
+        if (needsLocalCopy) {
+          this.logger.info('data', `Creating local copy of article "${article.name}" for non-shared list`);
+          // Create local copy and use the copy's ID
+          return this.articlesRepository.createLocalCopy(article).pipe(
+            mergeMap(copiedArticle => {
+              // Add the copied article to the list instead of the original
+              return this.addArticleToListInternal(listId, copiedArticle.id, copiedArticle.name, list);
+            })
+          );
+        } else {
+          // Use original article (either user owns it, or list is shared)
+          return this.addArticleToListInternal(listId, articleId, article.name, list);
+        }
       }),
       catchError(error => {
         this.logger.error('data', 'Error adding article to list', error);
@@ -304,86 +285,199 @@ export class ListsRepositoryService {
   }
 
   /**
+   * Internal method to add article to list (after copy decision is made)
+   */
+  private addArticleToListInternal(
+    listId: string,
+    articleId: string,
+    articleName: string | undefined,
+    list: ShoppingList
+  ): Observable<boolean> {
+    const newArticleIds = list.articleIds.includes(articleId)
+      ? list.articleIds
+      : [...list.articleIds, articleId];
+
+    const newItemStates = {
+      ...list.itemStates,
+      [articleId]: {
+        articleId,
+        articleName,  // Store name for history display after deletion
+        isChecked: false,
+        amount: list.itemStates[articleId]?.amount || '',  // PRESERVE existing amount
+        addedAt: list.itemStates[articleId]?.addedAt || new Date()  // Set addedAt only for new articles
+      }
+    };
+
+    // Update local state immediately for optimistic UI
+    const currentLists = this.firebaseData.getCurrentLists();
+    const updatedLists = currentLists.map(l =>
+      l.id === listId ? {
+        ...l,
+        articleIds: newArticleIds,
+        itemStates: newItemStates,
+        updatedAt: new Date()
+      } : l
+    );
+    this.firebaseData.updateLocalLists(updatedLists);
+
+    if (!this.connectionService.isOnline()) {
+      // Queue for sync when online
+      this.offlineSync.queueOperation(async () => {
+        await this.firebaseData.updateListInFirebase(listId, {
+          articleIds: newArticleIds,
+          itemStates: newItemStates,
+          updatedAt: Timestamp.now()
+        });
+      }, `Add article ${articleId} to list ${listId}`);
+
+      return of(true);
+    }
+
+    // Online - update Firebase directly and wait for completion
+    return from(this.firebaseData.updateListInFirebase(listId, {
+      articleIds: newArticleIds,
+      itemStates: newItemStates,
+      updatedAt: Timestamp.now()
+    })).pipe(
+      map(() => true),
+      catchError(error => {
+        this.logger.error('data', 'Error updating Firebase when adding article', error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
    * Adds multiple articles to a list in a single batch operation
    * This avoids race conditions when adding multiple articles simultaneously
+   * Phase 8.2: Now handles local copy creation for non-owned articles
    */
   addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
     if (articleIds.length === 0) {
       return of(true);
     }
 
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      this.logger.error('data', 'User must be authenticated to add articles to list');
+      return of(false);
+    }
+
     return this.firebaseData.getList(listId).pipe(
       mergeMap(list => {
         if (!list) return of(false);
 
-        // Add all article IDs that aren't already in the list
-        const existingIds = new Set(list.articleIds);
-        const newIds = articleIds.filter(id => !existingIds.has(id));
-        const newArticleIds = [...list.articleIds, ...newIds];
-
-        // Get articles for name lookup
+        // Get articles for ownership check and name lookup
         const articles = this.firebaseData.getCurrentArticles();
         const articlesMap = new Map(articles.map(a => [a.id, a]));
 
-        // Create item states for all articles
-        const newItemStates = { ...list.itemStates };
+        // Phase 8.2: Check if list is shared
+        const isListShared = list.sharedWith && list.sharedWith.length > 0;
+
+        // Phase 8.2: Process each article to determine if we need copies
+        const copyOperations: Observable<{originalId: string, finalId: string}>[] = [];
+
         articleIds.forEach(articleId => {
           const article = articlesMap.get(articleId);
-          const articleName = article?.name;
+          if (!article) {
+            this.logger.warn('data', `Article ${articleId} not found, skipping`);
+            copyOperations.push(of({originalId: articleId, finalId: articleId}));
+            return;
+          }
 
-          if (!newItemStates[articleId]) {
-            newItemStates[articleId] = {
-              articleId,
-              articleName,  // Store name for history display after deletion
-              isChecked: false,
-              amount: '',
-              addedAt: new Date()  // Set addedAt for new articles
-            };
+          const isArticleOwnedByUser = article.ownerId === currentUserId;
+          const needsLocalCopy = !isArticleOwnedByUser && !isListShared;
+
+          if (needsLocalCopy) {
+            this.logger.info('data', `Creating local copy of article "${article.name}" for batch add`);
+            copyOperations.push(
+              this.articlesRepository.createLocalCopy(article).pipe(
+                map(copiedArticle => ({originalId: articleId, finalId: copiedArticle.id}))
+              )
+            );
           } else {
-            // If article already exists, reset to unchecked but preserve amount, name, and addedAt
-            newItemStates[articleId] = {
-              ...newItemStates[articleId],
-              articleName: articleName || newItemStates[articleId].articleName,  // Update name if available
-              isChecked: false
-            };
+            copyOperations.push(of({originalId: articleId, finalId: articleId}));
           }
         });
 
-        // Update local state immediately for optimistic UI
-        const currentLists = this.firebaseData.getCurrentLists();
-        const updatedLists = currentLists.map(l =>
-          l.id === listId ? {
-            ...l,
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: new Date()
-          } : l
-        );
-        this.firebaseData.updateLocalLists(updatedLists);
+        // Execute all copy operations (or pass-through for owned articles)
+        return from(copyOperations).pipe(
+          mergeMap(obs => obs, 5), // Limit concurrent copy operations to 5
+          toArray(),  // Wait for all to complete
+          mergeMap(articleMappings => {
+            // Get final article IDs (original or copied)
+            const finalArticleIds = articleMappings.map(m => m.finalId);
 
-        if (!this.connectionService.isOnline()) {
-          // Queue for sync when online
-          this.offlineSync.queueOperation(async () => {
-            await this.firebaseData.updateListInFirebase(listId, {
+            // Add all article IDs that aren't already in the list
+            const existingIds = new Set(list.articleIds);
+            const newIds = finalArticleIds.filter(id => !existingIds.has(id));
+            const newArticleIds = [...list.articleIds, ...newIds];
+
+            // Refresh articles map with newly created copies
+            const updatedArticles = this.firebaseData.getCurrentArticles();
+            const updatedArticlesMap = new Map(updatedArticles.map(a => [a.id, a]));
+
+            // Create item states for all articles (using final IDs which may be copies)
+            const newItemStates = { ...list.itemStates };
+            finalArticleIds.forEach(articleId => {
+              const article = updatedArticlesMap.get(articleId);
+              const articleName = article?.name;
+
+              if (!newItemStates[articleId]) {
+                newItemStates[articleId] = {
+                  articleId,
+                  articleName,  // Store name for history display after deletion
+                  isChecked: false,
+                  amount: '',
+                  addedAt: new Date()  // Set addedAt for new articles
+                };
+              } else {
+                // If article already exists, reset to unchecked but preserve amount, name, and addedAt
+                newItemStates[articleId] = {
+                  ...newItemStates[articleId],
+                  articleName: articleName || newItemStates[articleId].articleName,  // Update name if available
+                  isChecked: false
+                };
+              }
+            });
+
+            // Update local state immediately for optimistic UI
+            const currentLists = this.firebaseData.getCurrentLists();
+            const updatedLists = currentLists.map(l =>
+              l.id === listId ? {
+                ...l,
+                articleIds: newArticleIds,
+                itemStates: newItemStates,
+                updatedAt: new Date()
+              } : l
+            );
+            this.firebaseData.updateLocalLists(updatedLists);
+
+            if (!this.connectionService.isOnline()) {
+              // Queue for sync when online
+              this.offlineSync.queueOperation(async () => {
+                await this.firebaseData.updateListInFirebase(listId, {
+                  articleIds: newArticleIds,
+                  itemStates: newItemStates,
+                  updatedAt: Timestamp.now()
+                });
+              }, `Add ${finalArticleIds.length} articles to list ${listId}`);
+
+              return of(true);
+            }
+
+            // Online - update Firebase directly and wait for completion
+            return from(this.firebaseData.updateListInFirebase(listId, {
               articleIds: newArticleIds,
               itemStates: newItemStates,
               updatedAt: Timestamp.now()
-            });
-          }, `Add ${articleIds.length} articles to list ${listId}`);
-
-          return of(true);
-        }
-
-        // Online - update Firebase directly and wait for completion
-        return from(this.firebaseData.updateListInFirebase(listId, {
-          articleIds: newArticleIds,
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        })).pipe(
-          map(() => true),
-          catchError(error => {
-            this.logger.error('data', `Error updating Firebase when adding ${articleIds.length} articles`, error);
-            return of(false);
+            })).pipe(
+              map(() => true),
+              catchError(error => {
+                this.logger.error('data', `Error updating Firebase when adding ${finalArticleIds.length} articles`, error);
+                return of(false);
+              })
+            );
           })
         );
       }),
