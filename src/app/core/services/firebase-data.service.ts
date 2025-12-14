@@ -486,7 +486,9 @@ export class FirebaseDataService {
 
     // Load articles (excluding current user - already loaded)
     const currentUserId = this.authService.getCurrentUserId();
-    possibleOwners.delete(currentUserId); // Remove current user from search
+    if (currentUserId) {
+      possibleOwners.delete(currentUserId); // Remove current user from search
+    }
 
     const currentArticles = this.articlesSubject.value;
     const currentArticleIds = new Set(currentArticles.map(a => a.id));
