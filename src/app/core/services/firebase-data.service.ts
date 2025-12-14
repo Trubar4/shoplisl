@@ -523,7 +523,7 @@ export class FirebaseDataService {
               ownerId: data['ownerId'] || ownerId
             });
             foundArticle = true;
-            this.logger.debug('data', `Found article ${articleId} owned by ${ownerId}`);
+            this.logger.info('data', `✅ Found article ${articleId} owned by ${ownerId}`);
             break; // Found it, stop searching
           }
         } catch (error: any) {
@@ -533,7 +533,7 @@ export class FirebaseDataService {
       }
 
       if (!foundArticle) {
-        this.logger.warn('data', `Article ${articleId} not found in any collaborator's collection`);
+        this.logger.warn('data', `❌ Article ${articleId} not found in any collaborator's collection`);
       }
     }
 
