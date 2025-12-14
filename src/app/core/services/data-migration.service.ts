@@ -124,19 +124,33 @@ export class DataMigrationService {
     if (!this.connectionService.isOnline()) {
       return { listsUpdated: 0, referencesRemoved: 0 };
     }
-  
+
     try {
       const lists = await this.firebaseData.getAllListsFromFirebase();
       const articles = await this.firebaseData.getAllArticlesFromFirebase();
-      
+
+      // Phase 8: Include article IDs from shared lists
+      // Don't clean up article IDs that belong to collaborators
       const validArticleIds = new Set(articles.map(article => article.id));
+
+      // For shared lists, don't remove article IDs - they might belong to collaborators
+      const sharedListIds = new Set(
+        lists.filter(list => list.sharedWith && list.sharedWith.length > 0).map(list => list.id)
+      );
+
       let listsUpdated = 0;
       let referencesRemoved = 0;
-      
+
       for (const list of lists) {
+        // Phase 8: Skip cleanup for shared lists - articles may belong to collaborators
+        if (sharedListIds.has(list.id)) {
+          this.logger.debug('data', `Skipping cleanup for shared list "${list.name}" - may contain collaborator articles`);
+          continue;
+        }
+
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
-        
+
         const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
@@ -327,19 +341,30 @@ export class DataMigrationService {
       this.logger.debug('data', 'Offline: Quick cleanup will sync when online');
       return { listsUpdated: 0, referencesRemoved: 0 };
     }
-  
+
     try {
       const lists = await this.firebaseData.getAllListsFromFirebase();
       const articles = await this.firebaseData.getAllArticlesFromFirebase();
-      
+
       const validArticleIds = new Set(articles.map(article => article.id));
+
+      // Phase 8: For shared lists, don't remove article IDs - they might belong to collaborators
+      const sharedListIds = new Set(
+        lists.filter(list => list.sharedWith && list.sharedWith.length > 0).map(list => list.id)
+      );
+
       let listsUpdated = 0;
       let referencesRemoved = 0;
-      
+
       for (const list of lists) {
+        // Phase 8: Skip cleanup for shared lists - articles may belong to collaborators
+        if (sharedListIds.has(list.id)) {
+          continue;
+        }
+
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
-        
+
         const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
