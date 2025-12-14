@@ -1,16 +1,26 @@
 <!-- src/app/shared/components/article-form/article-form.component.html -->
 <div class="article-form-container">
   <form class="article-form" (ngSubmit)="onSubmit()">
-    
+
+    <!-- Phase 8.2: Ownership Warning Banner -->
+    <div *ngIf="isEditMode && !isOwnedByCurrentUser" class="ownership-warning">
+      <mat-icon>info</mat-icon>
+      <div class="warning-text">
+        <strong>Geteilter Artikel</strong>
+        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können nur Menge und Notizen bearbeiten.</p>
+      </div>
+    </div>
+
     <!-- Name Field -->
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Name</mat-label>
-      <input 
-        matInput 
-        [(ngModel)]="formData.name" 
+      <input
+        matInput
+        [(ngModel)]="formData.name"
         name="name"
         placeholder="z.B. Erdbeeren"
-        [disabled]="isSubmitting"
+        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+        [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Nur der Ersteller kann dieses Feld bearbeiten' : ''"
         required
         [autofocus]="!isEditMode">
     </mat-form-field>
@@ -77,9 +87,9 @@
     </div>
 
     <!-- Icon Selection (moved before department) -->
-    <div class="icon-section">
+    <div class="icon-section" [class.read-only]="isEditMode && !isOwnedByCurrentUser">
       <h3 class="section-title">Icon auswählen</h3>
-      
+
       <!-- Current Icon Display -->
       <div class="current-icon">
         <div class="icon-preview">
@@ -87,24 +97,26 @@
         </div>
         <mat-form-field appearance="outline" class="icon-input">
           <mat-label>Eigenes Icon</mat-label>
-          <input 
-            matInput 
-            [(ngModel)]="formData.icon" 
+          <input
+            matInput
+            [(ngModel)]="formData.icon"
             name="icon"
             placeholder="Emoji eingeben..."
-            [disabled]="isSubmitting"
+            [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+            [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Nur der Ersteller kann dieses Feld bearbeiten' : ''"
             maxlength="2">
         </mat-form-field>
       </div>
 
       <!-- Common Emojis -->
       <div class="emoji-grid">
-        <button 
-          *ngFor="let emoji of commonEmojis" 
+        <button
+          *ngFor="let emoji of commonEmojis"
           type="button"
           class="emoji-button"
           [class.selected]="formData.icon === emoji"
-          [disabled]="isSubmitting"
+          [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+          [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Nur der Ersteller kann das Icon ändern' : ''"
           (click)="onEmojiSelect(emoji)">
           {{ emoji }}
         </button>
@@ -112,16 +124,18 @@
     </div>
 
     <!-- Department Selection (moved after icon) -->
-    <div class="department-selector">
+    <div class="department-selector" [class.read-only]="isEditMode && !isOwnedByCurrentUser">
       <h3 class="section-title">Abteilung</h3>
       <p class="section-subtitle">Wähle eine Abteilung für bessere Organisation</p>
-      
+
       <div class="department-grid">
         <!-- No Department Option -->
-        <mat-card 
+        <mat-card
           class="department-card"
           [class.selected]="formData.departmentId === undefined"
-          (click)="onDepartmentSelected(null)">
+          [class.disabled]="isEditMode && !isOwnedByCurrentUser"
+          [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Nur der Ersteller kann die Abteilung ändern' : ''"
+          (click)="isEditMode && !isOwnedByCurrentUser ? null : onDepartmentSelected(null)">
           <mat-card-content>
             <div class="department-content">
               <div class="department-icon" [class.selected]="formData.departmentId === undefined">
@@ -138,11 +152,13 @@
         </mat-card>
 
         <!-- Department Options -->
-        <mat-card 
-          *ngFor="let department of departments" 
+        <mat-card
+          *ngFor="let department of departments"
           class="department-card"
           [class.selected]="formData.departmentId === department.id"
-          (click)="onDepartmentSelected(department.id)">
+          [class.disabled]="isEditMode && !isOwnedByCurrentUser"
+          [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Nur der Ersteller kann die Abteilung ändern' : ''"
+          (click)="isEditMode && !isOwnedByCurrentUser ? null : onDepartmentSelected(department.id)">
           <mat-card-content>
             <div class="department-content">
               <div class="department-icon" [class.selected]="formData.departmentId === department.id">

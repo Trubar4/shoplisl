@@ -58,7 +58,8 @@ export interface ListItemState {
   articleId: string;
   articleName?: string;      // Snapshot of article name (for display after article deletion)
   isChecked: boolean;
-  amount?: string;           // List-specific amount
+  amount?: string;           // List-specific amount (editable by all collaborators)
+  notes?: string;            // Phase 8.2: List-specific notes (editable by all collaborators)
   addedAt?: Date;            // When article was added to this list
   checkedAt?: Date;          // ✅ Already exists! When last checked
   checkedBy?: string;        // Phase 6: User ID who last checked (default: 'shared-shoplisl-user')
