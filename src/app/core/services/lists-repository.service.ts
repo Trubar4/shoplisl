@@ -397,8 +397,8 @@ export class ListsRepositoryService {
   private showCopyConfirmationDialog(article: any): Observable<boolean> {
     const dialog = this.injector.get(MatDialog);
 
-    // Get owner email from auth service (or use ownerId as fallback)
-    const ownerEmail = article.ownerId || 'einem anderen Benutzer';
+    // Phase 8.2: Use generic message instead of user ID
+    const ownerEmail = 'einem anderen Benutzer';
 
     const dialogRef = dialog.open(CopyArticleDialogComponent, {
       width: '400px',
