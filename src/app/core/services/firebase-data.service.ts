@@ -38,6 +38,10 @@ export class FirebaseDataService {
   private ownedLists: ShoppingList[] = [];
   private sharedLists: ShoppingList[] = [];
 
+  // Phase 8.2: Separate tracking for owned and shared articles (fixes disappearing articles bug)
+  private ownedArticles: Article[] = [];
+  private sharedArticles: Article[] = [];
+
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
   private sharedListsUnsubscribe?: () => void;
@@ -182,12 +186,15 @@ export class FirebaseDataService {
               availableInShops: data['availableInShops'] || [],
               usageCount: data['usageCount'] || 0,
               // Phase 8: Include ownership field
-              ownerId: data['ownerId'] || ''
+              ownerId: data['ownerId'] || '',
+              // Phase 8.2: Include copiedFrom field
+              copiedFrom: data['copiedFrom'] || undefined
             });
           });
 
-          this.articlesSubject.next(articles);
-          this.cacheService.cacheArticles(articles);
+          // Phase 8.2: Store owned articles separately and merge
+          this.ownedArticles = articles;
+          this.mergeArticles();
         },
         (error) => {
           this.logger.error('data', 'Articles listener error', error);
@@ -351,6 +358,26 @@ export class FirebaseDataService {
   }
 
   /**
+   * Phase 8.2: Merge owned and shared articles and update the articlesSubject
+   * This is called whenever owned or shared articles update
+   * Fixes bug where editing a local copy would remove all shared articles
+   */
+  private mergeArticles(): void {
+    // Combine owned and shared articles
+    const allArticles = [...this.ownedArticles, ...this.sharedArticles];
+
+    // Remove duplicates (in case an article is both owned and shared - shouldn't happen but be safe)
+    const uniqueArticles = Array.from(
+      new Map(allArticles.map(article => [article.id, article])).values()
+    );
+
+    this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
+
+    this.articlesSubject.next(uniqueArticles);
+    this.cacheService.cacheArticles(uniqueArticles);
+  }
+
+  /**
    * Phase 8: Set up real-time listeners for shared list content changes
    * This enables real-time sync for item check/uncheck, additions, removals, etc.
    */
@@ -490,20 +517,14 @@ export class FirebaseDataService {
       }
     });
 
-    // Phase 8: Load articles from all collaborators (including current user for newly created articles)
-    const currentArticles = this.articlesSubject.value;
-    const currentArticleIds = new Set(currentArticles.map(a => a.id));
-    const newArticles: Article[] = [];
+    // Phase 8.2: Load ALL shared articles (not just new ones) to keep them fresh
+    const currentUserId = this.authService.getCurrentUserId();
+    const loadedSharedArticles: Article[] = [];
 
     this.logger.info('data', `Searching for ${sharedArticleIds.size} articles across ${possibleOwners.size} users: [${Array.from(possibleOwners).join(', ')}]`);
 
     // For each article, try loading from all possible owners until found
     for (const articleId of sharedArticleIds) {
-      // Skip if we already have this article
-      if (currentArticleIds.has(articleId)) {
-        continue;
-      }
-
       let foundArticle = false;
 
       // Try each possible owner until we find the article
@@ -514,7 +535,7 @@ export class FirebaseDataService {
 
           if (docSnap.exists()) {
             const data = docSnap.data();
-            newArticles.push({
+            const article: Article = {
               id: docSnap.id,
               name: data['name'],
               amount: data['amount'],
@@ -526,8 +547,16 @@ export class FirebaseDataService {
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               availableInShops: data['availableInShops'] || [],
               usageCount: data['usageCount'] || 0,
-              ownerId: data['ownerId'] || ownerId
-            });
+              ownerId: data['ownerId'] || ownerId,
+              // Phase 8.2: Include copiedFrom field
+              copiedFrom: data['copiedFrom'] || undefined
+            };
+
+            // Phase 8.2: Only add to shared articles if NOT owned by current user
+            if (article.ownerId !== currentUserId) {
+              loadedSharedArticles.push(article);
+            }
+
             foundArticle = true;
             this.logger.info('data', `✅ Found article ${articleId} owned by ${ownerId}`);
             break; // Found it, stop searching
@@ -543,21 +572,10 @@ export class FirebaseDataService {
       }
     }
 
-    this.logger.info('data', `Loaded ${newArticles.length} new articles from collaborators`)
-
-    if (newArticles.length > 0) {
-      // Merge with existing articles
-      const allArticles = [...currentArticles, ...newArticles];
-
-      // Remove duplicates by ID (shouldn't happen but be safe)
-      const uniqueArticles = Array.from(
-        new Map(allArticles.map(article => [article.id, article])).values()
-      );
-
-      this.logger.info('data', `Total articles after merge: ${uniqueArticles.length} (added ${newArticles.length} from shared lists)`);
-      this.articlesSubject.next(uniqueArticles);
-      this.cacheService.cacheArticles(uniqueArticles);
-    }
+    // Phase 8.2: Store shared articles and trigger merge
+    this.sharedArticles = loadedSharedArticles;
+    this.logger.info('data', `Loaded ${loadedSharedArticles.length} shared articles from collaborators`);
+    this.mergeArticles();
   }
 
   /**
@@ -862,7 +880,8 @@ export class FirebaseDataService {
         updatedAt: data['updatedAt']?.toDate() || new Date(),
         availableInShops: data['availableInShops'] || [],
         usageCount: data['usageCount'] || 0,
-        ownerId: data['ownerId'] || ''  // Phase 8: Include ownerId
+        ownerId: data['ownerId'] || '',  // Phase 8: Include ownerId
+        copiedFrom: data['copiedFrom'] || undefined  // Phase 8.2: Include copiedFrom
       });
     });
     return articles;
