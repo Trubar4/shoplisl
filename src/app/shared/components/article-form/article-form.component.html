@@ -4,10 +4,10 @@
 
     <!-- Phase 8.2: Ownership Warning Banner -->
     <div *ngIf="isEditMode && !isOwnedByCurrentUser" class="ownership-warning">
-      <mat-icon>info</mat-icon>
+      <mat-icon>visibility</mat-icon>
       <div class="warning-text">
-        <strong>Geteilter Artikel</strong>
-        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können nur Menge und Notizen bearbeiten.</p>
+        <strong>Geteilter Artikel (Nur Ansicht)</strong>
+        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können ihn ansehen, aber nicht bearbeiten.</p>
       </div>
     </div>
 
@@ -28,23 +28,23 @@
     <!-- Amount Field -->
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Menge</mat-label>
-      <input 
-        matInput 
-        [(ngModel)]="formData.amount" 
+      <input
+        matInput
+        [(ngModel)]="formData.amount"
         name="amount"
         placeholder="z.B. 500g, 2 Stück, 1 Pack"
-        [disabled]="isSubmitting">
+        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)">
     </mat-form-field>
-      
+
     <!-- Notes Field -->
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Notizen</mat-label>
-      <textarea 
-        matInput 
-        [(ngModel)]="formData.notes" 
+      <textarea
+        matInput
+        [(ngModel)]="formData.notes"
         name="notes"
         placeholder="Zusätzliche Informationen..."
-        [disabled]="isSubmitting"
+        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
         rows="3">
       </textarea>
     </mat-form-field>
@@ -182,42 +182,43 @@
 
     <!-- Action Buttons -->
     <div class="action-buttons">
-      <button 
-        type="button" 
-        mat-button 
+      <button
+        type="button"
+        mat-button
         (click)="onCancel()"
         [disabled]="isSubmitting || isDeleting"
         class="action-button secondary-button">
-        Abbrechen
+        {{ isEditMode && !isOwnedByCurrentUser ? 'Schließen' : 'Abbrechen' }}
       </button>
 
-      <!-- Delete Button (Edit Mode Only) -->
-      <button 
-        *ngIf="isEditMode"
+      <!-- Delete Button (Edit Mode Only, owned articles only) -->
+      <button
+        *ngIf="isEditMode && isOwnedByCurrentUser"
         type="button"
-        mat-button 
+        mat-button
         (click)="onDelete()"
         [disabled]="isSubmitting || isDeleting"
         class="action-button tertiary-button">
-        <mat-progress-spinner 
-          *ngIf="isDeleting" 
-          diameter="16" 
+        <mat-progress-spinner
+          *ngIf="isDeleting"
+          diameter="16"
           mode="indeterminate">
         </mat-progress-spinner>
         <span *ngIf="!isDeleting">Löschen</span>
         <span *ngIf="isDeleting">Wird gelöscht...</span>
       </button>
 
-      <!-- Save/Create Button -->
-      <button 
-        type="submit" 
-        mat-raised-button 
+      <!-- Save/Create Button (owned articles only) -->
+      <button
+        *ngIf="!isEditMode || isOwnedByCurrentUser"
+        type="submit"
+        mat-raised-button
         color="primary"
         [disabled]="!hasValidData() || !hasChanges() || isSubmitting || isDeleting"
         class="action-button primary-button">
-        <mat-progress-spinner 
-          *ngIf="isSubmitting" 
-          diameter="16" 
+        <mat-progress-spinner
+          *ngIf="isSubmitting"
+          diameter="16"
           mode="indeterminate">
         </mat-progress-spinner>
         <span *ngIf="!isSubmitting">{{ isEditMode ? 'Speichern' : 'Erstellen' }}</span>
@@ -237,6 +238,7 @@
           <div class="stat-content">
             <app-date-chip [date]="getDisplayLastAdded() || stats.lastAddedToListDate!" type="added" />
             <button
+              *ngIf="isOwnedByCurrentUser"
               mat-icon-button
               type="button"
               class="stat-edit-button"
@@ -253,6 +255,7 @@
           <div class="stat-content">
             <app-date-chip [date]="getDisplayLastChecked() || stats.lastCheckedDate!" type="checked" />
             <button
+              *ngIf="isOwnedByCurrentUser"
               mat-icon-button
               type="button"
               class="stat-edit-button"
@@ -269,6 +272,7 @@
           <div class="stat-content">
             <app-count-chip [count]="getDisplayCheckCount() || stats.numberOfChecks || 0" />
             <button
+              *ngIf="isOwnedByCurrentUser"
               mat-icon-button
               type="button"
               class="stat-edit-button"

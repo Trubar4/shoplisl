@@ -1,7 +1,9 @@
-import { Injectable, Inject, forwardRef } from '@angular/core';
+import { Injectable, Inject, forwardRef, Injector } from '@angular/core';
 import { Observable, from, of } from 'rxjs';
 import { map, catchError, mergeMap, switchMap, toArray } from 'rxjs/operators';
 import { Timestamp } from 'firebase/firestore';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 
 import { ShoppingList, DEFAULT_DEPARTMENT_ORDER } from '../models';
 import { FirebaseDataService } from './firebase-data.service';
@@ -11,6 +13,7 @@ import { LoggerService } from './logger.service';
 import { HistoryService } from './history.service';
 import { AuthService } from './auth.service';
 import { ArticlesRepositoryService } from './articles-repository.service';
+import { CopyArticleDialogComponent, CopyArticleDialogData, CopyArticleDialogResult } from '../../shared/components/copy-article-dialog/copy-article-dialog.component';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +27,8 @@ export class ListsRepositoryService {
     private logger: LoggerService,
     private historyService: HistoryService,
     private authService: AuthService,
-    @Inject(forwardRef(() => ArticlesRepositoryService)) private articlesRepository: ArticlesRepositoryService
+    @Inject(forwardRef(() => ArticlesRepositoryService)) private articlesRepository: ArticlesRepositoryService,
+    private injector: Injector
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -243,17 +247,26 @@ export class ListsRepositoryService {
       return of(false);
     }
 
+    this.logger.info('data', `📥 ADD ARTICLE: Starting to add article ${articleId} to list ${listId}`);
+
     return this.firebaseData.getList(listId).pipe(
       mergeMap(list => {
-        if (!list) return of(false);
+        if (!list) {
+          this.logger.error('data', `📥 ADD ARTICLE: List ${listId} not found`);
+          return of(false);
+        }
+
+        this.logger.info('data', `📥 ADD ARTICLE: Found list "${list.name}" (owner: ${list.ownerId}, shared: ${list.sharedWith?.length || 0} users)`);
 
         // Get the article to check ownership
         const articles = this.firebaseData.getCurrentArticles();
         const article = articles.find(a => a.id === articleId);
         if (!article) {
-          this.logger.error('data', `Article ${articleId} not found`);
+          this.logger.error('data', `📥 ADD ARTICLE: Article ${articleId} not found`);
           return of(false);
         }
+
+        this.logger.info('data', `📥 ADD ARTICLE: Found article "${article.name}" (owner: ${article.ownerId})`);
 
         // Phase 8.2: Check if we need to create a local copy
         // Copy is needed if:
@@ -263,22 +276,38 @@ export class ListsRepositoryService {
         const isListShared = list.sharedWith && list.sharedWith.length > 0;
         const needsLocalCopy = !isArticleOwnedByUser && !isListShared;
 
+        this.logger.info('data', `📥 ADD ARTICLE: Ownership check - Article owned by user: ${isArticleOwnedByUser}, List shared: ${isListShared}, Needs copy: ${needsLocalCopy}`);
+
         if (needsLocalCopy) {
-          this.logger.info('data', `Creating local copy of article "${article.name}" for non-shared list`);
-          // Create local copy and use the copy's ID
-          return this.articlesRepository.createLocalCopy(article).pipe(
-            mergeMap(copiedArticle => {
-              // Add the copied article to the list instead of the original
-              return this.addArticleToListInternal(listId, copiedArticle.id, copiedArticle.name, list);
+          this.logger.info('data', `📥 ADD ARTICLE: Will create local copy of "${article.name}" (${articleId})`);
+          // Phase 8.2: Show confirmation dialog before creating local copy
+          return this.showCopyConfirmationDialog(article).pipe(
+            mergeMap(confirmed => {
+              if (!confirmed) {
+                // User cancelled - don't add article
+                this.logger.info('data', `📥 ADD ARTICLE: User cancelled creating local copy of "${article.name}"`);
+                return of(false);
+              }
+
+              this.logger.info('data', `📥 ADD ARTICLE: Creating local copy of article "${article.name}" (${articleId})`);
+              // Create local copy and use the copy's ID
+              return this.articlesRepository.createLocalCopy(article).pipe(
+                mergeMap(copiedArticle => {
+                  this.logger.info('data', `📥 ADD ARTICLE: Local copy created with ID ${copiedArticle.id}, adding to list`);
+                  // Add the copied article to the list instead of the original
+                  return this.addArticleToListInternal(listId, copiedArticle.id, copiedArticle.name, list);
+                })
+              );
             })
           );
         } else {
           // Use original article (either user owns it, or list is shared)
+          this.logger.info('data', `📥 ADD ARTICLE: Using original article "${article.name}" (${articleId})`);
           return this.addArticleToListInternal(listId, articleId, article.name, list);
         }
       }),
       catchError(error => {
-        this.logger.error('data', 'Error adding article to list', error);
+        this.logger.error('data', '📥 ADD ARTICLE: Error adding article to list', error);
         return of(false);
       })
     );
@@ -293,7 +322,12 @@ export class ListsRepositoryService {
     articleName: string | undefined,
     list: ShoppingList
   ): Observable<boolean> {
-    const newArticleIds = list.articleIds.includes(articleId)
+    this.logger.info('data', `📝 ADD INTERNAL: Adding article ${articleId} ("${articleName}") to list ${listId}`);
+
+    const isAlreadyInList = list.articleIds.includes(articleId);
+    this.logger.info('data', `📝 ADD INTERNAL: Article already in list: ${isAlreadyInList}`);
+
+    const newArticleIds = isAlreadyInList
       ? list.articleIds
       : [...list.articleIds, articleId];
 
@@ -308,6 +342,8 @@ export class ListsRepositoryService {
       }
     };
 
+    this.logger.info('data', `📝 ADD INTERNAL: New articleIds array length: ${newArticleIds.length}, contains ${articleId}: ${newArticleIds.includes(articleId)}`);
+
     // Update local state immediately for optimistic UI
     const currentLists = this.firebaseData.getCurrentLists();
     const updatedLists = currentLists.map(l =>
@@ -320,7 +356,10 @@ export class ListsRepositoryService {
     );
     this.firebaseData.updateLocalLists(updatedLists);
 
+    this.logger.info('data', `📝 ADD INTERNAL: Local state updated successfully`);
+
     if (!this.connectionService.isOnline()) {
+      this.logger.info('data', `📝 ADD INTERNAL: Offline - queueing Firebase update for article ${articleId}`);
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
         await this.firebaseData.updateListInFirebase(listId, {
@@ -334,15 +373,44 @@ export class ListsRepositoryService {
     }
 
     // Online - update Firebase directly and wait for completion
+    this.logger.info('data', `📝 ADD INTERNAL: Online - updating Firebase with articleIds: [${newArticleIds.join(', ')}]`);
     return from(this.firebaseData.updateListInFirebase(listId, {
       articleIds: newArticleIds,
       itemStates: newItemStates,
       updatedAt: Timestamp.now()
     })).pipe(
-      map(() => true),
+      map(() => {
+        this.logger.info('data', `📝 ADD INTERNAL: Firebase update successful for article ${articleId}`);
+        return true;
+      }),
       catchError(error => {
-        this.logger.error('data', 'Error updating Firebase when adding article', error);
+        this.logger.error('data', `📝 ADD INTERNAL: Error updating Firebase when adding article ${articleId}`, error);
         return of(false);
+      })
+    );
+  }
+
+  /**
+   * Phase 8.2: Show confirmation dialog before creating local copy
+   * Returns Observable<boolean> - true if user confirms, false if cancelled
+   */
+  private showCopyConfirmationDialog(article: any): Observable<boolean> {
+    const dialog = this.injector.get(MatDialog);
+
+    // Get owner email from auth service (or use ownerId as fallback)
+    const ownerEmail = article.ownerId || 'einem anderen Benutzer';
+
+    const dialogRef = dialog.open(CopyArticleDialogComponent, {
+      width: '400px',
+      data: {
+        articleName: article.name,
+        ownerEmail: ownerEmail
+      } as CopyArticleDialogData
+    });
+
+    return from(firstValueFrom(dialogRef.afterClosed())).pipe(
+      map((result: CopyArticleDialogResult | undefined) => {
+        return result?.confirmed || false;
       })
     );
   }

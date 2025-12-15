@@ -84,6 +84,11 @@
           <div class="article-content">
             <div class="article-header">
               <span class="article-name">{{ article.name }}</span>
+              <!-- Phase 8.2: Visual indicators for shared/copied articles -->
+              <mat-chip-set *ngIf="isSharedArticle(article) || isCopiedArticle(article)" class="ownership-chips">
+                <mat-chip *ngIf="isSharedArticle(article)" class="shared-chip">geteilt</mat-chip>
+                <mat-chip *ngIf="isCopiedArticle(article)" class="copy-chip">Kopie</mat-chip>
+              </mat-chip-set>
               <span class="article-amount" *ngIf="article.amount">{{ article.amount }}</span>
             </div>
             <div class="article-stats" *ngIf="article.stats?.lastCheckedDate || article.stats?.lastAddedToListDate || article.stats?.numberOfChecks">

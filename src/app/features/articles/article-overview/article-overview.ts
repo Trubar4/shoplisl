@@ -26,6 +26,8 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 import { DateChipComponent } from '../../../shared/components/date-chip/date-chip.component';
 import { CountChipComponent } from '../../../shared/components/count-chip/count-chip.component';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { MatChipsModule } from '@angular/material/chips';
 
 /** Article with statistics */
 export interface ArticleWithStats extends Article {
@@ -51,6 +53,7 @@ export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdd
     MatDialogModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    MatChipsModule,
     DateChipComponent,
     CountChipComponent
   ],
@@ -80,13 +83,17 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
   private destroy$ = new Subject<void>();
 
+  currentUserId: string | null = null;
+
   constructor(
     private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private articleStatsService: ArticleStatsService
+    private articleStatsService: ArticleStatsService,
+    private authService: AuthService
   ) {
+    this.currentUserId = this.authService.getCurrentUserId();
     // Combine articles with stats, search query, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
       this.store.select(selectAllArticles),
@@ -157,6 +164,20 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.warn('Failed to save sort option:', error);
     }
+  }
+
+  /**
+   * Phase 8.2: Check if article is shared (not owned by current user)
+   */
+  isSharedArticle(article: Article): boolean {
+    return this.currentUserId !== null && article.ownerId !== this.currentUserId;
+  }
+
+  /**
+   * Phase 8.2: Check if article is a local copy
+   */
+  isCopiedArticle(article: Article): boolean {
+    return article.copiedFrom !== undefined && article.copiedFrom !== null;
   }
 
   private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
