@@ -2,7 +2,7 @@
 
 **Branch:** `claude/list-sharing-sync-phase-8-01RYsEDWkskrAnZ6PtpWJyTQ-ClFKp`
 **Date:** December 14, 2025
-**Status:** 🟡 2 of 3 Critical Features Implemented
+**Status:** 🟢 All Critical Features Implemented + Bug Fixes Applied
 
 ---
 
@@ -113,6 +113,70 @@ Field-level permissions in the article editor that prevent non-owners from modif
 - `src/app/shared/components/article-form/article-form.component.ts`
 - `src/app/shared/components/article-form/article-form.component.html`
 - `src/app/shared/components/article-form/article-form.component.scss`
+
+---
+
+## 🐛 Critical Bug Fixes (December 14, 2025)
+
+### Bug Fix 1: Shared Articles Disappearing ✅
+
+**Problem:** When editing a local copy, all shared articles (owned by other users) would disappear from the articles view. They would reappear after page refresh.
+
+**Root Cause:** The articles `onSnapshot` listener only listened to the current user's articles collection and directly updated `articlesSubject`, replacing ALL articles and removing shared ones.
+
+**Solution:** Implemented owned/shared article merging pattern:
+- Added `ownedArticles` and `sharedArticles` properties
+- Created `mergeArticles()` method to combine owned + shared
+- Updated articles listener to store in `ownedArticles` and call `mergeArticles()`
+- Updated `loadArticlesFromSharedListOwners()` to store in `sharedArticles`
+- Added `copiedFrom` field to all article loading methods
+
+**Commit:** `8321b6d` - fix: prevent shared articles from disappearing when editing local copies
+
+### Bug Fix 2: Delete Permission Errors ✅
+
+**Problem:** Users couldn't delete their own articles or local copies. Error: "Firebase API called outside injection context" followed by permission errors.
+
+**Root Cause:** The `removeArticleFromAllLists()` method called `getAllListsFromFirebase()` which used `getDocs()` outside the Angular injection context.
+
+**Solution:** Changed to use Observable-based `getLists()` instead of Promise-based `getAllListsFromFirebase()` with `firstValueFrom()`.
+
+**Commit:** `212d668` - fix: resolve delete permission errors and enable partial editing
+
+### Bug Fix 3: Copy Dialog Showing User ID ✅
+
+**Problem:** The confirmation dialog showed the user ID instead of a readable message.
+
+**Solution:** Changed to show generic "einem anderen Benutzer" message instead of the technical user ID.
+
+**Commit:** `e5e5ef9` - fix: show generic user message instead of ID in copy dialog
+
+### Enhancement: Partial Editing for Shared Articles ✅
+
+**Change:** Updated article form to allow editing amount and notes for non-owned articles while keeping name, icon, and department read-only.
+
+**Rationale:** Users need to customize shared articles (amount/notes) for their own use while protecting core article data.
+
+**Changes:**
+- Enabled amount and notes fields for all users
+- Kept name, icon, department fields read-only for non-owners
+- Updated warning banner text to reflect partial editing capability
+- Save button now shows for all articles
+
+**Commit:** `212d668` - fix: resolve delete permission errors and enable partial editing
+
+### Visual Indicators Added ✅
+
+**Added:** Visual chips in article overview to distinguish article types:
+- Red "geteilt" chip for shared articles (owned by others)
+- Blue "Kopie" chip for local copies
+
+**Files:**
+- `src/app/features/articles/article-overview/article-overview.ts`
+- `src/app/features/articles/article-overview/article-overview.html`
+- `src/app/features/articles/article-overview/article-overview.scss`
+
+**Commit:** `7d47a10` - feat: add visual indicators and improve article sharing UX
 
 ---
 
@@ -233,6 +297,70 @@ describe('Phase 8: List Sharing & Collaboration', () => {
 - **Total: ~8-12 hours**
 
 **Blocker Status:** None - all dependencies should be available
+
+---
+
+## 📋 Pending Enhancements & Known Issues
+
+### P1: Shared Chip in List View
+
+**Request:** Add visual indicators (shared/copy chips) to articles when viewing them in list edit mode.
+
+**Why:** Users need to distinguish between shared articles and local copies when viewing articles within a list context, not just in the articles overview.
+
+**Implementation Plan:**
+- Add same chip logic to list item view component
+- Show "geteilt" chip for non-owned articles
+- Show "Kopie" chip for copied articles
+- Use same styling as article overview chips
+
+**Priority:** Medium (nice-to-have for better UX)
+
+### P2: Firebase Injection Context Warnings
+
+**Issue:** Console shows multiple warnings: "Firebase API called outside injection context: getDoc"
+
+**Root Cause:** The `loadArticlesFromSharedListOwners()` method calls `getDoc()` inside async loops, which runs outside Angular's injection context.
+
+**Impact:** Warnings only - functionality works correctly.
+
+**Potential Solutions:**
+1. Use `inject()` function from `@angular/core` with proper context management
+2. Wrap Firebase calls in `runInInjectionContext()`
+3. Refactor to use Observable-based Firebase queries throughout
+
+**Priority:** Low (cosmetic issue, no functional impact)
+
+### P3: Performance Optimization
+
+**Report:** Article list and detail views are slow.
+
+**Potential Causes:**
+- Article merging logic running frequently
+- Multiple Firebase listeners triggering too often
+- Large number of articles being loaded
+- Inefficient change detection in Angular
+
+**Investigation Needed:**
+- Profile with Chrome DevTools to identify bottlenecks
+- Check number of Firebase reads/writes
+- Review Observable subscriptions for memory leaks
+- Consider implementing pagination or virtual scrolling
+
+**Priority:** Medium-High (impacts user experience)
+
+### P4: Email Display in Copy Dialog
+
+**Request:** Show actual user email instead of generic message in copy confirmation dialog.
+
+**Challenge:** Would require:
+- Fetching user data from Firebase Auth or users collection
+- Storing email addresses in Firestore (privacy consideration)
+- Additional read operations for every copy dialog
+
+**Alternative:** Current generic message is acceptable and privacy-friendly.
+
+**Priority:** Low (current solution is adequate)
 
 ---
 
