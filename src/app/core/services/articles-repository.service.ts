@@ -424,69 +424,30 @@ export class ArticlesRepositoryService {
     activeInLists?: string[];
     error?: string;
   }> {
-    // Phase 8.2: Remove the article from ALL lists (active or not) since user confirmed deletion
-    // The confirmation dialog already warns that the article will be removed from all lists
-    return this.getListsContainingArticle(articleId).pipe(
-      mergeMap(allLists => {
-        if (allLists.length === 0) {
-          // Article not in any lists, delete it directly
-          this.logger.info('data', `Article ${articleId} is not in any lists, deleting directly`);
-          return from(this.firebaseData.deleteArticleInFirebase(articleId)).pipe(
-            mergeMap(() => from(this.dataMigrationService.quickCleanupOrphanedReferences())),
-            map(() => ({ success: true })),
-            catchError(error => {
-              this.logger.error('data', 'Error deleting article', error);
-              return of({
-                success: false,
-                error: error.message || 'Fehler beim Löschen des Artikels'
-              });
-            })
-          );
-        }
+    // Phase 8.2: Directly remove from lists and delete article without NgRx actions
+    // This avoids race conditions and duplicate operations from action dispatches
+    this.logger.info('data', `Starting deletion process for article ${articleId}`);
 
-        // Remove from all lists first, then delete article
-        this.logger.info('data', `Removing article from ${allLists.length} list(s) before deletion`);
-        const removePromises = allLists.map(list =>
-          this.removeArticleFromList(list.id, articleId).toPromise()
-        );
-
-        return from(Promise.all(removePromises)).pipe(
-          mergeMap(() => {
-            // After removing from lists, delete the article directly
-            // Do NOT call deleteArticle() as it would try to remove from lists again
-            this.logger.info('data', 'All lists updated, now deleting article document');
-            return from(this.firebaseData.deleteArticleInFirebase(articleId)).pipe(
-              mergeMap(() => {
-                // Trigger immediate cleanup after successful deletion
-                return from(this.dataMigrationService.quickCleanupOrphanedReferences());
-              }),
-              map(() => {
-                this.logger.info('data', '✅ Article deleted successfully');
-                return { success: true };
-              }),
-              catchError(error => {
-                this.logger.error('data', '❌ Error deleting article document', error);
-                return of({
-                  success: false,
-                  error: error.message || 'Fehler beim Löschen des Artikels'
-                });
-              })
-            );
-          }),
-          catchError(error => {
-            this.logger.error('data', '❌ Error removing article from lists', error);
-            return of({
-              success: false,
-              error: error.message || 'Fehler beim Entfernen aus Listen'
-            });
-          })
-        );
+    return from(this.removeArticleFromAllLists(articleId)).pipe(
+      mergeMap(() => {
+        // After removing from lists, delete the article document
+        this.logger.info('data', 'Lists updated, now deleting article document');
+        return from(this.firebaseData.deleteArticleInFirebase(articleId));
+      }),
+      mergeMap(() => {
+        // Trigger immediate cleanup after successful deletion
+        this.logger.info('data', 'Article deleted, running cleanup');
+        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
+      }),
+      map(() => {
+        this.logger.info('data', '✅ Article deletion completed successfully');
+        return { success: true };
       }),
       catchError(error => {
-        this.logger.error('data', 'Error in deleteArticleAndCleanupLists', error);
+        this.logger.error('data', '❌ Article deletion failed', error);
         return of({
           success: false,
-          error: error.message || 'Unerwarteter Fehler beim Löschen'
+          error: error.message || 'Fehler beim Löschen des Artikels'
         });
       })
     );
