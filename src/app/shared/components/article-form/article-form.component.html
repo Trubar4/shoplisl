@@ -7,7 +7,7 @@
       <mat-icon>info</mat-icon>
       <div class="warning-text">
         <strong>Geteilter Artikel</strong>
-        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können Menge und Notizen bearbeiten, aber keine anderen Felder.</p>
+        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können nur den Mengen-Chip innerhalb der geteilten Liste bearbeiten. Wenn Sie den Artikel in einer anderen Liste verwenden wollen, nutzen Sie ihn und es wird eine lokale Kopie erstellt, die Sie bearbeiten können.</p>
       </div>
     </div>
 
@@ -33,7 +33,8 @@
         [(ngModel)]="formData.amount"
         name="amount"
         placeholder="z.B. 500g, 2 Stück, 1 Pack"
-        [disabled]="isSubmitting">
+        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+        [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Bitte Mengen-Chip in der Liste verwenden' : ''">
     </mat-form-field>
 
     <!-- Notes Field -->
@@ -44,7 +45,8 @@
         [(ngModel)]="formData.notes"
         name="notes"
         placeholder="Zusätzliche Informationen..."
-        [disabled]="isSubmitting"
+        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+        [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Bitte Notizen-Chip in der Liste verwenden' : ''"
         rows="3">
       </textarea>
     </mat-form-field>
@@ -208,8 +210,9 @@
         <span *ngIf="isDeleting">Wird gelöscht...</span>
       </button>
 
-      <!-- Save/Create Button -->
+      <!-- Save/Create Button (hidden for non-owned articles) -->
       <button
+        *ngIf="!isEditMode || isOwnedByCurrentUser"
         type="submit"
         mat-raised-button
         color="primary"
