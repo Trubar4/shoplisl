@@ -424,31 +424,34 @@ export class ArticlesRepositoryService {
     activeInLists?: string[];
     error?: string;
   }> {
-    return this.getListsWithActiveArticle(articleId).pipe(
-      mergeMap(activeInLists => {
-        if (activeInLists.length > 0) {
-          return of({
-            success: false,
-            activeInLists: activeInLists.map(list => list.name)
-          });
+    // Phase 8.2: Remove the article from ALL lists (active or not) since user confirmed deletion
+    // The confirmation dialog already warns that the article will be removed from all lists
+    return this.getListsContainingArticle(articleId).pipe(
+      mergeMap(allLists => {
+        if (allLists.length === 0) {
+          // Article not in any lists, just delete it
+          return this.deleteArticle(articleId).pipe(
+            map(deleteSuccess => ({
+              success: deleteSuccess,
+              error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
+            }))
+          );
         }
 
-        return this.getListsContainingArticle(articleId).pipe(
-          mergeMap(allLists => {
-            // Remove from all lists first, then delete article
-            const removePromises = allLists.map(list => 
-              this.removeArticleFromList(list.id, articleId).toPromise()
-            );
+        // Remove from all lists first, then delete article
+        this.logger.info('data', `Removing article from ${allLists.length} list(s) before deletion`);
+        const removePromises = allLists.map(list =>
+          this.removeArticleFromList(list.id, articleId).toPromise()
+        );
 
-            return from(Promise.all(removePromises)).pipe(
-              mergeMap(() => {
-                return this.deleteArticle(articleId).pipe(
-                  map(deleteSuccess => ({
-                    success: deleteSuccess,
-                    error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
-                  }))
-                );
-              })
+        return from(Promise.all(removePromises)).pipe(
+          mergeMap(() => {
+            this.logger.info('data', 'All lists updated, now deleting article');
+            return this.deleteArticle(articleId).pipe(
+              map(deleteSuccess => ({
+                success: deleteSuccess,
+                error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
+              }))
             );
           })
         );
@@ -457,7 +460,7 @@ export class ArticlesRepositoryService {
         this.logger.error('data', 'Error in deleteArticleAndCleanupLists', error);
         return of({
           success: false,
-          error: 'Unerwarteter Fehler beim Löschen'
+          error: error.message || 'Unerwarteter Fehler beim Löschen'
         });
       })
     );
