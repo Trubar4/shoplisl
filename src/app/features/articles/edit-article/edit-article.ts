@@ -113,24 +113,22 @@ export class EditArticleComponent implements OnInit, OnDestroy {
       this.isDeleting = true;
       const articleId = this.article.id;
 
-      // Dispatch NgRx action to delete article with cleanup
-      this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId }));
-
-      // Wait for success or failure action
-      this.actions$.pipe(
+      // Wait for success or failure action BEFORE dispatching
+      // This ensures we catch the result of THIS delete operation
+      const deleteResult$ = this.actions$.pipe(
         ofType(
           ArticlesActions.deleteArticleWithCleanupSuccess,
           ArticlesActions.deleteArticleWithCleanupFailure
         ),
-        filter((action: any) => {
-          // Only handle the action for this specific article
-          return action.articleId === articleId || action.error;
-        }),
-        take(1)
-      ).subscribe((action: any) => {
+        take(1) // Take the first result (success or failure)
+      );
+
+      // Subscribe to the result
+      deleteResult$.subscribe((action: any) => {
         this.isDeleting = false;
 
         if (action.type === ArticlesActions.deleteArticleWithCleanupSuccess.type) {
+          console.log('✅ Article deleted successfully');
           this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
           this.navigateAfterDelete();
         } else {
@@ -143,6 +141,9 @@ export class EditArticleComponent implements OnInit, OnDestroy {
           );
         }
       });
+
+      // Dispatch NgRx action to delete article with cleanup
+      this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId }));
     }
   }
 
