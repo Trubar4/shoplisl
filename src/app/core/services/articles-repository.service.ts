@@ -429,12 +429,18 @@ export class ArticlesRepositoryService {
     return this.getListsContainingArticle(articleId).pipe(
       mergeMap(allLists => {
         if (allLists.length === 0) {
-          // Article not in any lists, just delete it
-          return this.deleteArticle(articleId).pipe(
-            map(deleteSuccess => ({
-              success: deleteSuccess,
-              error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
-            }))
+          // Article not in any lists, delete it directly
+          this.logger.info('data', `Article ${articleId} is not in any lists, deleting directly`);
+          return from(this.firebaseData.deleteArticleInFirebase(articleId)).pipe(
+            mergeMap(() => from(this.dataMigrationService.quickCleanupOrphanedReferences())),
+            map(() => ({ success: true })),
+            catchError(error => {
+              this.logger.error('data', 'Error deleting article', error);
+              return of({
+                success: false,
+                error: error.message || 'Fehler beim Löschen des Artikels'
+              });
+            })
           );
         }
 
@@ -446,13 +452,33 @@ export class ArticlesRepositoryService {
 
         return from(Promise.all(removePromises)).pipe(
           mergeMap(() => {
-            this.logger.info('data', 'All lists updated, now deleting article');
-            return this.deleteArticle(articleId).pipe(
-              map(deleteSuccess => ({
-                success: deleteSuccess,
-                error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
-              }))
+            // After removing from lists, delete the article directly
+            // Do NOT call deleteArticle() as it would try to remove from lists again
+            this.logger.info('data', 'All lists updated, now deleting article document');
+            return from(this.firebaseData.deleteArticleInFirebase(articleId)).pipe(
+              mergeMap(() => {
+                // Trigger immediate cleanup after successful deletion
+                return from(this.dataMigrationService.quickCleanupOrphanedReferences());
+              }),
+              map(() => {
+                this.logger.info('data', '✅ Article deleted successfully');
+                return { success: true };
+              }),
+              catchError(error => {
+                this.logger.error('data', '❌ Error deleting article document', error);
+                return of({
+                  success: false,
+                  error: error.message || 'Fehler beim Löschen des Artikels'
+                });
+              })
             );
+          }),
+          catchError(error => {
+            this.logger.error('data', '❌ Error removing article from lists', error);
+            return of({
+              success: false,
+              error: error.message || 'Fehler beim Entfernen aus Listen'
+            });
           })
         );
       }),
