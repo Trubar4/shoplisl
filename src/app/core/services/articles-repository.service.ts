@@ -372,30 +372,50 @@ export class ArticlesRepositoryService {
   // === UTILITY METHODS ===
 
   private async removeArticleFromAllLists(articleId: string): Promise<void> {
+    this.logger.info('data', `🗑️ Removing article ${articleId} from all lists`);
+
     try {
       // Phase 8.2: Use Observable-based getLists() to avoid injection context issues
       const lists = await firstValueFrom(this.firebaseData.getLists());
 
+      this.logger.info('data', `Found ${lists.length} total lists to check`);
+
+      let listsToUpdate = 0;
       for (const list of lists) {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
         if (articleIds.includes(articleId) || itemStates[articleId]) {
+          listsToUpdate++;
+          this.logger.info('data', `📋 Article found in list "${list.name}" (${list.id}), owned by ${list.ownerId}`);
+
           const newArticleIds = articleIds.filter(id => id !== articleId);
           const newItemStates = { ...itemStates };
           delete newItemStates[articleId];
 
-          await this.firebaseData.updateListInFirebase(list.id, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
+          try {
+            await this.firebaseData.updateListInFirebase(list.id, {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
 
-          this.logger.debug('data', `Removed article from list "${list.name}"`);
+            this.logger.info('data', `✅ Removed article from list "${list.name}"`);
+          } catch (listError) {
+            this.logger.error('data', `❌ Failed to remove article from list "${list.name}": ${listError}`);
+            throw listError; // Re-throw to stop deletion
+          }
         }
+      }
+
+      if (listsToUpdate === 0) {
+        this.logger.info('data', `Article ${articleId} is not in any lists`);
+      } else {
+        this.logger.info('data', `✅ Successfully removed article from ${listsToUpdate} list(s)`);
       }
     } catch (error) {
       this.logger.error('data', 'Error removing article from lists', error);
+      throw error; // Re-throw the error so deletion fails properly
     }
   }
 
