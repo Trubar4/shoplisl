@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
+import { Observable, from, of, firstValueFrom } from 'rxjs';
 import { map, catchError, mergeMap } from 'rxjs/operators';
 import { Timestamp } from 'firebase/firestore';
 
@@ -368,23 +368,24 @@ export class ArticlesRepositoryService {
 
   private async removeArticleFromAllLists(articleId: string): Promise<void> {
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
-      
+      // Phase 8.2: Use Observable-based getLists() to avoid injection context issues
+      const lists = await firstValueFrom(this.firebaseData.getLists());
+
       for (const list of lists) {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
-        
+
         if (articleIds.includes(articleId) || itemStates[articleId]) {
           const newArticleIds = articleIds.filter(id => id !== articleId);
           const newItemStates = { ...itemStates };
           delete newItemStates[articleId];
-          
+
           await this.firebaseData.updateListInFirebase(list.id, {
             articleIds: newArticleIds,
             itemStates: newItemStates,
             updatedAt: Timestamp.now()
           });
-          
+
           this.logger.debug('data', `Removed article from list "${list.name}"`);
         }
       }

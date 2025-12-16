@@ -4,10 +4,10 @@
 
     <!-- Phase 8.2: Ownership Warning Banner -->
     <div *ngIf="isEditMode && !isOwnedByCurrentUser" class="ownership-warning">
-      <mat-icon>visibility</mat-icon>
+      <mat-icon>info</mat-icon>
       <div class="warning-text">
-        <strong>Geteilter Artikel (Nur Ansicht)</strong>
-        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können ihn ansehen, aber nicht bearbeiten.</p>
+        <strong>Geteilter Artikel</strong>
+        <p>Dieser Artikel gehört einem anderen Benutzer. Sie können Menge und Notizen bearbeiten, aber keine anderen Felder.</p>
       </div>
     </div>
 
@@ -33,7 +33,7 @@
         [(ngModel)]="formData.amount"
         name="amount"
         placeholder="z.B. 500g, 2 Stück, 1 Pack"
-        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)">
+        [disabled]="isSubmitting">
     </mat-form-field>
 
     <!-- Notes Field -->
@@ -44,7 +44,7 @@
         [(ngModel)]="formData.notes"
         name="notes"
         placeholder="Zusätzliche Informationen..."
-        [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
+        [disabled]="isSubmitting"
         rows="3">
       </textarea>
     </mat-form-field>
@@ -188,7 +188,7 @@
         (click)="onCancel()"
         [disabled]="isSubmitting || isDeleting"
         class="action-button secondary-button">
-        {{ isEditMode && !isOwnedByCurrentUser ? 'Schließen' : 'Abbrechen' }}
+        Abbrechen
       </button>
 
       <!-- Delete Button (Edit Mode Only, owned articles only) -->
@@ -208,9 +208,8 @@
         <span *ngIf="isDeleting">Wird gelöscht...</span>
       </button>
 
-      <!-- Save/Create Button (owned articles only) -->
+      <!-- Save/Create Button -->
       <button
-        *ngIf="!isEditMode || isOwnedByCurrentUser"
         type="submit"
         mat-raised-button
         color="primary"
