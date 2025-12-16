@@ -64,7 +64,7 @@ export class ArticlesRepositoryService {
       throw new Error('User must be authenticated to create an article');
     }
 
-    const articleData = {
+    const articleData: any = {
       name: article.name,
       amount: article.amount || '',
       notes: article.notes || '',
@@ -77,6 +77,11 @@ export class ArticlesRepositoryService {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
+
+    // Phase 8.2: Include copiedFrom field if present (for local copies)
+    if ('copiedFrom' in article && article.copiedFrom) {
+      articleData.copiedFrom = article.copiedFrom;
+    }
 
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: Article creation will be synced when online');
