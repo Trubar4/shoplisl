@@ -49,10 +49,15 @@ service cloud.firestore {
       // TODO: Implement proper privacy - only show articles that are on shared lists
       allow read: if isAuthenticated();
 
-      // Phase 8: Only owner can create/update/delete their own articles
-      allow create, update, delete: if isAuthenticated() &&
-                                       userId == request.auth.uid &&
-                                       request.resource.data.ownerId == request.auth.uid;
+      // Phase 8.2: Only owner can create/update/delete their own articles
+      // Fixed: delete checks resource.data (existing), not request.resource.data (null)
+      allow create, update: if isAuthenticated() &&
+                              userId == request.auth.uid &&
+                              request.resource.data.ownerId == request.auth.uid;
+
+      allow delete: if isAuthenticated() &&
+                      userId == request.auth.uid &&
+                      resource.data.ownerId == request.auth.uid;
     }
 
     // ==========================================
