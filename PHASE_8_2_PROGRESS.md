@@ -116,7 +116,7 @@ Field-level permissions in the article editor that prevent non-owners from modif
 
 ---
 
-## 🐛 Critical Bug Fixes (December 14, 2025)
+## 🐛 Critical Bug Fixes (December 14-17, 2025)
 
 ### Bug Fix 1: Shared Articles Disappearing ✅
 
@@ -150,6 +150,83 @@ Field-level permissions in the article editor that prevent non-owners from modif
 **Solution:** Changed to show generic "einem anderen Benutzer" message instead of the technical user ID.
 
 **Commit:** `e5e5ef9` - fix: show generic user message instead of ID in copy dialog
+
+### Bug Fix 4: Missing copiedFrom Field in Firestore ✅
+
+**Problem:** The `copiedFrom` field was being set in `createLocalCopy()` but not persisted to Firestore, causing "Kopie" chips to disappear after refresh.
+
+**Root Cause:** The `createArticle()` method didn't include the `copiedFrom` field when writing to Firebase.
+
+**Solution:** Updated `createArticle()` to conditionally include `copiedFrom` field in the article data written to Firestore.
+
+**Commit:** `8605a04` - fix: persist copiedFrom field when creating local copies
+
+### Bug Fix 5: Delete Button Infinite Loop ✅
+
+**Problem:** When clicking delete, the button would stay stuck in "Wird gelöscht..." state forever (infinite loop).
+
+**Root Cause:** The action subscription filter tried to match `articleId` on the failure action, which doesn't have that field. The subscription never resolved.
+
+**Solution:**
+- Subscribe to action stream BEFORE dispatching the delete action
+- Remove the faulty filter, just take(1) the first success/failure action
+- This ensures we catch the correct result of the delete operation
+
+**Commit:** `e72816c` - fix: resolve infinite loop in article deletion by fixing action subscription
+
+### Bug Fix 6: Article Deletion Blocked by Active List Check ✅
+
+**Problem:** Articles in lists couldn't be deleted even after user confirmed. Error: "Article is still in 1 list(s)"
+
+**Root Cause:** `deleteArticleAndCleanupLists` checked if article was in active (unchecked) lists and returned error without attempting removal.
+
+**Solution:** Removed the blocking check. The confirmation dialog already warns about removal from lists, so the check was redundant. Now attempts to remove from ALL lists (active or not) as promised.
+
+**Commit:** `a9a190c` - fix: allow article deletion even when in active lists
+
+### Bug Fix 7: Redundant List Cleanup Causing Permission Errors ✅
+
+**Problem:** Deletion would remove article from lists successfully, but then fail with "Missing or insufficient permissions" when trying to delete the article document.
+
+**Root Cause:**
+- `deleteArticleAndCleanupLists` called `removeArticleFromList` for each list
+- Then called `deleteArticle`
+- `deleteArticle` internally called `removeArticleFromAllLists` AGAIN
+- This double cleanup caused race conditions and permission errors
+
+**Solution:** Changed `deleteArticleAndCleanupLists` to directly delete the article document via `deleteArticleInFirebase` instead of calling `deleteArticle`, eliminating the duplicate list cleanup.
+
+**Commit:** `83c31be` - fix: eliminate redundant list cleanup in article deletion
+
+### Bug Fix 8: Duplicate Deletion Attempts from NgRx Actions ✅
+
+**Problem:** Article was being deleted twice - first attempt failed with permission error, second succeeded. User saw wrong error message despite successful deletion. Extremely slow with high CPU usage.
+
+**Root Cause:** `deleteArticleAndCleanupLists` called `removeArticleFromList` which dispatched NgRx actions. These actions triggered effects and state updates that caused the deletion to run multiple times.
+
+**Solution:** Changed to directly call `removeArticleFromAllLists` (which updates Firebase directly) instead of dispatching NgRx actions. This eliminates race conditions and duplicate operations.
+
+**Commit:** `f7b3594` - fix: use direct Firebase calls in deletion to prevent duplicates
+
+### Architecture Clarification: List-Specific vs. Global Article Data ✅
+
+**Issue:** Users wanted to edit amount/notes for shared articles, but updates were failing with permission errors.
+
+**Clarification:** Two-tier data model for articles:
+1. **Global article data** (name, icon, department): Stored in article document, owner-only editable
+2. **List-specific data** (amount, notes per list): Stored in list's `itemStates`, all collaborators can edit
+
+**Solution Implemented:**
+- Updated warning banner to explain: "Sie können nur den Mengen-Chip innerhalb der geteilten Liste bearbeiten"
+- Disabled amount/notes fields in article form for non-owned articles
+- Added tooltips directing users to edit via list chips
+- Hidden save button for non-owned articles to prevent confusion
+
+**Commits:**
+- `c080b2c` - fix: disable amount/notes editing and hide save button for non-owned articles
+- Warning banner text updated to clarify list-context editing
+
+**Result:** Clear user guidance that list-specific fields must be edited in list view, not article master data form.
 
 ### Enhancement: Partial Editing for Shared Articles ✅
 
