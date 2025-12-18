@@ -9,7 +9,7 @@ export interface UnshareDialogData {
   collaboratorEmail?: string; // Email of the user being removed (only set when owner is removing someone)
 }
 
-export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
+export type UnshareAction = 'confirm' | 'cancel';
 
 @Component({
   selector: 'app-unshare-dialog',
@@ -33,30 +33,17 @@ export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
 
         <!-- Collaborator leaving -->
         <p *ngIf="!data.isOwnerRemoving" class="message">
-          Möchten Sie die Liste "<strong>{{ data.listName }}</strong>" nicht mehr teilen?
-        </p>
-
-        <p *ngIf="!data.isOwnerRemoving" class="info">
-          Sie können eine lokale Kopie der Liste behalten oder sie komplett löschen.
+          Möchten Sie die Liste "<strong>{{ data.listName }}</strong>" verlassen?
         </p>
       </mat-dialog-content>
 
       <mat-dialog-actions align="center" class="action-buttons">
         <button
-          *ngIf="!data.isOwnerRemoving"
           mat-raised-button
-          color="primary"
-          (click)="close('keep-copy')"
-          class="keep-button">
-          Kopie behalten
-        </button>
-
-        <button
-          mat-stroked-button
           color="warn"
-          (click)="close('delete')"
-          class="delete-button">
-          {{ data.isOwnerRemoving ? 'Entfernen' : 'Für mich löschen' }}
+          (click)="close('confirm')"
+          class="confirm-button">
+          {{ data.isOwnerRemoving ? 'Entfernen' : 'Verlassen' }}
         </button>
 
         <button
@@ -115,16 +102,12 @@ export type UnshareAction = 'keep-copy' | 'delete' | 'cancel';
           font-weight: 500;
         }
 
-        .keep-button {
+        .confirm-button {
           order: 1;
         }
 
-        .delete-button {
-          order: 2;
-        }
-
         .cancel-button {
-          order: 3;
+          order: 2;
           color: #1976d2;
           border-color: #1976d2;
         }

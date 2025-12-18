@@ -256,12 +256,7 @@ export class ShareDialogComponent implements OnInit {
         this.data.list.name
       );
 
-      if (action === 'keep-copy') {
-        // TODO: Create a local copy of the list
-        this.snackBar.open('Liste wurde geteilt. Lokale Kopie wird erstellt...', 'OK', { duration: 3000 });
-      } else {
-        this.snackBar.open('Liste wurde entfernt', 'OK', { duration: 2000 });
-      }
+      this.snackBar.open('Liste wurde verlassen', 'OK', { duration: 2000 });
 
       // Close both dialogs
       this.dialogRef.close();
