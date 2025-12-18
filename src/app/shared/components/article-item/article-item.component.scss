@@ -89,29 +89,54 @@
       .article-header {
         display: flex;
         align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
         margin-bottom: 2px;
-  
+
         .article-name {
           font-size: 16px;
           font-weight: 400;
           color: #212121;
-          flex: 1;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-  
+
           &.strikethrough {
             text-decoration: line-through;
             text-decoration-color: #e53e3e;
             text-decoration-thickness: 2px;
             transition: text-decoration 0.3s ease;
           }
-  
+
           // SIMPLIFIED: No animation, immediate strikethrough
           &.pending-strikethrough {
             text-decoration: line-through;
             text-decoration-color: #e53e3e;
             text-decoration-thickness: 2px;
+          }
+        }
+
+        // Phase 8: Ownership chips styling
+        .ownership-chips {
+          display: inline-flex;
+
+          mat-chip {
+            height: 20px !important;
+            min-height: 20px !important;
+            padding: 0 6px !important;
+            font-size: 10px !important;
+            font-weight: 500;
+            border-radius: 10px !important;
+
+            &.shared-chip {
+              background-color: #f44336 !important;
+              color: white !important;
+            }
+
+            &.copy-chip {
+              background-color: #2196f3 !important;
+              color: white !important;
+            }
           }
         }
       }

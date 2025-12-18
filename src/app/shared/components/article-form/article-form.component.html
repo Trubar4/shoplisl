@@ -27,7 +27,7 @@
 
     <!-- Amount Field -->
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Menge</mat-label>
+      <mat-label>Standard Menge</mat-label>
       <input
         matInput
         [(ngModel)]="formData.amount"
@@ -35,6 +35,7 @@
         placeholder="z.B. 500g, 2 Stück, 1 Pack"
         [disabled]="isSubmitting || (isEditMode && !isOwnedByCurrentUser)"
         [matTooltip]="isEditMode && !isOwnedByCurrentUser ? 'Bitte Mengen-Chip in der Liste verwenden' : ''">
+      <mat-hint>Sie können die Menge je Liste mit dem Chip einzeln vorgeben.</mat-hint>
     </mat-form-field>
 
     <!-- Notes Field -->

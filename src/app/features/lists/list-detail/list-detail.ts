@@ -738,7 +738,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       departmentId: article.departmentId,
       isChecked: itemState?.isChecked || false,
       isInList: list.articleIds.includes(article.id),
-      listAmount: itemState?.amount || article.amount || ''
+      listAmount: itemState?.amount || article.amount || '',
+      // Phase 8: Sharing fields
+      ownerId: article.ownerId,
+      copiedFrom: article.copiedFrom
     };
   }
 

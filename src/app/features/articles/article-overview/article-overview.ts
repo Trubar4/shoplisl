@@ -28,6 +28,7 @@ import { CountChipComponent } from '../../../shared/components/count-chip/count-
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { MatChipsModule } from '@angular/material/chips';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 /** Article with statistics */
 export interface ArticleWithStats extends Article {
@@ -91,7 +92,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private articleStatsService: ArticleStatsService,
-    private authService: AuthService
+    private authService: AuthService,
+    private listUtils: ListUtilsService
   ) {
     this.currentUserId = this.authService.getCurrentUserId();
     // Combine articles with stats, search query, and sort option for filtering using NgRx store
@@ -129,11 +131,17 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
     this.store.dispatch(ListsActions.loadLists());
+
+    // Set theme color for article overview (iPhone header color)
+    this.listUtils.updateThemeColors('#1a9edb');
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Reset to default theme when leaving article overview
+    this.listUtils.resetToDefaultTheme();
   }
 
   onSearchQueryChange(): void {
