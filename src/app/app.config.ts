@@ -11,6 +11,12 @@ import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { environment } from '../environments/environment';
 
+// Phase 8: NgRx Store for authentication state management
+import { provideStore } from '@ngrx/store';
+import { provideEffects } from '@ngrx/effects';
+import { authReducer } from './state/auth/auth.reducer';
+import { AuthEffects } from './state/auth/auth.effects';
+
 import { FirebaseDataService } from './core/services/firebase-data.service';
 import { OfflineSyncService } from './core/services/offline-sync.service';
 import { ArticlesRepositoryService } from './core/services/articles-repository.service';
@@ -34,6 +40,9 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
+    // Phase 8: NgRx Store and Effects
+    provideStore({ auth: authReducer }),
+    provideEffects([AuthEffects]),
     // Application services
     FirebaseDataService,
     OfflineSyncService,
