@@ -139,6 +139,7 @@
       [listColor]="getCurrentListColor()"
       [contrastColor]="getContrastColor(getCurrentListColor())"
       [lightColor]="listUtils.getLightColor(getCurrentListColor())"
+      [isOwner]="isOwner()"
       (toggleInList)="onToggleArticleInList($event)"
       (articleInfo)="onArticleInfo($event)"
       (editAmount)="onEditAmountFromList($event)"

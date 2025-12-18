@@ -8,6 +8,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ArticleListComponent, DepartmentGroup } from '../../../../shared/components/article-list/article-list.component';
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
@@ -29,7 +30,7 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
 @Component({
   selector: 'app-edit-mode',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, ArticleListComponent],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule, ArticleListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './edit-mode.component.html',
   styleUrls: ['./edit-mode.component.scss']
@@ -43,6 +44,7 @@ export class EditModeComponent {
   @Input() listColor: string = '#1a9edb';
   @Input() contrastColor: string = '#ffffff';
   @Input() lightColor: string = '#7fcaed';
+  @Input() isOwner: boolean = true; // Phase 8: Owner permission for edit/delete
 
   // === OUTPUTS ===
   @Output() toggleInList = new EventEmitter<ArticleItemData>();

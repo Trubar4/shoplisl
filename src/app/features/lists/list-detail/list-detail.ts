@@ -39,6 +39,7 @@ import { ArticleSelectionService } from './services/article-selection.service';
 import { ListPickerDialogComponent, ListPickerDialogData, ListPickerDialogResult } from '../../../shared/components/list-picker-dialog/list-picker-dialog';
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
 import { SharingService } from '../../../core/services/sharing.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -72,6 +73,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   readonly isFabExpanded = signal<boolean>(false);
   readonly isSelectionMode = signal<boolean>(false);
   readonly isDialogOpen = signal<boolean>(false);
+  readonly isOwner = signal<boolean>(true); // Phase 8: Ownership check for edit/delete permissions
   
   // === OBSERVABLES ===
   private readonly destroy$ = new Subject<void>();
@@ -105,7 +107,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly filterService: ListFilterService,
     public readonly selectionService: ArticleSelectionService,
     private readonly dialog: MatDialog,
-    private readonly sharingService: SharingService
+    private readonly sharingService: SharingService,
+    private readonly authService: AuthService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -598,6 +601,14 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       next: (list) => {
         this.currentList = list || null;
         this.isLoading.set(false);
+
+        // Phase 8: Check ownership for edit/delete permissions
+        if (list) {
+          this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
+            const isOwner = user?.id === list.ownerId;
+            this.isOwner.set(isOwner);
+          });
+        }
 
         if (list?.color) {
           this.listUtils.updateThemeColors(list.color);

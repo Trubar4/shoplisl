@@ -304,29 +304,64 @@ export class SharingService {
     }
 
     try {
-      // Remove user from sharedWith array
-      const listRef = doc(this.firestore, `users-v2/${currentUser.id}/lists/${listId}`);
+      // First, we need to get the list to find its owner
+      // The list is stored in the owner's path, not the current user's path
+      // We'll search in current user's path first (if they're the owner), then via collection group
+      let listRef = doc(this.firestore, `users-v2/${currentUser.id}/lists/${listId}`);
+      let listSnap = await getDoc(listRef);
 
+      let ownerId = currentUser.id;
+
+      // If not found in current user's path, search via collection group (for collaborators)
+      if (!listSnap.exists()) {
+        this.logger.info('sharing', `List ${listId} not found in current user's path, searching via collection group`);
+
+        // Query all lists to find this one
+        const listsQuery = query(
+          collectionGroup(this.firestore, 'lists'),
+          where('__name__', '==', listId)
+        );
+
+        const querySnapshot = await getDocs(listsQuery);
+
+        if (querySnapshot.empty) {
+          throw new Error('List not found');
+        }
+
+        // Get the first (and should be only) result
+        const listDoc = querySnapshot.docs[0];
+        const listData = listDoc.data() as any;
+        ownerId = listData.ownerId;
+
+        // Update reference to use owner's path
+        listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
+
+        this.logger.info('sharing', `Found list owned by ${ownerId}`);
+      }
+
+      // Remove user from sharedWith array (always update in owner's path)
       await updateDoc(listRef, {
         sharedWith: arrayRemove(userId),
         updatedAt: Timestamp.now()
       });
 
-      // Create unshare notification for the removed user
-      const notificationData = {
-        listId,
-        listName,
-        ownerUserId: currentUser.id,
-        ownerEmail: currentUser.email || '',
-        removedUserId: userId,
-        createdAt: Timestamp.now(),
-        seen: false
-      };
+      // Create unshare notification for the removed user (if not removing self)
+      if (userId !== currentUser.id) {
+        const notificationData = {
+          listId,
+          listName,
+          ownerUserId: ownerId,
+          ownerEmail: currentUser.email || '',
+          removedUserId: userId,
+          createdAt: Timestamp.now(),
+          seen: false
+        };
 
-      await addDoc(
-        collection(this.firestore, `users-v2/${userId}/unshare-notifications`),
-        notificationData
-      );
+        await addDoc(
+          collection(this.firestore, `users-v2/${userId}/unshare-notifications`),
+          notificationData
+        );
+      }
 
       this.logger.info('sharing', `Removed user ${userId} from list ${listId}`);
     } catch (error: any) {

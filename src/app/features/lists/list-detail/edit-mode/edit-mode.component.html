@@ -48,7 +48,9 @@
       mat-button
       (click)="onDeleteList()"
       class="action-button tertiary-button"
-      [style.color]="lightColor">
+      [style.color]="lightColor"
+      [disabled]="!isOwner"
+      [matTooltip]="!isOwner ? 'Nur der Besitzer kann die Liste löschen' : ''">
       Löschen
     </button>
     <button
@@ -56,7 +58,9 @@
       (click)="onEditList()"
       class="action-button primary-button"
       [style.background-color]="listColor"
-      [style.color]="contrastColor">
+      [style.color]="contrastColor"
+      [disabled]="!isOwner"
+      [matTooltip]="!isOwner ? 'Nur der Besitzer kann die Liste bearbeiten' : ''">
       Bearbeiten
     </button>
   </div>

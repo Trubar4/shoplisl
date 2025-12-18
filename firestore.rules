@@ -80,15 +80,24 @@ service cloud.firestore {
         // Owner can update anything in their own path
         (userId == request.auth.uid && resource.data.ownerId == request.auth.uid) ||
 
-        // Collaborators can update BUT cannot change ownership or sharing
+        // Collaborators can update list content BUT cannot change ownership
         (resource.data.sharedWith != null &&
          request.auth.uid in resource.data.sharedWith &&
          request.resource.data.ownerId == resource.data.ownerId &&
-         request.resource.data.sharedWith == resource.data.sharedWith) ||
+         // Allow sharedWith changes ONLY if removing yourself
+         (request.resource.data.sharedWith == resource.data.sharedWith ||
+          (request.resource.data.sharedWith.size() == resource.data.sharedWith.size() - 1 &&
+           !(request.auth.uid in request.resource.data.sharedWith) &&
+           request.auth.uid in resource.data.sharedWith))) ||
 
         // Special case: Allow adding yourself to sharedWith (invite acceptance)
         (request.auth.uid in request.resource.data.sharedWith &&
          !(request.auth.uid in resource.data.sharedWith) &&
+         request.resource.data.ownerId == resource.data.ownerId) ||
+
+        // Owner can remove collaborators (updating in own path)
+        (userId == resource.data.ownerId &&
+         request.auth.uid == resource.data.ownerId &&
          request.resource.data.ownerId == resource.data.ownerId)
       );
 
