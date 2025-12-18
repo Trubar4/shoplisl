@@ -518,7 +518,7 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
    * Check if the list is shared (has collaborators)
    */
   isListShared(list: ShoppingList): boolean {
-    return list.sharedWith && list.sharedWith.length > 0;
+    return !!(list.sharedWith && list.sharedWith.length > 0);
   }
 
   /**
