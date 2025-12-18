@@ -205,6 +205,7 @@ export class ShareDialogComponent implements OnInit {
     try {
       await this.sharingService.removeCollaborator(
         this.data.list.id,
+        this.data.list.ownerId,
         collaborator.userId,
         this.data.list.name
       );
@@ -250,6 +251,7 @@ export class ShareDialogComponent implements OnInit {
       // Remove myself from the list
       await this.sharingService.removeCollaborator(
         this.data.list.id,
+        this.data.list.ownerId,
         this.currentUserId,
         this.data.list.name
       );

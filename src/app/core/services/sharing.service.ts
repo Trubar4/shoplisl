@@ -293,10 +293,11 @@ export class SharingService {
    * Creates an unshare notification for the removed user
    *
    * @param listId - ID of the list
+   * @param ownerId - ID of the list owner (where the list is stored)
    * @param userId - User ID to remove
    * @param listName - Name of the list (for notification)
    */
-  async removeCollaborator(listId: string, userId: string, listName: string): Promise<void> {
+  async removeCollaborator(listId: string, ownerId: string, userId: string, listName: string): Promise<void> {
     const currentUser = await this.authService.getCurrentUser().pipe(take(1)).toPromise();
 
     if (!currentUser) {
@@ -304,42 +305,10 @@ export class SharingService {
     }
 
     try {
-      // First, we need to get the list to find its owner
-      // The list is stored in the owner's path, not the current user's path
-      // We'll search in current user's path first (if they're the owner), then via collection group
-      let listRef = doc(this.firestore, `users-v2/${currentUser.id}/lists/${listId}`);
-      let listSnap = await getDoc(listRef);
+      // Update list in owner's path (where the list is actually stored)
+      const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
 
-      let ownerId = currentUser.id;
-
-      // If not found in current user's path, search via collection group (for collaborators)
-      if (!listSnap.exists()) {
-        this.logger.info('sharing', `List ${listId} not found in current user's path, searching via collection group`);
-
-        // Query all lists to find this one
-        const listsQuery = query(
-          collectionGroup(this.firestore, 'lists'),
-          where('__name__', '==', listId)
-        );
-
-        const querySnapshot = await getDocs(listsQuery);
-
-        if (querySnapshot.empty) {
-          throw new Error('List not found');
-        }
-
-        // Get the first (and should be only) result
-        const listDoc = querySnapshot.docs[0];
-        const listData = listDoc.data() as any;
-        ownerId = listData.ownerId;
-
-        // Update reference to use owner's path
-        listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
-
-        this.logger.info('sharing', `Found list owned by ${ownerId}`);
-      }
-
-      // Remove user from sharedWith array (always update in owner's path)
+      // Remove user from sharedWith array
       await updateDoc(listRef, {
         sharedWith: arrayRemove(userId),
         updatedAt: Timestamp.now()
