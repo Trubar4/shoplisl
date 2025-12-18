@@ -67,7 +67,7 @@ export class UserProfileService {
     const request$ = this.fetchUserProfile(userId).pipe(
       shareReplay(1), // Share the result and cache it
       catchError(error => {
-        this.logger.error('user-profile', `Failed to fetch user ${userId}`, error);
+        this.logger.error('auth', `Failed to fetch user ${userId}`, error);
         // Return fallback profile on error
         return of(this.createFallbackProfile(userId));
       })
@@ -190,7 +190,7 @@ export class UserProfileService {
           };
         } else {
           // User doc doesn't exist - return fallback
-          this.logger.warn('user-profile', `User profile not found for ${userId}`);
+          this.logger.warn('auth', `User profile not found for ${userId}`);
           return this.createFallbackProfile(userId);
         }
       })
