@@ -12,6 +12,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatChipsModule } from '@angular/material/chips';
 import { Store } from '@ngrx/store';
 
 import { ShoppingList } from '../../../core/models';
@@ -21,6 +22,7 @@ import * as ArticlesActions from '../../../state/articles/articles.actions';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { ConnectionService } from '../../../core/services/connection.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-lists-overview',
@@ -35,7 +37,8 @@ import { ConnectionService } from '../../../core/services/connection.service';
     MatSnackBarModule,
     MatFormFieldModule,
     MatInputModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatChipsModule
   ],
   templateUrl: './lists-overview.html',
   styleUrls: ['./lists-overview.scss']
@@ -64,13 +67,17 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   private readonly SWIPE_THRESHOLD = 100; // Minimum distance for delete action
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
 
+  // Phase 8: Sharing indicators
+  currentUserId: string | null = null;
 
   constructor(
     private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
-    private connectionService: ConnectionService
+    private connectionService: ConnectionService,
+    private authService: AuthService
   ) {
+    this.currentUserId = this.authService.getCurrentUserId();
     // Setup filtered and sorted lists observable WITH validation
     // Now using NgRx store selectors instead of DataService
     this.lists$ = combineLatest([
@@ -496,6 +503,64 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
   
   private saveSortPreference(mode: 'lastChanged' | 'alphabetical'): void {
     localStorage.setItem('shoplisl-sort-preference', mode);
+  }
+
+  // === PHASE 8: SHARING HELPER METHODS ===
+
+  /**
+   * Check if the current user is the owner of the list
+   */
+  isListOwner(list: ShoppingList): boolean {
+    return this.currentUserId !== null && list.ownerId === this.currentUserId;
+  }
+
+  /**
+   * Check if the list is shared (has collaborators)
+   */
+  isListShared(list: ShoppingList): boolean {
+    return list.sharedWith && list.sharedWith.length > 0;
+  }
+
+  /**
+   * Get the sharing status text for a list
+   * Returns "geteilt" if user is collaborator, or "Geteilt mit X" if user is owner
+   */
+  getSharingStatusText(list: ShoppingList): string {
+    if (!this.currentUserId) return '';
+
+    const isOwner = this.isListOwner(list);
+    const isShared = this.isListShared(list);
+
+    if (!isShared && !isOwner) {
+      // User is collaborator (list is shared with them)
+      return 'geteilt';
+    } else if (isOwner && isShared) {
+      // User is owner and has shared the list
+      const count = list.sharedWith?.length || 0;
+      return `Geteilt mit ${count}`;
+    }
+
+    return '';
+  }
+
+  /**
+   * Determine which type of sharing chip to show
+   */
+  getSharingChipType(list: ShoppingList): 'collaborator' | 'owner' | null {
+    if (!this.currentUserId) return null;
+
+    const isOwner = this.isListOwner(list);
+    const isShared = this.isListShared(list);
+
+    if (!isShared && !isOwner) {
+      // User is collaborator
+      return 'collaborator';
+    } else if (isOwner && isShared) {
+      // User is owner sharing with others
+      return 'owner';
+    }
+
+    return null;
   }
 
 }

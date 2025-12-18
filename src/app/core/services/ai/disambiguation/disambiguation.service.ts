@@ -945,7 +945,6 @@ export class DisambiguationService {
 
       // Handle target list
       const targetInfo = this.getTargetListInfo(pendingAction);
-
       if (targetInfo.listName) {
         const targetList = await this.findTargetList(targetInfo);
 

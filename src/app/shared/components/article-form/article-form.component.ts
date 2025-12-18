@@ -12,6 +12,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Store } from '@ngrx/store';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
@@ -21,6 +22,7 @@ import { DepartmentService } from '../../../core/services/department.service';
 import { DataService } from '../../../core/services/data.service';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 import { HistoryService } from '../../../core/services/history.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
 import { DateEditDialogComponent, DateEditDialogData, DateEditDialogResult } from '../date-edit-dialog/date-edit-dialog.component';
@@ -52,6 +54,7 @@ export interface ArticleFormData {
     MatCardModule,
     MatChipsModule,
     MatDialogModule,
+    MatTooltipModule,
     DateChipComponent,
     CountChipComponent
   ],
@@ -64,11 +67,15 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   @Input() isEditMode = false;
   @Input() isSubmitting = false;
   @Input() isDeleting = false;
-  
+
   @Output() formSubmit = new EventEmitter<ArticleFormData>();
   @Output() formCancel = new EventEmitter<void>();
   @Output() formDelete = new EventEmitter<void>();
   @Output() removeFromList = new EventEmitter<ShoppingList>();
+
+  // Phase 8.2: Ownership checks for field-level permissions
+  currentUserId: string | null = null;
+  isOwnedByCurrentUser = true;  // Default to true for non-edit mode
 
   formData: ArticleFormData = {
     name: '',
@@ -105,14 +112,25 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private historyService: HistoryService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private store: Store<AppState>
+    private store: Store<AppState>,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
     this.loadDepartments();
-    
+
+    // Phase 8.2: Get current user ID for ownership check
+    this.currentUserId = this.authService.getCurrentUserId();
+
     if (this.article) {
       this.populateForm();
+
+      // Phase 8.2: Check if current user owns this article
+      this.isOwnedByCurrentUser = this.currentUserId === this.article.ownerId;
+
+      if (!this.isOwnedByCurrentUser) {
+        console.log(`📝 Article "${this.article.name}" is owned by another user (${this.article.ownerId}). Core fields will be read-only.`);
+      }
 
       // Load lists containing this article (edit mode only)
       if (this.isEditMode) {

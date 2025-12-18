@@ -34,7 +34,8 @@ export class ArticleUploadService {
   }
 
   async uploadArticles(): Promise<void> {
-    const articles: Omit<Article, 'id'>[] = [
+    // Phase 8: Articles without id and ownerId (ownerId is added dynamically below)
+    const articles: Omit<Article, 'id' | 'ownerId'>[] = [
       { name: 'Absolute Vodka', amount: '', notes: '', icon: '🍸', departmentId: 'beverages-alcohol', createdAt: new Date(), updatedAt: new Date() },
       { name: 'Ahornsirup', amount: '', notes: '', icon: '🍯', departmentId: 'tins-jars', createdAt: new Date(), updatedAt: new Date() },
       { name: 'Amertini Soft', amount: '', notes: '', icon: '🍪', departmentId: 'sweet-salty', createdAt: new Date(), updatedAt: new Date() },
@@ -258,7 +259,12 @@ export class ArticleUploadService {
       for (let i = 0; i < articles.length; i += batchSize) {
         const batch = articles.slice(i, i + batchSize);
         const promises = batch.map(async (article) => {
-          return addDoc(articlesCollection, article);
+          // Phase 8: Add ownerId to each article
+          const articleWithOwner = {
+            ...article,
+            ownerId: this.SHARED_USER_ID
+          };
+          return addDoc(articlesCollection, articleWithOwner);
         });
 
         await Promise.all(promises);

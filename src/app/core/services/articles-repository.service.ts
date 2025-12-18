@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, of } from 'rxjs';
+import { Observable, from, of, firstValueFrom } from 'rxjs';
 import { map, catchError, mergeMap } from 'rxjs/operators';
 import { Timestamp } from 'firebase/firestore';
 
@@ -9,6 +9,7 @@ import { OfflineSyncService } from './offline-sync.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
 import { DataMigrationService } from './data-migration.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,13 +21,50 @@ export class ArticlesRepositoryService {
     private offlineSync: OfflineSyncService,
     private connectionService: ConnectionService,
     private logger: LoggerService,
-    private dataMigrationService: DataMigrationService
+    private dataMigrationService: DataMigrationService,
+    private authService: AuthService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
 
-  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
-    const articleData = {
+  /**
+   * Phase 8.2: Create a local copy of an article
+   * Used when adding a non-owned article to user's own (non-shared) list
+   */
+  createLocalCopy(originalArticle: Article): Observable<Article> {
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User must be authenticated to create a local copy');
+    }
+
+    // Create copy with current user as owner
+    const copyData: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'> = {
+      name: originalArticle.name,
+      amount: originalArticle.amount,
+      notes: originalArticle.notes,
+      icon: originalArticle.icon,
+      categoryId: originalArticle.categoryId,
+      departmentId: originalArticle.departmentId,
+      availableInShops: originalArticle.availableInShops,
+      usageCount: originalArticle.usageCount,
+      copiedFrom: originalArticle.id  // Track original article
+    };
+
+    this.logger.info('data', `Creating local copy of article "${originalArticle.name}" (${originalArticle.id})`);
+    return this.createArticle(copyData);
+  }
+
+  // Phase 8: ownerId is added automatically (creator owns the article)
+  createArticle(
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>
+  ): Observable<Article> {
+    // Phase 8: Get current user ID for ownership
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('User must be authenticated to create an article');
+    }
+
+    const articleData: any = {
       name: article.name,
       amount: article.amount || '',
       notes: article.notes || '',
@@ -35,9 +73,15 @@ export class ArticlesRepositoryService {
       departmentId: article.departmentId || '',
       availableInShops: article.availableInShops || [],
       usageCount: article.usageCount || 0,
+      ownerId: currentUserId,  // Phase 8: Creator owns the article
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     };
+
+    // Phase 8.2: Include copiedFrom field if present (for local copies)
+    if ('copiedFrom' in article && article.copiedFrom) {
+      articleData.copiedFrom = article.copiedFrom;
+    }
 
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: Article creation will be synced when online');
@@ -49,6 +93,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
+        ownerId: currentUserId,  // Phase 8: Creator owns the article
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -75,6 +120,7 @@ export class ArticlesRepositoryService {
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
+        ownerId: currentUserId,  // Phase 8: Creator owns the article
         createdAt: new Date(),
         updatedAt: new Date()
       } as Article)),
@@ -184,7 +230,8 @@ export class ArticlesRepositoryService {
     );
   }
 
-  createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<{
+  // Phase 8: ownerId is added automatically by the service
+  createArticleWithDuplicateCheck(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>): Observable<{
     success: boolean;
     article?: Article;
     isDuplicate?: boolean;
@@ -325,29 +372,50 @@ export class ArticlesRepositoryService {
   // === UTILITY METHODS ===
 
   private async removeArticleFromAllLists(articleId: string): Promise<void> {
+    this.logger.info('data', `🗑️ Removing article ${articleId} from all lists`);
+
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
-      
+      // Phase 8.2: Use Observable-based getLists() to avoid injection context issues
+      const lists = await firstValueFrom(this.firebaseData.getLists());
+
+      this.logger.info('data', `Found ${lists.length} total lists to check`);
+
+      let listsToUpdate = 0;
       for (const list of lists) {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
-        
+
         if (articleIds.includes(articleId) || itemStates[articleId]) {
+          listsToUpdate++;
+          this.logger.info('data', `📋 Article found in list "${list.name}" (${list.id}), owned by ${list.ownerId}`);
+
           const newArticleIds = articleIds.filter(id => id !== articleId);
           const newItemStates = { ...itemStates };
           delete newItemStates[articleId];
-          
-          await this.firebaseData.updateListInFirebase(list.id, {
-            articleIds: newArticleIds,
-            itemStates: newItemStates,
-            updatedAt: Timestamp.now()
-          });
-          
-          this.logger.debug('data', `Removed article from list "${list.name}"`);
+
+          try {
+            await this.firebaseData.updateListInFirebase(list.id, {
+              articleIds: newArticleIds,
+              itemStates: newItemStates,
+              updatedAt: Timestamp.now()
+            });
+
+            this.logger.info('data', `✅ Removed article from list "${list.name}"`);
+          } catch (listError) {
+            this.logger.error('data', `❌ Failed to remove article from list "${list.name}": ${listError}`);
+            throw listError; // Re-throw to stop deletion
+          }
         }
+      }
+
+      if (listsToUpdate === 0) {
+        this.logger.info('data', `Article ${articleId} is not in any lists`);
+      } else {
+        this.logger.info('data', `✅ Successfully removed article from ${listsToUpdate} list(s)`);
       }
     } catch (error) {
       this.logger.error('data', 'Error removing article from lists', error);
+      throw error; // Re-throw the error so deletion fails properly
     }
   }
 
@@ -356,40 +424,30 @@ export class ArticlesRepositoryService {
     activeInLists?: string[];
     error?: string;
   }> {
-    return this.getListsWithActiveArticle(articleId).pipe(
-      mergeMap(activeInLists => {
-        if (activeInLists.length > 0) {
-          return of({
-            success: false,
-            activeInLists: activeInLists.map(list => list.name)
-          });
-        }
+    // Phase 8.2: Directly remove from lists and delete article without NgRx actions
+    // This avoids race conditions and duplicate operations from action dispatches
+    this.logger.info('data', `Starting deletion process for article ${articleId}`);
 
-        return this.getListsContainingArticle(articleId).pipe(
-          mergeMap(allLists => {
-            // Remove from all lists first, then delete article
-            const removePromises = allLists.map(list => 
-              this.removeArticleFromList(list.id, articleId).toPromise()
-            );
-
-            return from(Promise.all(removePromises)).pipe(
-              mergeMap(() => {
-                return this.deleteArticle(articleId).pipe(
-                  map(deleteSuccess => ({
-                    success: deleteSuccess,
-                    error: deleteSuccess ? undefined : 'Fehler beim Löschen des Artikels'
-                  }))
-                );
-              })
-            );
-          })
-        );
+    return from(this.removeArticleFromAllLists(articleId)).pipe(
+      mergeMap(() => {
+        // After removing from lists, delete the article document
+        this.logger.info('data', 'Lists updated, now deleting article document');
+        return from(this.firebaseData.deleteArticleInFirebase(articleId));
+      }),
+      mergeMap(() => {
+        // Trigger immediate cleanup after successful deletion
+        this.logger.info('data', 'Article deleted, running cleanup');
+        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
+      }),
+      map(() => {
+        this.logger.info('data', '✅ Article deletion completed successfully');
+        return { success: true };
       }),
       catchError(error => {
-        this.logger.error('data', 'Error in deleteArticleAndCleanupLists', error);
+        this.logger.error('data', '❌ Article deletion failed', error);
         return of({
           success: false,
-          error: 'Unerwarteter Fehler beim Löschen'
+          error: error.message || 'Fehler beim Löschen des Artikels'
         });
       })
     );
