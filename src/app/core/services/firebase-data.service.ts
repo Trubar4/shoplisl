@@ -436,7 +436,10 @@ export class FirebaseDataService {
           }
         },
         (error: any) => {
-          this.logger.error('data', `Content listener error for list ${list.id}:`, error);
+          // Permission error means the list was deleted or user was removed
+          // Either way, remove it from local state
+          this.logger.warn('data', `Lost access to list ${list.id} (deleted or removed), cleaning up`);
+          this.removeSharedList(list.id);
         }
       );
 
