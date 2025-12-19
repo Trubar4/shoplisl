@@ -178,12 +178,19 @@ export class UserProfileService {
   private fetchUserProfile(userId: string): Observable<UserProfile> {
     const userDocRef = doc(this.firestore, `users-v2/${userId}`);
 
+    console.log(`🔍 UserProfileService: Fetching user profile for ${userId}`);
     this.logger.info('auth', `Fetching user profile for ${userId}`);
 
     return from(getDoc(userDocRef)).pipe(
       map(docSnap => {
         if (docSnap.exists()) {
           const data = docSnap.data();
+          console.log(`✅ UserProfileService: User profile found for ${userId}`, {
+            hasName: !!data['name'],
+            hasEmail: !!data['email'],
+            name: data['name'],
+            email: data['email']
+          });
           this.logger.info('auth', `User profile found for ${userId}`, {
             hasName: !!data['name'],
             hasEmail: !!data['email'],
@@ -198,6 +205,7 @@ export class UserProfileService {
           };
         } else {
           // User doc doesn't exist - return fallback
+          console.warn(`⚠️ UserProfileService: User profile NOT found for ${userId}`);
           this.logger.warn('auth', `User profile not found for ${userId}`);
           return this.createFallbackProfile(userId);
         }
