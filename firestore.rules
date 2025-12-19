@@ -34,6 +34,14 @@ service cloud.firestore {
     // User Profile
     // ==========================================
 
+    // User document (users-v2/{userId})
+    // Allow all authenticated users to read basic profile info for share dialogs
+    match /users-v2/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && userId == request.auth.uid;
+    }
+
+    // User profile subcollection (legacy support if needed)
     match /users-v2/{userId}/profile/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && userId == request.auth.uid;
