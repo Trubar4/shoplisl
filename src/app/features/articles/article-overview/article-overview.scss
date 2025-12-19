@@ -7,11 +7,13 @@
   .app-header {
     background-color: #1a9edb !important;
     color: white !important;
-    
+    // Support for iPhone notch/dynamic island (black-translucent status bar)
+    padding-top: env(safe-area-inset-top, 0);
+
     span {
       font-weight: 500;
     }
-    
+
     // Ensure plus icon is white
     .mat-icon-button .mat-icon {
       color: white !important;

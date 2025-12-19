@@ -24,6 +24,8 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     min-height: 64px;
     padding: 0 8px;
+    // Support for iPhone notch/dynamic island (black-translucent status bar)
+    padding-top: env(safe-area-inset-top, 0);
 
     .header-content {
       display: flex;

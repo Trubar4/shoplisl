@@ -209,6 +209,12 @@ export class UserProfileService {
           this.logger.warn('auth', `User profile not found for ${userId}`);
           return this.createFallbackProfile(userId);
         }
+      }),
+      catchError(error => {
+        console.error(`❌ UserProfileService: Error fetching user profile for ${userId}`, error);
+        this.logger.error('auth', `Failed to fetch user ${userId}`, error);
+        // Return fallback profile on error
+        return of(this.createFallbackProfile(userId));
       })
     );
   }
