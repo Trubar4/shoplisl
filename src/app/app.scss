@@ -84,3 +84,78 @@ app-root {
 @media (prefers-contrast: high) {
   .mat-toolbar { border-bottom: 2px solid black; }
 }
+
+/* ========================================== */
+/* Logged Out Overlay */
+/* ========================================== */
+
+.logged-out-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.login-prompt {
+  text-align: center;
+  padding: 40px;
+  max-width: 500px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 20px 0;
+  }
+
+  .login-message {
+    font-size: 18px;
+    color: #666;
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .login-link {
+    color: #1a9edb;
+    font-weight: 500;
+    text-transform: none;
+    font-size: 18px;
+    text-decoration: underline;
+    padding: 0 4px;
+    min-width: auto;
+    line-height: inherit;
+
+    &:hover {
+      background: rgba(26, 158, 219, 0.1);
+      text-decoration: underline;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .login-prompt {
+    padding: 30px 20px;
+    margin: 20px;
+
+    h1 {
+      font-size: 24px;
+    }
+
+    .login-message {
+      font-size: 16px;
+    }
+
+    .login-link {
+      font-size: 16px;
+    }
+  }
+}

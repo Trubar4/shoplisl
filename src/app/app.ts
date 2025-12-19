@@ -2,8 +2,9 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Store } from '@ngrx/store';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { MatButtonModule } from '@angular/material/button';
 
 import { BottomTabsComponent } from './shared/components/bottom-tabs/bottom-tabs';
 import { CacheStatusComponent } from './shared/components/cache-status/cache-status.component';
@@ -17,6 +18,7 @@ import { DataMigrationService } from './core/services/data-migration.service';
 import { AuthService } from './core/services/auth.service';
 import { AppState } from './state/app.state';
 import * as AuthActions from './state/auth/auth.actions';
+import { selectIsAuthenticated } from './state/auth/auth.selectors';
 
 @Component({
   selector: 'app-root',
@@ -25,17 +27,33 @@ import * as AuthActions from './state/auth/auth.actions';
     CommonModule,
     RouterOutlet,
     BottomTabsComponent,
-    CacheStatusComponent
+    CacheStatusComponent,
+    MatButtonModule
   ],
   template: `
-    <router-outlet></router-outlet>
-    <app-bottom-tabs></app-bottom-tabs>
+    <!-- Logged Out Overlay -->
+    <div class="logged-out-overlay" *ngIf="!(isAuthenticated$ | async)">
+      <div class="login-prompt">
+        <h1>Willkommen bei ShopLisl</h1>
+        <p class="login-message">
+          Bitte <button mat-button class="login-link" (click)="signIn()">melden Sie sich an</button>, um fortzufahren
+        </p>
+      </div>
+    </div>
+
+    <!-- Main App Content (shown when authenticated) -->
+    <div class="app-content" *ngIf="(isAuthenticated$ | async)">
+      <router-outlet></router-outlet>
+      <app-bottom-tabs></app-bottom-tabs>
+    </div>
+
     <app-cache-status></app-cache-status>
   `,
   styleUrls: ['./app.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'shoplisl-app';
+  isAuthenticated$: Observable<boolean>;
   private subscriptions = new Subscription();
   private isProcessingInvite = false; // Prevent multiple invite redirects
 
@@ -49,9 +67,14 @@ export class AppComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private store: Store<AppState>
   ) {
+    this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.initializeLogger();
     this.initializeOfflineDebugging();
     this.initializeAuth();
+  }
+
+  signIn(): void {
+    this.store.dispatch(AuthActions.signInWithGoogle());
   }
 
   /**
