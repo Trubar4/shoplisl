@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -23,6 +23,7 @@ import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { ConnectionService } from '../../../core/services/connection.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 @Component({
   selector: 'app-lists-overview',
@@ -43,7 +44,7 @@ import { AuthService } from '../../../core/services/auth.service';
   templateUrl: './lists-overview.html',
   styleUrls: ['./lists-overview.scss']
 })
-export class ListsOverviewComponent implements OnInit, AfterViewInit {
+export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('listsContainer', { read: ElementRef }) listsContainer?: ElementRef;
   
   lists$: Observable<ShoppingList[]>;
@@ -75,7 +76,8 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private connectionService: ConnectionService,
-    private authService: AuthService
+    private authService: AuthService,
+    private listUtils: ListUtilsService
   ) {
     this.currentUserId = this.authService.getCurrentUserId();
     // Setup filtered and sorted lists observable WITH validation
@@ -133,6 +135,14 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
 
     // Fix viewport height issues on mobile
     this.fixMobileViewport();
+
+    // Set theme color for iPhone/mobile browsers
+    this.listUtils.updateThemeColors('#1a9edb');
+  }
+
+  ngOnDestroy(): void {
+    // Reset theme color when leaving lists overview
+    this.listUtils.resetToDefaultTheme();
   }
   
 
@@ -531,7 +541,7 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     const isOwner = this.isListOwner(list);
     const isShared = this.isListShared(list);
 
-    if (!isShared && !isOwner) {
+    if (!isOwner) {
       // User is collaborator (list is shared with them)
       return 'geteilt';
     } else if (isOwner && isShared) {
@@ -552,8 +562,8 @@ export class ListsOverviewComponent implements OnInit, AfterViewInit {
     const isOwner = this.isListOwner(list);
     const isShared = this.isListShared(list);
 
-    if (!isShared && !isOwner) {
-      // User is collaborator
+    if (!isOwner) {
+      // User is collaborator (not owner, so list was shared with them)
       return 'collaborator';
     } else if (isOwner && isShared) {
       // User is owner sharing with others

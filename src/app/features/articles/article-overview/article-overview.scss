@@ -212,22 +212,22 @@
           gap: 4px;
 
           mat-chip {
-            font-size: 11px;
-            font-weight: 500;
-            padding: 0 6px;
-            height: 20px;
-            line-height: 20px;
-            border-radius: 10px;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            padding: 0 6px !important;
+            height: 20px !important;
+            line-height: 20px !important;
+            border-radius: 10px !important;
           }
 
           .shared-chip {
-            background-color: #ffebee;
-            color: #d32f2f;
+            background-color: #f44336 !important;
+            color: white !important;
           }
 
           .copy-chip {
-            background-color: #e3f2fd;
-            color: #1976d2;
+            background-color: #2196f3 !important;
+            color: white !important;
           }
         }
 
@@ -296,120 +296,180 @@
     }
   }
 
-  // === FAB SORT MENU (Same as lists-overview) ===
+  // === FAB SORT MENU ===
   .fab-container {
     position: fixed;
-    bottom: 24px;
+    bottom: 93px;
     right: 24px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: flex-end;
-    gap: 12px;
-  }
+    z-index: 9999;
 
-  .fab-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 999;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
+    .fab-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 9998;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
 
-    &.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  }
-
-  .fab-menu {
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 12px;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-
-    &.expanded {
-      max-height: 300px;
+      &.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
     }
 
-    .fab-options {
+    .fab-menu {
+      position: absolute;
+      bottom: 80px;
+      right: 0;
       display: flex;
-      flex-direction: column-reverse;
-      gap: 12px;
-    }
+      flex-direction: column;
+      gap: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      z-index: 10000;
+      pointer-events: none;
 
-    .fab-option {
-      background-color: white;
-      color: #1a9edb;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      transition: all 0.2s ease;
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding-right: 16px;
+      &.expanded {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
 
-      &:hover {
-        background-color: #f5f5f5;
-        transform: scale(1.05);
+        .fab-option {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0) scale(1);
+          pointer-events: auto;
+        }
       }
 
-      &.active {
-        background-color: #1a9edb;
+      .fab-options {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-end;
+      }
+
+      .fab-option {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px) scale(0.8);
+        background: #1a9edb;
         color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 160px;
+        height: 48px;
+        border-radius: 24px;
+        cursor: pointer;
+        pointer-events: none;
+
+        &:hover {
+          background: #1976d2;
+          transform: translateY(-2px);
+        }
+
+        &.active {
+          background: #0d47a1;
+        }
 
         .mat-icon {
+          margin-left: 12px;
+          font-size: 20px;
           color: white;
+          pointer-events: none;
         }
 
         .fab-label {
+          font-size: 14px;
+          font-weight: 500;
+          margin-right: 16px;
           color: white;
+          pointer-events: none;
         }
+      }
+    }
+
+    .main-fab {
+      background: #1a9edb;
+      color: white;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+      z-index: 10001;
+      position: relative;
+
+      &:hover {
+        background: #1976d2;
+        transform: translateY(-2px);
+      }
+
+      &.expanded {
+        background: #f44336;
+        transform: rotate(180deg);
       }
 
       .mat-icon {
-        color: #1a9edb;
-        transition: color 0.2s ease;
-      }
+        font-size: 24px;
+        color: white;
+        transition: transform 0.3s ease;
+        pointer-events: none;
 
-      .fab-label {
-        font-size: 14px;
-        font-weight: 500;
-        white-space: nowrap;
-        color: #1a9edb;
-        transition: color 0.2s ease;
-        min-width: 100px;
+        &.rotated {
+          transform: rotate(180deg);
+        }
       }
     }
   }
 
-  .main-fab {
-    background-color: #1a9edb;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+  // Mobile responsive adjustments for FAB
+  @media (max-width: 768px) {
+    .fab-container {
+      bottom: 100px;
+      right: 20px;
 
-    &:hover {
-      background-color: #1976d2;
-      transform: scale(1.05);
+      .fab-menu .fab-option {
+        min-width: 140px;
+        height: 44px;
+
+        .fab-label {
+          font-size: 13px;
+        }
+
+        .mat-icon {
+          font-size: 18px;
+        }
+      }
     }
+  }
 
-    &.expanded {
-      transform: rotate(180deg);
-    }
+  @media (max-width: 480px) {
+    .fab-container {
+      bottom: 87px;
+      right: 16px;
 
-    .mat-icon {
-      color: white;
-      transition: transform 0.3s ease;
+      .fab-menu .fab-option {
+        min-width: 120px;
+        height: 40px;
 
-      &.rotated {
-        transform: rotate(180deg);
+        .fab-label {
+          font-size: 12px;
+          margin-right: 12px;
+        }
+
+        .mat-icon {
+          font-size: 16px;
+          margin-left: 10px;
+        }
       }
     }
   }

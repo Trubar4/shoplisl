@@ -178,10 +178,18 @@ export class UserProfileService {
   private fetchUserProfile(userId: string): Observable<UserProfile> {
     const userDocRef = doc(this.firestore, `users-v2/${userId}`);
 
+    this.logger.info('auth', `Fetching user profile for ${userId}`);
+
     return from(getDoc(userDocRef)).pipe(
       map(docSnap => {
         if (docSnap.exists()) {
           const data = docSnap.data();
+          this.logger.info('auth', `User profile found for ${userId}`, {
+            hasName: !!data['name'],
+            hasEmail: !!data['email'],
+            name: data['name'],
+            email: data['email']
+          });
           return {
             id: userId,
             name: data['name'] || 'Unbekannter Benutzer',
