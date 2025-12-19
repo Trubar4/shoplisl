@@ -66,7 +66,10 @@ export class DataService {
     return this.firebaseData.getArticle(id);
   }
 
-  createArticle(article: Omit<Article, 'id' | 'createdAt' | 'updatedAt'>): Observable<Article> {
+  // Phase 8: ownerId is added automatically by repository, so callers don't need to provide it
+  createArticle(
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>
+  ): Observable<Article> {
     return this.articlesRepo.createArticle(article);
   }
 
@@ -133,7 +136,8 @@ export class DataService {
     return this.firebaseData.getList(id);
   }
 
-  createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt'>): Observable<ShoppingList> {
+  // Phase 8: ownerId and sharedWith are added automatically by repository, so callers don't need to provide them
+  createList(list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt' | 'ownerId' | 'sharedWith'>): Observable<ShoppingList> {
     return this.listsRepo.createList(list);
   }
 

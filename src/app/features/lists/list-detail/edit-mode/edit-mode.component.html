@@ -1,24 +1,14 @@
 <div class="edit-mode">
-  <!-- Add New Article and Department Sort Buttons -->
+  <!-- Add New Article Button (Full Width) -->
   <div class="add-button-container">
     <button
       mat-raised-button
       (click)="onCreateArticle()"
-      class="add-article-button"
+      class="add-article-button full-width"
       [style.background-color]="listColor"
       [style.color]="contrastColor">
       <mat-icon>add</mat-icon>
       Neuer Artikel
-    </button>
-
-    <button
-      mat-stroked-button
-      (click)="onDepartmentSort()"
-      class="department-sort-button"
-      [style.border-color]="listColor"
-      [style.color]="listColor">
-      <mat-icon>reorder</mat-icon>
-      Abteilungen
     </button>
   </div>
 
@@ -39,16 +29,19 @@
   <div class="edit-actions">
     <button
       mat-button
-      (click)="onClearAllItems()"
+      (click)="onDepartmentSort()"
       class="action-button secondary-button"
       [style.color]="listColor">
-      Leeren
+      <mat-icon>reorder</mat-icon>
+      Abteilungen
     </button>
     <button
       mat-button
       (click)="onDeleteList()"
       class="action-button tertiary-button"
-      [style.color]="lightColor">
+      [style.color]="lightColor"
+      [disabled]="!isOwner"
+      [matTooltip]="!isOwner ? 'Nur der Besitzer kann die Liste löschen' : ''">
       Löschen
     </button>
     <button
@@ -56,7 +49,9 @@
       (click)="onEditList()"
       class="action-button primary-button"
       [style.background-color]="listColor"
-      [style.color]="contrastColor">
+      [style.color]="contrastColor"
+      [disabled]="!isOwner"
+      [matTooltip]="!isOwner ? 'Nur der Besitzer kann die Liste bearbeiten' : ''">
       Bearbeiten
     </button>
   </div>

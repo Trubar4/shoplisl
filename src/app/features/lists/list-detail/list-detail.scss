@@ -24,6 +24,8 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     min-height: 64px;
     padding: 0 8px;
+    // Support for iPhone notch/dynamic island (black-translucent status bar)
+    padding-top: env(safe-area-inset-top, 0);
 
     .header-content {
       display: flex;
@@ -38,6 +40,35 @@
       .list-name {
         font-size: 18px;
         font-weight: 500;
+      }
+
+      // Phase 8C: Collaborator badge
+      .collaborator-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 12px;
+        padding: 4px 8px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: help;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .badge-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+
+        .badge-count {
+          line-height: 1;
+        }
       }
     }
 
@@ -83,9 +114,56 @@
     .mat-icon-button {
       width: 40px;
       height: 40px;
-      
+
       .mat-icon {
         color: var(--list-contrast-color, white) !important;
+      }
+    }
+  }
+
+  // === MOBILE RESPONSIVE HEADER ===
+  // Two-row header on small screens to prevent mode buttons from being pushed off-screen
+  @media (max-width: 600px) {
+    .app-header {
+      flex-wrap: wrap;
+      min-height: 104px; // Accommodate 2 rows
+      padding: 4px 8px;
+      gap: 4px;
+
+      // Back button stays in top-left
+      > button:first-child {
+        order: 1;
+      }
+
+      // Header content (icon + name + badge) takes full width on first row
+      .header-content {
+        order: 2;
+        flex: 1 1 auto;
+        max-width: calc(100% - 56px); // Account for back button width
+        margin-left: 8px;
+
+        .list-name {
+          max-width: none; // Allow full width on mobile since we have 2 rows
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      // Spacer is hidden on mobile (not needed with flex-wrap)
+      .spacer {
+        display: none;
+      }
+
+      // Share button and mode toggle move to second row
+      > button[aria-label="Liste teilen"] {
+        order: 3;
+        margin-left: 48px; // Align with header content (back button width + margin)
+      }
+
+      .mode-toggle {
+        order: 4;
+        margin: 0 0 0 auto; // Push to right side
       }
     }
   }

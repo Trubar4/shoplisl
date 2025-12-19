@@ -3,7 +3,8 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'sync' | 'cache' | 'general';
+// Phase 8: Added auth, invite, and sharing topics for authentication and sharing features
+export type LogTopic = 'ai' | 'recipe' | 'context' | 'disambiguation' | 'voice' | 'data' | 'sync' | 'cache' | 'general' | 'auth' | 'invite' | 'sharing' | 'auth-effects';
 
 interface LogConfig {
   enabled: boolean;
@@ -34,14 +35,18 @@ export class LoggerService {
 
   private topicEmojis: Record<LogTopic, string> = {
     'ai': '🤖',
-    'recipe': '🍳', 
+    'recipe': '🍳',
     'context': '🔄',
     'disambiguation': '🎯',
     'voice': '🎤',
     'data': '📱',
     'sync': '🔄',
     'cache': '💾',
-    'general': '💬'
+    'general': '💬',
+    'auth': '🔐',  // Phase 8: Authentication logging
+    'invite': '✉️',  // Phase 8: Invite logging
+    'sharing': '🤝',  // Phase 8: Sharing operations
+    'auth-effects': '🔓'  // Phase 8: Auth state effects
   };
 
   private levelPriority: Record<LogLevel, number> = {

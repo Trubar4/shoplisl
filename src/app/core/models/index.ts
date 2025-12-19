@@ -15,6 +15,9 @@ export interface Article {
   lastCheckedDate?: Date;      // Most recent check across all lists
   lastAddedToListDate?: Date;  // Most recent addition to any list
   numberOfChecks?: number;     // Total check count across all lists
+  // Phase 8: List sharing - ownership
+  ownerId: string;             // User who created this article (required for access control)
+  copiedFrom?: string;         // Phase 8.2: ID of original article if this is a local copy
 }
 
 // Keep your existing Department interface
@@ -55,14 +58,15 @@ export interface ListItemState {
   articleId: string;
   articleName?: string;      // Snapshot of article name (for display after article deletion)
   isChecked: boolean;
-  amount?: string;           // List-specific amount
+  amount?: string;           // List-specific amount (editable by all collaborators)
+  notes?: string;            // Phase 8.2: List-specific notes (editable by all collaborators)
   addedAt?: Date;            // When article was added to this list
   checkedAt?: Date;          // ✅ Already exists! When last checked
   checkedBy?: string;        // Phase 6: User ID who last checked (default: 'shared-shoplisl-user')
   history?: CheckEvent[];    // Phase 6: Full check/uncheck history (365 days retention)
 }
 
-// UPDATED: Added departmentOrder field
+// UPDATED: Added departmentOrder field (Phase 5) and sharing fields (Phase 8)
 export interface ShoppingList {
   id: string;
   name: string;
@@ -71,9 +75,13 @@ export interface ShoppingList {
   shopId?: string;
   articleIds: string[];
   itemStates: { [articleId: string]: ListItemState };
-  departmentOrder?: string[]; // NEW: Custom department order for this list
+  departmentOrder?: string[]; // Phase 5: Custom department order for this list
   createdAt: Date;
   updatedAt: Date;
+  // Phase 8: List sharing - ownership and collaboration
+  ownerId: string;              // User who created this list (required for access control)
+  sharedWith?: string[];        // Array of user IDs who have edit access to this list
+                                // Note: All shares have edit access (no view-only permissions)
 }
 
 export interface Shop {
@@ -109,6 +117,41 @@ export interface UserPreferences {
   defaultShop?: string;
   theme: 'light' | 'dark' | 'auto';
   fontSize: 'small' | 'medium' | 'large';
+}
+
+/**
+ * Phase 8: Share invite for list collaboration
+ * Represents a shareable link for inviting users to collaborate on a list
+ */
+export interface ShareInvite {
+  id: string;                    // Firestore document ID
+  listId: string;                // ID of the list being shared
+  listName: string;              // Denormalized for quick display
+  fromUserId: string;            // Owner who created the invite
+  fromUserEmail: string;         // Owner's email for display
+  inviteToken: string;           // Secure token used in shareable link
+  status: 'pending' | 'accepted' | 'expired';
+  createdAt: Date;
+  acceptedAt?: Date;             // When invite was accepted
+  acceptedByUserId?: string;     // User ID who accepted (for tracking)
+  // Note: Links never expire unless owner removes user from sharedWith
+  // Multi-use: Same link can be used by multiple users
+}
+
+/**
+ * Phase 8: Notification when user is removed from a shared list
+ * Stored in users-v2/{userId}/unshare-notifications/
+ */
+export interface UnshareNotification {
+  id: string;
+  listId: string;
+  listName: string;              // Name of list user was removed from
+  ownerUserId: string;           // User who owned/shared the list
+  ownerEmail: string;            // Owner's email for display
+  removedUserId: string;         // User who was removed (should match current user)
+  createdAt: Date;
+  seen: boolean;                 // Whether user has seen this notification
+  action?: 'keep_copy' | 'delete'; // User's choice when they see the notification
 }
 
 // NEW: Default department order constant

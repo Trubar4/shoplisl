@@ -6,6 +6,52 @@
   padding-bottom: 120px; // Extra space for tab bar
 }
 
+/* Phase 8.2: Ownership Warning Banner */
+.ownership-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  margin-bottom: 16px;
+
+  mat-icon {
+    color: #ff9800;
+    flex-shrink: 0;
+  }
+
+  .warning-text {
+    flex: 1;
+
+    strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #856404;
+    }
+
+    p {
+      margin: 0;
+      color: #856404;
+      font-size: 14px;
+    }
+  }
+}
+
+/* Phase 8.2: Read-only section styling */
+.read-only {
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+
+  .department-card.disabled,
+  .emoji-button:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.5;
+  }
+}
+
 .article-form {
   padding: 24px 16px 0; // 16px side padding creates 568px content area
   max-width: 600px;

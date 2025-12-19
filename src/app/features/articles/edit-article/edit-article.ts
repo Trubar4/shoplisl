@@ -8,7 +8,8 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Store } from '@ngrx/store';
 import { Subject } from 'rxjs';
-import { takeUntil, take } from 'rxjs/operators';
+import { takeUntil, take, filter } from 'rxjs/operators';
+import { Actions, ofType } from '@ngrx/effects';
 
 import { AppState } from '../../../state/app.state';
 import * as ArticlesActions from '../../../state/articles/articles.actions';
@@ -43,7 +44,8 @@ export class EditArticleComponent implements OnInit, OnDestroy {
     private store: Store<AppState>,
     private router: Router,
     private route: ActivatedRoute,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private actions$: Actions
   ) {}
 
   ngOnInit(): void {
@@ -109,14 +111,39 @@ export class EditArticleComponent implements OnInit, OnDestroy {
 
     if (confirmed) {
       this.isDeleting = true;
+      const articleId = this.article.id;
+
+      // Wait for success or failure action BEFORE dispatching
+      // This ensures we catch the result of THIS delete operation
+      const deleteResult$ = this.actions$.pipe(
+        ofType(
+          ArticlesActions.deleteArticleWithCleanupSuccess,
+          ArticlesActions.deleteArticleWithCleanupFailure
+        ),
+        take(1) // Take the first result (success or failure)
+      );
+
+      // Subscribe to the result
+      deleteResult$.subscribe((action: any) => {
+        this.isDeleting = false;
+
+        if (action.type === ArticlesActions.deleteArticleWithCleanupSuccess.type) {
+          console.log('✅ Article deleted successfully');
+          this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
+          this.navigateAfterDelete();
+        } else {
+          // Deletion failed
+          console.error('❌ Article deletion failed:', action.error);
+          this.snackBar.open(
+            `Fehler beim Löschen: ${action.error}`,
+            'OK',
+            { duration: 5000 }
+          );
+        }
+      });
 
       // Dispatch NgRx action to delete article with cleanup
-      this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId: this.article.id }));
-
-      // Optimistic UI update
-      this.isDeleting = false;
-      this.snackBar.open('Artikel erfolgreich gelöscht', 'OK', { duration: 2000 });
-      this.navigateAfterDelete();
+      this.store.dispatch(ArticlesActions.deleteArticleWithCleanup({ articleId }));
     }
   }
 

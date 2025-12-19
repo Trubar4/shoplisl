@@ -5,8 +5,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 import { ArticleSelectionService } from '../../../features/lists/list-detail/services/article-selection.service';
 import { CheckEvent } from '../../../core/models';
+import { AuthService } from '../../../core/services/auth.service';
 
 export interface ArticleItemData {
   id: string;
@@ -24,6 +26,9 @@ export interface ArticleItemData {
   checkedAt?: Date;
   checkedBy?: string;
   history?: CheckEvent[];
+  // Phase 8: Sharing fields
+  ownerId?: string;
+  copiedFrom?: string;
 }
 
 export type ArticleViewMode = 'shopping' | 'edit';
@@ -36,7 +41,8 @@ export type ArticleViewMode = 'shopping' | 'edit';
     MatIconModule,
     MatButtonModule,
     MatSlideToggleModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatChipsModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -70,12 +76,17 @@ export type ArticleViewMode = 'shopping' | 'edit';
         (click)="onArticleClick()">
         
         <div class="article-header">
-          <span 
-            class="article-name" 
+          <span
+            class="article-name"
             [class.strikethrough]="isArticleChecked()"
             [class.pending-strikethrough]="article.pendingHideTimestamp">
             {{ article.name }}
           </span>
+          <!-- Phase 8: Sharing status chips (only show in edit mode) -->
+          <mat-chip-set *ngIf="mode === 'edit' && (isSharedArticle() || isCopiedArticle())" class="ownership-chips">
+            <mat-chip *ngIf="isSharedArticle()" class="shared-chip">geteilt</mat-chip>
+            <mat-chip *ngIf="isCopiedArticle()" class="copy-chip">Kopie</mat-chip>
+          </mat-chip-set>
         </div>
         
         <!-- Notes -->
@@ -145,6 +156,13 @@ export class ArticleItemComponent {
   @Output() undoCompletion = new EventEmitter<ArticleItemData>();
   @Output() toggleInList = new EventEmitter<ArticleItemData>();
 
+  // Phase 8: Current user for ownership checks
+  private currentUserId: string | null;
+
+  constructor(private authService: AuthService) {
+    this.currentUserId = this.authService.getCurrentUserId();
+  }
+
   onArticleClick(): void {
     if (this.mode === 'shopping') {
       this.toggle.emit(this.article);
@@ -211,5 +229,23 @@ export class ArticleItemComponent {
       return this.article.listAmount || this.article.amount || '';
     }
     return this.article.listAmount || this.article.amount || '';
+  }
+
+  // === PHASE 8: SHARING HELPER METHODS ===
+
+  /**
+   * Check if article is shared (not owned by current user)
+   */
+  isSharedArticle(): boolean {
+    return this.currentUserId !== null &&
+           this.article.ownerId !== undefined &&
+           this.article.ownerId !== this.currentUserId;
+  }
+
+  /**
+   * Check if article is a local copy
+   */
+  isCopiedArticle(): boolean {
+    return this.article.copiedFrom !== undefined && this.article.copiedFrom !== null;
   }
 }

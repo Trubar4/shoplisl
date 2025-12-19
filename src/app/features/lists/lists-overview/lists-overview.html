@@ -59,7 +59,22 @@
           
           <!-- List Content -->
           <div class="list-content">
-            <div class="list-name">{{ list.name }}</div>
+            <div class="list-header">
+              <div class="list-name">{{ list.name }}</div>
+              <!-- Phase 8: Sharing status chips -->
+              <mat-chip-set *ngIf="getSharingChipType(list)" class="sharing-chips">
+                <mat-chip
+                  *ngIf="getSharingChipType(list) === 'collaborator'"
+                  class="shared-chip">
+                  geteilt
+                </mat-chip>
+                <mat-chip
+                  *ngIf="getSharingChipType(list) === 'owner'"
+                  class="sharing-chip">
+                  👥 {{ getSharingStatusText(list) }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
             <div class="list-info" *ngIf="getListInfoText(list)">
               {{ getListInfoText(list) }}
             </div>

@@ -7,11 +7,11 @@
   .app-header {
     background-color: #1a9edb !important;
     color: white !important;
-    
+
     span {
       font-weight: 500;
     }
-    
+
     // Ensure plus icon is white
     .mat-icon-button .mat-icon {
       color: white !important;
@@ -59,7 +59,7 @@
       }
     }
 
-    .sort-field {
+    .filter-field {
       flex: 0 0 140px;
       margin-bottom: 0px;
 
@@ -198,14 +198,39 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 4px;
-        
+
         .article-name {
           font-size: 16px;
           font-weight: 400;
           line-height: 1.4;
           color: #212121;
         }
-        
+
+        // Phase 8.2: Ownership indicator chips
+        .ownership-chips {
+          display: flex;
+          gap: 4px;
+
+          mat-chip {
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            padding: 0 6px !important;
+            height: 20px !important;
+            line-height: 20px !important;
+            border-radius: 10px !important;
+          }
+
+          .shared-chip {
+            background-color: #f44336 !important;
+            color: white !important;
+          }
+
+          .copy-chip {
+            background-color: #2196f3 !important;
+            color: white !important;
+          }
+        }
+
         .article-amount {
           font-size: 14px;
           font-weight: 500;
@@ -268,6 +293,184 @@
       margin: 0 0 24px 0;
       font-size: 14px;
       line-height: 1.4;
+    }
+  }
+
+  // === FAB SORT MENU ===
+  .fab-container {
+    position: fixed;
+    bottom: 93px;
+    right: 24px;
+    z-index: 9999;
+
+    .fab-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 9998;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+
+      &.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    .fab-menu {
+      position: absolute;
+      bottom: 80px;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      z-index: 10000;
+      pointer-events: none;
+
+      &.expanded {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+
+        .fab-option {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0) scale(1);
+          pointer-events: auto;
+        }
+      }
+
+      .fab-options {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-end;
+      }
+
+      .fab-option {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px) scale(0.8);
+        background: #1a9edb;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 160px;
+        height: 48px;
+        border-radius: 24px;
+        cursor: pointer;
+        pointer-events: none;
+
+        &:hover {
+          background: #1976d2;
+          transform: translateY(-2px);
+        }
+
+        &.active {
+          background: #0d47a1;
+        }
+
+        .mat-icon {
+          margin-left: 12px;
+          font-size: 20px;
+          color: white;
+          pointer-events: none;
+        }
+
+        .fab-label {
+          font-size: 14px;
+          font-weight: 500;
+          margin-right: 16px;
+          color: white;
+          pointer-events: none;
+        }
+      }
+    }
+
+    .main-fab {
+      background: #1a9edb;
+      color: white;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+      z-index: 10001;
+      position: relative;
+
+      &:hover {
+        background: #1976d2;
+        transform: translateY(-2px);
+      }
+
+      &.expanded {
+        background: #f44336;
+        transform: rotate(180deg);
+      }
+
+      .mat-icon {
+        font-size: 24px;
+        color: white;
+        transition: transform 0.3s ease;
+        pointer-events: none;
+
+        &.rotated {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+
+  // Mobile responsive adjustments for FAB
+  @media (max-width: 768px) {
+    .fab-container {
+      bottom: 100px;
+      right: 20px;
+
+      .fab-menu .fab-option {
+        min-width: 140px;
+        height: 44px;
+
+        .fab-label {
+          font-size: 13px;
+        }
+
+        .mat-icon {
+          font-size: 18px;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .fab-container {
+      bottom: 87px;
+      right: 16px;
+
+      .fab-menu .fab-option {
+        min-width: 120px;
+        height: 40px;
+
+        .fab-label {
+          font-size: 12px;
+          margin-right: 12px;
+        }
+
+        .mat-icon {
+          font-size: 16px;
+          margin-left: 10px;
+        }
+      }
     }
   }
 }

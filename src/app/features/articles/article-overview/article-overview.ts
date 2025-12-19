@@ -26,6 +26,9 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 import { DateChipComponent } from '../../../shared/components/date-chip/date-chip.component';
 import { CountChipComponent } from '../../../shared/components/count-chip/count-chip.component';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { MatChipsModule } from '@angular/material/chips';
+import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 /** Article with statistics */
 export interface ArticleWithStats extends Article {
@@ -34,6 +37,9 @@ export interface ArticleWithStats extends Article {
 
 /** Article sort options */
 export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdded';
+
+/** Article filter options */
+export type ArticleFilterOption = 'all' | 'owned' | 'shared';
 
 @Component({
   selector: 'app-article-overview',
@@ -51,6 +57,7 @@ export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdd
     MatDialogModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    MatChipsModule,
     DateChipComponent,
     CountChipComponent
   ],
@@ -59,12 +66,18 @@ export type ArticleSortOption = 'name' | 'checkCount' | 'lastChecked' | 'lastAdd
 })
 export class ArticleOverviewComponent implements OnInit, OnDestroy {
   private readonly SORT_STORAGE_KEY = 'article-overview-sort-option';
+  private readonly FILTER_STORAGE_KEY = 'article-overview-filter-option';
 
   searchQuery$ = new BehaviorSubject<string>('');
   sortOption$ = new BehaviorSubject<ArticleSortOption>(this.loadSavedSortOption());
+  filterOption$ = new BehaviorSubject<ArticleFilterOption>(this.loadSavedFilterOption());
   filteredArticles$: Observable<ArticleWithStats[]>;
   searchQuery = '';
   sortOption: ArticleSortOption = this.loadSavedSortOption();
+  filterOption: ArticleFilterOption = this.loadSavedFilterOption();
+
+  // FAB state
+  isFabExpanded = false;
 
   // Swipe state management (same as lists-overview)
   swipeStates: { [articleId: string]: {
@@ -80,14 +93,19 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   private readonly MAX_SWIPE_DISTANCE = 120; // Maximum swipe distance
   private destroy$ = new Subject<void>();
 
+  currentUserId: string | null = null;
+
   constructor(
     private store: Store<AppState>,
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private articleStatsService: ArticleStatsService
+    private articleStatsService: ArticleStatsService,
+    private authService: AuthService,
+    private listUtils: ListUtilsService
   ) {
-    // Combine articles with stats, search query, and sort option for filtering using NgRx store
+    this.currentUserId = this.authService.getCurrentUserId();
+    // Combine articles with stats, search query, filter, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
       this.store.select(selectAllArticles),
       this.articleStatsService.getAllArticleStats(),
@@ -95,14 +113,18 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
         debounceTime(300),
         distinctUntilChanged()
       ),
+      this.filterOption$,
       this.sortOption$
     ]).pipe(
-      map(([articles, statsMap, query, sortOption]) => {
+      map(([articles, statsMap, query, filterOption, sortOption]) => {
         // Merge articles with their stats
-        const articlesWithStats: ArticleWithStats[] = articles.map(article => ({
+        let articlesWithStats: ArticleWithStats[] = articles.map(article => ({
           ...article,
           stats: statsMap.get(article.id)
         }));
+
+        // Apply ownership filter
+        articlesWithStats = this.applyFilter(articlesWithStats, filterOption);
 
         // Filter by search query
         const filtered = query.trim()
@@ -122,11 +144,17 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
     this.store.dispatch(ListsActions.loadLists());
+
+    // Set theme color for article overview (iPhone header color)
+    this.listUtils.updateThemeColors('#1a9edb');
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Reset to default theme when leaving article overview
+    this.listUtils.resetToDefaultTheme();
   }
 
   onSearchQueryChange(): void {
@@ -137,6 +165,13 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     this.sortOption = sortOption;
     this.sortOption$.next(sortOption);
     this.saveSortOption(sortOption);
+    this.isFabExpanded = false;
+  }
+
+  onFilterChange(filterOption: ArticleFilterOption): void {
+    this.filterOption = filterOption;
+    this.filterOption$.next(filterOption);
+    this.saveFilterOption(filterOption);
   }
 
   private loadSavedSortOption(): ArticleSortOption {
@@ -157,6 +192,66 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.warn('Failed to save sort option:', error);
     }
+  }
+
+  private loadSavedFilterOption(): ArticleFilterOption {
+    try {
+      const saved = localStorage.getItem(this.FILTER_STORAGE_KEY);
+      if (saved && ['all', 'owned', 'shared'].includes(saved)) {
+        return saved as ArticleFilterOption;
+      }
+    } catch (error) {
+      console.warn('Failed to load saved filter option:', error);
+    }
+    return 'all'; // Default fallback
+  }
+
+  private saveFilterOption(filterOption: ArticleFilterOption): void {
+    try {
+      localStorage.setItem(this.FILTER_STORAGE_KEY, filterOption);
+    } catch (error) {
+      console.warn('Failed to save filter option:', error);
+    }
+  }
+
+  /**
+   * Apply ownership filter to articles
+   */
+  private applyFilter(articles: ArticleWithStats[], filterOption: ArticleFilterOption): ArticleWithStats[] {
+    if (!this.currentUserId) return articles;
+
+    switch (filterOption) {
+      case 'owned':
+        return articles.filter(article => article.ownerId === this.currentUserId);
+      case 'shared':
+        return articles.filter(article => article.ownerId !== this.currentUserId);
+      case 'all':
+      default:
+        return articles;
+    }
+  }
+
+  // FAB methods
+  toggleFab(): void {
+    this.isFabExpanded = !this.isFabExpanded;
+  }
+
+  closeFab(): void {
+    this.isFabExpanded = false;
+  }
+
+  /**
+   * Phase 8.2: Check if article is shared (not owned by current user)
+   */
+  isSharedArticle(article: Article): boolean {
+    return this.currentUserId !== null && article.ownerId !== this.currentUserId;
+  }
+
+  /**
+   * Phase 8.2: Check if article is a local copy
+   */
+  isCopiedArticle(article: Article): boolean {
+    return article.copiedFrom !== undefined && article.copiedFrom !== null;
   }
 
   private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {

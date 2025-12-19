@@ -3,7 +3,7 @@
     <mat-icon class="tab-icon">list</mat-icon>
     <span class="tab-label">Listen</span>
   </a>
-  
+
   <a routerLink="/articles" class="tab-item" [class.active]="isActive('/articles')">
     <mat-icon class="tab-icon">shopping_cart</mat-icon>
     <span class="tab-label">Artikel</span>
@@ -13,4 +13,8 @@
     <mat-icon>smart_toy</mat-icon>
     <span class="tab-label">Assistent</span>
   </a>
+
+  <div class="tab-item auth-tab">
+    <app-auth-button></app-auth-button>
+  </div>
 </nav>

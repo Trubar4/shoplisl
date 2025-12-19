@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { Observable, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { MatButtonModule } from '@angular/material/button';
 
 import { BottomTabsComponent } from './shared/components/bottom-tabs/bottom-tabs';
 import { CacheStatusComponent } from './shared/components/cache-status/cache-status.component';
@@ -13,37 +15,132 @@ import { DataService } from './core/services/data.service';
 import { ListUtilsService } from './core/services/list-utils.service';
 import { ArticleItemComponent } from './shared/components/article-item/article-item.component';
 import { DataMigrationService } from './core/services/data-migration.service';
+import { AuthService } from './core/services/auth.service';
+import { AppState } from './state/app.state';
+import * as AuthActions from './state/auth/auth.actions';
+import { selectIsAuthenticated } from './state/auth/auth.selectors';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule,
-    RouterOutlet, 
+    RouterOutlet,
     BottomTabsComponent,
-    CacheStatusComponent
+    CacheStatusComponent,
+    MatButtonModule
   ],
   template: `
-    <router-outlet></router-outlet>
-    <app-bottom-tabs></app-bottom-tabs>
+    <!-- Logged Out Overlay -->
+    <div class="logged-out-overlay" *ngIf="!(isAuthenticated$ | async)">
+      <div class="login-prompt">
+        <h1>Willkommen bei ShopLisl</h1>
+        <p class="login-message">
+          Bitte <button mat-button class="login-link" (click)="signIn()">melden Sie sich an</button>, um fortzufahren
+        </p>
+      </div>
+    </div>
+
+    <!-- Main App Content (shown when authenticated) -->
+    <div class="app-content" *ngIf="(isAuthenticated$ | async)">
+      <router-outlet></router-outlet>
+      <app-bottom-tabs></app-bottom-tabs>
+    </div>
+
     <app-cache-status></app-cache-status>
   `,
   styleUrls: ['./app.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'shoplisl-app';
+  isAuthenticated$: Observable<boolean>;
   private subscriptions = new Subscription();
-  
+  private isProcessingInvite = false; // Prevent multiple invite redirects
+
   constructor(
     private logger: LoggerService,
     private router: Router,
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
     private dataService: DataService,
-    private dataMigrationService: DataMigrationService
+    private dataMigrationService: DataMigrationService,
+    private authService: AuthService,
+    private store: Store<AppState>
   ) {
+    this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.initializeLogger();
     this.initializeOfflineDebugging();
+    this.initializeAuth();
+  }
+
+  signIn(): void {
+    this.store.dispatch(AuthActions.signInWithGoogle());
+  }
+
+  /**
+   * Initialize authentication and sync with NgRx store
+   */
+  private initializeAuth(): void {
+    // Subscribe to auth changes and dispatch to store
+    this.subscriptions.add(
+      this.authService.getCurrentUser().subscribe(user => {
+        this.store.dispatch(AuthActions.setUser({ user }));
+
+        // Phase 8: Check for pending invite after login
+        if (user) {
+          this.handlePendingInvite();
+        }
+      })
+    );
+  }
+
+  /**
+   * Phase 8: Handle pending invite after user logs in
+   * If there's a pending invite token in sessionStorage, redirect to the invite URL
+   */
+  private handlePendingInvite(): void {
+    console.log('🔗 AppComponent: Checking for pending invite (isProcessingInvite:', this.isProcessingInvite, ')');
+
+    // Prevent multiple simultaneous redirects
+    if (this.isProcessingInvite) {
+      console.log('🔗 AppComponent: Already processing an invite, skipping');
+      return;
+    }
+
+    const pendingToken = sessionStorage.getItem('pendingInviteToken');
+    console.log('🔗 AppComponent: Pending token:', pendingToken);
+
+    if (pendingToken) {
+      console.log('🔗 AppComponent: Found pending invite, redirecting to:', `/invite/${pendingToken}`);
+      this.logger.info('invite', `Processing pending invite after login: ${pendingToken}`);
+
+      // Set flag to prevent multiple redirects
+      this.isProcessingInvite = true;
+
+      // Clear the token from storage BEFORE navigating
+      sessionStorage.removeItem('pendingInviteToken');
+
+      // Redirect to the invite acceptance URL
+      // Navigate away first to ensure component reloads, then navigate to invite
+      setTimeout(() => {
+        console.log('🔗 AppComponent: Navigating to lists first to force reload...');
+        this.router.navigate(['/lists']).then(() => {
+          // Small delay, then navigate to the actual invite URL
+          setTimeout(() => {
+            console.log('🔗 AppComponent: Now navigating to invite page...');
+            this.router.navigate(['/invite', pendingToken]).then(() => {
+              console.log('🔗 AppComponent: Navigation to invite page completed');
+              // Reset flag after a short delay
+              setTimeout(() => {
+                this.isProcessingInvite = false;
+              }, 1000);
+            });
+          }, 50);
+        });
+      }, 100);
+    } else {
+      console.log('🔗 AppComponent: No pending invite found');
+    }
   }
 
   ngOnInit(): void {

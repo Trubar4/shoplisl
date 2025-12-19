@@ -5,13 +5,16 @@ import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs/operators';
 
+import { AuthButtonComponent } from '../auth-button/auth-button.component';
+
 @Component({
   selector: 'app-bottom-tabs',
   standalone: true,
   imports: [
     CommonModule,
     RouterModule,
-    MatIconModule
+    MatIconModule,
+    AuthButtonComponent
   ],
   templateUrl: './bottom-tabs.html',
   styleUrls: ['./bottom-tabs.scss']

@@ -1,0 +1,99 @@
+<div class="share-dialog">
+  <h2 mat-dialog-title>Liste teilen</h2>
+
+  <mat-dialog-content>
+    <!-- Owner-only: Add collaborator section -->
+    <div *ngIf="isOwner" class="add-collaborator-section">
+      <h3>Teilen mit</h3>
+
+      <div class="email-input-row">
+        <mat-form-field class="email-field" appearance="outline">
+          <mat-label>E-Mail Adresse</mat-label>
+          <input
+            matInput
+            type="email"
+            [(ngModel)]="newEmail"
+            placeholder="name@example.com"
+            (keyup.enter)="addCollaborator()"
+            [disabled]="loading">
+        </mat-form-field>
+
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="addCollaborator()"
+          [disabled]="loading || !newEmail"
+          matTooltip="Einladung senden"
+          class="add-button">
+          <mat-icon>add_circle</mat-icon>
+        </button>
+      </div>
+
+      <p class="help-text">
+        Der Nutzer erhält eine Einladung per E-Mail mit einem Link zur Liste.
+      </p>
+    </div>
+
+    <!-- Collaborators list -->
+    <div class="collaborators-section">
+      <h3>Zugriff haben</h3>
+
+      <mat-list>
+        <mat-list-item *ngFor="let collaborator of collaborators" class="collaborator-item">
+          <mat-icon matListItemIcon>
+            {{ collaborator.canRemove ? 'person_outline' : 'person' }}
+          </mat-icon>
+
+          <div matListItemTitle class="collaborator-info">
+            <span class="collaborator-name">{{ collaborator.email }}</span>
+          </div>
+
+          <button
+            *ngIf="collaborator.canRemove"
+            mat-icon-button
+            matListItemMeta
+            (click)="removeCollaborator(collaborator)"
+            matTooltip="Nutzer entfernen"
+            color="warn"
+            class="remove-button">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </mat-list-item>
+      </mat-list>
+
+      <p *ngIf="!isOwner" class="help-text info">
+        <mat-icon class="info-icon">info</mat-icon>
+        Nur der Besitzer kann weitere Personen einladen oder entfernen.
+      </p>
+    </div>
+
+    <!-- Info section -->
+    <div class="info-section">
+      <mat-icon class="info-icon">info</mat-icon>
+      <div class="info-content">
+        <p><strong>Berechtigungen:</strong></p>
+        <ul>
+          <li>Besitzer: Volle Kontrolle über die Liste</li>
+          <li>Mitarbeiter: Artikel hinzufügen, Mengen ändern</li>
+          <li>Artikel können nicht gelöscht werden</li>
+        </ul>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions>
+    <!-- Collaborator: Leave shared list button -->
+    <button
+      *ngIf="!isOwner"
+      mat-stroked-button
+      color="warn"
+      (click)="leaveSharedList()"
+      class="leave-button">
+      Liste verlassen
+    </button>
+
+    <span class="spacer"></span>
+
+    <button mat-button (click)="close()">Schließen</button>
+  </mat-dialog-actions>
+</div>
