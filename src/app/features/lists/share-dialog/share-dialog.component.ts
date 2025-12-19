@@ -164,19 +164,26 @@ export class ShareDialogComponent implements OnInit {
       );
 
       const inviteLink = this.sharingService.getShareableLink(invite.inviteToken);
+      const inviteText = `Ich lade dich zur Liste "${this.data.list.name}" ein: ${inviteLink}`;
 
-      // TODO: Send email with invite link
-      // For now, just show the link and copy to clipboard
-      this.snackBar.open(
-        `Einladung erstellt für ${this.newEmail}. Link wurde in die Zwischenablage kopiert.`,
-        'OK',
-        { duration: 4000 }
-      );
+      // Copy to clipboard (with iOS fallback)
+      const copySuccess = await this.copyToClipboard(inviteText);
 
-      // Copy to clipboard for now (until email service is implemented)
-      navigator.clipboard.writeText(
-        `Ich lade dich zur Liste "${this.data.list.name}" ein: ${inviteLink}`
-      );
+      // Show success/error message
+      if (copySuccess) {
+        this.snackBar.open(
+          `Einladung erstellt für ${this.newEmail}. Link wurde in die Zwischenablage kopiert.`,
+          'OK',
+          { duration: 4000 }
+        );
+      } else {
+        // Fallback: Show link in dialog if copy failed
+        this.snackBar.open(
+          `Einladung erstellt für ${this.newEmail}. Link: ${inviteLink}`,
+          'OK',
+          { duration: 8000 }
+        );
+      }
 
       // Clear input
       this.newEmail = '';
@@ -257,6 +264,57 @@ export class ShareDialogComponent implements OnInit {
     } catch (error: any) {
       console.error('Failed to leave shared list:', error);
       this.snackBar.open('Fehler beim Verlassen der Liste', 'OK', { duration: 3000 });
+    }
+  }
+
+  /**
+   * Copy text to clipboard with iOS fallback
+   * iOS Safari has issues with navigator.clipboard, so we use a fallback method
+   */
+  private async copyToClipboard(text: string): Promise<boolean> {
+    try {
+      // Try modern Clipboard API first (works on most platforms)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (error) {
+      console.warn('Clipboard API failed, trying fallback method:', error);
+    }
+
+    // Fallback for iOS and older browsers
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+
+      // Make it invisible but readable
+      textArea.style.position = 'fixed';
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.width = '2em';
+      textArea.style.height = '2em';
+      textArea.style.padding = '0';
+      textArea.style.border = 'none';
+      textArea.style.outline = 'none';
+      textArea.style.boxShadow = 'none';
+      textArea.style.background = 'transparent';
+
+      document.body.appendChild(textArea);
+
+      // Select and copy
+      textArea.focus();
+      textArea.select();
+
+      // For iOS
+      textArea.setSelectionRange(0, 99999);
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      return successful;
+    } catch (error) {
+      console.error('Fallback copy failed:', error);
+      return false;
     }
   }
 
