@@ -176,15 +176,21 @@ export class ShareDialogComponent implements OnInit {
           { duration: 3000 }
         );
       } else {
-        // Fallback: Show link in snackbar for manual copying
+        // Fallback: Show link in snackbar that stays open until user closes it
         this.snackBar.open(
-          `Einladung erstellt für ${this.newEmail}. Link: ${inviteLink}`,
-          'Kopieren',
-          { duration: 10000 }
-        ).onAction().subscribe(() => {
-          // When user clicks "Kopieren", try to copy again
-          this.copyToClipboardFallback(inviteText);
-        });
+          `Link: ${inviteLink}`,
+          'Schließen',
+          {
+            duration: undefined, // Stays open until user clicks "Schließen"
+            panelClass: 'share-link-snackbar'
+          }
+        );
+
+        // Try to copy automatically in background
+        setTimeout(() => {
+          const copied = this.copyToClipboardFallback(inviteText);
+          console.log(copied ? '✅ Link copied to clipboard' : '⚠️ Could not auto-copy, please copy from banner');
+        }, 100);
       }
 
       // Clear input
@@ -275,26 +281,32 @@ export class ShareDialogComponent implements OnInit {
    */
   private async shareOrCopy(text: string, url: string): Promise<boolean> {
     // Check if Web Share API is available (iOS, Android, modern browsers)
+    console.log('🔍 Checking Web Share API availability:', !!navigator.share);
+
     if (navigator.share) {
       try {
+        console.log('📱 Attempting to open share dialog...');
         await navigator.share({
           title: 'ShopLisl Einladung',
           text: text,
           url: url
         });
+        console.log('✅ Share completed successfully');
         return true; // User completed share
       } catch (error: any) {
         // User cancelled share dialog or error occurred
         if (error.name === 'AbortError') {
-          console.log('Share cancelled by user');
-          // Try clipboard as fallback
+          console.log('❌ Share cancelled by user');
         } else {
-          console.error('Share failed:', error);
+          console.error('❌ Share API error:', error.name, error.message);
         }
       }
+    } else {
+      console.log('⚠️ Web Share API not available on this device');
     }
 
-    // Try clipboard API
+    // Try clipboard API as fallback
+    console.log('📋 Falling back to clipboard copy...');
     return this.copyToClipboardFallback(text);
   }
 
