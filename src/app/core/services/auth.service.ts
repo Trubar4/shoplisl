@@ -7,7 +7,9 @@ import {
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  User as FirebaseUser
+  User as FirebaseUser,
+  setPersistence,
+  browserLocalPersistence
 } from '@angular/fire/auth';
 import {
   Firestore,
@@ -31,7 +33,21 @@ export class AuthService {
     private auth: Auth,
     private firestore: Firestore
   ) {
+    this.initAuthPersistence();
     this.initAuthStateListener();
+  }
+
+  /**
+   * Configure Firebase Auth persistence to keep users logged in
+   * Uses browserLocalPersistence for indefinite session (until sign-out)
+   */
+  private async initAuthPersistence(): Promise<void> {
+    try {
+      await setPersistence(this.auth, browserLocalPersistence);
+      this.logger.info('auth', 'Auth persistence configured: browserLocalPersistence (indefinite session)');
+    } catch (error) {
+      this.logger.error('auth', 'Failed to set auth persistence', error);
+    }
   }
 
   /**
