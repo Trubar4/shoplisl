@@ -166,23 +166,25 @@ export class ShareDialogComponent implements OnInit {
       const inviteLink = this.sharingService.getShareableLink(invite.inviteToken);
       const inviteText = `Ich lade dich zur Liste "${this.data.list.name}" ein: ${inviteLink}`;
 
-      // Copy to clipboard (with iOS fallback)
-      const copySuccess = await this.copyToClipboard(inviteText);
+      // Try to share using Web Share API (works great on iOS) or copy to clipboard
+      const shared = await this.shareOrCopy(inviteText, inviteLink);
 
-      // Show success/error message
-      if (copySuccess) {
+      if (shared) {
         this.snackBar.open(
-          `Einladung erstellt für ${this.newEmail}. Link wurde in die Zwischenablage kopiert.`,
+          `Einladung erstellt für ${this.newEmail}`,
           'OK',
-          { duration: 4000 }
+          { duration: 3000 }
         );
       } else {
-        // Fallback: Show link in dialog if copy failed
+        // Fallback: Show link in snackbar for manual copying
         this.snackBar.open(
           `Einladung erstellt für ${this.newEmail}. Link: ${inviteLink}`,
-          'OK',
-          { duration: 8000 }
-        );
+          'Kopieren',
+          { duration: 10000 }
+        ).onAction().subscribe(() => {
+          // When user clicks "Kopieren", try to copy again
+          this.copyToClipboardFallback(inviteText);
+        });
       }
 
       // Clear input
@@ -268,49 +270,65 @@ export class ShareDialogComponent implements OnInit {
   }
 
   /**
-   * Copy text to clipboard with iOS fallback
-   * iOS Safari has issues with navigator.clipboard, so we use a fallback method
+   * Share using Web Share API (iOS) or copy to clipboard (Desktop)
+   * Returns true if shared/copied successfully, false if user needs to manually copy
    */
-  private async copyToClipboard(text: string): Promise<boolean> {
-    try {
-      // Try modern Clipboard API first (works on most platforms)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
+  private async shareOrCopy(text: string, url: string): Promise<boolean> {
+    // Check if Web Share API is available (iOS, Android, modern browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'ShopLisl Einladung',
+          text: text,
+          url: url
+        });
+        return true; // User completed share
+      } catch (error: any) {
+        // User cancelled share dialog or error occurred
+        if (error.name === 'AbortError') {
+          console.log('Share cancelled by user');
+          // Try clipboard as fallback
+        } else {
+          console.error('Share failed:', error);
+        }
       }
-    } catch (error) {
-      console.warn('Clipboard API failed, trying fallback method:', error);
     }
 
-    // Fallback for iOS and older browsers
+    // Try clipboard API
+    return this.copyToClipboardFallback(text);
+  }
+
+  /**
+   * Fallback clipboard copy using textarea method
+   * Works on iOS Safari when called within user gesture
+   */
+  private copyToClipboardFallback(text: string): boolean {
     try {
       const textArea = document.createElement('textarea');
       textArea.value = text;
 
-      // Make it invisible but readable
+      // Make it invisible but accessible
       textArea.style.position = 'fixed';
       textArea.style.top = '0';
-      textArea.style.left = '0';
-      textArea.style.width = '2em';
-      textArea.style.height = '2em';
-      textArea.style.padding = '0';
-      textArea.style.border = 'none';
-      textArea.style.outline = 'none';
-      textArea.style.boxShadow = 'none';
-      textArea.style.background = 'transparent';
+      textArea.style.left = '-999999px';
+      textArea.style.width = '1px';
+      textArea.style.height = '1px';
+      textArea.setAttribute('readonly', '');
 
       document.body.appendChild(textArea);
 
-      // Select and copy
+      // Select text
       textArea.focus();
       textArea.select();
+      textArea.setSelectionRange(0, text.length);
 
-      // For iOS
-      textArea.setSelectionRange(0, 99999);
-
+      // Copy
       const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
 
+      if (successful) {
+        console.log('Text copied to clipboard using fallback method');
+      }
       return successful;
     } catch (error) {
       console.error('Fallback copy failed:', error);
