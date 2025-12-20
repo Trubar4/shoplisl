@@ -67,13 +67,12 @@
                   *ngIf="getSharingChipType(list) === 'collaborator'"
                   class="shared-chip">
                   <mat-icon>people</mat-icon>
-                  geteilt
                 </mat-chip>
                 <mat-chip
                   *ngIf="getSharingChipType(list) === 'owner'"
                   class="sharing-chip">
                   <mat-icon>ios_share</mat-icon>
-                  {{ getSharingStatusText(list) }}
+                  <span class="chip-count">{{ (list.sharedWith?.length || 0) + 1 }}</span>
                 </mat-chip>
               </mat-chip-set>
             </div>

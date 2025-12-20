@@ -86,7 +86,6 @@ export type ArticleViewMode = 'shopping' | 'edit';
           <mat-chip-set *ngIf="mode === 'edit' && (isSharedArticle() || isCopiedArticle())" class="ownership-chips">
             <mat-chip *ngIf="isSharedArticle()" class="shared-chip">
               <mat-icon>people</mat-icon>
-              geteilt
             </mat-chip>
             <mat-chip *ngIf="isCopiedArticle()" class="copy-chip">Kopie</mat-chip>
           </mat-chip-set>
