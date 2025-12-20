@@ -1,4 +1,4 @@
-{
+﻿{
   "indexes": [
     {
       "collectionGroup": "lists",
@@ -6,13 +6,6 @@
       "fields": [
         { "fieldPath": "createdAt", "order": "DESCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "lists",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "sharedWith", "arrayConfig": "CONTAINS" }
       ]
     },
     {
