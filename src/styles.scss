@@ -201,3 +201,18 @@ app-bottom-tabs .bottom-navigation .nav-item span {
     border-radius: 0 !important;
   }
 }
+
+// Performance: Subtle refresh indicator snackbar styling
+.refresh-snackbar {
+  .mdc-snackbar__surface {
+    background-color: rgba(26, 158, 219, 0.9) !important;
+    color: white !important;
+    font-size: 14px !important;
+    padding: 8px 16px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .mat-mdc-snack-bar-label {
+    color: white !important;
+  }
+}

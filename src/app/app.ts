@@ -5,6 +5,7 @@ import { Store } from '@ngrx/store';
 import { Observable, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { BottomTabsComponent } from './shared/components/bottom-tabs/bottom-tabs';
 import { CacheStatusComponent } from './shared/components/cache-status/cache-status.component';
@@ -16,6 +17,7 @@ import { ListUtilsService } from './core/services/list-utils.service';
 import { ArticleItemComponent } from './shared/components/article-item/article-item.component';
 import { DataMigrationService } from './core/services/data-migration.service';
 import { AuthService } from './core/services/auth.service';
+import { FirebaseDataService } from './core/services/firebase-data.service';
 import { AppState } from './state/app.state';
 import * as AuthActions from './state/auth/auth.actions';
 import { selectIsAuthenticated } from './state/auth/auth.selectors';
@@ -28,7 +30,8 @@ import { selectIsAuthenticated } from './state/auth/auth.selectors';
     RouterOutlet,
     BottomTabsComponent,
     CacheStatusComponent,
-    MatButtonModule
+    MatButtonModule,
+    MatSnackBarModule
   ],
   template: `
     <!-- Logged Out Overlay -->
@@ -65,12 +68,15 @@ export class AppComponent implements OnInit, OnDestroy {
     private dataService: DataService,
     private dataMigrationService: DataMigrationService,
     private authService: AuthService,
+    private firebaseDataService: FirebaseDataService,
+    private snackBar: MatSnackBar,
     private store: Store<AppState>
   ) {
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.initializeLogger();
     this.initializeOfflineDebugging();
     this.initializeAuth();
+    this.initializeRefreshIndicator();
   }
 
   signIn(): void {
@@ -89,6 +95,29 @@ export class AppComponent implements OnInit, OnDestroy {
         // Phase 8: Check for pending invite after login
         if (user) {
           this.handlePendingInvite();
+        }
+      })
+    );
+  }
+
+  /**
+   * Performance: Initialize background refresh indicator
+   * Shows a subtle snackbar at bottom when data is being refreshed
+   */
+  private initializeRefreshIndicator(): void {
+    this.subscriptions.add(
+      this.firebaseDataService.refreshStatus$.subscribe(status => {
+        if (status.isRefreshing) {
+          // Show refresh indicator
+          this.snackBar.open(status.message || 'Aktualisiere Daten...', undefined, {
+            duration: undefined, // Keep open until manually dismissed
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+            panelClass: ['refresh-snackbar']
+          });
+        } else {
+          // Dismiss the snackbar
+          this.snackBar.dismiss();
         }
       })
     );
