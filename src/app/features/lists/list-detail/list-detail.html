@@ -6,7 +6,13 @@
     </button>
     <div class="header-content">
       <span class="list-icon">{{ currentList?.icon || '📋' }}</span>
-      <span class="list-name">{{ currentList?.name || 'Loading...' }}</span>
+      <span
+        class="list-name"
+        [matTooltip]="currentList?.name || ''"
+        matTooltipPosition="below"
+        [matTooltipDisabled]="!currentList?.name">
+        {{ currentList?.name || 'Loading...' }}
+      </span>
       <!-- Phase 8C: Collaborator badge -->
       <span
         *ngIf="currentList?.sharedWith && (currentList?.sharedWith?.length || 0) > 0"

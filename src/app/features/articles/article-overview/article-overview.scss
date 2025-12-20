@@ -218,16 +218,29 @@
             height: 20px !important;
             line-height: 20px !important;
             border-radius: 10px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 4px !important;
+
+            mat-icon {
+              font-size: 16px !important;
+              width: 16px !important;
+              height: 16px !important;
+              line-height: 16px !important;
+              margin-top: 2px; // Center icon vertically
+            }
           }
 
           .shared-chip {
-            background-color: #f44336 !important;
-            color: white !important;
+            background-color: #ffcdd2 !important; // Light red
+            color: #c62828 !important; // Darker red for icon
+            min-width: 26px !important; // Icon-only chip
           }
 
           .copy-chip {
-            background-color: #2196f3 !important;
-            color: white !important;
+            background-color: #bbdefb !important; // Light blue
+            color: #1565c0 !important; // Darker blue for text
           }
         }
 

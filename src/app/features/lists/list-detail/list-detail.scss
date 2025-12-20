@@ -122,48 +122,48 @@
   }
 
   // === MOBILE RESPONSIVE HEADER ===
-  // Two-row header on small screens to prevent mode buttons from being pushed off-screen
+  // Single-row header on small screens with ellipsis for long list names
   @media (max-width: 600px) {
     .app-header {
-      flex-wrap: wrap;
-      min-height: 104px; // Accommodate 2 rows
-      padding: 4px 8px;
-      gap: 4px;
+      min-height: 64px; // Single row height
+      padding: 0 4px;
 
-      // Back button stays in top-left
-      > button:first-child {
-        order: 1;
-      }
-
-      // Header content (icon + name + badge) takes full width on first row
+      // Reduce space between back button and header content
       .header-content {
-        order: 2;
+        margin-left: 0; // Remove gap between back button and icon
         flex: 1 1 auto;
-        max-width: calc(100% - 56px); // Account for back button width
-        margin-left: 8px;
+        min-width: 0; // Allow flexbox to shrink
+
+        .list-icon {
+          margin-right: 8px; // Reduce space between icon and name
+        }
 
         .list-name {
-          max-width: none; // Allow full width on mobile since we have 2 rows
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          max-width: 100%; // Ensure ellipsis works
+          cursor: pointer; // Show it's interactive (tooltip)
+        }
+
+        .collaborator-badge {
+          flex-shrink: 0; // Don't shrink the badge
         }
       }
 
-      // Spacer is hidden on mobile (not needed with flex-wrap)
-      .spacer {
+      // Hide share button on very small screens to save space
+      > button[aria-label="Liste teilen"] {
         display: none;
       }
 
-      // Share button and mode toggle move to second row
-      > button[aria-label="Liste teilen"] {
-        order: 3;
-        margin-left: 48px; // Align with header content (back button width + margin)
-      }
-
       .mode-toggle {
-        order: 4;
-        margin: 0 0 0 auto; // Push to right side
+        flex-shrink: 0; // Keep mode buttons visible
+        margin: 0 4px;
+
+        .mode-button {
+          min-width: 70px; // Slightly smaller on mobile
+          padding: 0 12px;
+        }
       }
     }
   }

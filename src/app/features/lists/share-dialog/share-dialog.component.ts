@@ -164,19 +164,34 @@ export class ShareDialogComponent implements OnInit {
       );
 
       const inviteLink = this.sharingService.getShareableLink(invite.inviteToken);
+      const inviteText = `Ich lade dich zur Liste "${this.data.list.name}" ein: ${inviteLink}`;
 
-      // TODO: Send email with invite link
-      // For now, just show the link and copy to clipboard
-      this.snackBar.open(
-        `Einladung erstellt für ${this.newEmail}. Link wurde in die Zwischenablage kopiert.`,
-        'OK',
-        { duration: 4000 }
-      );
+      // Try to share using Web Share API (works great on iOS) or copy to clipboard
+      const shared = await this.shareOrCopy(inviteText, inviteLink);
 
-      // Copy to clipboard for now (until email service is implemented)
-      navigator.clipboard.writeText(
-        `Ich lade dich zur Liste "${this.data.list.name}" ein: ${inviteLink}`
-      );
+      if (shared) {
+        this.snackBar.open(
+          `Einladung erstellt für ${this.newEmail}`,
+          'OK',
+          { duration: 3000 }
+        );
+      } else {
+        // Fallback: Show link in snackbar that stays open until user closes it
+        this.snackBar.open(
+          `Link: ${inviteLink}`,
+          'Schließen',
+          {
+            duration: undefined, // Stays open until user clicks "Schließen"
+            panelClass: 'share-link-snackbar'
+          }
+        );
+
+        // Try to copy automatically in background
+        setTimeout(() => {
+          const copied = this.copyToClipboardFallback(inviteText);
+          console.log(copied ? '✅ Link copied to clipboard' : '⚠️ Could not auto-copy, please copy from banner');
+        }, 100);
+      }
 
       // Clear input
       this.newEmail = '';
@@ -257,6 +272,79 @@ export class ShareDialogComponent implements OnInit {
     } catch (error: any) {
       console.error('Failed to leave shared list:', error);
       this.snackBar.open('Fehler beim Verlassen der Liste', 'OK', { duration: 3000 });
+    }
+  }
+
+  /**
+   * Share using Web Share API (iOS) or copy to clipboard (Desktop)
+   * Returns true if shared/copied successfully, false if user needs to manually copy
+   */
+  private async shareOrCopy(text: string, url: string): Promise<boolean> {
+    // Check if Web Share API is available (iOS, Android, modern browsers)
+    console.log('🔍 Checking Web Share API availability:', !!navigator.share);
+
+    if (navigator.share) {
+      try {
+        console.log('📱 Attempting to open share dialog...');
+        await navigator.share({
+          title: 'ShopLisl Einladung',
+          text: text,
+          url: url
+        });
+        console.log('✅ Share completed successfully');
+        return true; // User completed share
+      } catch (error: any) {
+        // User cancelled share dialog or error occurred
+        if (error.name === 'AbortError') {
+          console.log('❌ Share cancelled by user');
+        } else {
+          console.error('❌ Share API error:', error.name, error.message);
+        }
+      }
+    } else {
+      console.log('⚠️ Web Share API not available on this device');
+    }
+
+    // Try clipboard API as fallback
+    console.log('📋 Falling back to clipboard copy...');
+    return this.copyToClipboardFallback(text);
+  }
+
+  /**
+   * Fallback clipboard copy using textarea method
+   * Works on iOS Safari when called within user gesture
+   */
+  private copyToClipboardFallback(text: string): boolean {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+
+      // Make it invisible but accessible
+      textArea.style.position = 'fixed';
+      textArea.style.top = '0';
+      textArea.style.left = '-999999px';
+      textArea.style.width = '1px';
+      textArea.style.height = '1px';
+      textArea.setAttribute('readonly', '');
+
+      document.body.appendChild(textArea);
+
+      // Select text
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange(0, text.length);
+
+      // Copy
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        console.log('Text copied to clipboard using fallback method');
+      }
+      return successful;
+    } catch (error) {
+      console.error('Fallback copy failed:', error);
+      return false;
     }
   }
 
