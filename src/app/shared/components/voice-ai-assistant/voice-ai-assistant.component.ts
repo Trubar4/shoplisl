@@ -971,7 +971,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     // Show API key tip dialog if:
     // 1. No API key is configured
     // 2. User is selecting a list (about to create an article)
-    if (!this.aiService.hasApiKey() && pendingAction.type === 'select_list') {
+    if (!this.aiService.hasApiKey() && (pendingAction as any).type === 'select_list') {
       const dialogRef = this.dialog.open(ApiKeyTipDialogComponent, {
         width: '400px',
         disableClose: true // User must click OK
