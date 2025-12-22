@@ -22,6 +22,7 @@ export class HelpDetailComponent implements OnInit, AfterViewInit {
 
   topic: HelpTopic | undefined;
   currentStep = 0;
+  fullscreenImage: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -78,5 +79,13 @@ export class HelpDetailComponent implements OnInit, AfterViewInit {
     // Handle missing images gracefully
     const img = event.target as HTMLImageElement;
     img.style.display = 'none';
+  }
+
+  openFullscreen(imagePath: string): void {
+    this.fullscreenImage = imagePath;
+  }
+
+  closeFullscreen(): void {
+    this.fullscreenImage = null;
   }
 }

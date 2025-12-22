@@ -16,7 +16,7 @@
         @for (step of topic.steps; track $index) {
           <div class="carousel-slide">
             <!-- Screenshot image -->
-            <div class="image-container">
+            <div class="image-container" (click)="openFullscreen(step.image)">
               <img
                 [src]="step.image"
                 [alt]="'Screenshot Schritt ' + ($index + 1)"
@@ -55,6 +55,21 @@
     <div class="error-message">
       <mat-icon>error_outline</mat-icon>
       <p>Hilfe-Thema nicht gefunden</p>
+    </div>
+  }
+
+  <!-- Fullscreen image overlay -->
+  @if (fullscreenImage) {
+    <div class="fullscreen-overlay" (click)="closeFullscreen()">
+      <div class="fullscreen-close-hint">
+        <mat-icon>close</mat-icon>
+        <span>Tippen zum Schließen</span>
+      </div>
+      <img
+        [src]="fullscreenImage"
+        alt="Fullscreen Screenshot"
+        class="fullscreen-image"
+      />
     </div>
   }
 </div>
