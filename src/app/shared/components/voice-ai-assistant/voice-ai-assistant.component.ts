@@ -177,6 +177,25 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.chatPersistence.initializeWithContext();
     // FIXED: Ensure initial context sync
     this.syncContextBidirectional();
+
+    // Add API key setup instructions if no key is configured
+    if (!this.aiService.hasApiKey()) {
+      const apiKeyMessage =
+        '<strong>Für vollständige AI Funktionen empfehle ich die Groq API einzurichten.</strong><br><br>' +
+        '<strong>API-Schlüssel einrichten:</strong><br>' +
+        '1. Besuche console.groq.com<br>' +
+        '2. Erstelle einen kostenlosen Account<br>' +
+        '3. Generiere einen API-Schlüssel (beginnt mit "gsk_")<br>' +
+        '4. Schreibe "Set api key: gsk_..." hier in den Chat und clicke auf senden. Ich setze den Schlüssel für dich im lokalen Speicher. Möchtest du ShopLisl auch auf anderen Geräten nutzen, wiederhole dort den Schritt.';
+
+      // Only add if chat doesn't already contain this message
+      const messages = this.chatPersistence.getMessages();
+      const hasApiKeyMessage = messages.some(m => m.text.includes('Groq API einzurichten'));
+
+      if (!hasApiKeyMessage) {
+        this.chatPersistence.addMessage(apiKeyMessage, 'system');
+      }
+    }
   }
 
   private setupMessageScrolling(): void {

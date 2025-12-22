@@ -106,8 +106,9 @@ export class ArticleListComponent {
     if (this.searchQuery) {
       return `Kein Artikel gefunden für "${this.searchQuery}"`;
     }
-    return this.mode === 'shopping'
-      ? 'Wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen'
-      : 'Erstelle neue Artikel oder ändere den Filter';
+    if (this.mode === 'shopping') {
+      return 'Tippe ins Suchfeld, um vorhandene Artikel zu nutzen oder neue anzulegen oder wechsle in den Bearbeiten-Modus um Artikel hinzuzufügen und die Listendetails zu bearbeiten.\n\nUnter dem Profil-Symbol rechts unten befindet sich das Hilfe Menü für mehr Details.';
+    }
+    return 'Tippe ins Suchfeld, um vorhandene Artikel zu nutzen oder neue anzulegen.\nÄndere den Filter mit dem schwebenden Knopf rechts unten.\n\nMit Bearbeiten kannst du die Liste umbenennen, die Farbe wechseln oder das Icon ändern.\nMit Abteilungen kannst du die Reihenfolge der Abteilungen im Geschäft nach deinem Gehweg sortierten (zB Obst kommt vor Brot etc.).\nUnter dem Profil-Symbol rechts unten befindet sich das Hilfe Menü für mehr Details.';
   }
 }
