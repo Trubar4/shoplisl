@@ -312,7 +312,7 @@
   // === FAB SORT MENU ===
   .fab-container {
     position: fixed;
-    bottom: 120px;
+    bottom: 150px;
     right: 24px;
     z-index: 9999;
 
@@ -447,7 +447,7 @@
   // Mobile responsive adjustments for FAB
   @media (max-width: 768px) {
     .fab-container {
-      bottom: 120px;
+      bottom: 150px;
       right: 20px;
 
       .fab-menu .fab-option {
@@ -467,7 +467,7 @@
 
   @media (max-width: 480px) {
     .fab-container {
-      bottom: 120px;
+      bottom: 150px;
       right: 16px;
 
       .fab-menu .fab-option {

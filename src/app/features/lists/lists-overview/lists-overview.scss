@@ -497,7 +497,7 @@
 // === FAB STYLING (adapted from list-detail) ===
 .fab-container {
   position: fixed;
-  bottom: 120px;
+  bottom: 150px;
   right: 24px;
   z-index: 9999;
   
@@ -631,17 +631,17 @@
 
 // Position FAB above swipe hint footer when it exists
 .swipe-hint-footer ~ .fab-container {
-  bottom: calc(60px + 60px); // 60px base + 60px footer height
+  bottom: calc(90px + 60px); // 90px base + 60px footer height
 
-  @supports (bottom: calc(120px + env(safe-area-inset-bottom))) {
-    bottom: calc(120px + env(safe-area-inset-bottom));
+  @supports (bottom: calc(150px + env(safe-area-inset-bottom))) {
+    bottom: calc(150px + env(safe-area-inset-bottom));
   }
 }
 
 // Mobile responsive adjustments for FAB
 @media (max-width: 768px) {
   .fab-container {
-    bottom: 120px;
+    bottom: 150px;
     right: 20px;
     
     .fab-menu .fab-option {
@@ -659,17 +659,17 @@
   }
   
   .swipe-hint-footer ~ .fab-container {
-    bottom: calc(60px + 55px);
+    bottom: calc(90px + 55px);
 
-    @supports (bottom: calc(115px + env(safe-area-inset-bottom))) {
-      bottom: calc(115px + env(safe-area-inset-bottom));
+    @supports (bottom: calc(145px + env(safe-area-inset-bottom))) {
+      bottom: calc(145px + env(safe-area-inset-bottom));
     }
   }
 }
 
 @media (max-width: 480px) {
   .fab-container {
-    bottom: 120px;
+    bottom: 150px;
     right: 16px;
     
     .fab-menu .fab-option {
@@ -689,10 +689,10 @@
   }
   
   .swipe-hint-footer ~ .fab-container {
-    bottom: calc(120px + 60px); // 120px base + 60px footer height
+    bottom: calc(150px + 60px); // 150px base + 60px footer height
 
-    @supports (bottom: calc(180px + env(safe-area-inset-bottom))) {
-      bottom: calc(180px + env(safe-area-inset-bottom));
+    @supports (bottom: calc(210px + env(safe-area-inset-bottom))) {
+      bottom: calc(210px + env(safe-area-inset-bottom));
     }
   }
 }
