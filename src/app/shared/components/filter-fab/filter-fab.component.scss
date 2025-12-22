@@ -4,7 +4,7 @@
   
 .fab-container {
 position: fixed;
-bottom: 93px;
+bottom: 120px;
 right: 24px;
 z-index: 9999;
 
@@ -139,6 +139,6 @@ z-index: 9999;
 // Safe area adjustments
 @supports(padding-bottom: env(safe-area-inset-bottom)) {
 .fab-container {
-    bottom: calc(93px + env(safe-area-inset-bottom));
+    bottom: calc(120px + env(safe-area-inset-bottom));
 }
 }
