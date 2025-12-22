@@ -211,16 +211,6 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     return `/icons/${iconFilename}`;
   }
 
-  get hasApiKey(): boolean {
-    const hasKey = this.aiService.hasApiKey();
-    console.log('🔑 ArticleForm hasApiKey check:', {
-      hasKey,
-      isEditMode: this.isEditMode,
-      shouldShowBanner: !this.isEditMode && !hasKey
-    });
-    return hasKey;
-  }
-
   onSubmit(): void {
     if (!this.formData.name.trim()) {
       this.snackBar.open('Name ist erforderlich', 'OK', { duration: 3000 });

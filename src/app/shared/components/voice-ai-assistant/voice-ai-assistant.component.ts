@@ -40,6 +40,7 @@ import { VoiceInputService } from './services/voice-input.service';
 import { VoiceOutputService } from './services/voice-output.service';
 import { ChatUIService } from './services/chat-ui.service';
 import { DisambiguationUIService } from './services/disambiguation-ui.service';
+import { ApiKeyTipDialogComponent } from '../api-key-tip-dialog/api-key-tip-dialog.component';
 
 interface ChatMessage {
   text: string;
@@ -951,22 +952,33 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     });
   }
 
-  selectDisambiguationOption(option: any): void {
+  async selectDisambiguationOption(option: any): Promise<void> {
     console.log('🎯 Disambiguation option selected:', option);
-  
+
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) {
       console.error('🎯 No disambiguation available!');
       return;
     }
-  
+
     const pendingAction = disambiguation.pendingAction;
-    
+
     if (option.type === 'skip') {
       this.handleSkipArticle(pendingAction, option);
       return;
     }
-    
+
+    // Show API key tip dialog if:
+    // 1. No API key is configured
+    // 2. User is selecting a list (about to create an article)
+    if (!this.aiService.hasApiKey() && pendingAction.type === 'select_list') {
+      const dialogRef = this.dialog.open(ApiKeyTipDialogComponent, {
+        width: '400px',
+        disableClose: true // User must click OK
+      });
+      await dialogRef.afterClosed().toPromise();
+    }
+
     this.chatPersistence.setDisambiguation(null);
     
     const choiceText = this.generateChoiceText(option, pendingAction);
