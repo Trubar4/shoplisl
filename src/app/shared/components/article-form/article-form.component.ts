@@ -212,7 +212,13 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
   }
 
   get hasApiKey(): boolean {
-    return this.aiService.hasApiKey();
+    const hasKey = this.aiService.hasApiKey();
+    console.log('🔑 ArticleForm hasApiKey check:', {
+      hasKey,
+      isEditMode: this.isEditMode,
+      shouldShowBanner: !this.isEditMode && !hasKey
+    });
+    return hasKey;
   }
 
   onSubmit(): void {
