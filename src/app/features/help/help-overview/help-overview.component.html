@@ -9,6 +9,12 @@
 
   <!-- Help topics list -->
   <div class="help-content">
+    <!-- Platform info banner -->
+    <div class="platform-info">
+      <mat-icon>devices</mat-icon>
+      <p>ShopLisl läuft in jedem gängigen Browser auf PCs, Notebooks und Smartphones.</p>
+    </div>
+
     <mat-nav-list>
       @for (topic of topics; track topic.id) {
         <mat-list-item (click)="onTopicClick(topic.id)" class="help-topic-item">

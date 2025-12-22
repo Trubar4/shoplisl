@@ -22,6 +22,33 @@ mat-toolbar {
   padding-bottom: 80px; // Space for bottom navigation
 }
 
+.platform-info {
+  background-color: #e3f2fd;
+  border-left: 4px solid #1a9edb;
+  margin: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  mat-icon {
+    color: #1a9edb;
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+
+  p {
+    margin: 0;
+    color: #1565c0;
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 500;
+  }
+}
+
 .help-topic-item {
   background-color: white;
   margin: 8px 16px;
