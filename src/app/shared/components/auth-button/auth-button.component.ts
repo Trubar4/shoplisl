@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -64,6 +65,11 @@ import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../../s
           <div class="user-email">{{ (user$ | async)?.email }}</div>
         </div>
         <mat-divider></mat-divider>
+        <button mat-menu-item (click)="openHelp()">
+          <mat-icon>help_outline</mat-icon>
+          <span>Hilfe/Tipps</span>
+        </button>
+        <mat-divider></mat-divider>
         <button mat-menu-item (click)="signOut()">
           <mat-icon>logout</mat-icon>
           <span>Sign Out</span>
@@ -127,7 +133,10 @@ export class AuthButtonComponent implements OnInit {
   isAuthenticated$: Observable<boolean>;
   loading$: Observable<boolean>;
 
-  constructor(private store: Store<AppState>) {
+  constructor(
+    private store: Store<AppState>,
+    private router: Router
+  ) {
     this.user$ = this.store.select(selectUser);
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.loading$ = this.store.select(selectAuthLoading);
@@ -141,5 +150,9 @@ export class AuthButtonComponent implements OnInit {
 
   signOut(): void {
     this.store.dispatch(AuthActions.signOut());
+  }
+
+  openHelp(): void {
+    this.router.navigate(['/help']);
   }
 }

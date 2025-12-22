@@ -28,5 +28,14 @@ export const routes: Routes = [
     path: 'invite/:token',
     loadComponent: () => import('./features/lists/accept-invite/accept-invite.component').then(m => m.AcceptInviteComponent),
     runGuardsAndResolvers: 'always' // Always re-run component even on same URL navigation
+  },
+  // Help / Tips routes
+  {
+    path: 'help',
+    loadComponent: () => import('./features/help/help-overview/help-overview.component').then(m => m.HelpOverviewComponent)
+  },
+  {
+    path: 'help/:id',
+    loadComponent: () => import('./features/help/help-detail/help-detail.component').then(m => m.HelpDetailComponent)
   }
 ];

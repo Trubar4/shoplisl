@@ -1,0 +1,22 @@
+<div class="help-overview">
+  <!-- Header with back button -->
+  <mat-toolbar color="primary">
+    <button mat-icon-button (click)="onBack()" aria-label="Zurück">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="toolbar-title">Hilfe & Tipps</span>
+  </mat-toolbar>
+
+  <!-- Help topics list -->
+  <div class="help-content">
+    <mat-nav-list>
+      @for (topic of topics; track topic.id) {
+        <mat-list-item (click)="onTopicClick(topic.id)" class="help-topic-item">
+          <mat-icon matListItemIcon>help_outline</mat-icon>
+          <span matListItemTitle>{{ topic.title }}</span>
+          <mat-icon matListItemMeta>chevron_right</mat-icon>
+        </mat-list-item>
+      }
+    </mat-nav-list>
+  </div>
+</div>

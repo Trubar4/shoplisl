@@ -1,0 +1,62 @@
+<div class="help-detail">
+  <!-- Header with back button and topic title -->
+  <mat-toolbar color="primary">
+    <button mat-icon-button (click)="onBack()" aria-label="Zurück">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="toolbar-title">
+      {{ topic ? 'Hilfe zu ' + topic.title : 'Hilfe' }}
+    </span>
+  </mat-toolbar>
+
+  @if (topic) {
+    <div class="help-content">
+      <!-- Carousel container -->
+      <div class="carousel-container" #carousel>
+        @for (step of topic.steps; track $index) {
+          <div class="carousel-slide">
+            <!-- Screenshot image -->
+            <div class="image-container">
+              <img
+                [src]="step.image"
+                [alt]="'Screenshot Schritt ' + ($index + 1)"
+                (error)="onImageError($event)"
+                class="screenshot"
+              />
+              <!-- Placeholder for missing images -->
+              <div class="image-placeholder">
+                <mat-icon>help_outline</mat-icon>
+                <p>Screenshot wird hier angezeigt</p>
+                <small>{{ step.image }}</small>
+              </div>
+            </div>
+
+            <!-- Explanation text -->
+            <div class="explanation">
+              <p>{{ step.explanation }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Step indicators (bullets) -->
+      @if (topic.steps.length > 1) {
+        <div class="step-indicators">
+          @for (step of topic.steps; track $index) {
+            <button
+              class="step-dot"
+              [class.active]="currentStep === $index"
+              (click)="goToStep($index)"
+              [attr.aria-label]="'Gehe zu Schritt ' + ($index + 1)"
+            ></button>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="error-message">
+      <mat-icon>error_outline</mat-icon>
+      <p>Hilfe-Thema nicht gefunden</p>
+    </div>
+  }
+</div>
