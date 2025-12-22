@@ -23,6 +23,7 @@ import { DataService } from '../../../core/services/data.service';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 import { HistoryService } from '../../../core/services/history.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { AIService } from '../../../core/services/ai';
 import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
 import { DateEditDialogComponent, DateEditDialogData, DateEditDialogResult } from '../date-edit-dialog/date-edit-dialog.component';
@@ -113,7 +114,8 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private store: Store<AppState>,
-    private authService: AuthService
+    private authService: AuthService,
+    private aiService: AIService
   ) {}
 
   ngOnInit(): void {
@@ -207,6 +209,10 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   getDepartmentIconPath(iconFilename: string): string {
     return `/icons/${iconFilename}`;
+  }
+
+  get hasApiKey(): boolean {
+    return this.aiService.hasApiKey();
   }
 
   onSubmit(): void {

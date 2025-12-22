@@ -39,6 +39,38 @@
   }
 }
 
+/* API Key Tip Banner */
+.api-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #e8f4f8;
+  border-left: 4px solid #1a9edb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+
+  mat-icon {
+    color: #1a9edb;
+    flex-shrink: 0;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .tip-text {
+    flex: 1;
+    color: #0d47a1;
+    font-size: 13px;
+    line-height: 1.4;
+
+    strong {
+      font-weight: 600;
+      color: #1565c0;
+    }
+  }
+}
+
 /* Phase 8.2: Read-only section styling */
 .read-only {
   opacity: 0.6;
