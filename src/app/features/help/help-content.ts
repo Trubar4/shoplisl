@@ -13,11 +13,32 @@
  * Example:
  * File location: /public/help/liste-erstellen-1.jpg
  * Path in config: '/help/liste-erstellen-1.jpg'
+ *
+ * TEXT FORMATTING:
+ * You can use HTML formatting in the explanation text:
+ *
+ * 1. Paragraphs / Line breaks:
+ *    explanation: '<p>First paragraph</p><p>Second paragraph</p>'
+ *
+ * 2. Bullet points (unordered list):
+ *    explanation: '<ul><li>First item</li><li>Second item</li></ul>'
+ *
+ * 3. Numbered lists:
+ *    explanation: '<ol><li>Step one</li><li>Step two</li></ol>'
+ *
+ * 4. Bold text (appears in blue):
+ *    explanation: 'This is <strong>important</strong> text'
+ *
+ * 5. Italic text:
+ *    explanation: 'This is <em>emphasized</em> text'
+ *
+ * 6. Combined formatting:
+ *    explanation: '<p>Um eine Liste zu erstellen:</p><ul><li>Tippe auf das <strong>Plus-Symbol</strong></li><li>Gib einen Namen ein</li></ul>'
  */
 
 export interface HelpStep {
   image: string;      // Path to screenshot, e.g., '/help/liste-erstellen-1.jpg'
-  explanation: string; // German explanation text for this step
+  explanation: string; // German explanation text - supports HTML formatting
 }
 
 export interface HelpTopic {
@@ -39,15 +60,15 @@ export const HELP_TOPICS: HelpTopic[] = [
     steps: [
       {
         image: '/help/liste-erstellen-1.jpg',
-        explanation: 'Um eine Liste zu erstellen, tippe auf das Plus-Symbol unten rechts auf dem Listen-Tab.'
+        explanation: '<p>Um eine Liste zu erstellen:</p><ul><li>Öffne den <strong>Listen-Tab</strong></li><li>Tippe auf das <strong>Plus-Symbol</strong> unten rechts</li></ul>'
       },
       {
         image: '/help/liste-erstellen-2.jpg',
-        explanation: 'Gib deiner neuen Liste einen Namen und wähle optional eine Farbe und ein Icon aus.'
+        explanation: '<p>Gib deiner neuen Liste einen Namen und wähle optional:</p><ul><li>Eine Farbe</li><li>Ein Icon</li></ul>'
       },
       {
         image: '/help/liste-erstellen-3.jpg',
-        explanation: 'Bestätige mit "Erstellen". Deine neue Liste erscheint nun in der Übersicht und ist sofort einsatzbereit.'
+        explanation: '<p>Bestätige mit <strong>"Erstellen"</strong>.</p><p>Deine neue Liste erscheint nun in der Übersicht und ist sofort einsatzbereit.</p>'
       }
     ]
   },

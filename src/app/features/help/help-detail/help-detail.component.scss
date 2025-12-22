@@ -115,12 +115,39 @@ mat-toolbar {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
 
+  // Support for HTML formatting
   p {
-    margin: 0;
-    font-size: 16px;
-    line-height: 1.6;
-    color: #333;
+    margin: 0 0 12px 0;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul, ol {
+    margin: 8px 0;
+    padding-left: 24px;
+  }
+
+  li {
+    margin-bottom: 6px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  strong, b {
+    font-weight: 600;
+    color: #1a9edb;
+  }
+
+  em, i {
+    font-style: italic;
   }
 }
 
