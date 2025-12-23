@@ -7,39 +7,74 @@ import {
   getDocs,
   Timestamp,
   collectionGroup,
+  limit,
+  orderBy,
 } from '@angular/fire/firestore';
 import { AnalyticsEventType } from '../models/analytics.model';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, map, of } from 'rxjs';
 
 /**
  * Analytics Aggregation Service
  *
  * Computes analytics metrics from raw event data.
  * Supports client-side aggregation for small datasets.
+ *
+ * CRITICAL: Implements aggressive caching to prevent excessive Firestore reads!
  */
 @Injectable({
   providedIn: 'root',
 })
 export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
+  private cache: OverviewMetrics | null = null;
+  private cacheTimestamp: number = 0;
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
   /**
    * Get overview metrics (Top 5 priority metrics)
+   * WITH AGGRESSIVE CACHING to prevent quota issues
    */
-  getOverviewMetrics(): Observable<OverviewMetrics> {
+  getOverviewMetrics(forceRefresh = false): Observable<OverviewMetrics> {
+    // Return cached data if still valid (unless forced refresh)
+    if (!forceRefresh && this.cache && Date.now() - this.cacheTimestamp < this.CACHE_DURATION) {
+      console.log('📊 Analytics: Returning cached metrics (age: ' +
+        Math.round((Date.now() - this.cacheTimestamp) / 1000) + 's)');
+      return of(this.cache);
+    }
+
+    console.log('📊 Analytics: Fetching fresh metrics from Firestore');
     return from(this.computeOverviewMetrics());
   }
 
   /**
+   * Clear cache (force refresh on next call)
+   */
+  clearCache(): void {
+    console.log('🗑️ Analytics: Cache cleared');
+    this.cache = null;
+    this.cacheTimestamp = 0;
+  }
+
+  /**
    * Compute overview metrics from raw events
+   * OPTIMIZED: Only queries last 30 days + limits results to prevent quota issues
    */
   private async computeOverviewMetrics(): Promise<OverviewMetrics> {
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Query all events (for small datasets, this is fine)
+    // CRITICAL: Limit query to last 30 days and max 10,000 events to prevent quota issues
     const eventsRef = collection(this.firestore, 'analytics/events/items');
-    const eventsSnapshot = await getDocs(eventsRef);
+    const eventsQuery = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
+      limit(10000) // Prevent excessive reads
+    );
+
+    console.log('📊 Analytics: Querying events (last 30 days, max 10k)...');
+    const eventsSnapshot = await getDocs(eventsQuery);
+    console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
 
     const events = eventsSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -100,7 +135,7 @@ export class AnalyticsAggregationService {
           : new Date(e.timestamp),
       }));
 
-    return {
+    const metrics: OverviewMetrics = {
       totalUsers,
       totalLists,
       totalArticles,
@@ -112,19 +147,38 @@ export class AnalyticsAggregationService {
       failedCommands,
       lastUpdated: new Date(),
     };
+
+    // Cache the results
+    this.cache = metrics;
+    this.cacheTimestamp = Date.now();
+    console.log('📊 Analytics: Metrics cached for 5 minutes');
+
+    return metrics;
   }
 
   /**
    * Count total articles across all users
+   * OPTIMIZED: Limits to 10,000 articles to prevent quota issues
    */
   private async countTotalArticles(): Promise<number> {
     try {
-      // Use collection group to query all articles across users
-      const articlesQuery = collectionGroup(this.firestore, 'articles');
+      // CRITICAL: Limit collection group query to prevent excessive reads
+      const articlesQuery = query(
+        collectionGroup(this.firestore, 'articles'),
+        limit(10000) // Prevent quota issues
+      );
+      console.log('📊 Analytics: Counting articles (max 10k)...');
       const articlesSnapshot = await getDocs(articlesQuery);
+      console.log(`📊 Analytics: Found ${articlesSnapshot.size} articles`);
+
+      // If we hit the limit, show a warning
+      if (articlesSnapshot.size >= 10000) {
+        console.warn('⚠️ Analytics: Article count limited to 10,000. Actual count may be higher.');
+      }
+
       return articlesSnapshot.size;
     } catch (error) {
-      console.warn('Failed to count articles, returning 0:', error);
+      console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
       return 0;
     }
   }

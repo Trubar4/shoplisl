@@ -55,11 +55,11 @@ export class AnalyticsDashboardComponent implements OnInit {
   /**
    * Load analytics metrics
    */
-  loadMetrics(): void {
+  loadMetrics(forceRefresh = false): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.analyticsAggregation.getOverviewMetrics().subscribe({
+    this.analyticsAggregation.getOverviewMetrics(forceRefresh).subscribe({
       next: (metrics) => {
         this.metrics.set(metrics);
         this.loading.set(false);
@@ -74,9 +74,11 @@ export class AnalyticsDashboardComponent implements OnInit {
 
   /**
    * Manual refresh (for testing)
+   * Forces fresh data from Firestore, bypassing cache
    */
   refresh(): void {
-    this.loadMetrics();
+    console.log('🔄 Manual refresh triggered - forcing fresh data');
+    this.loadMetrics(true); // Force refresh
   }
 
   /**
