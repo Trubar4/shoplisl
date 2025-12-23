@@ -189,28 +189,29 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
 
   /**
    * Preload user names for display
+   * Optimized: Bulk fetch all users at once for better performance
    */
   private preloadUserNames(userIds: string[]): void {
     const currentUserId = this.authService.getCurrentUserId();
 
-    userIds.forEach(userId => {
-      // Skip current user
-      if (userId === currentUserId) {
-        return;
-      }
+    // Filter out current user and already cached users
+    const usersToFetch = userIds.filter(userId =>
+      userId !== currentUserId && !this.userDisplayNames.has(userId)
+    );
 
-      // Skip if already cached
-      if (this.userDisplayNames.has(userId)) {
-        return;
-      }
+    if (usersToFetch.length === 0) {
+      return;
+    }
 
-      // Fetch and cache the display name
-      this.userProfileService.getUserName(userId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(name => {
-          this.userDisplayNames.set(userId, name);
+    // Bulk fetch all user profiles at once
+    this.userProfileService.getUserProfiles(usersToFetch)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(profileMap => {
+        // Cache all fetched names
+        profileMap.forEach((profile, userId) => {
+          this.userDisplayNames.set(userId, profile.name);
         });
-    });
+      });
   }
 
   /**

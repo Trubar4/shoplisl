@@ -40,6 +40,7 @@ import { ListPickerDialogComponent, ListPickerDialogData, ListPickerDialogResult
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
 import { SharingService } from '../../../core/services/sharing.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfileService } from '../../../core/services/user-profile.service';
 import { AIService } from '../../../core/services/ai';
 import { ApiKeyTipDialogComponent } from '../../../shared/components/api-key-tip-dialog/api-key-tip-dialog.component';
 
@@ -111,6 +112,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly dialog: MatDialog,
     private readonly sharingService: SharingService,
     private readonly authService: AuthService,
+    private readonly userProfileService: UserProfileService,
     private readonly aiService: AIService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
@@ -622,6 +624,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
             const isOwner = user?.id === list.ownerId;
             this.isOwner.set(isOwner);
           });
+
+          // Phase 8: Preload collaborator profiles for faster display
+          // This eagerly fetches user names when entering a shared list
+          if (list.sharedWith && list.sharedWith.length > 0) {
+            this.userProfileService.preloadUserProfiles([
+              list.ownerId,
+              ...list.sharedWith
+            ]);
+          }
         }
 
         if (list?.color) {
