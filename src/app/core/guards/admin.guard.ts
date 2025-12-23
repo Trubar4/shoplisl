@@ -29,15 +29,15 @@ export const adminGuard: CanActivateFn = (route, state) => {
     take(1),
     map(user => {
       if (!user) {
-        // User not authenticated, redirect to login
+        // User not authenticated, redirect to home
         console.warn('Admin access denied: User not authenticated');
-        router.navigate(['/login']);
+        router.navigate(['/']);
         return false;
       }
 
       if (user.id !== ADMIN_USER_ID) {
         // User is authenticated but not admin
-        console.warn(`Admin access denied for user: ${user.email}`);
+        console.warn(`Admin access denied for user: ${user.email} (ID: ${user.id})`);
         router.navigate(['/']);
         return false;
       }
