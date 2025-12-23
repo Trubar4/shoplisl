@@ -18,6 +18,8 @@ import { map, takeUntil } from 'rxjs/operators';
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
 import { ShoppingList, Article, ListItemState } from '../../../../core/models';
 import { HistoryService } from '../../../../core/services/history.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { UserProfileService } from '../../../../core/services/user-profile.service';
 import { selectAllArticles } from '../../../../state/articles/articles.selectors';
 import { selectCompletedArticlesFromList } from '../../../../state/lists/lists.selectors';
 
@@ -57,9 +59,15 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   // === SIGNALS ===
   readonly completedCount = signal<number>(0);
 
+  // === USER DISPLAY NAMES ===
+  // Cache for user display names (userId -> displayName)
+  private userDisplayNames = new Map<string, string>();
+
   constructor(
     private store: Store,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    private authService: AuthService,
+    private userProfileService: UserProfileService
   ) {}
 
   ngOnInit(): void {
@@ -99,6 +107,17 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
     ]).pipe(
       map(([completedStates, articles, searchQuery]) => {
         const articlesMap = new Map(articles.map(a => [a.id, a]));
+
+        // Collect all unique user IDs from completed articles
+        const userIds = new Set<string>();
+        completedStates.forEach(state => {
+          if (state.checkedBy) {
+            userIds.add(state.checkedBy);
+          }
+        });
+
+        // Preload user profiles for all users
+        this.preloadUserNames(Array.from(userIds));
 
         return completedStates
           .map(state => {
@@ -169,10 +188,46 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
+   * Preload user names for display
+   */
+  private preloadUserNames(userIds: string[]): void {
+    const currentUserId = this.authService.getCurrentUserId();
+
+    userIds.forEach(userId => {
+      // Skip current user
+      if (userId === currentUserId) {
+        return;
+      }
+
+      // Skip if already cached
+      if (this.userDisplayNames.has(userId)) {
+        return;
+      }
+
+      // Fetch and cache the display name
+      this.userProfileService.getUserName(userId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(name => {
+          this.userDisplayNames.set(userId, name);
+        });
+    });
+  }
+
+  /**
    * Get display name for user
    */
   getUserDisplayName(userId: string | undefined): string {
-    // For now, always return 'Du' as we're in single-user mode
-    return 'Du';
+    if (!userId) {
+      return 'Du';
+    }
+
+    // Check if it's the current user
+    const currentUserId = this.authService.getCurrentUserId();
+    if (userId === currentUserId) {
+      return 'Du';
+    }
+
+    // Return cached display name or fallback
+    return this.userDisplayNames.get(userId) || 'Lädt...';
   }
 }

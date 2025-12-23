@@ -23,6 +23,7 @@ import { DataService } from '../../../core/services/data.service';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 import { HistoryService } from '../../../core/services/history.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfileService } from '../../../core/services/user-profile.service';
 import { AIService } from '../../../core/services/ai';
 import { DateChipComponent } from '../date-chip/date-chip.component';
 import { CountChipComponent } from '../count-chip/count-chip.component';
@@ -98,6 +99,9 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     numberOfChecks?: number;
   } = {};
 
+  // User display names cache (userId -> displayName)
+  private userDisplayNames = new Map<string, string>();
+
   private destroy$ = new Subject<void>();
 
   commonEmojis = [
@@ -115,6 +119,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private store: Store<AppState>,
     private authService: AuthService,
+    private userProfileService: UserProfileService,
     private aiService: AIService
   ) {}
 
@@ -171,6 +176,15 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
         // Sort by timestamp, most recent first
         this.articleHistory = history.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+        // Preload user names for all users in history
+        const userIds = new Set<string>();
+        this.articleHistory.forEach(event => {
+          if (event.userId) {
+            userIds.add(event.userId);
+          }
+        });
+        this.preloadUserNames(Array.from(userIds));
       });
   }
 
@@ -362,5 +376,49 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
 
   getHistoryPrefix(action: 'checked' | 'unchecked'): string {
     return action === 'checked' ? '−' : '+';
+  }
+
+  /**
+   * Preload user names for display
+   */
+  private preloadUserNames(userIds: string[]): void {
+    const currentUserId = this.authService.getCurrentUserId();
+
+    userIds.forEach(userId => {
+      // Skip current user
+      if (userId === currentUserId) {
+        return;
+      }
+
+      // Skip if already cached
+      if (this.userDisplayNames.has(userId)) {
+        return;
+      }
+
+      // Fetch and cache the display name
+      this.userProfileService.getUserName(userId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(name => {
+          this.userDisplayNames.set(userId, name);
+        });
+    });
+  }
+
+  /**
+   * Get display name for user in history
+   */
+  getUserDisplayName(userId: string | undefined): string {
+    if (!userId) {
+      return 'Du';
+    }
+
+    // Check if it's the current user
+    const currentUserId = this.authService.getCurrentUserId();
+    if (userId === currentUserId) {
+      return 'Du';
+    }
+
+    // Return cached display name or fallback
+    return this.userDisplayNames.get(userId) || 'Lädt...';
   }
 }
