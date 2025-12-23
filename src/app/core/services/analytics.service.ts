@@ -10,7 +10,6 @@ import {
   AnalyticsEvent,
   AnalyticsEventType,
 } from '../models/analytics.model';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * AnalyticsService
@@ -60,6 +59,17 @@ export class AnalyticsService {
   }
 
   /**
+   * Generate UUID v4 (without external dependency)
+   */
+  private generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  /**
    * Track an analytics event
    */
   trackEvent(
@@ -73,7 +83,7 @@ export class AnalyticsService {
     }
 
     const event: AnalyticsEvent = {
-      id: uuidv4(),
+      id: this.generateUUID(),
       eventType,
       userId,
       timestamp: new Date(),
@@ -233,7 +243,7 @@ export class AnalyticsService {
    * Generate unique session ID
    */
   private generateSessionId(): string {
-    return `${Date.now()}-${uuidv4()}`;
+    return `${Date.now()}-${this.generateUUID()}`;
   }
 
   /**
