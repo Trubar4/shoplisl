@@ -68,6 +68,9 @@ mat-nav-list {
   cursor: pointer;
   transition: background-color 0.2s ease;
 
+  // Override Material UI default padding to prevent overflow
+  padding: 12px 16px !important;
+
   &:hover {
     background-color: #f0f0f0;
   }
@@ -86,5 +89,10 @@ mat-nav-list {
     // Ensure chevron icon renders properly
     font-family: 'Material Icons';
     font-feature-settings: 'liga' 1;
+  }
+
+  // Ensure the internal content doesn't overflow
+  ::ng-deep .mdc-list-item__content {
+    padding: 0 !important;
   }
 }
