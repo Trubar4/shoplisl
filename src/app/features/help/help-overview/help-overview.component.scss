@@ -2,7 +2,14 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; // Dynamic viewport height for mobile
   background-color: #f5f5f5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000; // In front of tab bar
 }
 
 mat-toolbar {
@@ -19,7 +26,7 @@ mat-toolbar {
 .help-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px; // Space for bottom navigation
+  // No padding-bottom needed - we have full screen height
 }
 
 .platform-info {
@@ -51,7 +58,7 @@ mat-toolbar {
 
 .help-topic-item {
   background-color: white;
-  margin: 8px 16px;
+  margin: 8px 16px 8px 11px; // Reduced right margin from 16px to 11px
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -62,9 +69,17 @@ mat-toolbar {
 
   mat-icon {
     color: #1a9edb;
+    // Ensure Material Icons font is used
+    font-family: 'Material Icons';
+    font-feature-settings: 'liga' 1;
+    -webkit-font-feature-settings: 'liga';
+    -moz-font-feature-settings: 'liga';
   }
 
   mat-icon[matListItemMeta] {
     color: rgba(0, 0, 0, 0.54);
+    // Ensure chevron icon renders properly
+    font-family: 'Material Icons';
+    font-feature-settings: 'liga' 1;
   }
 }

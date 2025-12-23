@@ -14,30 +14,33 @@
       <!-- Carousel container -->
       <div class="carousel-container" #carousel>
         @for (step of topic.steps; track $index) {
+          <!-- Single card containing both image and text -->
           <div class="carousel-slide">
-            <!-- Screenshot image -->
-            <div class="image-container" (click)="openFullscreen(step.image)">
-              <img
-                [src]="step.image"
-                [alt]="'Screenshot Schritt ' + ($index + 1)"
-                (error)="onImageError($event)"
-                class="screenshot"
-              />
-              <!-- Placeholder for missing images -->
-              <div class="image-placeholder">
-                <mat-icon>help_outline</mat-icon>
-                <p>Screenshot wird hier angezeigt</p>
-                <small>{{ step.image }}</small>
+            <div class="help-card">
+              <!-- Screenshot image -->
+              <div class="image-container" (click)="openFullscreen(step.image)">
+                <img
+                  [src]="step.image"
+                  [alt]="'Screenshot Schritt ' + ($index + 1)"
+                  (error)="onImageError($event)"
+                  class="screenshot"
+                />
+                <!-- Placeholder for missing images -->
+                <div class="image-placeholder">
+                  <mat-icon>help_outline</mat-icon>
+                  <p>Screenshot wird hier angezeigt</p>
+                  <small>{{ step.image }}</small>
+                </div>
               </div>
-            </div>
 
-            <!-- Explanation text -->
-            <div class="explanation" [innerHTML]="step.explanation"></div>
+              <!-- Explanation text -->
+              <div class="explanation" [innerHTML]="step.explanation"></div>
+            </div>
           </div>
         }
       </div>
 
-      <!-- Step indicators (bullets) -->
+      <!-- Step indicators (bullets) - sticky to bottom -->
       @if (topic.steps.length > 1) {
         <div class="step-indicators">
           @for (step of topic.steps; track $index) {

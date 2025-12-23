@@ -2,7 +2,14 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; // Dynamic viewport height for mobile
   background-color: #f5f5f5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000; // In front of tab bar
 }
 
 mat-toolbar {
@@ -21,7 +28,8 @@ mat-toolbar {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-bottom: 80px; // Space for bottom navigation
+  position: relative;
+  // No padding-bottom needed - dots are sticky at bottom
 }
 
 .carousel-container {
@@ -50,31 +58,39 @@ mat-toolbar {
   display: flex;
   flex-direction: column;
   padding: 16px;
+  padding-bottom: 70px; // Space for sticky pagination dots
   box-sizing: border-box;
   overflow: hidden; // Prevent overflow from slide
 }
 
+// Single card containing image and text
+.help-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
 .image-container {
   position: relative;
-  flex: 1 1 50%; // Grow and shrink, but start at 50% of available space
-  min-height: 50%; // Ensure at least 50% of vertical space
+  flex: 0 0 65%; // Fixed at 65% of card height
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: white;
-  border-radius: 12px;
-  margin-bottom: 16px;
+  background-color: #fafafa;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.2s ease;
 
   &:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
   }
 
   &:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
   }
 
   .screenshot {
@@ -124,16 +140,13 @@ mat-toolbar {
 }
 
 .explanation {
-  flex: 0 1 auto; // Allow shrinking but don't grow beyond content
+  flex: 0 0 35%; // Fixed at 35% of card height
   background-color: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  font-size: 16px;
-  line-height: 1.6;
+  padding: 16px 20px;
+  font-size: 15px;
+  line-height: 1.5;
   color: #333;
   overflow-y: auto; // Enable vertical scrolling
-  max-height: 45%; // Maximum height to ensure image gets at least 50%
 
   // Custom scrollbar styling
   &::-webkit-scrollbar {
@@ -191,11 +204,16 @@ mat-toolbar {
 }
 
 .step-indicators {
+  position: sticky;
+  bottom: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 16px;
   gap: 8px;
+  background-color: #f5f5f5;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 .step-dot {
