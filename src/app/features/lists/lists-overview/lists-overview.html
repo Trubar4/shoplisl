@@ -29,20 +29,29 @@
 
   <!-- Lists -->
   <div class="lists-container" #listsContainer>
-    <div class="lists-list">
-      <div 
-        *ngFor="let list of lists$ | async" 
+    <!-- Empty state - Show at top when no lists -->
+    <div class="empty-state" *ngIf="(lists$ | async)?.length === 0">
+      <mat-icon class="empty-icon">list</mat-icon>
+      <h3>Keine Listen vorhanden</h3>
+      <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
+      <p class="help-hint">Unter dem Profil-Symbol rechts unten befindet sich das Hilfe Menü für mehr Details.</p>
+    </div>
+
+    <!-- Lists list - Only show when lists exist -->
+    <div class="lists-list" *ngIf="(lists$ | async)?.length! > 0">
+      <div
+        *ngFor="let list of lists$ | async"
         class="list-item-container"
         [attr.data-list-id]="list.id">
-        
+
         <!-- Delete Indicator (shown during swipe) -->
         <div class="delete-indicator">
           <mat-icon>delete</mat-icon>
           <span>Löschen</span>
         </div>
-        
+
         <!-- Main List Item -->
-        <div 
+        <div
           class="list-item"
           [ngClass]="'color-' + getListColorClass(list)"
           [style.border-left]="'4px solid ' + (list.color || '#757575')"
@@ -51,12 +60,12 @@
           (touchmove)="onTouchMove($event, list.id)"
           (touchend)="onTouchEnd($event, list.id)"
           (mousedown)="onMouseDown($event, list.id)">
-          
+
           <!-- List Icon -->
           <div class="list-icon">
             {{ list.icon || '📋' }}
           </div>
-          
+
           <!-- List Content -->
           <div class="list-content">
             <div class="list-header">
@@ -80,36 +89,28 @@
               {{ getListInfoText(list) }}
             </div>
           </div>
-          
+
           <!-- Item count badge with check mark for completed lists -->
-          <div class="item-count" 
+          <div class="item-count"
                *ngIf="shouldShowBadge(list)"
                [style.background-color]="list.color || '#757575'"
                [class.completed]="getBadgeContent(list).isCompleted">
-            
+
             <!-- Check icon for completed lists -->
             <mat-icon *ngIf="getBadgeContent(list).isCompleted" class="check-icon">
               check
             </mat-icon>
-            
+
             <!-- Active count for lists with pending items -->
             <span *ngIf="!getBadgeContent(list).isCompleted">
               {{ getBadgeContent(list).text }}
             </span>
           </div>
-          
+
           <!-- Navigation arrow -->
           <mat-icon class="nav-arrow">chevron_right</mat-icon>
         </div>
       </div>
-    </div>
-
-    <!-- Empty state -->
-    <div class="empty-state" *ngIf="(lists$ | async)?.length === 0">
-      <mat-icon class="empty-icon">list</mat-icon>
-      <h3>Keine Listen vorhanden</h3>
-      <p>Tippe auf das + um deine erste Liste hinzuzufügen</p>
-      <p class="swipe-hint">💡 Tipp: Wische nach links um Listen zu löschen</p>
     </div>
   </div>
 

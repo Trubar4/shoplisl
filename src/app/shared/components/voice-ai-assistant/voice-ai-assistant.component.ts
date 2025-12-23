@@ -40,6 +40,7 @@ import { VoiceInputService } from './services/voice-input.service';
 import { VoiceOutputService } from './services/voice-output.service';
 import { ChatUIService } from './services/chat-ui.service';
 import { DisambiguationUIService } from './services/disambiguation-ui.service';
+import { ApiKeyTipDialogComponent } from '../api-key-tip-dialog/api-key-tip-dialog.component';
 
 interface ChatMessage {
   text: string;
@@ -177,6 +178,25 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     this.chatPersistence.initializeWithContext();
     // FIXED: Ensure initial context sync
     this.syncContextBidirectional();
+
+    // Add API key setup instructions if no key is configured
+    if (!this.aiService.hasApiKey()) {
+      const apiKeyMessage =
+        '<strong>Für vollständige AI Funktionen empfehle ich die Groq API einzurichten.</strong><br><br>' +
+        '<strong>API-Schlüssel einrichten:</strong><br>' +
+        '1. Besuche console.groq.com<br>' +
+        '2. Erstelle einen kostenlosen Account<br>' +
+        '3. Generiere einen API-Schlüssel (beginnt mit "gsk_")<br>' +
+        '4. Schreibe "Set api key: gsk_..." hier in den Chat und clicke auf senden. Ich setze den Schlüssel für dich im lokalen Speicher. Möchtest du ShopLisl auch auf anderen Geräten nutzen, wiederhole dort den Schritt.';
+
+      // Only add if chat doesn't already contain this message
+      const messages = this.chatPersistence.getMessages();
+      const hasApiKeyMessage = messages.some(m => m.text.includes('Groq API einzurichten'));
+
+      if (!hasApiKeyMessage) {
+        this.chatPersistence.addMessage(apiKeyMessage, 'system');
+      }
+    }
   }
 
   private setupMessageScrolling(): void {
@@ -932,22 +952,33 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     });
   }
 
-  selectDisambiguationOption(option: any): void {
+  async selectDisambiguationOption(option: any): Promise<void> {
     console.log('🎯 Disambiguation option selected:', option);
-  
+
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) {
       console.error('🎯 No disambiguation available!');
       return;
     }
-  
+
     const pendingAction = disambiguation.pendingAction;
-    
+
     if (option.type === 'skip') {
       this.handleSkipArticle(pendingAction, option);
       return;
     }
-    
+
+    // Show API key tip dialog if:
+    // 1. No API key is configured
+    // 2. User is selecting a list (about to create an article)
+    if (!this.aiService.hasApiKey() && (pendingAction as any).type === 'select_list') {
+      const dialogRef = this.dialog.open(ApiKeyTipDialogComponent, {
+        width: '400px',
+        disableClose: true // User must click OK
+      });
+      await dialogRef.afterClosed().toPromise();
+    }
+
     this.chatPersistence.setDisambiguation(null);
     
     const choiceText = this.generateChoiceText(option, pendingAction);

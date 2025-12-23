@@ -40,6 +40,8 @@ import { ListPickerDialogComponent, ListPickerDialogData, ListPickerDialogResult
 import { ShareDialogComponent, ShareDialogData } from '../share-dialog/share-dialog.component';
 import { SharingService } from '../../../core/services/sharing.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { AIService } from '../../../core/services/ai';
+import { ApiKeyTipDialogComponent } from '../../../shared/components/api-key-tip-dialog/api-key-tip-dialog.component';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -108,7 +110,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     public readonly selectionService: ArticleSelectionService,
     private readonly dialog: MatDialog,
     private readonly sharingService: SharingService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly aiService: AIService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -505,6 +508,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       if (option.type === 'existing' && option.article) {
         await this.addExistingArticleToList(option.article);
       } else if (option.type === 'new') {
+        // Show API key tip dialog if no API key is configured
+        if (!this.aiService.hasApiKey()) {
+          this.isDialogOpen.set(true);
+          const dialogRef = this.dialog.open(ApiKeyTipDialogComponent, {
+            width: '400px',
+            disableClose: true // User must click OK
+          });
+          await dialogRef.afterClosed().toPromise();
+          this.isDialogOpen.set(false);
+        }
+
         await this.createAndAddNewArticle(query, option);
       }
       this.clearSearch();
