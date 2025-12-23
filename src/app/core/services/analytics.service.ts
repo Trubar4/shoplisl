@@ -29,11 +29,13 @@ export class AnalyticsService {
   private firestore = inject(Firestore);
 
   private eventBuffer: AnalyticsEvent[] = [];
-  private readonly BATCH_SIZE = 10; // Write after 10 events
-  private readonly FLUSH_INTERVAL = 30000; // Flush every 30 seconds
+  private readonly BATCH_SIZE = 50; // Write after 50 events (was 10)
+  private readonly FLUSH_INTERVAL = 300000; // Flush every 5 minutes (was 30 seconds)
   private flushTimer: any;
   private sessionId: string;
   private sessionStartTime: Date;
+  private isWriting = false; // Prevent concurrent writes
+  private writeCount = 0; // Track write operations
 
   constructor() {
     this.sessionId = this.generateSessionId();
@@ -80,9 +82,11 @@ export class AnalyticsService {
     };
 
     this.eventBuffer.push(event);
+    console.log(`📈 Analytics: Event tracked (${eventType}) - Buffer: ${this.eventBuffer.length}/${this.BATCH_SIZE}`);
 
     // Flush if buffer is full
     if (this.eventBuffer.length >= this.BATCH_SIZE) {
+      console.log(`🚀 Analytics: Buffer full, triggering flush`);
       this.flush();
     }
   }
@@ -143,15 +147,31 @@ export class AnalyticsService {
       return;
     }
 
+    // Prevent concurrent writes
+    if (this.isWriting) {
+      console.log('⏳ Analytics write already in progress, skipping flush');
+      return;
+    }
+
+    this.isWriting = true;
     const eventsToWrite = [...this.eventBuffer];
     this.eventBuffer = [];
 
     try {
+      this.writeCount++;
+      console.log(`📊 Analytics: Writing ${eventsToWrite.length} events (write #${this.writeCount})`);
       await this.writeEventsBatch(eventsToWrite);
+      console.log(`✅ Analytics: Write #${this.writeCount} successful`);
     } catch (error) {
-      console.error('Failed to write analytics events:', error);
-      // Re-add events to buffer for retry
-      this.eventBuffer.unshift(...eventsToWrite);
+      console.error('❌ Analytics: Failed to write events:', error);
+      // Re-add events to buffer for retry (max 100 events to prevent memory issues)
+      if (this.eventBuffer.length < 100) {
+        this.eventBuffer.unshift(...eventsToWrite);
+      } else {
+        console.warn('⚠️ Analytics: Buffer full, dropping events to prevent memory issues');
+      }
+    } finally {
+      this.isWriting = false;
     }
   }
 
