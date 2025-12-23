@@ -25,6 +25,9 @@ import { SmartSuggestionsService } from './smart-suggestions.service';
 import { ConversationContext } from '../../models';
 import { AIOrchestrationService } from './orchestration.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
+import { AnalyticsService } from '../analytics.service';
+import { AnalyticsEventType } from '../../models/analytics.model';
+import { AuthService } from '../auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -46,7 +49,9 @@ export class AIService {
     private continuationHandling: ContinuationHandlingService,
     private smartSuggestions: SmartSuggestionsService,
     private circuitBreaker: CircuitBreakerService,
-    private orchestration: AIOrchestrationService
+    private orchestration: AIOrchestrationService,
+    private analyticsService: AnalyticsService,
+    private authService: AuthService
   ) {
     this.validateServiceDependencies();
     this.startHealthMonitoring();
@@ -91,10 +96,54 @@ export class AIService {
     console.log('🗣️ EXECUTING COMMAND:', input);
     console.log('🗣️ Current context:', this.getConversationContext());
 
+    const startTime = Date.now();
+    const userId = this.authService.getCurrentUserId();
+
     try {
-      return await this.routeCommand(input.trim());
+      const result = await this.routeCommand(input.trim());
+      const responseTime = Date.now() - startTime;
+
+      // Track AI command execution
+      if (userId) {
+        const commandType = this.detectCommandType(input);
+
+        this.analyticsService.trackEvent(
+          userId,
+          result.success ? AnalyticsEventType.AI_COMMAND_EXECUTED : AnalyticsEventType.AI_COMMAND_FAILED,
+          {
+            inputText: input.substring(0, 200), // Limit length to 200 chars
+            commandType,
+            success: result.success,
+            responseTime,
+            hasDisambiguation: result.disambiguationOptions !== undefined,
+            hasPendingAction: result.pendingAction !== undefined
+          }
+        );
+      }
+
+      return result;
     } catch (error) {
-      return this.handleCommandError(error, input);
+      const responseTime = Date.now() - startTime;
+      const result = this.handleCommandError(error, input);
+
+      // Track AI command failure
+      if (userId) {
+        const commandType = this.detectCommandType(input);
+
+        this.analyticsService.trackEvent(
+          userId,
+          AnalyticsEventType.AI_COMMAND_FAILED,
+          {
+            inputText: input.substring(0, 200),
+            commandType,
+            success: false,
+            responseTime,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error'
+          }
+        );
+      }
+
+      return result;
     }
   }
 
@@ -223,6 +272,29 @@ export class AIService {
 
   private isContextualCommand(input: string): boolean {
     return this.continuationHandling.shouldProcessAsContextual(input);
+  }
+
+  /**
+   * Detect command type for analytics tracking
+   */
+  private detectCommandType(input: string): string {
+    if (this.isRecipeCommand(input)) return 'recipe';
+    if (this.isPlusCommand(input)) return 'plus_prefix';
+    if (this.isMultiItemCommand(input)) return 'multi_item';
+    if (this.isContinuationCommand(input)) return 'continuation';
+    if (this.isApiKeyCommand(input)) return 'api_key';
+    if (this.isHelpCommand(input)) return 'help';
+    if (this.isTestCommand(input)) return 'test';
+    if (this.isShowListsCommand(input)) return 'show_lists';
+    if (this.isNegativeResponse(input)) return 'negative_response';
+    if (this.isContextualCommand(input)) return 'contextual';
+
+    // Try to detect create list command
+    const lower = input.toLowerCase();
+    if (lower.includes('erstelle') && lower.includes('liste')) return 'create_list';
+    if (lower.includes('neue liste')) return 'create_list';
+
+    return 'standard';
   }
 
   // ========================================
