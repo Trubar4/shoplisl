@@ -5,6 +5,7 @@ import { ArticleUploadComponent } from '../../core/services/article-upload.compo
 import { ListUploadComponent } from '../../core/services/list-upload.component';
 import { PerformanceDashboardComponent } from './performance-dashboard/performance-dashboard.component';
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
+import { DebugUserComponent } from './debug-user/debug-user.component';
 import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
@@ -12,6 +13,10 @@ const routes: Routes = [
     path: '',
     redirectTo: 'analytics',
     pathMatch: 'full'
+  },
+  {
+    path: 'debug',
+    component: DebugUserComponent
   },
   {
     path: 'analytics',
@@ -39,7 +44,8 @@ const routes: Routes = [
     ArticleUploadComponent,
     ListUploadComponent,
     PerformanceDashboardComponent,
-    AnalyticsDashboardComponent
+    AnalyticsDashboardComponent,
+    DebugUserComponent
   ]
 })
 export class AdminModule { }
