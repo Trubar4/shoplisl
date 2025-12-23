@@ -14,6 +14,8 @@ import { HistoryService } from './history.service';
 import { AuthService } from './auth.service';
 import { ArticlesRepositoryService } from './articles-repository.service';
 import { CopyArticleDialogComponent, CopyArticleDialogData, CopyArticleDialogResult } from '../../shared/components/copy-article-dialog/copy-article-dialog.component';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsEventType } from '../models/analytics.model';
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +30,8 @@ export class ListsRepositoryService {
     private historyService: HistoryService,
     private authService: AuthService,
     @Inject(forwardRef(() => ArticlesRepositoryService)) private articlesRepository: ArticlesRepositoryService,
-    private injector: Injector
+    private injector: Injector,
+    private analyticsService: AnalyticsService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -66,24 +69,52 @@ export class ListsRepositoryService {
       const currentLists = this.firebaseData.getCurrentLists();
       const updatedLists = [...currentLists, tempList];
       this.firebaseData.updateLocalLists(updatedLists);
-    
+
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
         await this.firebaseData.createListInFirebase(listData);
       }, `Create list: ${list.name}`);
-    
+
+      // Track list created event
+      this.analyticsService.trackEvent(
+        currentUserId,
+        AnalyticsEventType.LIST_CREATED,
+        {
+          listId: tempId,
+          listName: list.name,
+          isShared: false,
+          offline: true
+        }
+      );
+
       return of(tempList);
     }
 
     return from(this.firebaseData.createListInFirebase(listData)).pipe(
-      map(docId => ({
-        id: docId,
-        ...list,
-        ownerId: currentUserId,             // Phase 8: Include owner in returned list
-        sharedWith: [],                     // Phase 8: Initialize empty shared array
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } as ShoppingList)),
+      map(docId => {
+        const newList = {
+          id: docId,
+          ...list,
+          ownerId: currentUserId,             // Phase 8: Include owner in returned list
+          sharedWith: [],                     // Phase 8: Initialize empty shared array
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as ShoppingList;
+
+        // Track list created event
+        this.analyticsService.trackEvent(
+          currentUserId,
+          AnalyticsEventType.LIST_CREATED,
+          {
+            listId: docId,
+            listName: list.name,
+            isShared: false,
+            offline: false
+          }
+        );
+
+        return newList;
+      }),
       catchError(error => {
         this.logger.error('data', 'Error creating list', error);
         throw error;
@@ -97,21 +128,36 @@ export class ListsRepositoryService {
       updatedAt: Timestamp.now()
     };
 
+    const currentUserId = this.authService.getCurrentUserId();
+
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: List update will be synced when online');
-      
+
       // Update local state immediately
       const currentLists = this.firebaseData.getCurrentLists();
-      const updatedLists = currentLists.map(list => 
+      const updatedLists = currentLists.map(list =>
         list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
       );
       this.firebaseData.updateLocalLists(updatedLists);
-    
+
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
         await this.firebaseData.updateListInFirebase(id, updateData);
       }, `Update list: ${id}`);
-    
+
+      // Track list updated event
+      if (currentUserId) {
+        this.analyticsService.trackEvent(
+          currentUserId,
+          AnalyticsEventType.LIST_UPDATED,
+          {
+            listId: id,
+            updatedFields: Object.keys(updates),
+            offline: true
+          }
+        );
+      }
+
       // Return updated list from local state
       return this.firebaseData.getLists().pipe(
         map(lists => lists.find(l => l.id === id))
@@ -120,6 +166,19 @@ export class ListsRepositoryService {
 
     return from(this.firebaseData.updateListInFirebase(id, updateData)).pipe(
       map(() => {
+        // Track list updated event
+        if (currentUserId) {
+          this.analyticsService.trackEvent(
+            currentUserId,
+            AnalyticsEventType.LIST_UPDATED,
+            {
+              listId: id,
+              updatedFields: Object.keys(updates),
+              offline: false
+            }
+          );
+        }
+
         return this.firebaseData.getLists().pipe(
           map(lists => lists.find(l => l.id === id))
         );
@@ -133,24 +192,60 @@ export class ListsRepositoryService {
   }
 
   deleteList(id: string): Observable<boolean> {
+    const currentUserId = this.authService.getCurrentUserId();
+
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: List deletion will be synced when online');
-      
-      // Remove from local state immediately
+
+      // Get list name before deleting
       const currentLists = this.firebaseData.getCurrentLists();
+      const listToDelete = currentLists.find(l => l.id === id);
+
+      // Remove from local state immediately
       const updatedLists = currentLists.filter(l => l.id !== id);
       this.firebaseData.updateLocalLists(updatedLists);
-    
+
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
         await this.firebaseData.deleteListInFirebase(id);
       }, `Delete list: ${id}`);
-    
+
+      // Track list deleted event
+      if (currentUserId) {
+        this.analyticsService.trackEvent(
+          currentUserId,
+          AnalyticsEventType.LIST_DELETED,
+          {
+            listId: id,
+            listName: listToDelete?.name,
+            offline: true
+          }
+        );
+      }
+
       return of(true);
     }
 
+    // Get list name before deleting (for online case)
+    const currentLists = this.firebaseData.getCurrentLists();
+    const listToDelete = currentLists.find(l => l.id === id);
+
     return from(this.firebaseData.deleteListInFirebase(id)).pipe(
-      map(() => true),
+      map(() => {
+        // Track list deleted event
+        if (currentUserId) {
+          this.analyticsService.trackEvent(
+            currentUserId,
+            AnalyticsEventType.LIST_DELETED,
+            {
+              listId: id,
+              listName: listToDelete?.name,
+              offline: false
+            }
+          );
+        }
+        return true;
+      }),
       catchError(error => {
         this.logger.error('data', 'Error deleting list', error);
         return of(false);
@@ -210,6 +305,24 @@ export class ListsRepositoryService {
         }
 
         this.firebaseData.updateLocalLists(updatedLists);
+
+        // Track article checked/unchecked event
+        if (userId) {
+          const eventType = newAction === 'checked'
+            ? AnalyticsEventType.ARTICLE_CHECKED
+            : AnalyticsEventType.ARTICLE_UNCHECKED;
+
+          this.analyticsService.trackEvent(
+            userId,
+            eventType,
+            {
+              listId,
+              articleId,
+              articleName: list.itemStates[articleId]?.articleName,
+              amount: currentAmount
+            }
+          );
+        }
 
         if (!this.connectionService.isOnline()) {
           // Queue for sync when online
