@@ -38,7 +38,7 @@ Use descriptive, lowercase names with hyphens:
 Based on `/src/app/features/help/help-content.ts`, you need:
 
 ### Liste erstellen
-- `liste-erstellen-1.jpg`
+- `liste-erstellen-1.png`
 - `liste-erstellen-2.jpg`
 - `liste-erstellen-3.jpg`
 
