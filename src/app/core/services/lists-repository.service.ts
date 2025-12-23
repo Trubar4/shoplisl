@@ -172,12 +172,19 @@ export class ListsRepositoryService {
 
         this.logger.debug('data', `TOGGLE: ${articleId} currently ${currentState ? 'CHECKED' : 'UNCHECKED'} -> ${newAction.toUpperCase()}`);
 
+        // Phase 8: Get current user info for history tracking
+        const currentUser = this.authService.getCurrentUserValue();
+        const userId = currentUser?.id;
+        const userName = currentUser?.name;
+
         // Phase 6: Use HistoryService to create updated state with history tracking
         const updatedItemState = this.historyService.createUpdatedItemState(
           list.itemStates[articleId],
           articleId,
           newAction,
-          currentAmount
+          currentAmount,
+          userId,
+          userName
         );
 
         const newItemStates = {
@@ -569,6 +576,11 @@ export class ListsRepositoryService {
       mergeMap(list => {
         if (!list) return of(false);
 
+        // Phase 8: Get current user info for history tracking
+        const currentUser = this.authService.getCurrentUserValue();
+        const userId = currentUser?.id;
+        const userName = currentUser?.name;
+
         // Update item states for all articles with history tracking
         const newItemStates = { ...list.itemStates };
 
@@ -583,7 +595,9 @@ export class ListsRepositoryService {
               newItemStates[articleId],
               articleId,
               'checked',
-              currentAmount
+              currentAmount,
+              userId,
+              userName
             );
           }
         });
