@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000; // In front of tab bar
+  z-index: 1100; // Above tab bar (tab bar is z-index: 1000)
 }
 
 mat-toolbar {
@@ -26,7 +26,12 @@ mat-toolbar {
 .help-content {
   flex: 1;
   overflow-y: auto;
+  padding: 0; // Remove default padding
   // No padding-bottom needed - we have full screen height
+}
+
+mat-nav-list {
+  padding: 0; // Remove default Material UI padding
 }
 
 .platform-info {
@@ -58,7 +63,7 @@ mat-toolbar {
 
 .help-topic-item {
   background-color: white;
-  margin: 8px 16px 8px 11px; // Reduced right margin from 16px to 11px
+  margin: 8px 11px; // Reduced right margin by 5px (was 16px, now 11px)
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
