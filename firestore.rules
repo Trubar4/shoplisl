@@ -168,7 +168,7 @@ service cloud.firestore {
     // ==========================================
 
     // Raw analytics events (short-term storage, 90-day retention)
-    match /analytics/events/{eventId} {
+    match /analytics/events/items/{eventId} {
       allow read: if isAdmin();
       allow write: if isAuthenticated(); // All users can write events
     }
