@@ -47,6 +47,15 @@ export class FirebaseDataService {
   private refreshStatusSubject = new Subject<{ isRefreshing: boolean; message?: string }>();
   public refreshStatus$ = this.refreshStatusSubject.asObservable();
 
+  // Performance: Debounce mergeLists to prevent excessive batch loads
+  private mergeListsTimer: any = null;
+
+  // Performance: Cache loaded article IDs to prevent redundant queries
+  private loadedSharedArticleIds = new Set<string>();
+
+  // Performance: Track article IDs that failed to load (don't retry)
+  private failedArticleIds = new Set<string>();
+
   private articlesUnsubscribe?: () => void;
   private listsUnsubscribe?: () => void;
   private sharedListsUnsubscribe?: () => void;
@@ -358,6 +367,18 @@ export class FirebaseDataService {
    * This is called whenever owned or shared lists update
    */
   private mergeLists(): void {
+    // Performance: Debounce multiple mergeLists calls to prevent excessive batch loads
+    // If multiple listeners fire within 200ms, only run once
+    if (this.mergeListsTimer) {
+      clearTimeout(this.mergeListsTimer);
+    }
+
+    this.mergeListsTimer = setTimeout(() => {
+      this.executeMergeLists();
+    }, 200); // 200ms debounce
+  }
+
+  private executeMergeLists(): void {
     // Combine owned and shared lists
     const allLists = [...this.ownedLists, ...this.sharedLists];
 
@@ -515,6 +536,9 @@ export class FirebaseDataService {
 
     if (listsToProcess.length === 0) {
       this.logger.debug('data', 'No shared lists, skipping article loading');
+      // Clear cache when no shared lists
+      this.loadedSharedArticleIds.clear();
+      this.failedArticleIds.clear();
       return;
     }
 
@@ -529,7 +553,17 @@ export class FirebaseDataService {
       return;
     }
 
-    this.logger.info('data', `Found ${sharedArticleIds.size} unique articles across ${listsToProcess.length} shared lists`);
+    // Performance: Only load articles we haven't loaded yet
+    const articlesToLoad = Array.from(sharedArticleIds).filter(
+      id => !this.loadedSharedArticleIds.has(id) && !this.failedArticleIds.has(id)
+    );
+
+    if (articlesToLoad.length === 0) {
+      this.logger.info('data', `📊 All ${sharedArticleIds.size} shared articles already cached, skipping batch load`);
+      return;
+    }
+
+    this.logger.info('data', `Found ${articlesToLoad.length} NEW articles to load (${sharedArticleIds.size} total, ${this.loadedSharedArticleIds.size} cached)`);
 
     // Phase 8: Collect all possible article owners (list owners + collaborators)
     const possibleOwners = new Set<string>();
@@ -544,20 +578,53 @@ export class FirebaseDataService {
 
     const currentUserId = this.authService.getCurrentUserId();
 
-    this.logger.info('data', `🚀 PERFORMANCE: Batch loading ${sharedArticleIds.size} articles from ${possibleOwners.size} owners`);
+    this.logger.info('data', `🚀 PERFORMANCE: Batch loading ${articlesToLoad.length} articles from ${possibleOwners.size} owners`);
 
     // PERFORMANCE: Load articles in parallel batches using IN queries
-    const loadedSharedArticles = await this.batchLoadArticles(
-      Array.from(sharedArticleIds),
+    const newlyLoadedArticles = await this.batchLoadArticles(
+      articlesToLoad,
       Array.from(possibleOwners),
       currentUserId
     );
 
-    // Phase 8.2: Store shared articles and trigger merge
-    this.sharedArticles = loadedSharedArticles;
+    // Performance: Update cache with successfully loaded article IDs
+    newlyLoadedArticles.forEach(article => {
+      this.loadedSharedArticleIds.add(article.id);
+    });
+
+    // Performance: Track articles that failed to load
+    const loadedIds = new Set(newlyLoadedArticles.map(a => a.id));
+    articlesToLoad.forEach(id => {
+      if (!loadedIds.has(id)) {
+        this.failedArticleIds.add(id);
+      }
+    });
+
+    // Phase 8.2: Merge newly loaded articles with previously cached articles
+    // Keep all previously loaded articles that are still on shared lists
+    const previouslyLoadedArticles = this.sharedArticles.filter(article =>
+      sharedArticleIds.has(article.id)
+    );
+
+    // Performance: Remove articles from cache if they're no longer on shared lists
+    this.sharedArticles.forEach(article => {
+      if (!sharedArticleIds.has(article.id)) {
+        this.loadedSharedArticleIds.delete(article.id);
+        this.failedArticleIds.delete(article.id);
+      }
+    });
+
+    // Performance: Clear failed status if article is being retried (was added back to a list)
+    articlesToLoad.forEach(id => {
+      if (this.failedArticleIds.has(id)) {
+        this.failedArticleIds.delete(id);
+      }
+    });
+
+    this.sharedArticles = [...previouslyLoadedArticles, ...newlyLoadedArticles];
 
     const elapsedTime = Date.now() - startTime;
-    this.logger.info('data', `✅ Loaded ${loadedSharedArticles.length} shared articles in ${elapsedTime}ms (${(elapsedTime / 1000).toFixed(2)}s)`);
+    this.logger.info('data', `✅ Loaded ${newlyLoadedArticles.length} NEW articles in ${elapsedTime}ms (${this.sharedArticles.length} total shared articles)`);
     this.mergeArticles();
   }
 
@@ -753,6 +820,14 @@ export class FirebaseDataService {
     }
     // Phase 8: Cleanup per-list content listeners
     this.cleanupSharedListListeners();
+
+    // Performance: Clear caches on cleanup
+    this.loadedSharedArticleIds.clear();
+    this.failedArticleIds.clear();
+    if (this.mergeListsTimer) {
+      clearTimeout(this.mergeListsTimer);
+      this.mergeListsTimer = null;
+    }
   }
 
   // === PUBLIC API ===
