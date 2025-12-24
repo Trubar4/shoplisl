@@ -81,20 +81,13 @@ export class AnalyticsAggregationService {
       ...doc.data(),
     }));
 
-    // Metric 1: Total users (unique user signups)
-    const signupEvents = events.filter(
-      (e: any) => e.eventType === AnalyticsEventType.USER_SIGNUP
-    );
-    const totalUsers = new Set(signupEvents.map((e: any) => e.userId)).size;
+    // Metric 1: Total users (count actual users in database, not just signup events)
+    const totalUsers = await this.countTotalUsers();
 
-    // Metric 2: Total lists (all list creations)
-    const listCreatedEvents = events.filter(
-      (e: any) => e.eventType === AnalyticsEventType.LIST_CREATED
-    );
-    const totalLists = listCreatedEvents.length;
+    // Metric 2: Total lists (count actual lists in database, not just creation events)
+    const totalLists = await this.countTotalLists();
 
-    // Metric 3: Total articles (need to count from articles collection)
-    // For now, we'll estimate from ARTICLE_CREATED events
+    // Metric 3: Total articles (count actual articles in database)
     const totalArticles = await this.countTotalArticles();
 
     // Metric 4: Active users (users with activity in last 14 days)
@@ -179,6 +172,43 @@ export class AnalyticsAggregationService {
       return articlesSnapshot.size;
     } catch (error) {
       console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Count total users in database
+   */
+  private async countTotalUsers(): Promise<number> {
+    try {
+      // users-v2 is a top-level collection, not a subcollection
+      const usersRef = collection(this.firestore, 'users-v2');
+      const usersQuery = query(usersRef, limit(10000));
+      console.log('📊 Analytics: Counting users...');
+      const usersSnapshot = await getDocs(usersQuery);
+      console.log(`📊 Analytics: Found ${usersSnapshot.size} users`);
+      return usersSnapshot.size;
+    } catch (error) {
+      console.warn('❌ Analytics: Failed to count users, returning 0:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Count total lists in database
+   */
+  private async countTotalLists(): Promise<number> {
+    try {
+      const listsQuery = query(
+        collectionGroup(this.firestore, 'lists'),
+        limit(10000)
+      );
+      console.log('📊 Analytics: Counting lists...');
+      const listsSnapshot = await getDocs(listsQuery);
+      console.log(`📊 Analytics: Found ${listsSnapshot.size} lists`);
+      return listsSnapshot.size;
+    } catch (error) {
+      console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
       return 0;
     }
   }
