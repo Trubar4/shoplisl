@@ -69,7 +69,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'artikel-anlegen',
     title: 'Artikel anlegen',
-    icon: 'grocery',
+    icon: 'add_box',
     steps: [
       {
         image: '/help/artikel-anlegen-1.png',
@@ -107,7 +107,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'pro-tipp-listen-anpassen',
     title: 'Pro-Tipp: Listen anpassen',
-    icon: 'instant_mix',
+    icon: 'tune',
     steps: [
       {
         image: '/help/listen-anpassen-1.png',
@@ -130,7 +130,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'iPhone-pwa',
     title: 'iPhone: ShopLisl als Web App vom Home-Bildschirm nutzen',
-    icon: 'ios',
+    icon: 'install_desktop',
     steps: [
       {
         image: '/help/iphone-pwa-1.png',
