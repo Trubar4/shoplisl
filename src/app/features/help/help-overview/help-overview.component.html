@@ -17,10 +17,10 @@
     </div>
 
     <mat-nav-list>
-      @for (topic of topics; track topic.id) {
+      @for (topic of topics; track topic.id; let i = $index) {
       <mat-list-item (click)="onTopicClick(topic.id)" class="help-topic-item">
-        <mat-icon matListItemIcon>help_outline</mat-icon>
-        <span matListItemTitle>{{ topic.title }}</span>
+        <mat-icon matListItemIcon>{{ topic.icon }}</mat-icon>
+        <span matListItemTitle>{{ i + 1 }}. {{ topic.title }}</span>
         <mat-icon matListItemMeta>chevron_right</mat-icon>
       </mat-list-item>
       }

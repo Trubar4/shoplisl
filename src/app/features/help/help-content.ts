@@ -44,6 +44,7 @@ export interface HelpStep {
 export interface HelpTopic {
   id: string;          // Unique identifier (used in routing)
   title: string;       // Display title (shown in overview and detail)
+  icon: string;        // Material icon name (e.g., 'list', 'grocery', 'smart_toy')
   steps: HelpStep[];   // Array of steps with images and explanations
 }
 
@@ -57,6 +58,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'liste-erstellen',
     title: 'Liste erstellen',
+    icon: 'list',
     steps: [
       {
         image: '/help/liste-erstellen-1.png',
@@ -67,6 +69,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'artikel-anlegen',
     title: 'Artikel anlegen',
+    icon: 'grocery',
     steps: [
       {
         image: '/help/artikel-anlegen-1.png',
@@ -85,6 +88,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'artikel-zur-liste-hinzufuegen',
     title: 'Artikel zu Liste hinzufügen',
+    icon: 'add_shopping_cart',
     steps: [
       {
         image: '/help/artikel-hinzufuegen-1.png',
@@ -103,6 +107,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'pro-tipp-listen-anpassen',
     title: 'Pro-Tipp: Listen anpassen',
+    icon: 'instant_mix',
     steps: [
       {
         image: '/help/listen-anpassen-1.png',
@@ -125,6 +130,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'iPhone-pwa',
     title: 'iPhone: ShopLisl als Web App vom Home-Bildschirm nutzen',
+    icon: 'ios',
     steps: [
       {
         image: '/help/iphone-pwa-1.png',
@@ -147,6 +153,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'Android-pwa',
     title: 'Android: ShopLisl als Web App vom Home-Bildschirm nutzen',
+    icon: 'android',
     steps: [
       {
         image: '/help/android-pwa-1.png',
@@ -165,6 +172,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'artikel-menge-anpassen',
     title: 'Artikel Menge anpassen',
+    icon: '1x_mobiledata_badge',
     steps: [
       {
         image: '/help/menge-anpassen-1.png',
@@ -179,6 +187,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'Liste-Abteilungen-anordnen',
     title: 'Liste Abteilungsreihenfolge an Weg anpassen',
+    icon: 'format_list_numbered_rtl',
     steps: [
       {
         image: '/help/abteilungsreihenfolge-anpassen-1.png',
@@ -193,6 +202,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'artikel-verschieben',
     title: 'Artikel auf andere Liste verschieben',
+    icon: 'folder_match',
     steps: [
       {
         image: '/help/artikel-verschieben-1.png',
@@ -211,6 +221,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'liste-teilen',
     title: 'Liste mit anderen teilen und Teilen beenden',
+    icon: 'ios_share',
     steps: [
       {
         image: '/help/liste-teilen-1.png',
@@ -237,6 +248,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'liste-annehmen',
     title: 'Geteilte Liste annehmen und entfernen',
+    icon: 'check',
     steps: [
       {
         image: '/help/liste-annehmen-1.png',
@@ -259,6 +271,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'AI-Assistant-nutzen',
     title: 'AI Assistant nutzen',
+    icon: 'smart_toy',
     steps: [
       {
         image: '/help/ai-assistant-1.png',
@@ -277,6 +290,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'Spracheingabe-mit-Siri',
     title: 'Spracheingabe mit Siri',
+    icon: 'mic',
     steps: [
       {
         image: '/help/siri-1.jpg',
@@ -304,9 +318,10 @@ export function getHelpTopic(id: string): HelpTopic | undefined {
 /**
  * Helper function to get all topic titles for the overview
  */
-export function getHelpTopicTitles(): Array<{ id: string, title: string }> {
+export function getHelpTopicTitles(): Array<{ id: string, title: string, icon: string }> {
   return HELP_TOPICS.map(topic => ({
     id: topic.id,
-    title: topic.title
+    title: topic.title,
+    icon: topic.icon
   }));
 }
