@@ -30,6 +30,12 @@ service cloud.firestore {
       return hasAccess(resource);
     }
 
+    function isAdmin() {
+      // Admin Analytics: Only allow specific admin user
+      return isAuthenticated() &&
+             request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+    }
+
     // ==========================================
     // User Profile
     // ==========================================
@@ -155,6 +161,57 @@ service cloud.firestore {
 
     match /users/{userId}/{document=**} {
       allow read, write: if userId == 'shared-shoplisl-user';
+    }
+
+    // ==========================================
+    // Analytics Collections (Admin Only)
+    // ==========================================
+
+    // Raw analytics events (short-term storage, 90-day retention)
+    match /analytics/events/items/{eventId} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated(); // All users can write events
+    }
+
+    // Daily aggregated metrics
+    match /analytics/daily-aggregates/{date} {
+      allow read: if isAdmin();
+      allow write: if isAdmin(); // Only admin can write aggregates
+    }
+
+    // Per-user metrics (cached)
+    match /analytics/user-metrics/{userId} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated(); // Users can update their own metrics
+    }
+
+    // AI-specific insights
+    match /analytics/ai-insights/{date} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated(); // AI service writes insights
+    }
+
+    // ==========================================
+    // Admin Collections (Admin Only)
+    // ==========================================
+
+    // Feature flags
+    match /admin/feature-flags/{flagId} {
+      allow read: if isAuthenticated(); // All users can read flags
+      allow write: if isAdmin(); // Only admin can modify flags
+    }
+
+    // User feedback
+    match /admin/user-feedback/{feedbackId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin(); // Only admin can update feedback status
+      allow delete: if isAdmin();
+    }
+
+    // System alerts
+    match /admin/system-alerts/{alertId} {
+      allow read, write: if isAdmin();
     }
 
     // ==========================================

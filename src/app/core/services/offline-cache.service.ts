@@ -69,9 +69,16 @@ export class OfflineCacheService {
         lastUpdated
       };
 
+      // Convert date strings back to Date objects
+      const articlesWithDates = cacheEntry.data.map(article => ({
+        ...article,
+        createdAt: new Date(article.createdAt),
+        updatedAt: new Date(article.updatedAt)
+      }));
+
       // Return cached data even if expired (let caller decide what to do)
       return {
-        data: cacheEntry.data,
+        data: articlesWithDates,
         status
       };
 
@@ -127,8 +134,15 @@ export class OfflineCacheService {
         lastUpdated
       };
 
+      // Convert date strings back to Date objects
+      const listsWithDates = cacheEntry.data.map(list => ({
+        ...list,
+        createdAt: new Date(list.createdAt),
+        updatedAt: new Date(list.updatedAt)
+      }));
+
       return {
-        data: cacheEntry.data,
+        data: listsWithDates,
         status
       };
 

@@ -20,6 +20,8 @@ import {
 } from '@angular/fire/firestore';
 import { User } from '../models';
 import { LoggerService } from './logger.service';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsEventType } from '../models/analytics.model';
 
 @Injectable({
   providedIn: 'root'
@@ -31,7 +33,8 @@ export class AuthService {
   constructor(
     private logger: LoggerService,
     private auth: Auth,
-    private firestore: Firestore
+    private firestore: Firestore,
+    private analyticsService: AnalyticsService
   ) {
     this.initAuthPersistence();
     this.initAuthStateListener();
@@ -78,12 +81,24 @@ export class AuthService {
 
       if (userDoc.exists()) {
         const data = userDoc.data();
-        return {
+        const user = {
           id: firebaseUser.uid,
           name: data['name'] || firebaseUser.displayName || 'Anonymous',
           email: data['email'] || firebaseUser.email || undefined,
           createdAt: data['createdAt']?.toDate() || new Date()
         };
+
+        // Track login event
+        this.analyticsService.trackEvent(
+          user.id,
+          AnalyticsEventType.USER_LOGIN,
+          {
+            email: user.email,
+            name: user.name
+          }
+        );
+
+        return user;
       } else {
         // Create new user profile
         const newUser: User = {
@@ -101,6 +116,18 @@ export class AuthService {
         });
 
         this.logger.info('auth', `Created user profile for ${newUser.email}`);
+
+        // Track signup event
+        this.analyticsService.trackEvent(
+          newUser.id,
+          AnalyticsEventType.USER_SIGNUP,
+          {
+            email: newUser.email,
+            name: newUser.name,
+            signupDate: newUser.createdAt.toISOString()
+          }
+        );
+
         return newUser;
       }
     } catch (error) {
@@ -141,7 +168,21 @@ export class AuthService {
    */
   async signOutUser(): Promise<void> {
     try {
+      const userId = this.getCurrentUserId();
+
       await signOut(this.auth);
+
+      // Track logout event (before user is cleared)
+      if (userId) {
+        this.analyticsService.trackEvent(
+          userId,
+          AnalyticsEventType.USER_LOGOUT,
+          {
+            timestamp: new Date().toISOString()
+          }
+        );
+      }
+
       this.logger.info('auth', 'User signed out successfully');
     } catch (error) {
       this.logger.error('auth', 'Sign out failed', error);

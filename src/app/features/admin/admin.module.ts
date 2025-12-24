@@ -4,9 +4,24 @@ import { RouterModule, Routes } from '@angular/router';
 import { ArticleUploadComponent } from '../../core/services/article-upload.component';
 import { ListUploadComponent } from '../../core/services/list-upload.component';
 import { PerformanceDashboardComponent } from './performance-dashboard/performance-dashboard.component';
+import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
+import { DebugUserComponent } from './debug-user/debug-user.component';
 import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'analytics',
+    pathMatch: 'full'
+  },
+  {
+    path: 'debug',
+    component: DebugUserComponent
+  },
+  {
+    path: 'analytics',
+    component: AnalyticsDashboardComponent
+  },
   {
     path: 'upload',
     component: ArticleUploadComponent
@@ -28,7 +43,9 @@ const routes: Routes = [
     RouterModule.forChild(routes),
     ArticleUploadComponent,
     ListUploadComponent,
-    PerformanceDashboardComponent
+    PerformanceDashboardComponent,
+    AnalyticsDashboardComponent,
+    DebugUserComponent
   ]
 })
 export class AdminModule { }

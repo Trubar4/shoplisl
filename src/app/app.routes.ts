@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { VoiceAIAssistantComponent } from './shared/components/voice-ai-assistant/voice-ai-assistant.component';
+import { adminGuard } from './core/guards/admin.guard';
+import { DebugUserComponent } from './features/admin/debug-user/debug-user.component';
 
 export const routes: Routes = [
   {
@@ -16,7 +18,12 @@ export const routes: Routes = [
     loadChildren: () => import('./features/articles/articles.module').then(m => m.ArticlesModule)
   },
   {
+    path: 'debug-admin',
+    component: DebugUserComponent
+  },
+  {
     path: 'admin',
+    canActivate: [adminGuard],
     loadChildren: () => import('./features/admin/admin.module').then(m => m.AdminModule)
   },
   {

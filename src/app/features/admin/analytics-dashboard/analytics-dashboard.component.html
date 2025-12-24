@@ -1,0 +1,181 @@
+<div class="analytics-dashboard">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <h1>📊 Analytics Dashboard</h1>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="refresh()"
+      [disabled]="loading()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading()" class="loading-container">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading analytics...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error()" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error() }}</p>
+    <button mat-button color="primary" (click)="refresh()">Retry</button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!loading() && !error() && metrics()" class="dashboard-content">
+    <!-- Last Updated -->
+    <p class="last-updated">
+      Last updated: {{ formatDate(metrics()!.lastUpdated) }}
+    </p>
+
+    <!-- Top 5 Priority Metrics -->
+    <div class="metrics-grid">
+      <!-- Metric 1: Total Users -->
+      <mat-card class="metric-card">
+        <mat-card-header>
+          <mat-icon class="metric-icon user-icon">people</mat-icon>
+          <mat-card-title>Total Users</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-value">{{ metrics()!.totalUsers }}</div>
+          <div class="metric-subtitle">Registered users</div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Metric 2: Total Lists -->
+      <mat-card class="metric-card">
+        <mat-card-header>
+          <mat-icon class="metric-icon list-icon">format_list_bulleted</mat-icon>
+          <mat-card-title>Total Lists</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-value">{{ metrics()!.totalLists }}</div>
+          <div class="metric-subtitle">Lists created</div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Metric 3: Total Articles -->
+      <mat-card class="metric-card">
+        <mat-card-header>
+          <mat-icon class="metric-icon article-icon">shopping_cart</mat-icon>
+          <mat-card-title>Total Articles</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-value">{{ metrics()!.totalArticles }}</div>
+          <div class="metric-subtitle">Articles in database</div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Metric 4: Active Users (14 days) -->
+      <mat-card class="metric-card">
+        <mat-card-header>
+          <mat-icon class="metric-icon active-icon">trending_up</mat-icon>
+          <mat-card-title>Active Users</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-value">{{ metrics()!.activeUsersLast14Days }}</div>
+          <div class="metric-subtitle">Last 14 days</div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Metric 5: AI Inputs -->
+      <mat-card class="metric-card">
+        <mat-card-header>
+          <mat-icon class="metric-icon ai-icon">smart_toy</mat-icon>
+          <mat-card-title>AI Inputs</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="metric-value">{{ metrics()!.totalAIInputs }}</div>
+          <div class="metric-subtitle">Total commands</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- AI Assistant Details -->
+    <mat-card class="ai-details-card">
+      <mat-card-header>
+        <mat-card-title>AI Assistant Performance</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="ai-stats">
+          <div class="ai-stat">
+            <div class="ai-stat-label">Success Rate</div>
+            <mat-chip-set>
+              <mat-chip [color]="getSuccessRateColor(metrics()!.aiSuccessRate)">
+                {{ metrics()!.aiSuccessRate }}%
+              </mat-chip>
+            </mat-chip-set>
+          </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Successful</div>
+            <div class="ai-stat-value success">{{ metrics()!.aiSuccessful }}</div>
+          </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Failed</div>
+            <div class="ai-stat-value failed">{{ metrics()!.aiFailed }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Failed Commands Table -->
+    <mat-card *ngIf="metrics()!.failedCommands.length > 0" class="failed-commands-card">
+      <mat-card-header>
+        <mat-card-title>Recent Failed Commands (Last 10)</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="metrics()!.failedCommands" class="failed-commands-table">
+          <!-- Input Text Column -->
+          <ng-container matColumnDef="inputText">
+            <th mat-header-cell *matHeaderCellDef>Input</th>
+            <td mat-cell *matCellDef="let command">{{ command.inputText }}</td>
+          </ng-container>
+
+          <!-- Command Type Column -->
+          <ng-container matColumnDef="commandType">
+            <th mat-header-cell *matHeaderCellDef>Type</th>
+            <td mat-cell *matCellDef="let command">
+              <mat-chip-set>
+                <mat-chip>{{ command.commandType }}</mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <!-- Error Message Column -->
+          <ng-container matColumnDef="errorMessage">
+            <th mat-header-cell *matHeaderCellDef>Error</th>
+            <td mat-cell *matCellDef="let command" class="error-message">
+              {{ command.errorMessage }}
+            </td>
+          </ng-container>
+
+          <!-- Timestamp Column -->
+          <ng-container matColumnDef="timestamp">
+            <th mat-header-cell *matHeaderCellDef>When</th>
+            <td mat-cell *matCellDef="let command">
+              {{ formatDate(command.timestamp) }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="failedCommandsColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: failedCommandsColumns"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- No Failed Commands Message -->
+    <mat-card *ngIf="metrics()!.failedCommands.length === 0" class="no-failures-card">
+      <mat-card-content>
+        <div class="no-failures">
+          <mat-icon color="primary">check_circle</mat-icon>
+          <p>No failed AI commands yet! 🎉</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
