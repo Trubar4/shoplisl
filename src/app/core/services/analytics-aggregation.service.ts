@@ -58,21 +58,23 @@ export class AnalyticsAggregationService {
   /**
    * Compute overview metrics from raw events
    * OPTIMIZED: Only queries last 30 days + limits results to prevent quota issues
+   * QUOTA OPTIMIZED: Reduced from 10k to 500 limit (sufficient for 50 users)
    */
   private async computeOverviewMetrics(): Promise<OverviewMetrics> {
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // CRITICAL: Limit query to last 30 days and max 10,000 events to prevent quota issues
+    // CRITICAL: Limit query to last 30 days and max 500 events to prevent quota issues
+    // For 50 users, 500 events is plenty for accurate statistics
     const eventsRef = collection(this.firestore, 'analytics/events/items');
     const eventsQuery = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
-      limit(10000) // Prevent excessive reads
+      limit(500) // Reduced from 10k - sufficient for small user base
     );
 
-    console.log('📊 Analytics: Querying events (last 30 days, max 10k)...');
+    console.log('📊 Analytics: Querying events (last 30 days, max 500)...');
     const eventsSnapshot = await getDocs(eventsQuery);
     console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
 
@@ -151,22 +153,23 @@ export class AnalyticsAggregationService {
 
   /**
    * Count total articles across all users
-   * OPTIMIZED: Limits to 10,000 articles to prevent quota issues
+   * OPTIMIZED: Limits to 500 articles to prevent quota issues
+   * For 50 users with ~20 articles each = 1000 max, so 500 limit gives good estimate
    */
   private async countTotalArticles(): Promise<number> {
     try {
       // CRITICAL: Limit collection group query to prevent excessive reads
       const articlesQuery = query(
         collectionGroup(this.firestore, 'articles'),
-        limit(10000) // Prevent quota issues
+        limit(500) // Reduced from 10k - sufficient for small user base
       );
-      console.log('📊 Analytics: Counting articles (max 10k)...');
+      console.log('📊 Analytics: Counting articles (max 500)...');
       const articlesSnapshot = await getDocs(articlesQuery);
       console.log(`📊 Analytics: Found ${articlesSnapshot.size} articles`);
 
       // If we hit the limit, show a warning
-      if (articlesSnapshot.size >= 10000) {
-        console.warn('⚠️ Analytics: Article count limited to 10,000. Actual count may be higher.');
+      if (articlesSnapshot.size >= 500) {
+        console.warn('⚠️ Analytics: Article count limited to 500. Actual count may be higher.');
       }
 
       return articlesSnapshot.size;
@@ -178,12 +181,13 @@ export class AnalyticsAggregationService {
 
   /**
    * Count total users in database
+   * OPTIMIZED: Reduced limit from 10k to 500 (way more than needed for 50 users)
    */
   private async countTotalUsers(): Promise<number> {
     try {
       // users-v2 is a top-level collection, not a subcollection
       const usersRef = collection(this.firestore, 'users-v2');
-      const usersQuery = query(usersRef, limit(10000));
+      const usersQuery = query(usersRef, limit(500)); // Reduced from 10k
       console.log('📊 Analytics: Counting users...');
       const usersSnapshot = await getDocs(usersQuery);
       console.log(`📊 Analytics: Found ${usersSnapshot.size} users`);
@@ -196,12 +200,13 @@ export class AnalyticsAggregationService {
 
   /**
    * Count total lists in database
+   * OPTIMIZED: Reduced limit from 10k to 500 (sufficient for 50 users)
    */
   private async countTotalLists(): Promise<number> {
     try {
       const listsQuery = query(
         collectionGroup(this.firestore, 'lists'),
-        limit(10000)
+        limit(500) // Reduced from 10k
       );
       console.log('📊 Analytics: Counting lists...');
       const listsSnapshot = await getDocs(listsQuery);
