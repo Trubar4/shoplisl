@@ -12,6 +12,7 @@ import {
 } from '@angular/fire/firestore';
 import { AnalyticsEventType } from '../models/analytics.model';
 import { Observable, from, map, of } from 'rxjs';
+import { QuotaMonitorService } from './quota-monitor.service';
 
 /**
  * Analytics Aggregation Service
@@ -26,6 +27,7 @@ import { Observable, from, map, of } from 'rxjs';
 })
 export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
+  private quotaMonitor = inject(QuotaMonitorService);
   private cache: OverviewMetrics | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
@@ -76,6 +78,7 @@ export class AnalyticsAggregationService {
 
     console.log('📊 Analytics: Querying events (last 30 days, max 500)...');
     const eventsSnapshot = await getDocs(eventsQuery);
+    this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
     console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
 
     const events = eventsSnapshot.docs.map((doc) => ({
@@ -165,6 +168,7 @@ export class AnalyticsAggregationService {
       );
       console.log('📊 Analytics: Counting articles (max 500)...');
       const articlesSnapshot = await getDocs(articlesQuery);
+      this.quotaMonitor.trackRead('Analytics Count Articles', articlesSnapshot.size);
       console.log(`📊 Analytics: Found ${articlesSnapshot.size} articles`);
 
       // If we hit the limit, show a warning
@@ -190,6 +194,7 @@ export class AnalyticsAggregationService {
       const usersQuery = query(usersRef, limit(500)); // Reduced from 10k
       console.log('📊 Analytics: Counting users...');
       const usersSnapshot = await getDocs(usersQuery);
+      this.quotaMonitor.trackRead('Analytics Count Users', usersSnapshot.size);
       console.log(`📊 Analytics: Found ${usersSnapshot.size} users`);
       return usersSnapshot.size;
     } catch (error) {
@@ -210,6 +215,7 @@ export class AnalyticsAggregationService {
       );
       console.log('📊 Analytics: Counting lists...');
       const listsSnapshot = await getDocs(listsQuery);
+      this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
       console.log(`📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
     } catch (error) {

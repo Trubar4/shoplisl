@@ -25,6 +25,7 @@ import { ConnectionService } from './connection.service';
 import { OfflineCacheService } from './offline-cache.service';
 import { LoggerService } from './logger.service';
 import { AuthService } from './auth.service';
+import { QuotaMonitorService } from './quota-monitor.service';
 
 @Injectable({
   providedIn: 'root'
@@ -82,7 +83,8 @@ export class FirebaseDataService {
     private cacheService: OfflineCacheService,
     private logger: LoggerService,
     private authService: AuthService,
-    private firestore: Firestore
+    private firestore: Firestore,
+    private quotaMonitor: QuotaMonitorService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -508,6 +510,7 @@ export class FirebaseDataService {
           try {
             const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
             const snapshot = await getDoc(listRef);
+            this.quotaMonitor.trackRead('Shared List Poll', 1, { listId: list.id });
 
             if (snapshot.exists()) {
               const data = snapshot.data();
@@ -797,6 +800,7 @@ export class FirebaseDataService {
             );
 
             const snapshot = await getDocs(batchQuery);
+            this.quotaMonitor.trackRead('Batch Load Articles', snapshot.size, { ownerId, chunkSize: chunk.length });
 
             snapshot.forEach((doc) => {
               // Only add if we haven't found this article yet
@@ -1160,6 +1164,7 @@ export class FirebaseDataService {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
+    this.quotaMonitor.trackRead('Get All Articles', snapshot.size);
     const articles: Article[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -1186,6 +1191,7 @@ export class FirebaseDataService {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
+    this.quotaMonitor.trackRead('Get All Lists', snapshot.size);
     const lists: ShoppingList[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
