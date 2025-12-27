@@ -524,6 +524,23 @@ export class FirebaseDataService {
   }
 
   /**
+   * Manual sync for shared lists
+   * Allows users to manually trigger a sync without waiting for polling interval
+   * Useful when collaborating in real-time
+   */
+  public async syncSharedListsNow(): Promise<void> {
+    this.logger.info('data', '🔄 Manual sync requested');
+    if (this.sharedLists.length === 0) {
+      this.logger.info('data', 'No shared lists to sync');
+      return;
+    }
+
+    // Trigger immediate poll
+    await this.pollSharedListUpdates();
+    this.logger.info('data', '✅ Manual sync complete');
+  }
+
+  /**
    * QUOTA OPTIMIZATION: Poll shared lists for updates
    * Only fetches lists that have likely changed (based on server timestamps)
    */
@@ -568,13 +585,19 @@ export class FirebaseDataService {
                 // Update the list in sharedLists array
                 const index = this.sharedLists.findIndex(l => l.id === list.id);
                 if (index !== -1) {
+                  // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
+                  // This ensures User A's checks don't get lost when User B checks something
+                  const localItemStates = this.sharedLists[index].itemStates || {};
+                  const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+                  const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+
                   this.sharedLists[index] = {
                     ...this.sharedLists[index],
                     name: data['name'],
                     color: data['color'],
                     icon: data['icon'],
                     shopId: data['shopId'],
-                    itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+                    itemStates: mergedItemStates, // Use merged version instead of server version
                     articleIds: data['articleIds'] || [],
                     departmentOrder: data['departmentOrder'],
                     updatedAt: data['updatedAt']?.toDate() || new Date(),
@@ -582,7 +605,7 @@ export class FirebaseDataService {
                   };
 
                   updatedCount++;
-                  this.logger.debug('data', `📥 Updated shared list: ${data['name']}`);
+                  this.logger.debug('data', `📥 Updated shared list: ${data['name']} (itemStates merged)`);
                 }
               }
             } else {
@@ -902,6 +925,71 @@ export class FirebaseDataService {
       chunks.push(array.slice(i, i + chunkSize));
     }
     return chunks;
+  }
+
+  /**
+   * CRITICAL FIX: Smart merge of itemStates to prevent race conditions
+   * When two users check different articles simultaneously, this ensures both changes persist
+   *
+   * Strategy:
+   * 1. For each article, compare timestamps of local vs server
+   * 2. Use the version with the most recent change (checkedAt timestamp)
+   * 3. If timestamps equal, prefer checked state over unchecked
+   * 4. Preserve all articles from both sources
+   */
+  private mergeItemStates(
+    localStates: { [articleId: string]: any },
+    serverStates: { [articleId: string]: any }
+  ): { [articleId: string]: any } {
+    const merged: { [articleId: string]: any } = {};
+
+    // Collect all article IDs from both sources
+    const allArticleIds = new Set([
+      ...Object.keys(localStates),
+      ...Object.keys(serverStates)
+    ]);
+
+    for (const articleId of allArticleIds) {
+      const localState = localStates[articleId];
+      const serverState = serverStates[articleId];
+
+      // If only in local, keep local
+      if (localState && !serverState) {
+        merged[articleId] = localState;
+        continue;
+      }
+
+      // If only in server, use server
+      if (serverState && !localState) {
+        merged[articleId] = serverState;
+        continue;
+      }
+
+      // Both exist - merge intelligently based on timestamps
+      const localTime = localState.checkedAt?.getTime() || localState.addedAt?.getTime() || 0;
+      const serverTime = serverState.checkedAt?.getTime() || serverState.addedAt?.getTime() || 0;
+
+      // Use whichever has the most recent change
+      if (serverTime > localTime) {
+        merged[articleId] = serverState;
+        this.logger.debug('data', `Merge: Using server state for ${articleId} (server newer: ${serverTime} > ${localTime})`);
+      } else if (localTime > serverTime) {
+        merged[articleId] = localState;
+        this.logger.debug('data', `Merge: Using local state for ${articleId} (local newer: ${localTime} > ${serverTime})`);
+      } else {
+        // Times equal - prefer checked state over unchecked
+        if (serverState.isChecked && !localState.isChecked) {
+          merged[articleId] = serverState;
+          this.logger.debug('data', `Merge: Using server state for ${articleId} (server checked)`);
+        } else {
+          merged[articleId] = localState;
+          this.logger.debug('data', `Merge: Using local state for ${articleId} (same time or local checked)`);
+        }
+      }
+    }
+
+    this.logger.info('data', `✅ Merged itemStates: ${Object.keys(localStates).length} local + ${Object.keys(serverStates).length} server = ${Object.keys(merged).length} total`);
+    return merged;
   }
 
   /**
