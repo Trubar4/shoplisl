@@ -72,11 +72,14 @@ export class FirebaseDataService {
   private listsUnsubscribe?: () => void;
   private sharedListsUnsubscribe?: () => void;
 
-  // QUOTA OPTIMIZATION: Replace real-time per-list listeners with 20s polling
-  // Reduces listener count from N (one per shared list) to 0
+  // QUOTA OPTIMIZATION: Smart polling - only when user is active
+  // Massively reduces quota usage while maintaining reasonable sync
   private sharedListPollingTimer?: any;
-  private readonly SHARED_LIST_POLL_INTERVAL = 20000; // 20 seconds
+  private readonly SHARED_LIST_POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private readonly ACTIVE_POLL_INTERVAL = 60000; // 1 minute when actively editing
   private lastSharedListUpdate = new Map<string, number>(); // listId -> timestamp
+  private isPollingActive = false; // Prevent multiple timers
+  private lastUserActivity = Date.now(); // Track user activity
 
   constructor(
     private connectionService: ConnectionService,
@@ -457,15 +460,21 @@ export class FirebaseDataService {
   }
 
   /**
-   * QUOTA OPTIMIZATION: Start polling for shared list updates every 20 seconds
-   * Replaces N real-time listeners (one per shared list) with periodic polling
+   * QUOTA OPTIMIZATION: Smart polling - 5 minutes normally, 1 minute when actively editing
+   * Replaces N real-time listeners (one per shared list) with smart polling
    *
    * Benefits:
-   * - Reduces reads by 70-90% (no continuous listeners)
-   * - Still provides acceptable sync (20s update interval)
-   * - Prevents cascading batch loads from multiple listeners
+   * - Drastically reduces reads (no continuous listeners)
+   * - Polls more frequently only when user is actively editing
+   * - Background tabs get minimal polling
    */
   private startSharedListPolling(): void {
+    // Prevent multiple polling timers
+    if (this.isPollingActive) {
+      this.logger.debug('data', 'Polling already active, skipping');
+      return;
+    }
+
     // Clear any existing polling timer
     this.stopSharedListPolling();
 
@@ -474,15 +483,44 @@ export class FirebaseDataService {
       return;
     }
 
-    this.logger.info('data', `🔄 Starting 20s polling for ${this.sharedLists.length} shared lists (quota optimized)`);
+    this.isPollingActive = true;
+    const interval = this.getSmartPollInterval();
+    this.logger.info('data', `🔄 Starting smart polling for ${this.sharedLists.length} shared lists (${interval/1000}s interval)`);
 
     // Poll immediately once
     this.pollSharedListUpdates();
 
-    // Then poll every 20 seconds
+    // Then poll with smart interval
     this.sharedListPollingTimer = setInterval(() => {
+      // Skip polling if tab is not visible (saves quota!)
+      if (document.hidden) {
+        this.logger.debug('data', 'Tab hidden, skipping poll');
+        return;
+      }
+
       this.pollSharedListUpdates();
-    }, this.SHARED_LIST_POLL_INTERVAL);
+    }, interval);
+  }
+
+  /**
+   * QUOTA OPTIMIZATION: Determine poll interval based on user activity
+   * Active editing: 1 minute, Inactive: 5 minutes
+   */
+  private getSmartPollInterval(): number {
+    const timeSinceActivity = Date.now() - this.lastUserActivity;
+    const ACTIVE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
+
+    return timeSinceActivity < ACTIVE_THRESHOLD
+      ? this.ACTIVE_POLL_INTERVAL  // 1 minute when active
+      : this.SHARED_LIST_POLL_INTERVAL; // 5 minutes when idle
+  }
+
+  /**
+   * QUOTA OPTIMIZATION: Track user activity to adjust poll frequency
+   * Call this when user interacts with lists (check, add, remove items)
+   */
+  public markUserActivity(): void {
+    this.lastUserActivity = Date.now();
   }
 
   /**
@@ -587,6 +625,7 @@ export class FirebaseDataService {
     if (this.sharedListPollingTimer) {
       clearInterval(this.sharedListPollingTimer);
       this.sharedListPollingTimer = undefined;
+      this.isPollingActive = false;
       this.logger.debug('data', 'Stopped shared list polling');
     }
   }
@@ -1139,14 +1178,6 @@ export class FirebaseDataService {
       }
       await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
-
-      // DEBUG: Verify the write actually persisted
-      const verifyRef = doc(this.firestore, listPath);
-      const verifySnap = await getDoc(verifyRef);
-      if (verifySnap.exists()) {
-        const actualArticleIds = verifySnap.data()['articleIds'] || [];
-        this.logger.info('data', `🔍 Verified articleIds in Firestore: [${actualArticleIds.join(', ')}] (${actualArticleIds.length} total)`);
-      }
     } catch (error: any) {
       this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
       this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
