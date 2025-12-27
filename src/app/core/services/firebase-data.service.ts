@@ -541,6 +541,33 @@ export class FirebaseDataService {
   }
 
   /**
+   * CRITICAL FIX: Write merged itemStates back to Firestore
+   * This ensures all collaborators see the merged state after conflict resolution
+   */
+  private async writeMergedStateToFirestore(
+    listId: string,
+    ownerId: string,
+    mergedItemStates: { [articleId: string]: any }
+  ): Promise<void> {
+    try {
+      const listPath = `users-v2/${ownerId}/lists/${listId}`;
+      const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+
+      this.logger.info('data', `💾 Writing merged itemStates to ${listPath} (${Object.keys(mergedItemStates).length} items)`);
+
+      await updateDoc(doc(this.firestore, listPath), {
+        itemStates: firestoreItemStates,
+        updatedAt: Timestamp.now()
+      });
+
+      this.logger.info('data', `✅ Merged state written successfully`);
+    } catch (error: any) {
+      this.logger.error('data', `Failed to write merged state: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * QUOTA OPTIMIZATION: Poll shared lists for updates
    * Only fetches lists that have likely changed (based on server timestamps)
    */
@@ -591,6 +618,9 @@ export class FirebaseDataService {
                   const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
                   const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
 
+                  // CRITICAL: Check if merge produced different result than server
+                  const mergeChanged = JSON.stringify(mergedItemStates) !== JSON.stringify(serverItemStates);
+
                   this.sharedLists[index] = {
                     ...this.sharedLists[index],
                     name: data['name'],
@@ -605,7 +635,17 @@ export class FirebaseDataService {
                   };
 
                   updatedCount++;
-                  this.logger.debug('data', `📥 Updated shared list: ${data['name']} (itemStates merged)`);
+
+                  // CRITICAL FIX: If merge changed anything, write back to Firestore
+                  // This ensures all users see the merged state
+                  if (mergeChanged) {
+                    this.logger.info('data', `🔄 Merge produced different state, writing back to Firestore for ${data['name']}`);
+                    this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates).catch(error => {
+                      this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+                    });
+                  } else {
+                    this.logger.debug('data', `📥 Updated shared list: ${data['name']} (itemStates merged, no changes)`);
+                  }
                 }
               }
             } else {
