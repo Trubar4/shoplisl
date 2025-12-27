@@ -77,6 +77,10 @@ export class FirebaseDataService {
   private sharedListListeners = new Map<string, () => void>();
   private lastSharedListUpdate = new Map<string, number>(); // listId -> timestamp
 
+  // CRITICAL: Prevent infinite loop from write-back triggering listener
+  private lastMergeWrite = new Map<string, number>(); // listId -> timestamp of last write
+  private readonly MERGE_WRITE_COOLDOWN = 2000; // 2 seconds cooldown
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -505,8 +509,13 @@ export class FirebaseDataService {
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
 
+              // CRITICAL: Prevent infinite loop - check if we just wrote to this list
+              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
+              const timeSinceWrite = Date.now() - lastWriteTime;
+              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+
               // Check if merge produced different result than server
-              const mergeChanged = JSON.stringify(mergedItemStates) !== JSON.stringify(serverItemStates);
+              const mergeChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
 
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
@@ -523,12 +532,15 @@ export class FirebaseDataService {
 
               this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']}`);
 
-              // If merge changed anything, write back to Firestore
-              if (mergeChanged) {
+              // CRITICAL: Only write back if merge changed AND it's not our own write
+              if (mergeChanged && !isOurOwnWrite) {
                 this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
+                this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
                 this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates).catch(error => {
                   this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
                 });
+              } else if (isOurOwnWrite) {
+                this.logger.debug('data', `⏭️ Skipping write-back (our own write, ${timeSinceWrite}ms ago)`);
               }
 
               this.mergeLists(); // Trigger UI update
@@ -1011,6 +1023,63 @@ export class FirebaseDataService {
     }
 
     return itemStates;
+  }
+
+  /**
+   * CRITICAL: Detect if itemStates have actually changed
+   * Used to prevent infinite loop from write-back triggering listener
+   *
+   * Compares key fields (isChecked, checkedBy, amount, checkedAt) to determine
+   * if two itemStates objects are meaningfully different
+   */
+  private hasItemStatesChanged(
+    itemStates1: { [articleId: string]: any },
+    itemStates2: { [articleId: string]: any }
+  ): boolean {
+    // Quick check: different number of articles
+    const keys1 = Object.keys(itemStates1 || {});
+    const keys2 = Object.keys(itemStates2 || {});
+
+    if (keys1.length !== keys2.length) {
+      return true;
+    }
+
+    // Check each article
+    for (const articleId of keys1) {
+      const state1 = itemStates1[articleId];
+      const state2 = itemStates2[articleId];
+
+      // Article missing in second object
+      if (!state2) {
+        return true;
+      }
+
+      // Compare key fields
+      if (state1.isChecked !== state2.isChecked) {
+        return true;
+      }
+
+      if (state1.checkedBy !== state2.checkedBy) {
+        return true;
+      }
+
+      if (state1.amount !== state2.amount) {
+        return true;
+      }
+
+      // Compare checkedAt timestamps (if both exist)
+      if (state1.checkedAt || state2.checkedAt) {
+        const time1 = state1.checkedAt?.getTime ? state1.checkedAt.getTime() : 0;
+        const time2 = state2.checkedAt?.getTime ? state2.checkedAt.getTime() : 0;
+
+        if (time1 !== time2) {
+          return true;
+        }
+      }
+    }
+
+    // No differences detected
+    return false;
   }
 
   private cleanupListeners(): void {
