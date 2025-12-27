@@ -509,13 +509,20 @@ export class FirebaseDataService {
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
 
+              // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
+              const localArticleIds = this.sharedLists[index].articleIds || [];
+              const serverArticleIds = data['articleIds'] || [];
+              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
+
               // CRITICAL: Prevent infinite loop - check if we just wrote to this list
               const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
               const timeSinceWrite = Date.now() - lastWriteTime;
               const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
               // Check if merge produced different result than server
-              const mergeChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+              const mergeChanged = itemStatesChanged || articleIdsChanged;
 
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
@@ -524,7 +531,7 @@ export class FirebaseDataService {
                 icon: data['icon'],
                 shopId: data['shopId'],
                 itemStates: mergedItemStates, // Use merged version
-                articleIds: data['articleIds'] || [],
+                articleIds: mergedArticleIds, // Use merged version
                 departmentOrder: data['departmentOrder'],
                 updatedAt: data['updatedAt']?.toDate() || new Date(),
                 sharedWith: sharedWith
@@ -536,7 +543,7 @@ export class FirebaseDataService {
               if (mergeChanged && !isOurOwnWrite) {
                 this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
                 this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
-                this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates).catch(error => {
+                this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates, mergedArticleIds).catch(error => {
                   this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
                 });
               } else if (isOurOwnWrite) {
@@ -577,22 +584,24 @@ export class FirebaseDataService {
   }
 
   /**
-   * CRITICAL FIX: Write merged itemStates back to Firestore
+   * CRITICAL FIX: Write merged itemStates and articleIds back to Firestore
    * This ensures all collaborators see the merged state after conflict resolution
    */
   private async writeMergedStateToFirestore(
     listId: string,
     ownerId: string,
-    mergedItemStates: { [articleId: string]: any }
+    mergedItemStates: { [articleId: string]: any },
+    mergedArticleIds: string[]
   ): Promise<void> {
     try {
       const listPath = `users-v2/${ownerId}/lists/${listId}`;
       const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
 
-      this.logger.info('data', `💾 Writing merged itemStates to ${listPath} (${Object.keys(mergedItemStates).length} items)`);
+      this.logger.info('data', `💾 Writing merged state to ${listPath} (${Object.keys(mergedItemStates).length} items, ${mergedArticleIds.length} articles)`);
 
       await updateDoc(doc(this.firestore, listPath), {
         itemStates: firestoreItemStates,
+        articleIds: mergedArticleIds,
         updatedAt: Timestamp.now()
       });
 
@@ -885,6 +894,34 @@ export class FirebaseDataService {
   }
 
   /**
+   * CRITICAL FIX: Smart merge of articleIds arrays to prevent race conditions
+   * When users add articles simultaneously, this ensures both additions persist
+   *
+   * Strategy:
+   * 1. Union of both arrays (all unique article IDs)
+   * 2. Preserve server order for existing articles
+   * 3. Append local-only articles at the end
+   */
+  private mergeArticleIds(
+    localIds: string[],
+    serverIds: string[]
+  ): string[] {
+    // Start with server order as base
+    const merged = [...serverIds];
+
+    // Add local-only articles (not in server yet)
+    for (const localId of localIds) {
+      if (!serverIds.includes(localId)) {
+        merged.push(localId);
+        this.logger.debug('data', `Merge: Adding local-only article ${localId}`);
+      }
+    }
+
+    this.logger.info('data', `✅ Merged articleIds: ${localIds.length} local + ${serverIds.length} server = ${merged.length} total`);
+    return merged;
+  }
+
+  /**
    * CRITICAL FIX: Smart merge of itemStates to prevent race conditions
    * When two users check different articles simultaneously, this ensures both changes persist
    *
@@ -1023,6 +1060,29 @@ export class FirebaseDataService {
     }
 
     return itemStates;
+  }
+
+  /**
+   * CRITICAL: Detect if articleIds array has changed
+   * Used to prevent infinite loop from write-back triggering listener
+   */
+  private hasArticleIdsChanged(
+    articleIds1: string[],
+    articleIds2: string[]
+  ): boolean {
+    // Different lengths = changed
+    if (articleIds1.length !== articleIds2.length) {
+      return true;
+    }
+
+    // Check if all IDs match (order-sensitive)
+    for (let i = 0; i < articleIds1.length; i++) {
+      if (articleIds1[i] !== articleIds2[i]) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
