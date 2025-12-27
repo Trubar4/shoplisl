@@ -72,14 +72,10 @@ export class FirebaseDataService {
   private listsUnsubscribe?: () => void;
   private sharedListsUnsubscribe?: () => void;
 
-  // QUOTA OPTIMIZATION: Smart polling - only when user is active
-  // Massively reduces quota usage while maintaining reasonable sync
-  private sharedListPollingTimer?: any;
-  private readonly SHARED_LIST_POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  private readonly ACTIVE_POLL_INTERVAL = 60000; // 1 minute when actively editing
+  // REAL-TIME SYNC: Use onSnapshot for instant collaboration
+  // Only for shared lists - owned lists already use listeners
+  private sharedListListeners = new Map<string, () => void>();
   private lastSharedListUpdate = new Map<string, number>(); // listId -> timestamp
-  private isPollingActive = false; // Prevent multiple timers
-  private lastUserActivity = Date.now(); // Track user activity
 
   constructor(
     private connectionService: ConnectionService,
@@ -365,9 +361,9 @@ export class FirebaseDataService {
             this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
             this.mergeLists();
 
-            // QUOTA OPTIMIZATION: Start 20s polling instead of per-list real-time listeners
-            // Reduces Firestore reads by 70-90% while maintaining acceptable sync speed
-            this.startSharedListPolling();
+            // REAL-TIME SYNC: Use onSnapshot for instant collaboration
+            // Replaces polling for better UX + lower quota when collaborating
+            this.setupSharedListRealtimeListeners(sharedLists);
           },
           (error: any) => {
             this.logger.error('data', 'Share invites listener error', error);
@@ -460,84 +456,112 @@ export class FirebaseDataService {
   }
 
   /**
-   * QUOTA OPTIMIZATION: Smart polling - 5 minutes normally, 1 minute when actively editing
-   * Replaces N real-time listeners (one per shared list) with smart polling
+   * REAL-TIME SYNC: Set up onSnapshot listeners for shared lists
    *
-   * Benefits:
-   * - Drastically reduces reads (no continuous listeners)
-   * - Polls more frequently only when user is actively editing
-   * - Background tabs get minimal polling
+   * Benefits over polling:
+   * - Instant updates (< 1 second vs 1-5 minutes)
+   * - Lower quota when collaborating (only reads on changes)
+   * - Better UX (Google Docs-style)
+   *
+   * Quota Impact:
+   * - Initial setup: 1 read per list
+   * - Updates: Only when list actually changes
+   * - 2 users editing for 1 hour: ~20 reads (vs 60 with polling)
    */
-  private startSharedListPolling(): void {
-    // Prevent multiple polling timers
-    if (this.isPollingActive) {
-      this.logger.debug('data', 'Polling already active, skipping');
+  private setupSharedListRealtimeListeners(sharedLists: ShoppingList[]): void {
+    // Clean up existing listeners first
+    this.cleanupSharedListListeners();
+
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No user ID, cannot set up shared list listeners');
       return;
     }
 
-    // Clear any existing polling timer
-    this.stopSharedListPolling();
+    this.logger.info('data', `⚡ Setting up real-time listeners for ${sharedLists.length} shared lists (instant sync)`);
 
-    if (this.sharedLists.length === 0) {
-      this.logger.debug('data', 'No shared lists, skipping polling setup');
-      return;
+    // Set up a real-time listener for each shared list
+    for (const list of sharedLists) {
+      const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
+
+      const unsubscribe = onSnapshot(listRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+
+            // Verify user still has access
+            const sharedWith = data['sharedWith'] || [];
+            if (!sharedWith.includes(userId)) {
+              this.logger.warn('data', `Lost access to list ${list.id}, removing`);
+              this.removeSharedList(list.id);
+              return;
+            }
+
+            // Update the list in sharedLists array
+            const index = this.sharedLists.findIndex(l => l.id === list.id);
+            if (index !== -1) {
+              // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
+              const localItemStates = this.sharedLists[index].itemStates || {};
+              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+              const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+
+              // Check if merge produced different result than server
+              const mergeChanged = JSON.stringify(mergedItemStates) !== JSON.stringify(serverItemStates);
+
+              this.sharedLists[index] = {
+                ...this.sharedLists[index],
+                name: data['name'],
+                color: data['color'],
+                icon: data['icon'],
+                shopId: data['shopId'],
+                itemStates: mergedItemStates, // Use merged version
+                articleIds: data['articleIds'] || [],
+                departmentOrder: data['departmentOrder'],
+                updatedAt: data['updatedAt']?.toDate() || new Date(),
+                sharedWith: sharedWith
+              };
+
+              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']}`);
+
+              // If merge changed anything, write back to Firestore
+              if (mergeChanged) {
+                this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
+                this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates).catch(error => {
+                  this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+                });
+              }
+
+              this.mergeLists(); // Trigger UI update
+            }
+          } else {
+            // List was deleted
+            this.logger.warn('data', `Shared list ${list.id} was deleted by owner`);
+            this.removeSharedList(list.id);
+          }
+        },
+        (error: any) => {
+          // Permission error means list was deleted or user was removed
+          this.logger.warn('data', `Lost access to list ${list.id}, removing`);
+          this.removeSharedList(list.id);
+        }
+      );
+
+      // Store unsubscribe function for cleanup
+      this.sharedListListeners.set(list.id, unsubscribe);
     }
 
-    this.isPollingActive = true;
-    const interval = this.getSmartPollInterval();
-    this.logger.info('data', `🔄 Starting smart polling for ${this.sharedLists.length} shared lists (${interval/1000}s interval)`);
-
-    // Poll immediately once
-    this.pollSharedListUpdates();
-
-    // Then poll with smart interval
-    this.sharedListPollingTimer = setInterval(() => {
-      // Skip polling if tab is not visible (saves quota!)
-      if (document.hidden) {
-        this.logger.debug('data', 'Tab hidden, skipping poll');
-        return;
-      }
-
-      this.pollSharedListUpdates();
-    }, interval);
+    this.logger.info('data', `✅ Real-time listeners active for ${this.sharedListListeners.size} shared lists`);
   }
 
   /**
-   * QUOTA OPTIMIZATION: Determine poll interval based on user activity
-   * Active editing: 1 minute, Inactive: 5 minutes
+   * Clean up all shared list real-time listeners
    */
-  private getSmartPollInterval(): number {
-    const timeSinceActivity = Date.now() - this.lastUserActivity;
-    const ACTIVE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
-
-    return timeSinceActivity < ACTIVE_THRESHOLD
-      ? this.ACTIVE_POLL_INTERVAL  // 1 minute when active
-      : this.SHARED_LIST_POLL_INTERVAL; // 5 minutes when idle
-  }
-
-  /**
-   * QUOTA OPTIMIZATION: Track user activity to adjust poll frequency
-   * Call this when user interacts with lists (check, add, remove items)
-   */
-  public markUserActivity(): void {
-    this.lastUserActivity = Date.now();
-  }
-
-  /**
-   * Manual sync for shared lists
-   * Allows users to manually trigger a sync without waiting for polling interval
-   * Useful when collaborating in real-time
-   */
-  public async syncSharedListsNow(): Promise<void> {
-    this.logger.info('data', '🔄 Manual sync requested');
-    if (this.sharedLists.length === 0) {
-      this.logger.info('data', 'No shared lists to sync');
-      return;
-    }
-
-    // Trigger immediate poll
-    await this.pollSharedListUpdates();
-    this.logger.info('data', '✅ Manual sync complete');
+  private cleanupSharedListListeners(): void {
+    this.logger.debug('data', `Cleaning up ${this.sharedListListeners.size} shared list listeners`);
+    this.sharedListListeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    this.sharedListListeners.clear();
   }
 
   /**
@@ -568,134 +592,8 @@ export class FirebaseDataService {
   }
 
   /**
-   * QUOTA OPTIMIZATION: Poll shared lists for updates
-   * Only fetches lists that have likely changed (based on server timestamps)
-   */
-  private async pollSharedListUpdates(): Promise<void> {
-    if (this.sharedLists.length === 0) {
-      return;
-    }
-
-    const userId = this.authService.getCurrentUserId();
-    if (!userId) {
-      return;
-    }
-
-    this.logger.debug('data', `🔄 Polling ${this.sharedLists.length} shared lists for updates...`);
-
-    try {
-      let updatedCount = 0;
-      const updatePromises: Promise<void>[] = [];
-
-      for (const list of this.sharedLists) {
-        const updatePromise = (async () => {
-          try {
-            const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
-            const snapshot = await getDoc(listRef);
-            this.quotaMonitor.trackRead('Shared List Poll', 1, { listId: list.id });
-
-            if (snapshot.exists()) {
-              const data = snapshot.data();
-              const serverUpdatedAt = data['updatedAt']?.toDate()?.getTime() || 0;
-              const localUpdatedAt = list.updatedAt?.getTime() || 0;
-
-              // Only update if server version is newer
-              if (serverUpdatedAt > localUpdatedAt) {
-                // Verify user still has access
-                const sharedWith = data['sharedWith'] || [];
-                if (!sharedWith.includes(userId)) {
-                  this.logger.warn('data', `Lost access to list ${list.id}, removing`);
-                  this.removeSharedList(list.id);
-                  return;
-                }
-
-                // Update the list in sharedLists array
-                const index = this.sharedLists.findIndex(l => l.id === list.id);
-                if (index !== -1) {
-                  // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
-                  // This ensures User A's checks don't get lost when User B checks something
-                  const localItemStates = this.sharedLists[index].itemStates || {};
-                  const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-                  const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
-
-                  // CRITICAL: Check if merge produced different result than server
-                  const mergeChanged = JSON.stringify(mergedItemStates) !== JSON.stringify(serverItemStates);
-
-                  this.sharedLists[index] = {
-                    ...this.sharedLists[index],
-                    name: data['name'],
-                    color: data['color'],
-                    icon: data['icon'],
-                    shopId: data['shopId'],
-                    itemStates: mergedItemStates, // Use merged version instead of server version
-                    articleIds: data['articleIds'] || [],
-                    departmentOrder: data['departmentOrder'],
-                    updatedAt: data['updatedAt']?.toDate() || new Date(),
-                    sharedWith: sharedWith
-                  };
-
-                  updatedCount++;
-
-                  // CRITICAL FIX: If merge changed anything, write back to Firestore
-                  // This ensures all users see the merged state
-                  if (mergeChanged) {
-                    this.logger.info('data', `🔄 Merge produced different state, writing back to Firestore for ${data['name']}`);
-                    this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates).catch(error => {
-                      this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
-                    });
-                  } else {
-                    this.logger.debug('data', `📥 Updated shared list: ${data['name']} (itemStates merged, no changes)`);
-                  }
-                }
-              }
-            } else {
-              // List was deleted
-              this.logger.warn('data', `Shared list ${list.id} deleted by owner`);
-              this.removeSharedList(list.id);
-            }
-          } catch (error: any) {
-            // Permission error means list was deleted or user was removed
-            if (error.code === 'permission-denied') {
-              this.logger.warn('data', `Lost access to list ${list.id}, removing`);
-              this.removeSharedList(list.id);
-            } else {
-              this.logger.debug('data', `Poll error for list ${list.id}: ${error.message}`);
-            }
-          }
-        })();
-
-        updatePromises.push(updatePromise);
-      }
-
-      // Wait for all polls to complete
-      await Promise.all(updatePromises);
-
-      if (updatedCount > 0) {
-        this.logger.info('data', `✅ Polled updates: ${updatedCount} lists changed`);
-        this.mergeLists(); // Trigger UI update only if something changed
-      } else {
-        this.logger.debug('data', `✅ Polled: No changes detected`);
-      }
-    } catch (error) {
-      this.logger.error('data', 'Error polling shared list updates:', error);
-    }
-  }
-
-  /**
-   * QUOTA OPTIMIZATION: Stop polling timer
-   */
-  private stopSharedListPolling(): void {
-    if (this.sharedListPollingTimer) {
-      clearInterval(this.sharedListPollingTimer);
-      this.sharedListPollingTimer = undefined;
-      this.isPollingActive = false;
-      this.logger.debug('data', 'Stopped shared list polling');
-    }
-  }
-
-  /**
-   * Phase 8: Remove a shared list from the local state
-   * QUOTA OPTIMIZATION: No longer needs to clean up individual listeners (using polling instead)
+   * Remove a shared list from the local state
+   * Cleans up real-time listener and cached data
    */
   private removeSharedList(listId: string): void {
     const index = this.sharedLists.findIndex(l => l.id === listId);
@@ -704,7 +602,14 @@ export class FirebaseDataService {
       this.mergeLists();
     }
 
-    // Clean up cached data for this list
+    // Clean up the real-time listener
+    const unsubscribe = this.sharedListListeners.get(listId);
+    if (unsubscribe) {
+      unsubscribe();
+      this.sharedListListeners.delete(listId);
+    }
+
+    // Clean up cached data
     this.lastSharedListUpdate.delete(listId);
   }
 
@@ -1123,8 +1028,8 @@ export class FirebaseDataService {
       this.sharedListsUnsubscribe = undefined;
     }
 
-    // QUOTA OPTIMIZATION: Stop polling timer instead of cleaning up per-list listeners
-    this.stopSharedListPolling();
+    // REAL-TIME SYNC: Cleanup shared list listeners
+    this.cleanupSharedListListeners();
 
     // Performance: Clear caches on cleanup
     this.loadedSharedArticleIds.clear();
