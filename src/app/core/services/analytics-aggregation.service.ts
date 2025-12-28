@@ -232,8 +232,19 @@ export class AnalyticsAggregationService {
   }
 
   private async computeAICommandBreakdown(): Promise<AICommandBreakdown> {
+    // QUOTA OPTIMIZATION: Add limit and time range to prevent reading ALL events
+    // Before: getDocs(eventsRef) = ALL analytics events (unlimited!)
+    // After: limit(500) + last 30 days = max 500 reads
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     const eventsRef = collection(this.firestore, 'analytics/events/items');
-    const eventsSnapshot = await getDocs(eventsRef);
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
+      limit(500)
+    );
+    const eventsSnapshot = await getDocs(q);
 
     const aiEvents = eventsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
