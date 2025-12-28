@@ -991,8 +991,22 @@ export class FirebaseDataService {
       }
 
       // Both exist - merge intelligently based on timestamps
-      const localTime = localState.checkedAt?.getTime() || localState.addedAt?.getTime() || 0;
-      const serverTime = serverState.checkedAt?.getTime() || serverState.addedAt?.getTime() || 0;
+      // CRITICAL: Timestamps might be Date objects (from listsSubject) or Timestamp objects (from Firestore)
+      const getTimestamp = (state: any) => {
+        const checkedAt = state.checkedAt;
+        const addedAt = state.addedAt;
+
+        // Handle Date objects, Timestamp objects, or undefined
+        const checkedTime = checkedAt instanceof Date ? checkedAt.getTime() :
+                           (checkedAt?.toMillis ? checkedAt.toMillis() : 0);
+        const addedTime = addedAt instanceof Date ? addedAt.getTime() :
+                         (addedAt?.toMillis ? addedAt.toMillis() : 0);
+
+        return checkedTime || addedTime || 0;
+      };
+
+      const localTime = getTimestamp(localState);
+      const serverTime = getTimestamp(serverState);
 
       // Use whichever has the most recent change
       if (serverTime > localTime) {
