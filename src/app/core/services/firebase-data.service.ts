@@ -679,14 +679,36 @@ export class FirebaseDataService {
             // Update the list in sharedLists array
             const index = this.sharedLists.findIndex(l => l.id === list.id);
             if (index !== -1) {
-              // CRITICAL FIX: For shared lists, collaborators should TRUST the server (owner's) version
-              // Do NOT merge with local state - the owner is the source of truth
-              // Local optimistic updates are only for the collaborator's OWN changes
+              // CRITICAL FIX: Check if this is OUR OWN write (collaborator's recent change)
+              // If yes, preserve optimistic updates; if no, trust server (owner's version)
+              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
+              const timeSinceWrite = Date.now() - lastWriteTime;
+              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const serverArticleIds = data['articleIds'] || [];
 
-              this.logger.info('data', `📦 Updating sharedLists[${index}] with server data: ${Object.keys(serverItemStates).length} items, ${serverArticleIds.length} articles`);
+              let finalItemStates: { [articleId: string]: any };
+              let finalArticleIds: string[];
+
+              if (isOurOwnWrite) {
+                // This is OUR write - preserve local optimistic updates
+                const currentLists = this.listsSubject.value;
+                const currentList = currentLists.find(l => l.id === list.id);
+
+                finalItemStates = currentList?.itemStates || serverItemStates;
+                finalArticleIds = currentList?.articleIds || serverArticleIds;
+
+                this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our write ${timeSinceWrite}ms ago)`);
+              } else {
+                // This is OWNER's write or old data - trust server completely
+                finalItemStates = serverItemStates;
+                finalArticleIds = serverArticleIds;
+
+                this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
+              }
+
+              this.logger.info('data', `📦 Updating sharedLists[${index}] with ${isOurOwnWrite ? 'local' : 'server'} data: ${Object.keys(finalItemStates).length} items, ${finalArticleIds.length} articles`);
 
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
@@ -694,14 +716,14 @@ export class FirebaseDataService {
                 color: data['color'],
                 icon: data['icon'],
                 shopId: data['shopId'],
-                itemStates: serverItemStates, // ALWAYS use server version for shared lists
-                articleIds: serverArticleIds, // ALWAYS use server version for shared lists
+                itemStates: finalItemStates,
+                articleIds: finalArticleIds,
                 departmentOrder: data['departmentOrder'],
                 updatedAt: data['updatedAt']?.toDate() || new Date(),
                 sharedWith: sharedWith
               };
 
-              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(serverItemStates).length} items, ${serverArticleIds.length} articles)`);
+              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(finalItemStates).length} items, ${finalArticleIds.length} articles)`);
 
               this.mergeLists(); // Trigger UI update
               this.logger.info('data', `✅ mergeLists() called, UI should update`);
@@ -1511,6 +1533,10 @@ export class FirebaseDataService {
       if (firestoreData.articleIds) {
         this.logger.info('data', `📝 articleIds being written: [${firestoreData.articleIds.join(', ')}] (${firestoreData.articleIds.length} total)`);
       }
+
+      // Mark this write so listener knows to preserve optimistic updates
+      this.lastMergeWrite.set(id, Date.now());
+
       await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
     } catch (error: any) {
