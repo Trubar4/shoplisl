@@ -675,38 +675,12 @@ export class FirebaseDataService {
             // Update the list in sharedLists array
             const index = this.sharedLists.findIndex(l => l.id === list.id);
             if (index !== -1) {
-              // CRITICAL FIX: Read local state from current subject (has optimistic updates)
-              // NOT from sharedLists array (stale - not updated by repository addArticle)
-              const currentLists = this.listsSubject.value;
-              const currentList = currentLists.find(l => l.id === list.id);
+              // CRITICAL FIX: For shared lists, collaborators should TRUST the server (owner's) version
+              // Do NOT merge with local state - the owner is the source of truth
+              // Local optimistic updates are only for the collaborator's OWN changes
 
-              // DEBUG: Log what we found
-              if (currentList) {
-                this.logger.debug('data', `📋 Found currentList with ${currentList.articleIds?.length || 0} articles (vs sharedLists: ${this.sharedLists[index].articleIds?.length || 0})`);
-              } else {
-                this.logger.warn('data', `⚠️ No currentList found in subject for ${list.id}, falling back to sharedLists array`);
-              }
-
-              // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
-              const localItemStates = currentList?.itemStates || this.sharedLists[index].itemStates || {};
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-              const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
-
-              // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
-              const localArticleIds = currentList?.articleIds || this.sharedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
-              this.logger.debug('data', `📊 Merging articleIds: local=${localArticleIds.length}, server=${serverArticleIds.length}`);
-              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
-
-              // CRITICAL: Prevent infinite loop - check if we just wrote to this list
-              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-              const timeSinceWrite = Date.now() - lastWriteTime;
-              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
-
-              // Check if merge produced different result than server
-              const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-              const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
-              const mergeChanged = itemStatesChanged || articleIdsChanged;
 
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
@@ -714,24 +688,14 @@ export class FirebaseDataService {
                 color: data['color'],
                 icon: data['icon'],
                 shopId: data['shopId'],
-                itemStates: mergedItemStates, // Use merged version
-                articleIds: mergedArticleIds, // Use merged version
+                itemStates: serverItemStates, // ALWAYS use server version for shared lists
+                articleIds: serverArticleIds, // ALWAYS use server version for shared lists
                 departmentOrder: data['departmentOrder'],
                 updatedAt: data['updatedAt']?.toDate() || new Date(),
                 sharedWith: sharedWith
               };
 
-              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']}`);
-
-              // CRITICAL FIX: Collaborators should NEVER write back
-              // Only the owner's listener writes back to prevent ping-pong loops
-              // Collaborators just merge locally and trust the owner's version
-              if (mergeChanged && !isOurOwnWrite) {
-                this.logger.info('data', `🔍 Merge produced different state for shared list ${data['name']} - owner will resolve (collaborator read-only)`);
-                // NO write-back for collaborators - prevents infinite loop with owner's listener
-              } else if (isOurOwnWrite) {
-                this.logger.debug('data', `⏭️ Skipping write-back (our own write, ${timeSinceWrite}ms ago)`);
-              }
+              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(serverItemStates).length} items, ${serverArticleIds.length} articles)`);
 
               this.mergeLists(); // Trigger UI update
             }
