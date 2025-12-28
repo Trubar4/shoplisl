@@ -515,6 +515,8 @@ export class FirebaseDataService {
 
       const unsubscribe = onSnapshot(listRef,
         (snapshot) => {
+          this.logger.info('data', `🔔 Owned list listener FIRED for ${list.id} (${list.name})`);
+
           if (snapshot.exists()) {
             const data = snapshot.data();
 
@@ -661,6 +663,8 @@ export class FirebaseDataService {
 
       const unsubscribe = onSnapshot(listRef,
         (snapshot) => {
+          this.logger.info('data', `🔔 Shared list listener FIRED for ${list.id} (${list.name})`);
+
           if (snapshot.exists()) {
             const data = snapshot.data();
 
@@ -682,6 +686,8 @@ export class FirebaseDataService {
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const serverArticleIds = data['articleIds'] || [];
 
+              this.logger.info('data', `📦 Updating sharedLists[${index}] with server data: ${Object.keys(serverItemStates).length} items, ${serverArticleIds.length} articles`);
+
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
                 name: data['name'],
@@ -698,6 +704,9 @@ export class FirebaseDataService {
               this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(serverItemStates).length} items, ${serverArticleIds.length} articles)`);
 
               this.mergeLists(); // Trigger UI update
+              this.logger.info('data', `✅ mergeLists() called, UI should update`);
+            } else {
+              this.logger.error('data', `❌ List ${list.id} not found in sharedLists array!`);
             }
           } else {
             // List was deleted
@@ -707,7 +716,7 @@ export class FirebaseDataService {
         },
         (error: any) => {
           // Permission error means list was deleted or user was removed
-          this.logger.warn('data', `Lost access to list ${list.id}, removing`);
+          this.logger.error('data', `❌ Shared list listener ERROR for ${list.id}:`, error);
           this.removeSharedList(list.id);
         }
       );
