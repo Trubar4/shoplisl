@@ -509,6 +509,13 @@ export class FirebaseDataService {
               const currentLists = this.listsSubject.value;
               const currentList = currentLists.find(l => l.id === list.id);
 
+              // DEBUG: Log what we found
+              if (currentList) {
+                this.logger.debug('data', `📋 Found currentList with ${currentList.articleIds?.length || 0} articles (vs sharedLists: ${this.sharedLists[index].articleIds?.length || 0})`);
+              } else {
+                this.logger.warn('data', `⚠️ No currentList found in subject for ${list.id}, falling back to sharedLists array`);
+              }
+
               // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
               const localItemStates = currentList?.itemStates || this.sharedLists[index].itemStates || {};
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
@@ -517,6 +524,7 @@ export class FirebaseDataService {
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
               const localArticleIds = currentList?.articleIds || this.sharedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
+              this.logger.debug('data', `📊 Merging articleIds: local=${localArticleIds.length}, server=${serverArticleIds.length}`);
               const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
 
               // CRITICAL: Prevent infinite loop - check if we just wrote to this list
