@@ -521,14 +521,25 @@ export class FirebaseDataService {
             // Update the list in ownedLists array
             const index = this.ownedLists.findIndex(l => l.id === list.id);
             if (index !== -1) {
+              // CRITICAL FIX: Read local state from listsSubject (has optimistic updates)
+              // NOT from ownedLists array (stale - doesn't have repository's optimistic updates!)
+              const currentLists = this.listsSubject.value;
+              const currentList = currentLists.find(l => l.id === list.id);
+
+              if (currentList) {
+                this.logger.debug('data', `📋 Found currentList with ${currentList.articleIds?.length || 0} articles (vs ownedLists: ${this.ownedLists[index].articleIds?.length || 0})`);
+              } else {
+                this.logger.warn('data', `⚠️ No currentList found in subject for ${list.id}, falling back to ownedLists array`);
+              }
+
               // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
-              // This ensures User A's (owner) checks persist!
-              const localItemStates = this.ownedLists[index].itemStates || {};
+              // Use currentList (has optimistic updates) not ownedLists[index] (stale)
+              const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
 
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
-              const localArticleIds = this.ownedLists[index].articleIds || [];
+              const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
               const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
 
@@ -712,13 +723,12 @@ export class FirebaseDataService {
 
               this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']}`);
 
-              // CRITICAL: Only write back if merge changed AND it's not our own write
+              // CRITICAL FIX: Collaborators should NEVER write back
+              // Only the owner's listener writes back to prevent ping-pong loops
+              // Collaborators just merge locally and trust the owner's version
               if (mergeChanged && !isOurOwnWrite) {
-                this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
-                this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
-                this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates, mergedArticleIds).catch(error => {
-                  this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
-                });
+                this.logger.info('data', `🔍 Merge produced different state for shared list ${data['name']} - owner will resolve (collaborator read-only)`);
+                // NO write-back for collaborators - prevents infinite loop with owner's listener
               } else if (isOurOwnWrite) {
                 this.logger.debug('data', `⏭️ Skipping write-back (our own write, ${timeSinceWrite}ms ago)`);
               }
