@@ -237,36 +237,13 @@ export class ArticlesRepositoryService {
     isDuplicate?: boolean;
     error?: string;
   }> {
-    if (!this.connectionService.isOnline()) {
-      // For offline, just check current state
-      return this.checkArticleNameExists(article.name).pipe(
-        mergeMap(isDuplicate => {
-          if (isDuplicate) {
-            return of({ success: false, isDuplicate: true });
-          }
-          
-          return this.createArticle(article).pipe(
-            map(createdArticle => ({
-              success: true,
-              article: createdArticle
-            }))
-          );
-        })
-      );
-    }
-
-    return from(this.firebaseData.getAllArticlesFromFirebase()).pipe(
-      mergeMap(articles => {
-        const trimmedName = article.name.trim().toLowerCase();
-        const duplicate = articles.some(existingArticle => 
-          existingArticle.name.trim().toLowerCase() === trimmedName
-        );
-
-        if (duplicate) {
-          return of({
-            success: false,
-            isDuplicate: true
-          });
+    // QUOTA OPTIMIZATION: Use local state for duplicate check (0 reads)
+    // Before: called getAllArticlesFromFirebase() = 453 reads per article creation!
+    // After: uses getArticles() observable (already loaded) = 0 reads
+    return this.checkArticleNameExists(article.name).pipe(
+      mergeMap(isDuplicate => {
+        if (isDuplicate) {
+          return of({ success: false, isDuplicate: true });
         }
 
         return this.createArticle(article).pipe(
@@ -312,36 +289,13 @@ export class ArticlesRepositoryService {
       );
     }
 
-    if (!this.connectionService.isOnline()) {
-      // For offline, just check current state
-      return this.checkArticleNameExists(updates.name, id).pipe(
-        mergeMap(isDuplicate => {
-          if (isDuplicate) {
-            return of({ success: false, isDuplicate: true });
-          }
-          
-          return this.updateArticle(id, updates).pipe(
-            map(updatedArticle => ({
-              success: !!updatedArticle,
-              article: updatedArticle || undefined
-            }))
-          );
-        })
-      );
-    }
-
-    return from(this.firebaseData.getAllArticlesFromFirebase()).pipe(
-      mergeMap(articles => {
-        const trimmedName = updates.name!.trim().toLowerCase();
-        const duplicate = articles.some(article => 
-          article.id !== id && article.name.trim().toLowerCase() === trimmedName
-        );
-
-        if (duplicate) {
-          return of({
-            success: false,
-            isDuplicate: true
-          });
+    // QUOTA OPTIMIZATION: Use local state for duplicate check (0 reads)
+    // Before: called getAllArticlesFromFirebase() = 453 reads per article update!
+    // After: uses getArticles() observable (already loaded) = 0 reads
+    return this.checkArticleNameExists(updates.name, id).pipe(
+      mergeMap(isDuplicate => {
+        if (isDuplicate) {
+          return of({ success: false, isDuplicate: true });
         }
 
         return this.updateArticle(id, updates).pipe(
