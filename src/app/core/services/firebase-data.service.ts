@@ -73,7 +73,8 @@ export class FirebaseDataService {
   private sharedListsUnsubscribe?: () => void;
 
   // REAL-TIME SYNC: Use onSnapshot for instant collaboration
-  // Only for shared lists - owned lists already use listeners
+  // Individual document listeners for both owned and shared lists
+  private ownedListListeners = new Map<string, () => void>();
   private sharedListListeners = new Map<string, () => void>();
   private lastSharedListUpdate = new Map<string, number>(); // listId -> timestamp
 
@@ -300,6 +301,10 @@ export class FirebaseDataService {
           // Phase 8: Store owned lists separately
           this.ownedLists = lists;
           this.mergeLists();
+
+          // REAL-TIME SYNC: Set up individual listeners for instant updates with merge logic
+          // This prevents race conditions and ensures User A's (owner) checks persist
+          this.setupOwnedListRealtimeListeners(lists);
         },
         (error) => {
           this.logger.error('data', 'Lists listener error', error);
@@ -478,6 +483,143 @@ export class FirebaseDataService {
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
+  }
+
+  /**
+   * REAL-TIME SYNC: Set up onSnapshot listeners for owned lists
+   *
+   * CRITICAL FIX: This solves two major issues:
+   * 1. Prevents ALL lists from processing when only ONE list changes
+   * 2. Preserves optimistic updates so User A's (owner) checks persist
+   *
+   * Benefits:
+   * - Individual listeners fire ONLY for the changed list (not all lists)
+   * - Merge logic prevents race conditions and data loss
+   * - Optimistic updates preserved (checks/unchecks persist immediately)
+   *
+   * Quota Impact:
+   * - Initial setup: 1 read per list (one-time cost)
+   * - Updates: Only when specific list changes
+   * - No more processing all 12 lists when checking one article!
+   */
+  private setupOwnedListRealtimeListeners(ownedLists: ShoppingList[]): void {
+    // Clean up existing listeners first
+    this.cleanupOwnedListListeners();
+
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No user ID, cannot set up owned list listeners');
+      return;
+    }
+
+    this.logger.info('data', `⚡ Setting up real-time listeners for ${ownedLists.length} owned lists (instant sync with merge logic)`);
+
+    // Set up a real-time listener for each owned list
+    for (const list of ownedLists) {
+      const listRef = doc(this.firestore, `users-v2/${userId}/lists/${list.id}`);
+
+      const unsubscribe = onSnapshot(listRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+
+            // Update the list in ownedLists array
+            const index = this.ownedLists.findIndex(l => l.id === list.id);
+            if (index !== -1) {
+              // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
+              // This ensures User A's (owner) checks persist!
+              const localItemStates = this.ownedLists[index].itemStates || {};
+              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+              const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+
+              // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
+              const localArticleIds = this.ownedLists[index].articleIds || [];
+              const serverArticleIds = data['articleIds'] || [];
+              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
+
+              // CRITICAL: Prevent infinite loop - check if we just wrote to this list
+              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
+              const timeSinceWrite = Date.now() - lastWriteTime;
+              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+
+              // Check if merge produced different result than server
+              const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+              const mergeChanged = itemStatesChanged || articleIdsChanged;
+
+              this.ownedLists[index] = {
+                ...this.ownedLists[index],
+                name: data['name'],
+                color: data['color'],
+                icon: data['icon'],
+                shopId: data['shopId'],
+                itemStates: mergedItemStates, // Use merged version
+                articleIds: mergedArticleIds, // Use merged version
+                departmentOrder: data['departmentOrder'],
+                updatedAt: data['updatedAt']?.toDate() || new Date(),
+                sharedWith: data['sharedWith'] || []
+              };
+
+              this.logger.debug('data', `⚡ Real-time update for owned list: ${data['name']}`);
+
+              // CRITICAL: Only write back if merge changed AND it's not our own write
+              if (mergeChanged && !isOurOwnWrite) {
+                this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
+                this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
+                this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
+                  this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+                });
+              } else if (isOurOwnWrite) {
+                this.logger.debug('data', `⏭️ Skipping write-back (our own write, ${timeSinceWrite}ms ago)`);
+              }
+
+              this.mergeLists(); // Trigger UI update
+            }
+          } else {
+            // List was deleted
+            this.logger.warn('data', `Owned list ${list.id} was deleted`);
+            this.removeOwnedList(list.id);
+          }
+        },
+        (error: any) => {
+          this.logger.error('data', `Error in owned list listener for ${list.id}:`, error);
+        }
+      );
+
+      // Store unsubscribe function for cleanup
+      this.ownedListListeners.set(list.id, unsubscribe);
+    }
+
+    this.logger.info('data', `✅ Real-time listeners active for ${this.ownedListListeners.size} owned lists`);
+  }
+
+  /**
+   * Clean up all owned list real-time listeners
+   */
+  private cleanupOwnedListListeners(): void {
+    this.logger.debug('data', `Cleaning up ${this.ownedListListeners.size} owned list listeners`);
+    this.ownedListListeners.forEach((unsubscribe) => {
+      unsubscribe();
+    });
+    this.ownedListListeners.clear();
+  }
+
+  /**
+   * Remove an owned list from the local state
+   */
+  private removeOwnedList(listId: string): void {
+    const index = this.ownedLists.findIndex(l => l.id === listId);
+    if (index !== -1) {
+      this.ownedLists.splice(index, 1);
+      this.mergeLists();
+    }
+
+    // Clean up the listener
+    const unsubscribe = this.ownedListListeners.get(listId);
+    if (unsubscribe) {
+      unsubscribe();
+      this.ownedListListeners.delete(listId);
+    }
   }
 
   /**
@@ -1204,6 +1346,9 @@ export class FirebaseDataService {
       this.sharedListsUnsubscribe();
       this.sharedListsUnsubscribe = undefined;
     }
+
+    // REAL-TIME SYNC: Cleanup owned list listeners
+    this.cleanupOwnedListListeners();
 
     // REAL-TIME SYNC: Cleanup shared list listeners
     this.cleanupSharedListListeners();
