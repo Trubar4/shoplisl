@@ -75,6 +75,7 @@ export class FirebaseDataService {
   // REAL-TIME SYNC: Use onSnapshot for instant collaboration
   // Individual document listeners for both owned and shared lists
   private ownedListListeners = new Map<string, () => void>();
+  private ownedListListenersActive = false; // Track if individual listeners are set up
   private sharedListListeners = new Map<string, () => void>();
   private lastSharedListUpdate = new Map<string, number>(); // listId -> timestamp
 
@@ -260,35 +261,28 @@ export class FirebaseDataService {
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
+
+          // OPTIMIZATION: Once individual listeners are active, they handle all updates
+          // Collection listener only needed for initial load
+          if (this.ownedListListenersActive) {
+            this.logger.debug('data', '⏭️ Skipping collection update - individual listeners active');
+            return;
+          }
+
           const lists: ShoppingList[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
 
-            // CRITICAL FIX: Merge with optimistic updates from listsSubject
-            // Same issue as shared lists - direct replacement loses optimistic updates
-            const currentLists = this.listsSubject.value;
-            const currentList = currentLists.find(l => l.id === doc.id);
-
-            // Merge articleIds (preserve optimistic additions)
-            const serverArticleIds = data['articleIds'] || [];
-            const localArticleIds = currentList?.articleIds || [];
-            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
-
-            // Merge itemStates (preserve optimistic check/uncheck)
-            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const localItemStates = currentList?.itemStates || {};
-            const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
-
-            this.logger.debug('data', `📋 Owned list merge: ${doc.id} - local=${localArticleIds.length}, server=${serverArticleIds.length}, merged=${mergedArticleIds.length}`);
-
+            // NOTE: No merge logic here - individual document listeners handle content updates
+            // This collection listener is primarily for initial load
             lists.push({
               id: doc.id,
               name: data['name'],
               color: data['color'],
               icon: data['icon'],
               shopId: data['shopId'],
-              articleIds: mergedArticleIds,  // Use merged version
-              itemStates: mergedItemStates,   // Use merged version
+              articleIds: data['articleIds'] || [],
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
@@ -303,7 +297,8 @@ export class FirebaseDataService {
           this.mergeLists();
 
           // REAL-TIME SYNC: Set up individual listeners for instant updates with merge logic
-          // This prevents race conditions and ensures User A's (owner) checks persist
+          // Individual listeners handle ALL content updates efficiently (only changed list fires)
+          // This collection listener just does initial load
           this.setupOwnedListRealtimeListeners(lists);
         },
         (error) => {
@@ -590,6 +585,7 @@ export class FirebaseDataService {
       this.ownedListListeners.set(list.id, unsubscribe);
     }
 
+    this.ownedListListenersActive = true; // Mark individual listeners as active
     this.logger.info('data', `✅ Real-time listeners active for ${this.ownedListListeners.size} owned lists`);
   }
 
@@ -602,6 +598,7 @@ export class FirebaseDataService {
       unsubscribe();
     });
     this.ownedListListeners.clear();
+    this.ownedListListenersActive = false; // Mark individual listeners as inactive
   }
 
   /**
