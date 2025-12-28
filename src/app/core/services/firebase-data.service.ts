@@ -259,14 +259,32 @@ export class FirebaseDataService {
           const lists: ShoppingList[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
+
+            // CRITICAL FIX: Merge with optimistic updates from listsSubject
+            // Same issue as shared lists - direct replacement loses optimistic updates
+            const currentLists = this.listsSubject.value;
+            const currentList = currentLists.find(l => l.id === doc.id);
+
+            // Merge articleIds (preserve optimistic additions)
+            const serverArticleIds = data['articleIds'] || [];
+            const localArticleIds = currentList?.articleIds || [];
+            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
+
+            // Merge itemStates (preserve optimistic check/uncheck)
+            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+            const localItemStates = currentList?.itemStates || {};
+            const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+
+            this.logger.debug('data', `📋 Owned list merge: ${doc.id} - local=${localArticleIds.length}, server=${serverArticleIds.length}, merged=${mergedArticleIds.length}`);
+
             lists.push({
               id: doc.id,
               name: data['name'],
               color: data['color'],
               icon: data['icon'],
               shopId: data['shopId'],
-              articleIds: data['articleIds'] || [],
-              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+              articleIds: mergedArticleIds,  // Use merged version
+              itemStates: mergedItemStates,   // Use merged version
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
