@@ -504,13 +504,18 @@ export class FirebaseDataService {
             // Update the list in sharedLists array
             const index = this.sharedLists.findIndex(l => l.id === list.id);
             if (index !== -1) {
+              // CRITICAL FIX: Read local state from current subject (has optimistic updates)
+              // NOT from sharedLists array (stale - not updated by repository addArticle)
+              const currentLists = this.listsSubject.value;
+              const currentList = currentLists.find(l => l.id === list.id);
+
               // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
-              const localItemStates = this.sharedLists[index].itemStates || {};
+              const localItemStates = currentList?.itemStates || this.sharedLists[index].itemStates || {};
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
               const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
 
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
-              const localArticleIds = this.sharedLists[index].articleIds || [];
+              const localArticleIds = currentList?.articleIds || this.sharedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
               const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
 
