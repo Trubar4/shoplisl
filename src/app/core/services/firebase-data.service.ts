@@ -101,6 +101,9 @@ export class FirebaseDataService {
     this.authService.getCurrentUser().subscribe(user => {
       if (user) {
         this.logger.info('data', `User changed to ${user.email}, reloading data`);
+        // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
+        // Without this, old listeners stay active and both users' data loads!
+        this.cleanupListeners();
         this.loadFreshData();
       } else {
         this.logger.info('data', 'User logged out, clearing data');
