@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 
-import { DEFAULT_DEPARTMENT_ORDER } from '../models';
+import { DEFAULT_DEPARTMENT_ORDER, ShoppingList, Article } from '../models';
 import { FirebaseDataService } from './firebase-data.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
@@ -109,8 +109,8 @@ export class DataMigrationService {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
         
-        const hasOrphanedArticleIds = articleIds.some(id => !validArticleIds.has(id));
-        const hasOrphanedItemStates = Object.keys(itemStates).some(id => !validArticleIds.has(id));
+        const hasOrphanedArticleIds = articleIds.some((id: string) => !validArticleIds.has(id));
+        const hasOrphanedItemStates = Object.keys(itemStates).some((id: string) => !validArticleIds.has(id));
         
         if (hasOrphanedArticleIds || hasOrphanedItemStates) {
           return true;
@@ -159,7 +159,7 @@ export class DataMigrationService {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
-        const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
+        const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
         Object.entries(itemStates).forEach(([articleId, state]) => {
@@ -379,7 +379,7 @@ export class DataMigrationService {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
-        const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
+        const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
         Object.entries(itemStates).forEach(([articleId, state]) => {
