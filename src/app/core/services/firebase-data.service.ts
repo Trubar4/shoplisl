@@ -1163,14 +1163,10 @@ export class FirebaseDataService {
         merged[articleId] = localState;
         this.logger.debug('data', `Merge: Using local state for ${articleId} (local newer: ${localTime} > ${serverTime})`);
       } else {
-        // Times equal - prefer checked state over unchecked
-        if (serverState.isChecked && !localState.isChecked) {
-          merged[articleId] = serverState;
-          this.logger.debug('data', `Merge: Using server state for ${articleId} (server checked)`);
-        } else {
-          merged[articleId] = localState;
-          this.logger.debug('data', `Merge: Using local state for ${articleId} (same time or local checked)`);
-        }
+        // Times equal - prefer SERVER state (most recent write wins)
+        // This ensures collaborator changes persist when timestamps are very close
+        merged[articleId] = serverState;
+        this.logger.debug('data', `Merge: Using server state for ${articleId} (timestamps equal, server wins)`);
       }
     }
 
