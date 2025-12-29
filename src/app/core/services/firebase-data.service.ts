@@ -113,6 +113,10 @@ export class FirebaseDataService {
         // Without this, old listeners stay active and both users' data loads!
         this.cleanupListeners();
         this.loadFreshData();
+
+        // CRITICAL FIX: Re-setup active list listener after cleanup
+        // cleanupListeners() destroys the subscription, so we need to recreate it
+        this.setupActiveListListener();
       } else {
         this.logger.info('data', 'User logged out, clearing data');
         this.cleanupListeners();
