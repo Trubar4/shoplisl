@@ -159,21 +159,27 @@ export class FirebaseDataService {
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
     // This fixes race condition where component calls setActiveList() before lists are loaded
     const setupListener = (lists: ShoppingList[]) => {
+      this.logger.info('data', `📋 Setting up listener for ${listId} (${lists.length} lists available)`);
+
       const list = lists.find(l => l.id === listId);
 
       if (!list) {
-        this.logger.warn('data', `List ${listId} not found in ${lists.length} loaded lists`);
+        this.logger.warn('data', `❌ List ${listId} not found in ${lists.length} loaded lists`);
+        this.logger.debug('data', `Available list IDs: ${lists.map(l => l.id).join(', ')}`);
         return;
       }
 
       // Check if this is an owned list or shared list
       const isOwnedList = list.ownerId === userId;
+      this.logger.info('data', `🔍 List ownership check: ownerId=${list.ownerId}, currentUserId=${userId}, isOwned=${isOwnedList}`);
 
       if (isOwnedList) {
         // Set up owned list listener
+        this.logger.info('data', `🏠 Setting up OWNED list listener for ${list.name}`);
         this.setupSingleOwnedListListener(list);
       } else {
         // Set up shared list listener
+        this.logger.info('data', `🤝 Setting up SHARED list listener for ${list.name}`);
         this.setupSingleSharedListListener(list);
       }
 
