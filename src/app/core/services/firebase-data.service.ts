@@ -142,6 +142,9 @@ export class FirebaseDataService {
   /**
    * LAZY LISTENERS: Set up listener for ONE specific list
    * This is called when a list is opened in the detail view
+   *
+   * CRITICAL FIX: Wait for lists to load before setting up listener
+   * This prevents race condition where setup runs before lists are loaded
    */
   private setupLazyListenerForList(listId: string): void {
     // Cleanup existing lazy listeners first
@@ -153,27 +156,44 @@ export class FirebaseDataService {
       return;
     }
 
-    // Find the list in our current lists
+    // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
+    // This fixes race condition where component calls setActiveList() before lists are loaded
+    const setupListener = (lists: ShoppingList[]) => {
+      const list = lists.find(l => l.id === listId);
+
+      if (!list) {
+        this.logger.warn('data', `List ${listId} not found in ${lists.length} loaded lists`);
+        return;
+      }
+
+      // Check if this is an owned list or shared list
+      const isOwnedList = list.ownerId === userId;
+
+      if (isOwnedList) {
+        // Set up owned list listener
+        this.setupSingleOwnedListListener(list);
+      } else {
+        // Set up shared list listener
+        this.setupSingleSharedListListener(list);
+      }
+
+      this.logger.info('data', `✅ Lazy listener active for ${isOwnedList ? 'owned' : 'shared'} list: ${list.name}`);
+    };
+
+    // Try immediate setup first (if lists already loaded)
     const currentLists = this.listsSubject.value;
-    const list = currentLists.find(l => l.id === listId);
-
-    if (!list) {
-      this.logger.warn('data', `List ${listId} not found, cannot set up lazy listener`);
-      return;
-    }
-
-    // Check if this is an owned list or shared list
-    const isOwnedList = list.ownerId === userId;
-
-    if (isOwnedList) {
-      // Set up owned list listener
-      this.setupSingleOwnedListListener(list);
+    if (currentLists.length > 0) {
+      setupListener(currentLists);
     } else {
-      // Set up shared list listener
-      this.setupSingleSharedListListener(list);
+      // Lists not loaded yet - wait for them
+      this.logger.info('data', `⏳ Waiting for lists to load before setting up listener for ${listId}`);
+      const subscription = this.listsSubject.subscribe(lists => {
+        if (lists.length > 0) {
+          setupListener(lists);
+          subscription.unsubscribe(); // Only run once
+        }
+      });
     }
-
-    this.logger.info('data', `✅ Lazy listener active for ${isOwnedList ? 'owned' : 'shared'} list: ${list.name}`);
   }
 
   /**

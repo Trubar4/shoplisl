@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { LoggerService } from './logger.service';
 
 /**
  * LAZY LISTENERS: Track which list is currently active/open
@@ -23,13 +24,15 @@ import { BehaviorSubject, Observable } from 'rxjs';
 export class ActiveListService {
   private activeListId$ = new BehaviorSubject<string | null>(null);
 
+  constructor(private logger: LoggerService) {}
+
   /**
    * Set the currently active/open list
    * This triggers the firebase-data service to set up a listener for this list
    */
   setActiveList(listId: string): void {
     if (this.activeListId$.value !== listId) {
-      console.log(`📍 Active list changed: ${this.activeListId$.value} → ${listId}`);
+      this.logger.info('data', `📍 Active list changed: ${this.activeListId$.value} → ${listId}`);
       this.activeListId$.next(listId);
     }
   }
@@ -40,7 +43,7 @@ export class ActiveListService {
    */
   clearActiveList(): void {
     if (this.activeListId$.value !== null) {
-      console.log(`📍 Active list cleared: ${this.activeListId$.value} → null`);
+      this.logger.info('data', `📍 Active list cleared: ${this.activeListId$.value} → null`);
       this.activeListId$.next(null);
     }
   }
