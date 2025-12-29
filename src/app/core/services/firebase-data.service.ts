@@ -132,15 +132,29 @@ export class FirebaseDataService {
    * This reduces quota from 2,393 reads to ~26 reads per session (98% reduction)
    */
   private setupActiveListListener(): void {
-    this.activeListSubscription = this.activeListService.getActiveListId$().subscribe(activeListId => {
-      if (activeListId) {
-        this.logger.info('data', `🎯 Active list changed to ${activeListId}, setting up lazy listener`);
-        this.setupLazyListenerForList(activeListId);
-      } else {
-        this.logger.info('data', `🎯 Active list cleared, cleaning up lazy listeners`);
-        this.cleanupLazyListeners();
+    this.logger.info('data', `🔌 Setting up active list listener subscription`);
+
+    this.activeListSubscription = this.activeListService.getActiveListId$().subscribe({
+      next: (activeListId) => {
+        this.logger.info('data', `🔔 Active list subscription FIRED with: ${activeListId}`);
+
+        if (activeListId) {
+          this.logger.info('data', `🎯 Active list changed to ${activeListId}, setting up lazy listener`);
+          this.setupLazyListenerForList(activeListId);
+        } else {
+          this.logger.info('data', `🎯 Active list cleared, cleaning up lazy listeners`);
+          this.cleanupLazyListeners();
+        }
+      },
+      error: (err) => {
+        this.logger.error('data', `❌ Active list subscription ERROR:`, err);
+      },
+      complete: () => {
+        this.logger.warn('data', `⚠️ Active list subscription COMPLETED (this should not happen!)`);
       }
     });
+
+    this.logger.info('data', `✅ Active list listener subscription created`);
   }
 
   /**
@@ -193,12 +207,14 @@ export class FirebaseDataService {
     // Try immediate setup first (if lists already loaded)
     const currentLists = this.listsSubject.value;
     if (currentLists.length > 0) {
+      this.logger.info('data', `📦 Lists already loaded (${currentLists.length}), setting up listener immediately`);
       setupListener(currentLists);
     } else {
       // Lists not loaded yet - wait for them
       this.logger.info('data', `⏳ Waiting for lists to load before setting up listener for ${listId}`);
       const subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0) {
+          this.logger.info('data', `📦 Lists loaded (${lists.length}), now setting up listener`);
           setupListener(lists);
           subscription.unsubscribe(); // Only run once
         }
