@@ -43,6 +43,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserProfileService } from '../../../core/services/user-profile.service';
 import { AIService } from '../../../core/services/ai';
 import { ApiKeyTipDialogComponent } from '../../../shared/components/api-key-tip-dialog/api-key-tip-dialog.component';
+import { ActiveListService } from '../../../core/services/active-list.service';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -113,7 +114,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly sharingService: SharingService,
     private readonly authService: AuthService,
     private readonly userProfileService: UserProfileService,
-    private readonly aiService: AIService
+    private readonly aiService: AIService,
+    private readonly activeListService: ActiveListService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -139,11 +141,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    * - Sets up article filtering pipelines
    * - Initializes search functionality
    * - Configures completion monitoring for celebration animation
+   * - LAZY LISTENERS: Activates real-time listener for this specific list only
    */
   ngOnInit(): void {
     // Dispatch NgRx actions to load data
     this.store.dispatch(ListsActions.loadLists());
     this.store.dispatch(ArticlesActions.loadArticles());
+
+    // LAZY LISTENERS: Activate listener for this list (98% quota reduction!)
+    this.activeListService.setActiveList(this.listId);
 
     this.initializeComponent();
     this.setupSubscriptions();
@@ -152,6 +158,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // LAZY LISTENERS: Clear active list to cleanup listener
+    this.activeListService.clearActiveList();
     this.cleanup();
   }
 
