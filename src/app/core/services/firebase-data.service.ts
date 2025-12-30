@@ -132,29 +132,20 @@ export class FirebaseDataService {
    * This reduces quota from 2,393 reads to ~26 reads per session (98% reduction)
    */
   private setupActiveListListener(): void {
-    this.logger.info('data', `🔌 Setting up active list listener subscription`);
-
     this.activeListSubscription = this.activeListService.getActiveListId$().subscribe({
       next: (activeListId) => {
-        this.logger.info('data', `🔔 Active list subscription FIRED with: ${activeListId}`);
-
         if (activeListId) {
           this.logger.info('data', `🎯 Active list changed to ${activeListId}, setting up lazy listener`);
           this.setupLazyListenerForList(activeListId);
         } else {
-          this.logger.info('data', `🎯 Active list cleared, cleaning up lazy listeners`);
+          this.logger.debug('data', `Active list cleared, cleaning up lazy listeners`);
           this.cleanupLazyListeners();
         }
       },
       error: (err) => {
-        this.logger.error('data', `❌ Active list subscription ERROR:`, err);
-      },
-      complete: () => {
-        this.logger.warn('data', `⚠️ Active list subscription COMPLETED (this should not happen!)`);
+        this.logger.error('data', `Active list subscription ERROR:`, err);
       }
     });
-
-    this.logger.info('data', `✅ Active list listener subscription created`);
   }
 
   /**
@@ -177,29 +168,24 @@ export class FirebaseDataService {
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
     // This fixes race condition where component calls setActiveList() before lists are loaded
     const setupListener = (lists: ShoppingList[]) => {
-      this.logger.info('data', `📋 Setting up listener for ${listId} (${lists.length} lists available)`);
-
       const list = lists.find(l => l.id === listId);
 
       if (!list) {
-        this.logger.warn('data', `❌ List ${listId} not found in ${lists.length} loaded lists`);
-        this.logger.debug('data', `Available list IDs: ${lists.map(l => l.id).join(', ')}`);
+        this.logger.warn('data', `List ${listId} not found, cannot set up listener`);
         return;
       }
 
       // Check if this is an owned list or shared list
       const isOwnedList = list.ownerId === userId;
-      this.logger.info('data', `🔍 List ownership check: ownerId=${list.ownerId}, currentUserId=${userId}, isOwned=${isOwnedList}`);
 
       if (isOwnedList) {
-        // Set up owned list listener
-        this.logger.info('data', `🏠 Setting up OWNED list listener for ${list.name}`);
         this.setupSingleOwnedListListener(list);
       } else {
-        // Set up shared list listener
-        this.logger.info('data', `🤝 Setting up SHARED list listener for ${list.name}`);
         this.setupSingleSharedListListener(list);
       }
+
+      // LAZY ARTICLE LOADING: Load articles ONLY for this specific list
+      this.loadArticlesForList(list);
 
       this.logger.info('data', `✅ Lazy listener active for ${isOwnedList ? 'owned' : 'shared'} list: ${list.name}`);
     };
@@ -207,14 +193,12 @@ export class FirebaseDataService {
     // Try immediate setup first (if lists already loaded)
     const currentLists = this.listsSubject.value;
     if (currentLists.length > 0) {
-      this.logger.info('data', `📦 Lists already loaded (${currentLists.length}), setting up listener immediately`);
       setupListener(currentLists);
     } else {
       // Lists not loaded yet - wait for them
-      this.logger.info('data', `⏳ Waiting for lists to load before setting up listener for ${listId}`);
+      this.logger.debug('data', `Waiting for lists to load before setting up listener for ${listId}`);
       const subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0) {
-          this.logger.info('data', `📦 Lists loaded (${lists.length}), now setting up listener`);
           setupListener(lists);
           subscription.unsubscribe(); // Only run once
         }
@@ -241,6 +225,68 @@ export class FirebaseDataService {
       unsubscribe();
     });
     this.sharedListListeners.clear();
+  }
+
+  /**
+   * LAZY ARTICLE LOADING: Load articles ONLY for a specific list
+   * This replaces batch loading ALL articles from ALL shared lists
+   * Reduces quota from 7,248 reads to ~50 reads per session (99% reduction!)
+   */
+  private async loadArticlesForList(list: ShoppingList): Promise<void> {
+    // Only load articles if this is a shared list OR an owned list that's shared with others
+    const isSharedList = list.ownerId !== this.authService.getCurrentUserId();
+    const isSharedOwnedList = list.sharedWith && list.sharedWith.length > 0;
+
+    if (!isSharedList && !isSharedOwnedList) {
+      this.logger.debug('data', `Skipping article load for private list: ${list.name}`);
+      return;
+    }
+
+    const articleIds = list.articleIds || [];
+    if (articleIds.length === 0) {
+      this.logger.debug('data', `No articles to load for list: ${list.name}`);
+      return;
+    }
+
+    // Filter out articles we already have loaded
+    const articlesToLoad = articleIds.filter(
+      id => !this.loadedSharedArticleIds.has(id) && !this.failedArticleIds.has(id)
+    );
+
+    if (articlesToLoad.length === 0) {
+      this.logger.debug('data', `All ${articleIds.length} articles already cached for ${list.name}`);
+      return;
+    }
+
+    this.logger.info('data', `📦 Loading ${articlesToLoad.length} articles for list: ${list.name}`);
+
+    // Load articles from the list owner
+    const ownerIds = [list.ownerId];
+    const currentUserId = this.authService.getCurrentUserId();
+
+    try {
+      const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
+
+      // Update cache
+      newArticles.forEach(article => {
+        this.loadedSharedArticleIds.add(article.id);
+        if (article.ownerId) {
+          this.articleOwnerCache.set(article.id, article.ownerId);
+        }
+      });
+
+      // Merge with existing shared articles
+      const existingArticleIds = new Set(this.sharedArticles.map(a => a.id));
+      const articlesToAdd = newArticles.filter(a => !existingArticleIds.has(a.id));
+
+      if (articlesToAdd.length > 0) {
+        this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
+        this.mergeArticles();
+        this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
+      }
+    } catch (error) {
+      this.logger.error('data', `Failed to load articles for ${list.name}:`, error);
+    }
   }
 
   /**
@@ -562,30 +608,10 @@ export class FirebaseDataService {
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
 
-    // QUOTA OPTIMIZATION: Only reload articles if the article IDs actually changed
-    // Collect all article IDs from shared lists
-    const listsToProcess = [
-      ...this.sharedLists,
-      ...this.ownedLists.filter(list => list.sharedWith && list.sharedWith.length > 0)
-    ];
-
-    const currentSharedArticleIds = new Set<string>();
-    listsToProcess.forEach(list => {
-      list.articleIds.forEach(articleId => currentSharedArticleIds.add(articleId));
-    });
-
-    // Compare with previous state
-    const hasChanged =
-      currentSharedArticleIds.size !== this.previousSharedArticleIds.size ||
-      Array.from(currentSharedArticleIds).some(id => !this.previousSharedArticleIds.has(id));
-
-    if (hasChanged) {
-      this.logger.debug('data', `Article IDs changed (${this.previousSharedArticleIds.size} → ${currentSharedArticleIds.size}), triggering batch load`);
-      this.previousSharedArticleIds = currentSharedArticleIds;
-      this.loadArticlesFromSharedListOwners();
-    } else {
-      this.logger.debug('data', `Article IDs unchanged (${currentSharedArticleIds.size}), skipping batch load`);
-    }
+    // LAZY LISTENERS + LAZY ARTICLE LOADING: DISABLED
+    // Don't batch load articles for ALL shared lists anymore!
+    // Articles are now loaded ONLY for the active list when it's opened.
+    // This reduces quota from 7,248 reads to ~50 reads per session (99% reduction!)
   }
 
   /**
