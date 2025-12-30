@@ -90,6 +90,9 @@ export class FirebaseDataService {
   // QUOTA OPTIMIZATION: Track if collection listeners have been cleaned up
   private collectionListenersCleanedUp = false;
 
+  // QUOTA OPTIMIZATION: Track if collection listeners are currently active
+  private collectionListenersActive = false;
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -420,6 +423,13 @@ export class FirebaseDataService {
   private setupRealtimeListeners(): void {
     this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
 
+    // QUOTA OPTIMIZATION: Skip if collection listeners are already active
+    // This prevents duplicate listener creation on connection restore events
+    if (this.collectionListenersActive) {
+      this.logger.info('data', '⏭️  Collection listeners already active - skipping recreation to save quota');
+      return;
+    }
+
     if (!this.firestore) {
       this.logger.error('data', 'Firestore not initialized');
       return;
@@ -617,6 +627,11 @@ export class FirebaseDataService {
       } else {
         this.logger.warn('data', 'No user ID available, skipping shared lists listener');
       }
+
+      // QUOTA OPTIMIZATION: Mark collection listeners as active
+      // This prevents duplicate listener creation on subsequent calls
+      this.collectionListenersActive = true;
+      this.logger.info('data', '✅ Collection listeners created and marked as active');
     } catch (error) {
       this.logger.error('data', 'Error setting up listeners', error);
       this.loadCachedData();
@@ -1781,10 +1796,11 @@ export class FirebaseDataService {
     // REAL-TIME SYNC: Cleanup shared list listeners
     this.cleanupSharedListListeners();
 
-    // QUOTA OPTIMIZATION: Reset collection listener cleanup flag
+    // QUOTA OPTIMIZATION: Reset collection listener flags
     // This allows collection listeners to be set up again on next login
-    this.logger.info('data', '🔄 cleanupListeners() resetting collectionListenersCleanedUp flag to FALSE');
+    this.logger.info('data', '🔄 cleanupListeners() resetting collection listener flags to FALSE');
     this.collectionListenersCleanedUp = false;
+    this.collectionListenersActive = false;
 
     // Performance: Clear caches on cleanup
     this.loadedSharedArticleIds.clear();
