@@ -413,6 +413,7 @@ export class FirebaseDataService {
 
       this.articlesUnsubscribe = onSnapshot(articlesQuery,
         (snapshot) => {
+          this.quotaMonitor.trackRead('Articles Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh articles received: ${snapshot.size}`);
           const articles: Article[] = [];
           snapshot.forEach((doc) => {
@@ -452,6 +453,7 @@ export class FirebaseDataService {
 
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
+          this.quotaMonitor.trackRead('Lists Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
 
           // OPTIMIZATION: Once individual listeners are active, they handle all updates
@@ -668,6 +670,7 @@ export class FirebaseDataService {
 
     const unsubscribe = onSnapshot(listRef,
       (snapshot) => {
+        this.quotaMonitor.trackRead('Owned List Listener', 1, { listId: list.id, listName: list.name });
         this.logger.info('data', `🔔 Owned list listener FIRED for ${list.id} (${list.name})`);
 
         if (snapshot.exists()) {
@@ -752,6 +755,7 @@ export class FirebaseDataService {
 
     const unsubscribe = onSnapshot(listRef,
       (snapshot) => {
+        this.quotaMonitor.trackRead('Shared List Listener', 1, { listId: list.id, listName: list.name });
         this.logger.info('data', `🔔 Shared list listener FIRED for ${list.id} (${list.name})`);
 
         if (snapshot.exists()) {
@@ -1664,11 +1668,14 @@ export class FirebaseDataService {
   }
 
   /**
-   * CRITICAL: Detect if itemStates have actually changed
+   * CRITICAL FIX: Detect if itemStates have actually changed
    * Used to prevent infinite loop from write-back triggering listener
    *
-   * Compares key fields (isChecked, checkedBy, amount, checkedAt) to determine
-   * if two itemStates objects are meaningfully different
+   * BUGFIX: Only compares USER-FACING state (isChecked, amount, checkedBy)
+   * Does NOT compare timestamps (checkedAt, addedAt) which are metadata
+   *
+   * Why: Merge creates slightly different timestamps even when state is identical
+   * This was causing 5x listener fires and 2000 quota reads per session!
    */
   private hasItemStatesChanged(
     itemStates1: { [articleId: string]: any },
@@ -1679,6 +1686,7 @@ export class FirebaseDataService {
     const keys2 = Object.keys(itemStates2 || {});
 
     if (keys1.length !== keys2.length) {
+      this.logger.debug('data', `ItemStates changed: different number of articles (${keys1.length} vs ${keys2.length})`);
       return true;
     }
 
@@ -1689,34 +1697,35 @@ export class FirebaseDataService {
 
       // Article missing in second object
       if (!state2) {
+        this.logger.debug('data', `ItemStates changed: article ${articleId} missing in server state`);
         return true;
       }
 
-      // Compare key fields
+      // CRITICAL: Only compare USER-FACING state, not timestamps!
+      // Timestamps are metadata and differ after merge even when state is identical
+
       if (state1.isChecked !== state2.isChecked) {
+        this.logger.debug('data', `ItemStates changed: ${articleId} isChecked (${state1.isChecked} vs ${state2.isChecked})`);
         return true;
       }
 
       if (state1.checkedBy !== state2.checkedBy) {
+        this.logger.debug('data', `ItemStates changed: ${articleId} checkedBy (${state1.checkedBy} vs ${state2.checkedBy})`);
         return true;
       }
 
       if (state1.amount !== state2.amount) {
+        this.logger.debug('data', `ItemStates changed: ${articleId} amount (${state1.amount} vs ${state2.amount})`);
         return true;
       }
 
-      // Compare checkedAt timestamps (if both exist)
-      if (state1.checkedAt || state2.checkedAt) {
-        const time1 = state1.checkedAt?.getTime ? state1.checkedAt.getTime() : 0;
-        const time2 = state2.checkedAt?.getTime ? state2.checkedAt.getTime() : 0;
-
-        if (time1 !== time2) {
-          return true;
-        }
-      }
+      // REMOVED: Timestamp comparison - this was causing false positives!
+      // The merge might produce slightly different timestamps even when state is identical
+      // This caused owner to write back unnecessarily, triggering 5x listener fires
     }
 
     // No differences detected
+    this.logger.debug('data', `ItemStates unchanged (no write-back needed)`);
     return false;
   }
 
