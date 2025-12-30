@@ -668,7 +668,7 @@ export class FirebaseDataService {
 
             const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
             const serverArticleIds = data['articleIds'] || [];
-            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
+            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
             // Prevent infinite loop - check if we just wrote to this list
             const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
@@ -872,7 +872,7 @@ export class FirebaseDataService {
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
               const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
-              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds);
+              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
               // CRITICAL: Prevent infinite loop - check if we just wrote to this list
               const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
@@ -1402,26 +1402,50 @@ export class FirebaseDataService {
 
   /**
    * CRITICAL FIX: Smart merge of articleIds arrays to prevent race conditions
-   * When users add articles simultaneously, this ensures both additions persist
+   * When users add/remove articles simultaneously, this ensures all changes persist correctly
    *
    * Strategy:
-   * 1. Union of both arrays (all unique article IDs)
-   * 2. Preserve server order for existing articles
-   * 3. Append local-only articles at the end
+   * 1. Use itemStates as source of truth (it has timestamps for conflict resolution)
+   * 2. Merge itemStates first (handles check/uncheck/add/remove conflicts)
+   * 3. Build articleIds from merged itemStates
+   * 4. Preserve original order where possible
+   *
+   * BUGFIX: Now respects deletions! If an article is removed from itemStates, it's removed from articleIds
+   * Previous bug: Simple union meant deleted articles would reappear if server still had them
    */
   private mergeArticleIds(
     localIds: string[],
-    serverIds: string[]
+    serverIds: string[],
+    mergedItemStates: { [articleId: string]: any }
   ): string[] {
-    // Start with server order as base
-    const merged = [...serverIds];
+    // Use merged itemStates as source of truth for which articles should exist
+    const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
 
-    // Add local-only articles (not in server yet)
+    // Start with server order as base, but only include articles that are in merged itemStates
+    const merged: string[] = [];
+    for (const serverId of serverIds) {
+      if (articlesFromItemStates.has(serverId)) {
+        merged.push(serverId);
+        articlesFromItemStates.delete(serverId); // Remove from set to track which ones we've added
+      } else {
+        this.logger.debug('data', `Merge: Removing ${serverId} (deleted from itemStates)`);
+      }
+    }
+
+    // Add any remaining articles from local that aren't in server yet
+    // (these are new articles added locally)
     for (const localId of localIds) {
-      if (!serverIds.includes(localId)) {
+      if (articlesFromItemStates.has(localId)) {
         merged.push(localId);
+        articlesFromItemStates.delete(localId);
         this.logger.debug('data', `Merge: Adding local-only article ${localId}`);
       }
+    }
+
+    // Add any remaining articles from itemStates (shouldn't happen, but be safe)
+    for (const remainingId of articlesFromItemStates) {
+      merged.push(remainingId);
+      this.logger.warn('data', `Merge: Adding orphaned article ${remainingId} from itemStates`);
     }
 
     this.logger.info('data', `✅ Merged articleIds: ${localIds.length} local + ${serverIds.length} server = ${merged.length} total`);
@@ -1434,9 +1458,13 @@ export class FirebaseDataService {
    *
    * Strategy:
    * 1. For each article, compare timestamps of local vs server
-   * 2. Use the version with the most recent change (checkedAt timestamp)
-   * 3. If timestamps equal, prefer checked state over unchecked
-   * 4. Preserve all articles from both sources
+   * 2. Use the history array's first event timestamp (most accurate "last modified" time)
+   * 3. If no history, fall back to checkedAt/addedAt timestamps
+   * 4. If timestamps equal, prefer server state (last write wins)
+   * 5. Preserve all articles from both sources
+   *
+   * BUGFIX: Now uses history timestamp which is updated for BOTH check and uncheck
+   * Previous bug: checkedAt wasn't updated on uncheck, causing uncheck operations to lose
    */
   private mergeItemStates(
     localStates: { [articleId: string]: any },
@@ -1467,12 +1495,26 @@ export class FirebaseDataService {
       }
 
       // Both exist - merge intelligently based on timestamps
-      // CRITICAL: Timestamps might be Date objects (from listsSubject) or Timestamp objects (from Firestore)
+      // CRITICAL FIX: Use history timestamp (updated for both check AND uncheck)
       const getTimestamp = (state: any) => {
+        // First, try history array (most accurate - updated for both check and uncheck)
+        if (state.history && Array.isArray(state.history) && state.history.length > 0) {
+          const latestEvent = state.history[0]; // History is sorted newest first
+          const timestamp = latestEvent.timestamp;
+
+          if (timestamp instanceof Date) {
+            return timestamp.getTime();
+          } else if (timestamp?.toMillis) {
+            return timestamp.toMillis();
+          } else if (timestamp) {
+            return new Date(timestamp).getTime();
+          }
+        }
+
+        // Fallback to checkedAt/addedAt (for backwards compatibility)
         const checkedAt = state.checkedAt;
         const addedAt = state.addedAt;
 
-        // Handle Date objects, Timestamp objects, or undefined
         const checkedTime = checkedAt instanceof Date ? checkedAt.getTime() :
                            (checkedAt?.toMillis ? checkedAt.toMillis() : 0);
         const addedTime = addedAt instanceof Date ? addedAt.getTime() :
