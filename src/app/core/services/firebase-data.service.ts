@@ -16,7 +16,8 @@ import {
   where,
   collectionGroup,
   Timestamp,
-  documentId
+  documentId,
+  runTransaction
 } from '@angular/fire/firestore';
 
 import { Article, ShoppingList } from '../models';
@@ -27,6 +28,7 @@ import { LoggerService } from './logger.service';
 import { AuthService } from './auth.service';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
+import { HistoryService } from './history.service';
 
 @Injectable({
   providedIn: 'root'
@@ -100,7 +102,8 @@ export class FirebaseDataService {
     private authService: AuthService,
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
-    private activeListService: ActiveListService
+    private activeListService: ActiveListService,
+    private historyService: HistoryService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -1178,6 +1181,98 @@ export class FirebaseDataService {
       this.logger.info('data', `✅ Merged state written successfully`);
     } catch (error: any) {
       this.logger.error('data', `Failed to write merged state: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * CRITICAL FIX: Update a single list item using Firestore transaction
+   * This prevents race conditions where concurrent writes overwrite each other
+   *
+   * Transaction flow:
+   * 1. Read latest server state atomically
+   * 2. Merge our change with server state (preserving other users' changes)
+   * 3. Write back if changed
+   *
+   * This fixes the issue where User B's write would overwrite User A's changes
+   * because B was using local cache (which didn't have A's changes yet)
+   */
+  async updateListItemWithTransaction(
+    listId: string,
+    articleId: string,
+    action: 'checked' | 'unchecked',
+    amount: string = '',
+    userId?: string,
+    userName?: string
+  ): Promise<void> {
+    try {
+      const list = this.getCurrentLists().find(l => l.id === listId);
+      if (!list) {
+        throw new Error(`List ${listId} not found`);
+      }
+
+      const ownerId = list.ownerId || userId;
+      if (!ownerId) {
+        throw new Error('Cannot determine list owner');
+      }
+
+      const listPath = `users-v2/${ownerId}/lists/${listId}`;
+      const listRef = doc(this.firestore, listPath);
+
+      this.logger.info('data', `🔒 Starting transaction for ${action} on ${articleId} in ${listPath}`);
+
+      await runTransaction(this.firestore, async (transaction) => {
+        // Step 1: Read latest server state
+        const listDoc = await transaction.get(listRef);
+
+        if (!listDoc.exists()) {
+          throw new Error(`List ${listId} not found in Firestore`);
+        }
+
+        const serverData = listDoc.data();
+        const serverItemStates = this.convertItemStatesFromFirestore(serverData['itemStates'] || {});
+        const serverArticleIds = serverData['articleIds'] || [];
+
+        this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
+
+        // Step 2: Create updated item state for our change
+        const updatedItemState = this.historyService.createUpdatedItemState(
+          serverItemStates[articleId],  // Use SERVER state, not local!
+          articleId,
+          action,
+          amount,
+          userId,
+          userName
+        );
+
+        // Step 3: Merge our change with server state
+        const mergedItemStates = {
+          ...serverItemStates,  // Keep ALL server items (including other users' changes!)
+          [articleId]: updatedItemState  // Add/update our item
+        };
+
+        // Step 4: Update articleIds if needed (add article if not present)
+        let mergedArticleIds = [...serverArticleIds];
+        if (!mergedArticleIds.includes(articleId)) {
+          mergedArticleIds.push(articleId);
+          this.logger.debug('data', `➕ Adding ${articleId} to articleIds`);
+        }
+
+        // Step 5: Write merged state back
+        const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+
+        this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (preserved ${Object.keys(serverItemStates).length - 1} other items)`);
+
+        transaction.update(listRef, {
+          itemStates: firestoreItemStates,
+          articleIds: mergedArticleIds,
+          updatedAt: Timestamp.now()
+        });
+      });
+
+      this.logger.info('data', `✅ Transaction committed successfully for ${action} on ${articleId}`);
+    } catch (error: any) {
+      this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
       throw error;
     }
   }
