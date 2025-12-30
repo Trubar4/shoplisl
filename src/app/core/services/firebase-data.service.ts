@@ -87,6 +87,9 @@ export class FirebaseDataService {
   // LAZY LISTENERS: Track active list subscription for cleanup
   private activeListSubscription?: any;
 
+  // QUOTA OPTIMIZATION: Track if collection listeners have been cleaned up
+  private collectionListenersCleanedUp = false;
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -154,6 +157,9 @@ export class FirebaseDataService {
    *
    * CRITICAL FIX: Wait for lists to load before setting up listener
    * This prevents race condition where setup runs before lists are loaded
+   *
+   * QUOTA OPTIMIZATION: Cleans up collection listeners after first lazy listener setup
+   * This prevents 10k+ unnecessary reads from collection listeners still firing
    */
   private setupLazyListenerForList(listId: string): void {
     // Cleanup existing lazy listeners first
@@ -163,6 +169,19 @@ export class FirebaseDataService {
     if (!userId) {
       this.logger.warn('data', 'No user ID, cannot set up lazy listener');
       return;
+    }
+
+    // QUOTA OPTIMIZATION: Clean up collection listeners after first lazy listener setup
+    // Collection listeners were only needed for initial data load
+    // Now that we have lazy listeners, we can stop the collection listeners to save quota
+    if (!this.collectionListenersCleanedUp) {
+      this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners (lists)');
+      if (this.listsUnsubscribe) {
+        this.listsUnsubscribe();
+        this.listsUnsubscribe = undefined;
+        this.logger.info('data', '✅ Lists collection listener unsubscribed (massive quota savings!)');
+      }
+      this.collectionListenersCleanedUp = true;
     }
 
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
@@ -1727,6 +1746,10 @@ export class FirebaseDataService {
 
     // REAL-TIME SYNC: Cleanup shared list listeners
     this.cleanupSharedListListeners();
+
+    // QUOTA OPTIMIZATION: Reset collection listener cleanup flag
+    // This allows collection listeners to be set up again on next login
+    this.collectionListenersCleanedUp = false;
 
     // Performance: Clear caches on cleanup
     this.loadedSharedArticleIds.clear();
