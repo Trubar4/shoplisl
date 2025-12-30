@@ -6,6 +6,7 @@ import { ListUploadComponent } from '../../core/services/list-upload.component';
 import { PerformanceDashboardComponent } from './performance-dashboard/performance-dashboard.component';
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
 import { DebugUserComponent } from './debug-user/debug-user.component';
+import { QuotaMonitorComponent } from './quota-monitor/quota-monitor.component';
 import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
@@ -33,6 +34,10 @@ const routes: Routes = [
   {
     path: 'performance',
     component: PerformanceDashboardComponent
+  },
+  {
+    path: 'quota-monitor',
+    component: QuotaMonitorComponent
   }
 ];
 
@@ -45,7 +50,8 @@ const routes: Routes = [
     ListUploadComponent,
     PerformanceDashboardComponent,
     AnalyticsDashboardComponent,
-    DebugUserComponent
+    DebugUserComponent,
+    QuotaMonitorComponent
   ]
 })
 export class AdminModule { }

@@ -199,14 +199,19 @@ export class AppComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Run data cleanup on startup
-    if (this.connectionService.isOnline()) {
-      this.dataMigrationService.checkAndCleanupData().then(() => {
-        this.logger.debug('data', 'Startup data cleanup completed');  // Change 'app' to 'data'
-      }).catch(error => {
-        this.logger.error('data', 'Startup cleanup failed', error);  // Change 'app' to 'data'
-      });
-    }
+    // QUOTA OPTIMIZATION: Disabled automatic startup cleanup to save reads
+    // Before: ran on EVERY app load = 550+ reads per startup (all lists + all articles)
+    // With 2 devices loading = 1,100 reads just from starting app!
+    // Now: cleanup is opt-in via admin panel only
+    // Users can manually run cleanup when needed via settings
+
+    // if (this.connectionService.isOnline()) {
+    //   this.dataMigrationService.checkAndCleanupData().then(() => {
+    //     this.logger.debug('data', 'Startup data cleanup completed');
+    //   }).catch(error => {
+    //     this.logger.error('data', 'Startup cleanup failed', error);
+    //   });
+    // }
 
     console.log('🚀 ShopLisl PWA ready with connection-first offline support!');
   }

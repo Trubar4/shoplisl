@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 
-import { DEFAULT_DEPARTMENT_ORDER } from '../models';
+import { DEFAULT_DEPARTMENT_ORDER, ShoppingList, Article } from '../models';
 import { FirebaseDataService } from './firebase-data.service';
 import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
@@ -90,23 +90,27 @@ export class DataMigrationService {
 
   // === ORPHANED REFERENCES CLEANUP ===
 
-  async hasOrphanedReferences(): Promise<boolean> {
+  async hasOrphanedReferences(
+    lists?: ShoppingList[],
+    articles?: Article[]
+  ): Promise<boolean> {
     if (!this.connectionService.isOnline()) {
       return false;
     }
 
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
-      const articles = await this.firebaseData.getAllArticlesFromFirebase();
-      
-      const validArticleIds = new Set(articles.map(article => article.id));
-      
-      for (const list of lists) {
+      // QUOTA OPTIMIZATION: Reuse provided data to avoid duplicate reads
+      const allLists = lists || await this.firebaseData.getAllListsFromFirebase();
+      const allArticles = articles || await this.firebaseData.getAllArticlesFromFirebase();
+
+      const validArticleIds = new Set(allArticles.map(article => article.id));
+
+      for (const list of allLists) {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
         
-        const hasOrphanedArticleIds = articleIds.some(id => !validArticleIds.has(id));
-        const hasOrphanedItemStates = Object.keys(itemStates).some(id => !validArticleIds.has(id));
+        const hasOrphanedArticleIds = articleIds.some((id: string) => !validArticleIds.has(id));
+        const hasOrphanedItemStates = Object.keys(itemStates).some((id: string) => !validArticleIds.has(id));
         
         if (hasOrphanedArticleIds || hasOrphanedItemStates) {
           return true;
@@ -120,28 +124,32 @@ export class DataMigrationService {
     }
   }
 
-  async autoCleanupOrphanedReferences(): Promise<{ listsUpdated: number; referencesRemoved: number }> {
+  async autoCleanupOrphanedReferences(
+    lists?: ShoppingList[],
+    articles?: Article[]
+  ): Promise<{ listsUpdated: number; referencesRemoved: number }> {
     if (!this.connectionService.isOnline()) {
       return { listsUpdated: 0, referencesRemoved: 0 };
     }
 
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
-      const articles = await this.firebaseData.getAllArticlesFromFirebase();
+      // QUOTA OPTIMIZATION: Reuse provided data to avoid duplicate reads
+      const allLists = lists || await this.firebaseData.getAllListsFromFirebase();
+      const allArticles = articles || await this.firebaseData.getAllArticlesFromFirebase();
 
       // Phase 8: Include article IDs from shared lists
       // Don't clean up article IDs that belong to collaborators
-      const validArticleIds = new Set(articles.map(article => article.id));
+      const validArticleIds = new Set(allArticles.map(article => article.id));
 
       // For shared lists, don't remove article IDs - they might belong to collaborators
       const sharedListIds = new Set(
-        lists.filter(list => list.sharedWith && list.sharedWith.length > 0).map(list => list.id)
+        allLists.filter(list => list.sharedWith && list.sharedWith.length > 0).map(list => list.id)
       );
 
       let listsUpdated = 0;
       let referencesRemoved = 0;
 
-      for (const list of lists) {
+      for (const list of allLists) {
         // Phase 8: Skip cleanup for shared lists - articles may belong to collaborators
         if (sharedListIds.has(list.id)) {
           this.logger.debug('data', `Skipping cleanup for shared list "${list.name}" - may contain collaborator articles`);
@@ -151,7 +159,7 @@ export class DataMigrationService {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
-        const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
+        const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
         Object.entries(itemStates).forEach(([articleId, state]) => {
@@ -193,10 +201,16 @@ export class DataMigrationService {
   }
 
   async checkAndCleanupData(): Promise<void> {
-    const hasOrphans = await this.hasOrphanedReferences();
+    // QUOTA OPTIMIZATION: Read data once and reuse to prevent duplicate reads
+    // Before: hasOrphanedReferences() + autoCleanupOrphanedReferences() = 4 reads
+    // After: Read once, pass to both functions = 2 reads (50% reduction!)
+    const lists = await this.firebaseData.getAllListsFromFirebase();
+    const articles = await this.firebaseData.getAllArticlesFromFirebase();
+
+    const hasOrphans = await this.hasOrphanedReferences(lists, articles);
     if (hasOrphans) {
       this.logger.info('data', 'Orphaned references detected, auto-cleaning');
-      await this.autoCleanupOrphanedReferences();
+      await this.autoCleanupOrphanedReferences(lists, articles);
     }
   }
 
@@ -365,7 +379,7 @@ export class DataMigrationService {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
-        const cleanedArticleIds = articleIds.filter(id => validArticleIds.has(id));
+        const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
         
         const cleanedItemStates: any = {};
         Object.entries(itemStates).forEach(([articleId, state]) => {

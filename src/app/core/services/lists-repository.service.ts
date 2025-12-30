@@ -282,13 +282,15 @@ export class ListsRepositoryService {
           userName
         );
 
+        // OPTIMISTIC UPDATE: Update local state immediately for responsive UI
+        // This will be corrected by the listener if the transaction reveals conflicts
         const newItemStates = {
           ...list.itemStates,
           [articleId]: updatedItemState
         };
 
         // Update local state immediately for optimistic UI
-        this.logger.debug('data', 'TOGGLE: Updating local state');
+        this.logger.debug('data', 'TOGGLE: Updating local state (optimistic)');
         const currentLists = this.firebaseData.getCurrentLists();
         const updatedLists = currentLists.map(l =>
           l.id === listId ? {
@@ -336,18 +338,23 @@ export class ListsRepositoryService {
           return of(true);
         }
 
-        // Online - update Firebase directly and wait for completion
-        this.logger.debug('data', 'TOGGLE: Online - updating Firebase');
-        return from(this.firebaseData.updateListInFirebase(listId, {
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        })).pipe(
+        // CRITICAL FIX: Use transaction to prevent race conditions
+        // This ensures we read latest server state, merge with our change, then write atomically
+        this.logger.debug('data', 'TOGGLE: Online - using transaction to prevent conflicts');
+        return from(this.firebaseData.updateListItemWithTransaction(
+          listId,
+          articleId,
+          newAction,
+          currentAmount,
+          userId,
+          userName
+        )).pipe(
           map(() => {
-            this.logger.debug('data', 'TOGGLE: Firebase update successful');
+            this.logger.debug('data', 'TOGGLE: Transaction successful');
             return true;
           }),
           catchError(error => {
-            this.logger.error('data', 'TOGGLE: Firebase update failed', error);
+            this.logger.error('data', 'TOGGLE: Transaction failed', error);
             return of(false);
           })
         );
