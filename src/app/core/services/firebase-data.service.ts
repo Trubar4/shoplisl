@@ -163,7 +163,7 @@ export class FirebaseDataService {
    */
   private setupLazyListenerForList(listId: string): void {
     this.logger.info('data', `🔧 setupLazyListenerForList() called for listId: ${listId}`);
-    this.logger.debug('data', `Collection listeners cleaned up flag: ${this.collectionListenersCleanedUp}`);
+    this.logger.info('data', `📍 collectionListenersCleanedUp flag: ${this.collectionListenersCleanedUp}`);
 
     // Cleanup existing lazy listeners first
     this.cleanupLazyListeners();
@@ -179,7 +179,7 @@ export class FirebaseDataService {
     // Now that we have lazy listeners, we can stop the collection listeners to save quota
     if (!this.collectionListenersCleanedUp) {
       this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners');
-      this.logger.debug('data', `articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}`);
+      this.logger.info('data', `📍 articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}`);
 
       // Clean up Articles collection listener
       if (this.articlesUnsubscribe) {
@@ -202,7 +202,7 @@ export class FirebaseDataService {
       this.collectionListenersCleanedUp = true;
       this.logger.info('data', '✅ Collection listeners cleanup complete - quota usage should drop dramatically!');
     } else {
-      this.logger.debug('data', '✓ Collection listeners already cleaned up (flag is true)');
+      this.logger.info('data', '⏭️  Skipping cleanup - collection listeners already cleaned up (flag is true)');
     }
 
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
@@ -418,6 +418,8 @@ export class FirebaseDataService {
   }
 
   private setupRealtimeListeners(): void {
+    this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
+
     if (!this.firestore) {
       this.logger.error('data', 'Firestore not initialized');
       return;
@@ -429,6 +431,7 @@ export class FirebaseDataService {
       const basePath = this.getUserBasePath();
 
       // Articles listener
+      this.logger.info('data', '📡 Creating Articles collection listener...');
       const articlesRef = collection(this.firestore, `${basePath}/articles`);
       const articlesQuery = query(articlesRef, orderBy('name'));
 
@@ -469,6 +472,7 @@ export class FirebaseDataService {
       );
 
       // Lists listener
+      this.logger.info('data', '📡 Creating Lists collection listener...');
       const listsRef = collection(this.firestore, `${basePath}/lists`);
       const listsQuery = query(listsRef, orderBy('name'));
 
@@ -1779,6 +1783,7 @@ export class FirebaseDataService {
 
     // QUOTA OPTIMIZATION: Reset collection listener cleanup flag
     // This allows collection listeners to be set up again on next login
+    this.logger.info('data', '🔄 cleanupListeners() resetting collectionListenersCleanedUp flag to FALSE');
     this.collectionListenersCleanedUp = false;
 
     // Performance: Clear caches on cleanup
