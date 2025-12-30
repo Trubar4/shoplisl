@@ -162,6 +162,9 @@ export class FirebaseDataService {
    * This prevents 10k+ unnecessary reads from collection listeners still firing
    */
   private setupLazyListenerForList(listId: string): void {
+    this.logger.info('data', `🔧 setupLazyListenerForList() called for listId: ${listId}`);
+    this.logger.debug('data', `Collection listeners cleaned up flag: ${this.collectionListenersCleanedUp}`);
+
     // Cleanup existing lazy listeners first
     this.cleanupLazyListeners();
 
@@ -175,13 +178,31 @@ export class FirebaseDataService {
     // Collection listeners were only needed for initial data load
     // Now that we have lazy listeners, we can stop the collection listeners to save quota
     if (!this.collectionListenersCleanedUp) {
-      this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners (lists)');
+      this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners');
+      this.logger.debug('data', `articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}`);
+
+      // Clean up Articles collection listener
+      if (this.articlesUnsubscribe) {
+        this.articlesUnsubscribe();
+        this.articlesUnsubscribe = undefined;
+        this.logger.info('data', '✅ Articles collection listener unsubscribed (saves ~450 reads per change!)');
+      } else {
+        this.logger.warn('data', '⚠️ Articles collection listener was already undefined - may have been cleaned up elsewhere');
+      }
+
+      // Clean up Lists collection listener
       if (this.listsUnsubscribe) {
         this.listsUnsubscribe();
         this.listsUnsubscribe = undefined;
-        this.logger.info('data', '✅ Lists collection listener unsubscribed (massive quota savings!)');
+        this.logger.info('data', '✅ Lists collection listener unsubscribed (saves ~13 reads per change!)');
+      } else {
+        this.logger.warn('data', '⚠️ Lists collection listener was already undefined - may have been cleaned up elsewhere');
       }
+
       this.collectionListenersCleanedUp = true;
+      this.logger.info('data', '✅ Collection listeners cleanup complete - quota usage should drop dramatically!');
+    } else {
+      this.logger.debug('data', '✓ Collection listeners already cleaned up (flag is true)');
     }
 
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
