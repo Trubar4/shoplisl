@@ -29,6 +29,7 @@ import { AuthService } from './auth.service';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
+import { MobileDebugService } from './mobile-debug.service';
 
 @Injectable({
   providedIn: 'root'
@@ -103,7 +104,8 @@ export class FirebaseDataService {
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    private mobileDebug: MobileDebugService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -426,6 +428,12 @@ export class FirebaseDataService {
   private setupRealtimeListeners(): void {
     this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
 
+    // MOBILE DEBUG: Log collection listener setup attempt
+    this.mobileDebug.logToFirestore('collection-listeners-setup-attempt', {
+      alreadyActive: this.collectionListenersActive,
+      cleanedUp: this.collectionListenersCleanedUp
+    });
+
     // QUOTA OPTIMIZATION: Skip if collection listeners are already active
     // This prevents duplicate listener creation on connection restore events
     if (this.collectionListenersActive) {
@@ -438,7 +446,15 @@ export class FirebaseDataService {
       return;
     }
 
-    this.cleanupListeners();
+    // CRITICAL FIX: Set flag BEFORE creating listeners to prevent race condition
+    // If two calls happen simultaneously, the second will see the flag and skip
+    this.collectionListenersActive = true;
+    this.logger.info('data', '🔒 Collection listeners flag set to TRUE (prevents duplicate creation)');
+
+    // QUOTA FIX: Don't call cleanupListeners() here!
+    // Cleanup should only happen on logout/user switch, not every setup
+    // The flag above prevents duplicate listener creation
+    // Calling cleanup here would reset collectionListenersActive to false!
 
     try {
       const basePath = this.getUserBasePath();
@@ -631,12 +647,18 @@ export class FirebaseDataService {
         this.logger.warn('data', 'No user ID available, skipping shared lists listener');
       }
 
-      // QUOTA OPTIMIZATION: Mark collection listeners as active
-      // This prevents duplicate listener creation on subsequent calls
-      this.collectionListenersActive = true;
-      this.logger.info('data', '✅ Collection listeners created and marked as active');
+      // Flag is now set at the beginning of setupRealtimeListeners() to prevent race condition
+      this.logger.info('data', '✅ Collection listeners created successfully');
+
+      // MOBILE DEBUG: Log collection listener creation success
+      this.mobileDebug.logToFirestore('collection-listeners-created', {
+        success: true,
+        flagActive: this.collectionListenersActive
+      });
     } catch (error) {
       this.logger.error('data', 'Error setting up listeners', error);
+      // Reset flag on error so setup can be retried
+      this.collectionListenersActive = false;
       this.loadCachedData();
     }
   }
@@ -796,10 +818,23 @@ export class FirebaseDataService {
 
     const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
 
+    // MOBILE DEBUG: Log listener setup
+    this.mobileDebug.logListenerEvent('shared-list', list.id, 'setup', {
+      listName: list.name,
+      ownerId: list.ownerId,
+      userId
+    });
+
     const unsubscribe = onSnapshot(listRef,
       (snapshot) => {
         this.quotaMonitor.trackRead('Shared List Listener', 1, { listId: list.id, listName: list.name });
         this.logger.info('data', `🔔 Shared list listener FIRED for ${list.id} (${list.name})`);
+
+        // MOBILE DEBUG: Log listener fire
+        this.mobileDebug.logListenerEvent('shared-list', list.id, 'fired', {
+          listName: list.name,
+          exists: snapshot.exists()
+        });
 
         if (snapshot.exists()) {
           const data = snapshot.data();
@@ -1221,6 +1256,9 @@ export class FirebaseDataService {
 
       this.logger.info('data', `🔒 Starting transaction for ${action} on ${articleId} in ${listPath}`);
 
+      // MOBILE DEBUG: Log transaction start
+      await this.mobileDebug.logTransactionEvent(listId, articleId, action, false);
+
       await runTransaction(this.firestore, async (transaction) => {
         // Step 1: Read latest server state
         const listDoc = await transaction.get(listRef);
@@ -1271,8 +1309,15 @@ export class FirebaseDataService {
       });
 
       this.logger.info('data', `✅ Transaction committed successfully for ${action} on ${articleId}`);
+
+      // MOBILE DEBUG: Log transaction success
+      await this.mobileDebug.logTransactionEvent(listId, articleId, action, true);
     } catch (error: any) {
       this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
+
+      // MOBILE DEBUG: Log transaction failure
+      await this.mobileDebug.logTransactionEvent(listId, articleId, action, false, error);
+
       throw error;
     }
   }
