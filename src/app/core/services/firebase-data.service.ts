@@ -2241,12 +2241,12 @@ export class FirebaseDataService {
     }
 
     try {
+      // QUOTA FIX: Only call setupRealtimeListeners()
+      // The listeners will automatically fetch and update the data via onSnapshot
+      // No need to also call getDocs() - that would duplicate all the reads!
       this.setupRealtimeListeners();
 
-      const basePath = this.getUserBasePath();
-      const articlesSnapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
-      const listsSnapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
-      this.logger.info('data', `Current user data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
+      this.logger.info('data', 'Real-time listeners refreshed - data will update automatically');
     } catch (error) {
       this.logger.error('data', 'Error refreshing data', error);
       this.loadCachedData();
