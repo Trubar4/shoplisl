@@ -1256,8 +1256,12 @@ export class FirebaseDataService {
 
       this.logger.info('data', `🔒 Starting transaction for ${action} on ${articleId} in ${listPath}`);
 
-      // MOBILE DEBUG: Log transaction start
-      await this.mobileDebug.logTransactionEvent(listId, articleId, action, false);
+      // MOBILE DEBUG: Log transaction start (don't log as failed!)
+      await this.mobileDebug.logToFirestore('transaction-start', {
+        listId,
+        articleId,
+        action
+      });
 
       await runTransaction(this.firestore, async (transaction) => {
         // Step 1: Read latest server state
