@@ -121,7 +121,7 @@ export class FirebaseDataService {
    */
   private setupAuthListener(): void {
     this.authService.getCurrentUser().subscribe(user => {
-      const newUserId = user?.uid || null;
+      const newUserId = user?.id || null;
 
       // QUOTA FIX: Only cleanup if user actually changed
       // This prevents duplicate listener creation when connection events fire during login
@@ -134,7 +134,7 @@ export class FirebaseDataService {
       this.currentUserId = newUserId;
 
       if (user) {
-        this.logger.info('data', `User changed from ${previousUserId} to ${user.uid} (${user.email}), reloading data`);
+        this.logger.info('data', `User changed from ${previousUserId} to ${user.id} (${user.email}), reloading data`);
         // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
         // Without this, old listeners stay active and both users' data loads!
         this.cleanupListeners();
