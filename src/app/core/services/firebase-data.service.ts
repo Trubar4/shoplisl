@@ -96,6 +96,9 @@ export class FirebaseDataService {
   // QUOTA OPTIMIZATION: Track if collection listeners are currently active
   private collectionListenersActive = false;
 
+  // QUOTA FIX: Track current user to prevent unnecessary cleanup
+  private currentUserId: string | null = null;
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -118,8 +121,20 @@ export class FirebaseDataService {
    */
   private setupAuthListener(): void {
     this.authService.getCurrentUser().subscribe(user => {
+      const newUserId = user?.uid || null;
+
+      // QUOTA FIX: Only cleanup if user actually changed
+      // This prevents duplicate listener creation when connection events fire during login
+      if (newUserId === this.currentUserId) {
+        this.logger.debug('data', `User unchanged (${user?.email}), skipping reload`);
+        return;
+      }
+
+      const previousUserId = this.currentUserId;
+      this.currentUserId = newUserId;
+
       if (user) {
-        this.logger.info('data', `User changed to ${user.email}, reloading data`);
+        this.logger.info('data', `User changed from ${previousUserId} to ${user.uid} (${user.email}), reloading data`);
         // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
         // Without this, old listeners stay active and both users' data loads!
         this.cleanupListeners();
@@ -129,7 +144,7 @@ export class FirebaseDataService {
         // cleanupListeners() destroys the subscription, so we need to recreate it
         this.setupActiveListListener();
       } else {
-        this.logger.info('data', 'User logged out, clearing data');
+        this.logger.info('data', `User logged out (was ${previousUserId}), clearing data`);
         this.cleanupListeners();
         this.articlesSubject.next([]);
         this.listsSubject.next([]);
@@ -352,7 +367,7 @@ export class FirebaseDataService {
 
   private initializeDataLoading(): void {
     const currentStatus = this.connectionService.getCurrentStatus();
-    
+
     if (currentStatus.isOnline) {
       this.logger.info('data', 'Initially online - loading fresh data');
       this.loadFreshData();
@@ -360,14 +375,18 @@ export class FirebaseDataService {
       this.logger.info('data', 'Initially offline - loading cached data');
       this.loadCachedData();
     }
-  
+
     this.connectionService.getConnectionStatus().subscribe(status => {
       const currentTime = Date.now();
       const statusChangeTime = status.lastOnlineAt?.getTime() || 0;
-      
+
       if (Math.abs(currentTime - statusChangeTime) < 1000 && status.isOnline) {
         this.logger.info('data', 'Connection restored - refreshing data');
-        this.loadFreshData();
+
+        // QUOTA FIX: Only call setupRealtimeListeners, not loadFreshData
+        // loadFreshData also loads cached data first, which we don't need
+        // Just ensure listeners are active
+        this.setupRealtimeListeners();
       }
     });
   }

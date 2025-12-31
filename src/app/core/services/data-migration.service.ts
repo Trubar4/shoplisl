@@ -26,9 +26,11 @@ export class DataMigrationService {
     }
 
     this.logger.info('data', 'Starting department order migration');
-    
+
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
+      // QUOTA FIX: Use current lists from memory instead of fetching from Firestore
+      // Listeners already loaded the data, no need for redundant getDocs()
+      const lists = this.firebaseData.getCurrentLists();
       
       let updatedCount = 0;
       let skippedCount = 0;
@@ -61,7 +63,9 @@ export class DataMigrationService {
     }
 
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
+      // QUOTA FIX: Use current lists from memory instead of fetching from Firestore
+      // Listeners already loaded the data, no need for redundant getDocs()
+      const lists = this.firebaseData.getCurrentLists();
       return lists.some(list => !list.departmentOrder);
     } catch (error) {
       this.logger.error('data', 'Error checking migration status', error);
@@ -201,11 +205,11 @@ export class DataMigrationService {
   }
 
   async checkAndCleanupData(): Promise<void> {
-    // QUOTA OPTIMIZATION: Read data once and reuse to prevent duplicate reads
-    // Before: hasOrphanedReferences() + autoCleanupOrphanedReferences() = 4 reads
-    // After: Read once, pass to both functions = 2 reads (50% reduction!)
-    const lists = await this.firebaseData.getAllListsFromFirebase();
-    const articles = await this.firebaseData.getAllArticlesFromFirebase();
+    // QUOTA FIX: Use current data from memory instead of fetching from Firestore
+    // Listeners already loaded the data, no need for redundant getDocs()
+    // This prevents ~470 reads per migration check!
+    const lists = this.firebaseData.getCurrentLists();
+    const articles = this.firebaseData.getCurrentArticles();
 
     const hasOrphans = await this.hasOrphanedReferences(lists, articles);
     if (hasOrphans) {
