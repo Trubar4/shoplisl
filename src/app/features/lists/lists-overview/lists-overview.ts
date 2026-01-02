@@ -89,28 +89,13 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
-        // CRITICAL FIX: Don't filter articleIds if articles haven't loaded yet
-        // This prevents counts from showing as 0 before articles are loaded
-        const shouldCleanLists = articles.length > 0;
-        const validIds = new Set(articles.map(a => a.id));
+        // CRITICAL FIX: Don't filter articleIds in list overview
+        // Due to lazy listener optimization, we only have articles for the active list
+        // Filtering here would show wrong counts (1/1 instead of 5/26)
+        // Just use lists as-is - counts show total articleIds, validation happens when viewing list
+        const cleanedLists = lists;
 
-        // First clean the lists data (only if articles are loaded)
-        const cleanedLists = lists.map(list => ({
-          ...list,
-          // Filter out orphaned article IDs (only if we have articles to validate against)
-          articleIds: shouldCleanLists
-            ? list.articleIds.filter(id => validIds.has(id))
-            : list.articleIds, // Keep all IDs if articles not loaded yet
-          // Clean item states (only if we have articles to validate against)
-          itemStates: shouldCleanLists
-            ? Object.fromEntries(
-                Object.entries(list.itemStates || {})
-                  .filter(([articleId]) => validIds.has(articleId))
-              )
-            : list.itemStates // Keep all states if articles not loaded yet
-        }));
-
-        // Then apply search filter
+        // Apply search filter
         let filteredLists = cleanedLists;
         if (query?.trim()) {
           filteredLists = cleanedLists.filter(list =>
