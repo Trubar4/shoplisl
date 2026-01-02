@@ -2083,6 +2083,31 @@ export class FirebaseDataService {
 
     const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
     this.logger.info('data', `✅ Article created with ID: ${docRef.id}`);
+
+    // CRITICAL FIX: Add new article to local state immediately
+    // Collection listeners are cleaned up by lazy listeners, so we must manually update
+    const newArticle: Article = {
+      id: docRef.id,
+      name: articleData.name,
+      amount: articleData.amount || '',
+      notes: articleData.notes || '',
+      icon: articleData.icon || '📦',
+      categoryId: articleData.categoryId,
+      departmentId: articleData.departmentId,
+      createdAt: articleData.createdAt?.toDate?.() || new Date(),
+      updatedAt: articleData.updatedAt?.toDate?.() || new Date(),
+      availableInShops: articleData.availableInShops || [],
+      usageCount: articleData.usageCount || 0,
+      ownerId: articleData.ownerId || '',
+      copiedFrom: articleData.copiedFrom || undefined
+    };
+
+    const currentArticles = this.articlesSubject.value;
+    const updatedArticles = [...currentArticles, newArticle];
+    this.articlesSubject.next(updatedArticles);
+    this.cacheService.cacheArticles(updatedArticles);
+    this.logger.info('data', `✅ Article added to local state (${updatedArticles.length} total articles)`);
+
     return docRef.id;
   }
 
@@ -2090,12 +2115,36 @@ export class FirebaseDataService {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     await updateDoc(doc(this.firestore, `${basePath}/articles/${id}`), updateData);
+
+    // CRITICAL FIX: Update article in local state immediately
+    // Collection listeners are cleaned up by lazy listeners, so we must manually update
+    const currentArticles = this.articlesSubject.value;
+    const articleIndex = currentArticles.findIndex(a => a.id === id);
+    if (articleIndex !== -1) {
+      const updatedArticles = [...currentArticles];
+      updatedArticles[articleIndex] = {
+        ...updatedArticles[articleIndex],
+        ...updateData,
+        updatedAt: updateData.updatedAt?.toDate?.() || new Date()
+      };
+      this.articlesSubject.next(updatedArticles);
+      this.cacheService.cacheArticles(updatedArticles);
+      this.logger.debug('data', `✅ Article ${id} updated in local state`);
+    }
   }
 
   async deleteArticleInFirebase(id: string): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     await deleteDoc(doc(this.firestore, `${basePath}/articles/${id}`));
+
+    // CRITICAL FIX: Remove article from local state immediately
+    // Collection listeners are cleaned up by lazy listeners, so we must manually update
+    const currentArticles = this.articlesSubject.value;
+    const updatedArticles = currentArticles.filter(a => a.id !== id);
+    this.articlesSubject.next(updatedArticles);
+    this.cacheService.cacheArticles(updatedArticles);
+    this.logger.debug('data', `✅ Article ${id} removed from local state (${updatedArticles.length} remaining)`);
   }
 
   async createListInFirebase(listData: any): Promise<string> {
