@@ -35,14 +35,15 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.loadArticlesSuccess, (state: ArticlesState, { articles }: { articles: Article[] }): ArticlesState =>
-    articlesAdapter.setAll(articles, {
+  on(ArticlesActions.loadArticlesSuccess, (state: ArticlesState, { articles }: { articles: Article[] }): ArticlesState => {
+    console.log(`🔄 NGRX REDUCER: loadArticlesSuccess - updating store with ${articles.length} articles`);
+    return articlesAdapter.setAll(articles, {
       ...state,
       loading: false,
       error: null,
       lastSync: new Date(),
-    })
-  ),
+    });
+  }),
 
   on(ArticlesActions.loadArticlesFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,
@@ -84,14 +85,15 @@ export const articlesReducer = createReducer(
     error: null,
   })),
 
-  on(ArticlesActions.createArticleSuccess, (state: ArticlesState, { article }: { article: Article }): ArticlesState =>
-    articlesAdapter.addOne(article, {
+  on(ArticlesActions.createArticleSuccess, (state: ArticlesState, { article }: { article: Article }): ArticlesState => {
+    console.log(`🔄 NGRX REDUCER: createArticleSuccess - adding article "${article.name}" (${article.id}) to store`);
+    return articlesAdapter.addOne(article, {
       ...state,
       loading: false,
       error: null,
       selectedArticleId: article.id, // Auto-select newly created article
-    })
-  ),
+    });
+  }),
 
   on(ArticlesActions.createArticleFailure, (state: ArticlesState, { error }: { error: string }): ArticlesState => ({
     ...state,

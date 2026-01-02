@@ -29,7 +29,10 @@ export class ArticlesEffects {
       ofType(ArticlesActions.loadArticles),
       switchMap(() =>
         this.firebaseData.getArticles().pipe(
-          map((articles) => ArticlesActions.loadArticlesSuccess({ articles })),
+          map((articles) => {
+            console.log(`🔄 NGRX EFFECT: Received ${articles.length} articles from Observable, dispatching loadArticlesSuccess`);
+            return ArticlesActions.loadArticlesSuccess({ articles });
+          }),
           catchError((error) =>
             of(
               ArticlesActions.loadArticlesFailure({
@@ -78,8 +81,9 @@ export class ArticlesEffects {
   createArticle$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ArticlesActions.createArticle),
-      mergeMap(({ name, amount, notes, icon, categoryId, departmentId }) =>
-        this.articlesRepository
+      mergeMap(({ name, amount, notes, icon, categoryId, departmentId }) => {
+        console.log(`🔄 NGRX EFFECT: createArticle action received for "${name}"`);
+        return this.articlesRepository
           .createArticle({
             name,
             amount,
@@ -91,16 +95,20 @@ export class ArticlesEffects {
             usageCount: 0,
           })
           .pipe(
-            map((article) => ArticlesActions.createArticleSuccess({ article })),
-            catchError((error) =>
-              of(
+            map((article) => {
+              console.log(`🔄 NGRX EFFECT: Article created "${article.name}" (${article.id}), dispatching createArticleSuccess`);
+              return ArticlesActions.createArticleSuccess({ article });
+            }),
+            catchError((error) => {
+              console.error(`❌ NGRX EFFECT: Failed to create article:`, error);
+              return of(
                 ArticlesActions.createArticleFailure({
                   error: error.message || 'Failed to create article',
                 })
-              )
-            )
-          )
-      )
+              );
+            })
+          );
+      })
     )
   );
 
