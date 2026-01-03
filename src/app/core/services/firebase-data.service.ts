@@ -375,18 +375,29 @@ export class FirebaseDataService {
 
   /**
    * Get the user-specific base path for Firestore collections
+   * QUOTA OPTIMIZATION: Removed fallback to SHARED_USER_ID
+   * Data should only be loaded when user is authenticated
    */
   private getUserBasePath(): string {
     const userId = this.authService.getCurrentUserId();
     if (!userId) {
-      this.logger.warn('data', 'No authenticated user, using shared user ID');
-      return `users/${this.SHARED_USER_ID}`;
+      throw new Error('Cannot get user base path: No authenticated user');
     }
     return `users-v2/${userId}`;
   }
 
 
   private initializeDataLoading(): void {
+    // CRITICAL QUOTA FIX: Don't load data until user is authenticated!
+    // Without this check, we load 453 articles from SHARED_USER_ID before login,
+    // then cleanup and reload the real user's articles after login = wasted ~450 reads
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.info('data', '⏳ No authenticated user yet - waiting for auth before loading data');
+      this.logger.info('data', '📊 QUOTA OPTIMIZATION: Skipping initial data load to save ~450 reads from shared user');
+      return; // Auth listener will trigger loadFreshData() once user logs in
+    }
+
     const currentStatus = this.connectionService.getCurrentStatus();
 
     if (currentStatus.isOnline) {
