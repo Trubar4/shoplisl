@@ -216,21 +216,26 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
   /**
    * Apply ownership filter to articles
-   * QUOTA OPTIMIZATION: Uses sharedFrom field to identify shared articles
-   * Shared articles are those copied from participants to owner's collection
+   *
+   * Filter logic (works without sharedFrom field):
+   * - "Meine Artikel" (My Articles): Articles owned by current user
+   * - "Geteilte Artikel" (Shared Articles): Articles owned by other users (from shared lists)
+   * - "Alle" (All): All articles
    */
   private applyFilter(articles: ArticleWithStats[], filterOption: ArticleFilterOption): ArticleWithStats[] {
     if (!this.currentUserId) return articles;
 
     switch (filterOption) {
       case 'owned':
-        // Owned = articles owned by current user AND not shared from someone else
+        // Owned = articles owned by current user only
         return articles.filter(article =>
-          article.ownerId === this.currentUserId && !article.sharedFrom
+          article.ownerId === this.currentUserId
         );
       case 'shared':
-        // Shared = articles that have sharedFrom field (copied from participants)
-        return articles.filter(article => !!article.sharedFrom);
+        // Shared = articles owned by other users (from shared lists)
+        return articles.filter(article =>
+          article.ownerId !== this.currentUserId
+        );
       case 'all':
       default:
         return articles;
@@ -247,11 +252,13 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * QUOTA OPTIMIZATION: Check if article is shared (copied from participant)
-   * Shared articles have the sharedFrom field set
+   * Check if article is shared (owned by someone else)
+   * Note: Article copying via sharedFrom field is blocked by Firestore permissions
+   * So we determine shared status by ownership instead
    */
   isSharedArticle(article: Article): boolean {
-    return !!article.sharedFrom;
+    if (!this.currentUserId) return false;
+    return article.ownerId !== this.currentUserId;
   }
 
   /**

@@ -2235,82 +2235,99 @@ export class FirebaseDataService {
 
   /**
    * QUOTA OPTIMIZATION: Copy article to owner's collection for shared lists
-   * When a participant adds an article to a shared list, we copy it to the owner's collection
-   * This allows the owner to see all articles in their article overview without multi-user queries
+   *
+   * NOTE: This approach is BLOCKED by Firestore security rules!
+   * Participants cannot write to owner's collection due to permissions.
+   *
+   * Current behavior: Falls back to multi-user query approach (loading from all collaborators)
+   * Future solution: Implement via Cloud Functions (server-side with admin permissions)
    *
    * @param article The article to copy
    * @param ownerId The list owner's user ID
    * @param participantId The participant who is adding the article
-   * @returns The article ID in the owner's collection (either existing or newly created)
+   * @returns The article ID (original article ID, since copying fails)
    */
   async copyArticleToOwnerCollection(article: Article, ownerId: string, participantId: string): Promise<string> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-
-    // Check if article already exists in owner's collection
-    const ownerArticlesRef = collection(this.firestore, `users-v2/${ownerId}/articles`);
-    const existingQuery = query(
-      ownerArticlesRef,
-      where('name', '==', article.name),
-      where('sharedFrom', '==', participantId)
-    );
-
-    const existingSnapshot = await getDocs(existingQuery);
-
-    if (!existingSnapshot.empty) {
-      // Article already copied, return existing ID
-      const existingId = existingSnapshot.docs[0].id;
-      this.logger.info('data', `📋 Article "${article.name}" already exists in owner's collection (ID: ${existingId})`);
-      return existingId;
+    if (!this.firestore) {
+      this.logger.error('data', 'Firestore not initialized');
+      return article.id; // Return original article ID as fallback
     }
 
-    // Create copy in owner's collection
-    const articleData = {
-      name: article.name,
-      amount: article.amount || '',
-      notes: article.notes || '',
-      icon: article.icon || '📦',
-      categoryId: article.categoryId || '',
-      departmentId: article.departmentId || '',
-      availableInShops: article.availableInShops || [],
-      usageCount: article.usageCount || 0,
-      ownerId: ownerId, // Owner owns this copy
-      sharedFrom: participantId, // Mark as shared from participant
-      copiedFrom: article.id, // Track original article ID
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    };
+    try {
+      // Check if article already exists in owner's collection
+      const ownerArticlesRef = collection(this.firestore, `users-v2/${ownerId}/articles`);
+      const existingQuery = query(
+        ownerArticlesRef,
+        where('name', '==', article.name),
+        where('sharedFrom', '==', participantId)
+      );
 
-    const docRef = await addDoc(ownerArticlesRef, articleData);
-    this.logger.info('data', `✅ Copied article "${article.name}" to owner's collection (ID: ${docRef.id}, sharedFrom: ${participantId})`);
+      const existingSnapshot = await getDocs(existingQuery);
 
-    // Add to local state if current user is the owner
-    const currentUserId = this.authService.getCurrentUserId();
-    if (currentUserId === ownerId) {
-      const newArticle: Article = {
-        id: docRef.id,
+      if (!existingSnapshot.empty) {
+        // Article already copied, return existing ID
+        const existingId = existingSnapshot.docs[0].id;
+        this.logger.info('data', `📋 Article "${article.name}" already exists in owner's collection (ID: ${existingId})`);
+        return existingId;
+      }
+
+      // Create copy in owner's collection
+      const articleData = {
         name: article.name,
         amount: article.amount || '',
         notes: article.notes || '',
         icon: article.icon || '📦',
         categoryId: article.categoryId || '',
         departmentId: article.departmentId || '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
         availableInShops: article.availableInShops || [],
         usageCount: article.usageCount || 0,
-        ownerId: ownerId,
-        sharedFrom: participantId,
-        copiedFrom: article.id
+        ownerId: ownerId, // Owner owns this copy
+        sharedFrom: participantId, // Mark as shared from participant
+        copiedFrom: article.id, // Track original article ID
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       };
 
-      const currentArticles = this.articlesSubject.value;
-      const updatedArticles = [...currentArticles, newArticle];
-      this.articlesSubject.next(updatedArticles);
-      this.cacheService.cacheArticles(updatedArticles);
-      this.logger.info('data', `✅ Added shared article to local state (${updatedArticles.length} total articles)`);
-    }
+      const docRef = await addDoc(ownerArticlesRef, articleData);
+      this.logger.info('data', `✅ Copied article "${article.name}" to owner's collection (ID: ${docRef.id}, sharedFrom: ${participantId})`);
 
-    return docRef.id;
+      // Add to local state if current user is the owner
+      const currentUserId = this.authService.getCurrentUserId();
+      if (currentUserId === ownerId) {
+        const newArticle: Article = {
+          id: docRef.id,
+          name: article.name,
+          amount: article.amount || '',
+          notes: article.notes || '',
+          icon: article.icon || '📦',
+          categoryId: article.categoryId || '',
+          departmentId: article.departmentId || '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          availableInShops: article.availableInShops || [],
+          usageCount: article.usageCount || 0,
+          ownerId: ownerId,
+          sharedFrom: participantId,
+          copiedFrom: article.id
+        };
+
+        const currentArticles = this.articlesSubject.value;
+        const updatedArticles = [...currentArticles, newArticle];
+        this.articlesSubject.next(updatedArticles);
+        this.cacheService.cacheArticles(updatedArticles);
+        this.logger.info('data', `✅ Added shared article to local state (${updatedArticles.length} total articles)`);
+      }
+
+      return docRef.id;
+    } catch (error: any) {
+      // EXPECTED: Firestore permissions prevent cross-user writes
+      // This is normal - participants can't write to owner's collection
+      // Fallback: Use original article ID and rely on multi-user query approach
+      this.logger.info('data', `⚠️ Article copying blocked by permissions (expected behavior)`);
+      this.logger.info('data', `📋 Using multi-user query approach - article stays in participant's collection`);
+      this.logger.debug('data', `Permission error: ${error.message}`);
+      return article.id; // Return original article ID
+    }
   }
 
   async createListInFirebase(listData: any): Promise<string> {
