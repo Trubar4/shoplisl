@@ -479,38 +479,76 @@ Owner loads list
 
 ---
 
-## 🎬 Prompt for New Session (If More Work Needed)
+## 🎬 Prompt for Next Session - Real-Time Sync Fixes
 
 ```
-Continue iPhone sharing conflicts & quota optimization.
+Fix real-time sync for shared lists in ShopLisl PWA.
 
-TESTING PHASE - 3 Major Fixes Implemented!
-- Read /home/user/shoplisl/SESSION_HANDOFF.md first
+CRITICAL CONTEXT:
+- Read /home/user/shoplisl/REAL_TIME_SYNC_ISSUES.md first (DETAILED test results)
+- Read /home/user/shoplisl/FIRESTORE_PERMISSIONS_ISSUE.md (architecture context)
 - Branch: claude/fix-iphone-sharing-conflicts-3cjzI
-- Latest commit: 1960c59
+- Latest commit: 4d1cd70
 
-FIXES COMPLETED:
-✅ 1. Article overview date crash - FIXED with getTimestamp() helper
-✅ 2. Article copying code path - FIXED by using NgRx action
-✅ 3. Quota debugging logs - ADDED to trace anonymous user loading
+CRITICAL ISSUES FROM TESTING:
 
-REMAINING ISSUES:
-⏳ 1. Anonymous user loading (~450 reads) - Debugging logs added, need test results
-⏳ 2. Real-time sync for participant articles - Should work now, need testing
+Issue 1: OWNER CAN'T SEE PARTICIPANT ARTICLES IN REAL-TIME 🔴
+- Participant adds "AAB4" to shared list → Participant sees it immediately ✅
+- Owner viewing same list → Does NOT see article until leaving/re-entering ❌
+- Shared articles listener not triggering UI updates for owner
 
-NEXT STEPS:
-1. Run Test 1 (Article Overview) - Should work perfectly now
-2. Run Test 2 (Article Copying) - Check for "📥 ADD ARTICLE" logs
-3. Run Test 3 (Quota Debug) - Check if still loading 461 articles
-4. Report test results and quota numbers
+Issue 2: PARTICIPANT CAN'T SEE OWNER ARTICLES AT ALL 🔴 CRITICAL!
+- Owner adds "AAA5" to shared list → Owner sees it immediately ✅
+- Participant viewing same list → Does NOT see article at all ❌
+- Not visible even after browser refresh ❌
+- Shared articles listener completely broken for participant
 
-ARCHITECTURE GOAL:
-When participant adds article to shared list:
-- Copy to owner's collection with sharedFrom field
-- Use owner's copy in list (not participant's original)
-- Saves ~600 reads vs multi-user queries
+Issue 3: LOADING 463 ARTICLES INSTEAD OF 22 🔴
+- Owner logs in, correct user ID: HYqET9vr40eDju4nQCTnJTV0qJo2 ✅
+- Correct path: users-v2/HYqET9vr40eDju4nQCTnJTV0qJo2 ✅
+- But loads 463 articles (+463 reads) instead of ~22 ❌
+- 20x quota waste, ~441 extra reads per session
 
-Start with the date fix, then find the real code path.
+ARCHITECTURE:
+- Article copying blocked by Firestore permissions (expected, documented)
+- Using multi-user query approach (participant articles stay in their collection)
+- Shared articles listener should load collaborator articles in real-time
+- This listener appears broken or not triggering properly
+
+FILES TO INVESTIGATE:
+1. firebase-data.service.ts:658-702 - setupSharedArticlesListener()
+   - Check participant vs owner logic
+   - Verify listener triggers and UI updates
+
+2. firebase-data.service.ts:522-550 - Articles collection listener
+   - Why loading 463 articles instead of 22?
+   - Check if count includes duplicates or shared articles
+
+3. Check Firestore console:
+   - How many articles in users-v2/HYqET9vr40eDju4nQCTnJTV0qJo2/articles?
+   - If ~22, listener firing multiple times
+   - If ~463, data cleanup needed
+
+FIRST TASK: Add detailed logging to setupSharedArticlesListener()
+- Log current user, shared lists, owner IDs being loaded
+- Log when onSnapshot fires for shared articles
+- Log article counts and IDs being loaded
+
+SECOND TASK: Fix participant not seeing owner articles
+- Verify shared articles listener is created for participant
+- Check if listener has correct path to owner's collection
+- Ensure listener updates trigger UI refresh
+
+THIRD TASK: Fix owner real-time sync
+- Ensure owner's shared articles listener triggers on changes
+- Check if optimistic updates notify collaborators
+- Verify state management propagates remote changes
+
+SUCCESS CRITERIA:
+✅ Owner adds article → Participant sees in real-time (no refresh needed)
+✅ Participant adds article → Owner sees in real-time (no refresh needed)
+✅ Articles collection listener loads ~22 articles, not 463
+✅ Quota reduced by ~441 reads per session
 ```
 
 ---
