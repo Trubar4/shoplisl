@@ -323,9 +323,27 @@ export class FirebaseDataService {
 
     this.logger.info('data', `📦 Loading ${articlesToLoad.length} articles for list: ${list.name}`);
 
-    // Load articles from the list owner
-    const ownerIds = [list.ownerId];
+    // CRITICAL FIX: Load articles from ALL list participants, not just the owner
+    // When a participant creates an article, it's in their collection: users-v2/{participantId}/articles
+    // We need to check all participants' article collections to find all articles
     const currentUserId = this.authService.getCurrentUserId();
+    const ownerIds = [list.ownerId];
+
+    // Add all shared participants as potential article owners
+    if (list.sharedWith && list.sharedWith.length > 0) {
+      list.sharedWith.forEach(sharedUser => {
+        if (sharedUser.userId && !ownerIds.includes(sharedUser.userId)) {
+          ownerIds.push(sharedUser.userId);
+        }
+      });
+    }
+
+    // Also add current user if they're a participant (for their own articles)
+    if (currentUserId && !ownerIds.includes(currentUserId)) {
+      ownerIds.push(currentUserId);
+    }
+
+    this.logger.info('data', `🔍 Searching for articles in ${ownerIds.length} user collections (owner + ${list.sharedWith?.length || 0} participants)`);
 
     try {
       const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
