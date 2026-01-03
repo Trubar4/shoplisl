@@ -331,9 +331,9 @@ export class FirebaseDataService {
 
     // Add all shared participants as potential article owners
     if (list.sharedWith && list.sharedWith.length > 0) {
-      list.sharedWith.forEach(sharedUser => {
-        if (sharedUser.userId && !ownerIds.includes(sharedUser.userId)) {
-          ownerIds.push(sharedUser.userId);
+      list.sharedWith.forEach(userId => {
+        if (!ownerIds.includes(userId)) {
+          ownerIds.push(userId);
         }
       });
     }
