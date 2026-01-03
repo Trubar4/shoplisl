@@ -451,6 +451,7 @@ export class ListsRepositoryService {
     list: ShoppingList
   ): Observable<boolean> {
     this.logger.info('data', `📝 ADD INTERNAL: Adding article ${articleId} ("${articleName}") to list ${listId}`);
+    this.logger.info('data', `📝 ADD INTERNAL: List owner: ${list.ownerId}, List shared with: ${list.sharedWith?.length || 0} users`);
 
     const currentUserId = this.authService.getCurrentUserId();
     if (!currentUserId) {
@@ -458,24 +459,33 @@ export class ListsRepositoryService {
       return of(false);
     }
 
+    this.logger.info('data', `📝 ADD INTERNAL: Current user ID: ${currentUserId}`);
+
     // Get the article to check ownership
     const articles = this.firebaseData.getCurrentArticles();
+    this.logger.info('data', `📝 ADD INTERNAL: Found ${articles.length} articles in local state`);
+
     const article = articles.find(a => a.id === articleId);
     if (!article) {
       this.logger.error('data', `📝 ADD INTERNAL: Article ${articleId} not found in local state`);
+      this.logger.info('data', `📝 ADD INTERNAL: Available article IDs: ${articles.map(a => a.id).join(', ')}`);
       return of(false);
     }
+
+    this.logger.info('data', `📝 ADD INTERNAL: Found article "${article.name}", owner: ${article.ownerId}`);
 
     // QUOTA OPTIMIZATION: Check if we need to copy to owner's collection
     const isSharedList = list.ownerId !== currentUserId;
     const isParticipantArticle = article.ownerId === currentUserId;
     const needsCopyToOwner = isSharedList && isParticipantArticle;
 
-    this.logger.info('data', `📝 ADD INTERNAL: Shared list: ${isSharedList}, Participant article: ${isParticipantArticle}, Needs copy: ${needsCopyToOwner}`);
+    this.logger.info('data', `📝 ADD INTERNAL: Is shared list: ${isSharedList} (list owner ${list.ownerId} !== current user ${currentUserId})`);
+    this.logger.info('data', `📝 ADD INTERNAL: Is participant article: ${isParticipantArticle} (article owner ${article.ownerId} === current user ${currentUserId})`);
+    this.logger.info('data', `📝 ADD INTERNAL: 🎯 NEEDS COPY TO OWNER: ${needsCopyToOwner}`);
 
     if (needsCopyToOwner) {
       // Copy article to owner's collection first
-      this.logger.info('data', `📋 Copying participant's article "${article.name}" to owner's collection...`);
+      this.logger.info('data', `📋 Copying participant's article "${article.name}" to owner ${list.ownerId}'s collection...`);
       return from(this.firebaseData.copyArticleToOwnerCollection(article, list.ownerId, currentUserId)).pipe(
         mergeMap(ownerArticleId => {
           this.logger.info('data', `✅ Article copied to owner's collection with ID: ${ownerArticleId}`);
@@ -489,6 +499,7 @@ export class ListsRepositoryService {
       );
     } else {
       // Use original article (either owner's article or already copied)
+      this.logger.info('data', `📝 ADD INTERNAL: Using original article (no copy needed)`);
       return this.addArticleIdToList(listId, articleId, articleName, list);
     }
   }

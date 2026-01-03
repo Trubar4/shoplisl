@@ -744,7 +744,13 @@ export class FirebaseDataService {
       new Map(allLists.map(list => [list.id, list])).values()
     );
 
-    this.logger.debug('data', `Merged lists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
+    this.logger.info('data', `📊 MERGE LISTS: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
+    if (this.ownedLists.length > 0) {
+      this.logger.info('data', `📊 Owned lists: ${this.ownedLists.map(l => l.name).join(', ')}`);
+    }
+    if (this.sharedLists.length > 0) {
+      this.logger.info('data', `📊 Shared lists: ${this.sharedLists.map(l => l.name).join(', ')}`);
+    }
 
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
