@@ -18,6 +18,7 @@ export interface Article {
   // Phase 8: List sharing - ownership
   ownerId: string;             // User who created this article (required for access control)
   copiedFrom?: string;         // Phase 8.2: ID of original article if this is a local copy
+  sharedFrom?: string;         // Phase 8.2: User ID of participant who created this (when copied to owner's collection for shared lists)
 }
 
 // Keep your existing Department interface

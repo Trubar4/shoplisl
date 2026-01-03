@@ -442,6 +442,7 @@ export class ListsRepositoryService {
 
   /**
    * Internal method to add article to list (after copy decision is made)
+   * QUOTA OPTIMIZATION: For shared lists, copies participant's articles to owner's collection
    */
   private addArticleToListInternal(
     listId: string,
@@ -451,8 +452,58 @@ export class ListsRepositoryService {
   ): Observable<boolean> {
     this.logger.info('data', `📝 ADD INTERNAL: Adding article ${articleId} ("${articleName}") to list ${listId}`);
 
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      this.logger.error('data', '📝 ADD INTERNAL: No authenticated user');
+      return of(false);
+    }
+
+    // Get the article to check ownership
+    const articles = this.firebaseData.getCurrentArticles();
+    const article = articles.find(a => a.id === articleId);
+    if (!article) {
+      this.logger.error('data', `📝 ADD INTERNAL: Article ${articleId} not found in local state`);
+      return of(false);
+    }
+
+    // QUOTA OPTIMIZATION: Check if we need to copy to owner's collection
+    const isSharedList = list.ownerId !== currentUserId;
+    const isParticipantArticle = article.ownerId === currentUserId;
+    const needsCopyToOwner = isSharedList && isParticipantArticle;
+
+    this.logger.info('data', `📝 ADD INTERNAL: Shared list: ${isSharedList}, Participant article: ${isParticipantArticle}, Needs copy: ${needsCopyToOwner}`);
+
+    if (needsCopyToOwner) {
+      // Copy article to owner's collection first
+      this.logger.info('data', `📋 Copying participant's article "${article.name}" to owner's collection...`);
+      return from(this.firebaseData.copyArticleToOwnerCollection(article, list.ownerId, currentUserId)).pipe(
+        mergeMap(ownerArticleId => {
+          this.logger.info('data', `✅ Article copied to owner's collection with ID: ${ownerArticleId}`);
+          // Now add the OWNER'S copy to the list
+          return this.addArticleIdToList(listId, ownerArticleId, articleName, list);
+        }),
+        catchError(error => {
+          this.logger.error('data', '❌ Failed to copy article to owner collection:', error);
+          return of(false);
+        })
+      );
+    } else {
+      // Use original article (either owner's article or already copied)
+      return this.addArticleIdToList(listId, articleId, articleName, list);
+    }
+  }
+
+  /**
+   * Helper method to add article ID to list after any necessary copying
+   */
+  private addArticleIdToList(
+    listId: string,
+    articleId: string,
+    articleName: string | undefined,
+    list: ShoppingList
+  ): Observable<boolean> {
     const isAlreadyInList = list.articleIds.includes(articleId);
-    this.logger.info('data', `📝 ADD INTERNAL: Article already in list: ${isAlreadyInList}`);
+    this.logger.info('data', `📝 ADD TO LIST: Article ${articleId} already in list: ${isAlreadyInList}`);
 
     const newArticleIds = isAlreadyInList
       ? list.articleIds

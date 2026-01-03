@@ -2150,7 +2150,46 @@ export class FirebaseDataService {
   async updateArticleInFirebase(id: string, updateData: any): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
+    const currentUserId = this.authService.getCurrentUserId();
+
+    // Update the article in current user's collection
     await updateDoc(doc(this.firestore, `${basePath}/articles/${id}`), updateData);
+
+    // QUOTA OPTIMIZATION: If this article is on a shared list, also update owner's copy
+    // Find shared lists containing this article
+    const currentLists = this.listsSubject.value;
+    const sharedListsWithArticle = currentLists.filter(list =>
+      list.ownerId !== currentUserId && // Shared list (not owned by current user)
+      list.articleIds.includes(id) // Contains this article
+    );
+
+    if (sharedListsWithArticle.length > 0) {
+      this.logger.info('data', `📋 Article ${id} is on ${sharedListsWithArticle.length} shared list(s), updating owner's copies...`);
+
+      // Update owner's copy for each shared list
+      for (const list of sharedListsWithArticle) {
+        try {
+          // Find the owner's copy (it has copiedFrom: id and ownerId: list.ownerId)
+          const ownerArticlesRef = collection(this.firestore, `users-v2/${list.ownerId}/articles`);
+          const copyQuery = query(
+            ownerArticlesRef,
+            where('copiedFrom', '==', id),
+            where('sharedFrom', '==', currentUserId)
+          );
+
+          const copySnapshot = await getDocs(copyQuery);
+          if (!copySnapshot.empty) {
+            const ownerCopyId = copySnapshot.docs[0].id;
+            await updateDoc(doc(this.firestore, `users-v2/${list.ownerId}/articles/${ownerCopyId}`), updateData);
+            this.logger.info('data', `✅ Updated owner's copy ${ownerCopyId} in list "${list.name}"`);
+          } else {
+            this.logger.warn('data', `⚠️ Owner's copy not found for article ${id} in list "${list.name}"`);
+          }
+        } catch (error) {
+          this.logger.error('data', `❌ Failed to update owner's copy for list "${list.name}":`, error);
+        }
+      }
+    }
 
     // CRITICAL FIX: Update article in local state immediately
     // Collection listeners are cleaned up by lazy listeners, so we must manually update
@@ -2181,6 +2220,86 @@ export class FirebaseDataService {
     this.articlesSubject.next(updatedArticles);
     this.cacheService.cacheArticles(updatedArticles);
     this.logger.debug('data', `✅ Article ${id} removed from local state (${updatedArticles.length} remaining)`);
+  }
+
+  /**
+   * QUOTA OPTIMIZATION: Copy article to owner's collection for shared lists
+   * When a participant adds an article to a shared list, we copy it to the owner's collection
+   * This allows the owner to see all articles in their article overview without multi-user queries
+   *
+   * @param article The article to copy
+   * @param ownerId The list owner's user ID
+   * @param participantId The participant who is adding the article
+   * @returns The article ID in the owner's collection (either existing or newly created)
+   */
+  async copyArticleToOwnerCollection(article: Article, ownerId: string, participantId: string): Promise<string> {
+    if (!this.firestore) throw new Error('Firestore not initialized');
+
+    // Check if article already exists in owner's collection
+    const ownerArticlesRef = collection(this.firestore, `users-v2/${ownerId}/articles`);
+    const existingQuery = query(
+      ownerArticlesRef,
+      where('name', '==', article.name),
+      where('sharedFrom', '==', participantId)
+    );
+
+    const existingSnapshot = await getDocs(existingQuery);
+
+    if (!existingSnapshot.empty) {
+      // Article already copied, return existing ID
+      const existingId = existingSnapshot.docs[0].id;
+      this.logger.info('data', `📋 Article "${article.name}" already exists in owner's collection (ID: ${existingId})`);
+      return existingId;
+    }
+
+    // Create copy in owner's collection
+    const articleData = {
+      name: article.name,
+      amount: article.amount || '',
+      notes: article.notes || '',
+      icon: article.icon || '📦',
+      categoryId: article.categoryId || '',
+      departmentId: article.departmentId || '',
+      availableInShops: article.availableInShops || [],
+      usageCount: article.usageCount || 0,
+      ownerId: ownerId, // Owner owns this copy
+      sharedFrom: participantId, // Mark as shared from participant
+      copiedFrom: article.id, // Track original article ID
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+
+    const docRef = await addDoc(ownerArticlesRef, articleData);
+    this.logger.info('data', `✅ Copied article "${article.name}" to owner's collection (ID: ${docRef.id}, sharedFrom: ${participantId})`);
+
+    // Add to local state if current user is the owner
+    const currentUserId = this.authService.getCurrentUserId();
+    if (currentUserId === ownerId) {
+      const newArticle: Article = {
+        id: docRef.id,
+        name: article.name,
+        amount: article.amount || '',
+        notes: article.notes || '',
+        icon: article.icon || '📦',
+        categoryId: article.categoryId || '',
+        departmentId: article.departmentId || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        availableInShops: article.availableInShops || [],
+        usageCount: article.usageCount || 0,
+        ownerId: ownerId,
+        sharedFrom: participantId,
+        copiedFrom: article.id
+      };
+
+      const currentArticles = this.articlesSubject.value;
+      const updatedArticles = [...currentArticles, newArticle];
+      this.articlesSubject.next(updatedArticles);
+      this.cacheService.cacheArticles(updatedArticles);
+      this.logger.info('data', `✅ Added shared article to local state (${updatedArticles.length} total articles)`);
+    }
+
+    return docRef.id;
   }
 
   async createListInFirebase(listData: any): Promise<string> {

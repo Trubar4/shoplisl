@@ -216,15 +216,21 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
   /**
    * Apply ownership filter to articles
+   * QUOTA OPTIMIZATION: Uses sharedFrom field to identify shared articles
+   * Shared articles are those copied from participants to owner's collection
    */
   private applyFilter(articles: ArticleWithStats[], filterOption: ArticleFilterOption): ArticleWithStats[] {
     if (!this.currentUserId) return articles;
 
     switch (filterOption) {
       case 'owned':
-        return articles.filter(article => article.ownerId === this.currentUserId);
+        // Owned = articles owned by current user AND not shared from someone else
+        return articles.filter(article =>
+          article.ownerId === this.currentUserId && !article.sharedFrom
+        );
       case 'shared':
-        return articles.filter(article => article.ownerId !== this.currentUserId);
+        // Shared = articles that have sharedFrom field (copied from participants)
+        return articles.filter(article => !!article.sharedFrom);
       case 'all':
       default:
         return articles;
@@ -241,10 +247,11 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Phase 8.2: Check if article is shared (not owned by current user)
+   * QUOTA OPTIMIZATION: Check if article is shared (copied from participant)
+   * Shared articles have the sharedFrom field set
    */
   isSharedArticle(article: Article): boolean {
-    return this.currentUserId !== null && article.ownerId !== this.currentUserId;
+    return !!article.sharedFrom;
   }
 
   /**
