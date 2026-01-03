@@ -99,6 +99,9 @@ export class FirebaseDataService {
   // QUOTA FIX: Track current user to prevent unnecessary cleanup
   private currentUserId: string | null = null;
 
+  // DEBUG: Track setupRealtimeListeners calls to find duplicate creation
+  private setupRealtimeListenersCallCount = 0;
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -399,7 +402,7 @@ export class FirebaseDataService {
       const statusChangeTime = status.lastOnlineAt?.getTime() || 0;
 
       if (Math.abs(currentTime - statusChangeTime) < 1000 && status.isOnline) {
-        this.logger.info('data', 'Connection restored - refreshing data');
+        this.logger.info('data', '📊 QUOTA DEBUG: [CALLER: Connection restored event] calling setupRealtimeListeners()');
 
         // QUOTA FIX: Only call setupRealtimeListeners, not loadFreshData
         // loadFreshData also loads cached data first, which we don't need
@@ -410,7 +413,7 @@ export class FirebaseDataService {
   }
 
   private async loadFreshData(): Promise<void> {
-    this.logger.debug('data', 'Loading fresh data from Firebase');
+    this.logger.info('data', '📊 QUOTA DEBUG: [CALLER: loadFreshData()] calling loadCachedData() then setupRealtimeListeners()');
 
     try {
       // Performance: Show cached data immediately for instant UX
@@ -420,6 +423,7 @@ export class FirebaseDataService {
       this.refreshStatusSubject.next({ isRefreshing: true, message: 'Aktualisiere Daten...' });
 
       // Then set up real-time listeners for fresh data
+      this.logger.info('data', '📊 QUOTA DEBUG: [CALLER: loadFreshData()] calling setupRealtimeListeners()');
       this.setupRealtimeListeners();
 
       // Performance: Notify that background refresh is complete (after a short delay to ensure data is loaded)
@@ -463,10 +467,13 @@ export class FirebaseDataService {
   }
 
   private setupRealtimeListeners(): void {
-    this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
+    this.setupRealtimeListenersCallCount++;
+    this.logger.info('data', `🔧 setupRealtimeListeners() called - CALL #${this.setupRealtimeListenersCallCount}`);
+    this.logger.info('data', `📊 QUOTA DEBUG: collectionListenersActive=${this.collectionListenersActive}, cleanedUp=${this.collectionListenersCleanedUp}`);
 
     // MOBILE DEBUG: Log collection listener setup attempt
     this.mobileDebug.logToFirestore('collection-listeners-setup-attempt', {
+      callCount: this.setupRealtimeListenersCallCount,
       alreadyActive: this.collectionListenersActive,
       cleanedUp: this.collectionListenersCleanedUp
     });
@@ -474,7 +481,7 @@ export class FirebaseDataService {
     // QUOTA OPTIMIZATION: Skip if collection listeners are already active
     // This prevents duplicate listener creation on connection restore events
     if (this.collectionListenersActive) {
-      this.logger.info('data', '⏭️  Collection listeners already active - skipping recreation to save quota');
+      this.logger.info('data', `⏭️  Collection listeners already active - SKIPPING call #${this.setupRealtimeListenersCallCount} to save quota`);
       return;
     }
 
@@ -2322,7 +2329,7 @@ export class FirebaseDataService {
   }
 
   async refreshData(): Promise<void> {
-    this.logger.info('data', 'Manually refreshing user data');
+    this.logger.info('data', '📊 QUOTA DEBUG: [CALLER: refreshData()] manually refreshing user data');
 
     if (!this.connectionService.isOnline()) {
       this.logger.warn('data', 'Offline: Cannot refresh, using cached data');
@@ -2334,6 +2341,7 @@ export class FirebaseDataService {
       // QUOTA FIX: Only call setupRealtimeListeners()
       // The listeners will automatically fetch and update the data via onSnapshot
       // No need to also call getDocs() - that would duplicate all the reads!
+      this.logger.info('data', '📊 QUOTA DEBUG: [CALLER: refreshData()] calling setupRealtimeListeners()');
       this.setupRealtimeListeners();
 
       this.logger.info('data', 'Real-time listeners refreshed - data will update automatically');
