@@ -54,7 +54,7 @@ export class FirebaseDataService {
 
   // QUOTA OPTIMIZATION: Increased debounce from 200ms to 1000ms to reduce batch load frequency
   private mergeListsTimer: any = null;
-  private readonly MERGE_LISTS_DEBOUNCE = 1000; // 1 second (was 200ms)
+  private readonly MERGE_LISTS_DEBOUNCE = 50; // 50ms - fast enough for UI, prevents rapid fire
 
   // Performance: Prevent concurrent batch loads
   private isBatchLoading = false;
@@ -707,14 +707,14 @@ export class FirebaseDataService {
    */
   private mergeLists(): void {
     // QUOTA OPTIMIZATION: Debounce multiple mergeLists calls to prevent excessive batch loads
-    // If multiple listeners fire within 1 second, only run once
+    // 50ms debounce - fast enough for responsive UI, prevents rapid-fire updates
     if (this.mergeListsTimer) {
       clearTimeout(this.mergeListsTimer);
     }
 
     this.mergeListsTimer = setTimeout(() => {
       this.executeMergeLists();
-    }, this.MERGE_LISTS_DEBOUNCE); // 1 second debounce (reduced from 200ms)
+    }, this.MERGE_LISTS_DEBOUNCE);
   }
 
   private executeMergeLists(): void {
