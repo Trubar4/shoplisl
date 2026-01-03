@@ -1,533 +1,394 @@
-# Session Handoff: Shoplisl Phase 8 - List Sharing
+# Session Handoff - iPhone Sharing Conflicts & Quota Optimization
 
-**Status:** ⚠️ CORE COMPLETE - ENHANCEMENTS NEEDED
-**Branch:** `claude/list-sharing-sync-phase-8-01RYsEDWkskrAnZ6PtpWJyTQ`
-**Last Updated:** December 14, 2025
-**DO NOT MERGE TO MAIN YET**
-
----
-
-## Quick Summary
-
-Phase 8 (List Sharing) **core features are working**. Users can now:
-- ✅ Share lists with other users
-- ✅ Collaborators can check/uncheck items with real-time sync
-- ✅ Collaborators can add their own articles to shared lists
-- ✅ Articles belong to their creator (not the list owner)
-- ✅ All changes persist correctly in Firestore
-
-**⚠️ Pending Features (Critical UX Issues):**
-- ❌ Local copy function when using shared articles in own lists
-- ❌ Partial edit permissions for articles (quantity/notes only)
-- ❌ Automated integration tests for Firebase collaboration
+**Session Date:** 2026-01-03
+**Branch:** `claude/fix-iphone-sharing-conflicts-3cjzI`
+**Status:** Multiple critical issues remain - need debugging
+**Quota:** Currently 11,756 reads (Expected: 500-600)
 
 ---
 
-## Current Branch State
+## 🎯 Original Goals
 
-**Branch:** `claude/list-sharing-sync-phase-8-01RYsEDWkskrAnZ6PtpWJyTQ`
+1. Fix iPhone sharing conflicts (sync issues, high quota)
+2. Reduce quota usage from 4300 reads to 500-600 reads
+3. Enable participants to add articles to shared lists
+4. Make participant articles visible to list owner
 
-**Recent Commits:**
+---
+
+## ✅ Completed Fixes
+
+### 1. Race Condition in Listener Creation ✅
+**Commits:** f86eb23, 0630592
+**Problem:** Collection listeners created twice (453 + 456 articles, 12 + 13 lists)
+
+**Fix:**
+- Set `collectionListenersActive` flag BEFORE creating listeners (firebase-data.service.ts:488)
+- Track `currentUserId` to only cleanup on actual user change (lines 122-155)
+- Added call counter for debugging (line 103)
+
+**Result:** Duplicate listener creation FIXED (calls #2 and #3 properly skipped in logs)
+
+### 2. List Visibility Delay ✅
+**Commit:** 5bf6dcd
+**Problem:** Lists had 1-second delay before appearing
+
+**Fix:** Reduced `MERGE_LISTS_DEBOUNCE` from 1000ms to 50ms (firebase-data.service.ts:57)
+
+**Result:** Lists appear instantly
+
+### 3. List Overview Wrong Counts ✅
+**Commit:** e5d2c2a
+**Problem:** Showed "1/1 Artikel" instead of "5/26"
+
+**Fix:** Removed articleIds filtering in list overview (lists-overview.ts:91-96)
+
+**Result:** Counts show correctly
+
+---
+
+## ❌ Critical Issues Remaining
+
+### Issue 1: Article Copying Code NOT Running 🔥
+**Severity:** CRITICAL - Core feature not working
+
+**Symptom:** No logs showing `"📥 ADD ARTICLE"` or `"📝 ADD INTERNAL"`
+
+**Expected Logs (Never Appear):**
 ```
-b11a9b7 - docs: add comprehensive Phase 8 implementation documentation
-9468e61 - fix: load collaborator articles for owned-but-shared lists
-f29a426 - fix: skip orphaned reference cleanup for shared lists
-e21377c - fix: add null check for currentUserId before Set.delete()
-276d155 - debug: improve logging to show which articles are found/missing
-9737f55 - debug: add logging to show articleIds being written to Firestore
+📥 ADD ARTICLE: Starting to add article {id} to list {listId}
+📝 ADD INTERNAL: Adding article {id} to list {listId}
+📝 ADD INTERNAL: 🎯 NEEDS COPY TO OWNER: true
+📋 Copying participant's article to owner's collection...
 ```
 
-**Status:**
-- Clean working directory
-- All changes committed and pushed
-- Ready for merge or next phase
+**Actual Console Output:**
+```
+📱 DATA: Creating article in creator's path: users-v2/iO2DfORaRESybCOkr7uMZeC8OZV2/articles
+📱 DATA: ✅ Article created with ID: xUBBEx9giHJ2m7foYUt5
+📱 DATA: ✅ Article added to local state (53 total articles)
+📱 DATA: Writing to Firebase: users-v2/HYqET9vr40eDju4nQCTnJTV0qJo2/lists/8BzY3ShahwhhphO79p7Q
+```
 
----
+**Analysis:**
+Article is created and added to list, BUT `lists-repository.service.ts` addArticleToList() is being BYPASSED!
 
-## Architecture Overview
+**Root Cause:**
+The code path for adding articles doesn't go through the repository layer. Need to find where articles are added to lists.
 
-### Data Model
-- **Articles:** Stored in creator's collection `users-v2/{creatorId}/articles/`
-- **Lists:** Stored in owner's collection `users-v2/{ownerId}/lists/`
-- **Collaborators:** Write to owner's list path (not their own)
+**Action Needed:**
+1. Search for all places that call `updateListInFirebase()`
+2. Check list-detail.ts for direct article adding
+3. Check NgRx effects for bypassing repository
+4. Add logging to the actual code path being used
 
-### Key Design Decision
-**Articles belong to their creator**, not the list owner. This means:
-- User B creates article → stored in User B's collection
-- User A's shared list references the article by ID
-- Both users can see the article on the shared list
-- User B can use their article on other lists
+### Issue 2: Article Overview Shows ZERO Articles 🔥
+**Severity:** CRITICAL - Blocking feature
 
----
+**Symptom:** Owner goes to article overview → sees nothing
 
-## What Works (Tested & Verified)
+**Console Error:**
+```
+ERROR TypeError: a.stats?.lastAddedToListDate?.getTime is not a function
+    at article-overview.ts:297:55
+```
 
-1. **Real-time Collaboration**
-   - User A checks item → User B sees it immediately ✅
-   - User B unchecks item → User A sees it immediately ✅
+**Location:** article-overview.ts:297 in sortArticles() method
 
-2. **Article Creation & Visibility**
-   - User B creates article → persists in Firestore ✅
-   - User B adds article to User A's list → article ID saved ✅
-   - User A refreshes → sees User B's article ✅
+**Root Cause:**
+`lastAddedToListDate` is not a Date object (likely Timestamp from Firestore)
 
-3. **Data Persistence**
-   - Articles survive refresh for both users ✅
-   - Article IDs not removed by cleanup functions ✅
-   - Verified in Firebase Console ✅
-
----
-
-## Critical Files Modified
-
-| File | What Changed | Why |
-|------|-------------|-----|
-| `firestore.rules` | Allow collaborator writes with safety checks | Enable collaboration while preventing privilege escalation |
-| `firebase-data.service.ts` | Load articles from all collaborators | Owner needs to see collaborator articles |
-| `data-migration.service.ts` | Skip cleanup for shared lists | Prevent removal of collaborator articles |
-| `articles-repository.service.ts` | Simplified article creation | Articles belong to creator |
-
----
-
-## Firestore Rules Summary
-
-**Lists:** Collaborators can update but cannot change ownership/sharing
-**Articles:** Only creator can write, all authenticated users can read
-
-See `PHASE_8_LIST_SHARING.md` for full rules.
-
----
-
-## 🚨 CRITICAL PENDING FEATURES (Must Implement Before Production)
-
-### 1. Local Copy Function for Shared Articles
-
-**Problem:**
-When User B uses an article from User A's shared list in their own list X:
-- If User A deletes the article → User B's list X breaks
-- If User A renames the article → User B's reference changes unexpectedly
-- User B has no control over articles they don't own
-
-**Required Solution:**
-When User B adds an article from a shared list to their own list, create a local copy:
-
+**Fix Needed:**
 ```typescript
-// Pseudocode
-function addArticleToOwnList(articleId: string, targetListId: string) {
-  const article = getArticle(articleId);
+// article-overview.ts line 288-297
+// BEFORE:
+case 'lastAdded':
+  return sorted.sort((a, b) => {
+    const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
+    const dateB = b.stats?.lastAddedToListDate?.getTime() ?? 0;
+    ...
+  });
 
-  if (article.ownerId !== currentUserId) {
-    // Create local copy in User B's collection
-    const localCopy = {
-      name: article.name,
-      icon: article.icon,
-      departmentId: article.departmentId,
-      // ... other fields
-      ownerId: currentUserId,  // User B now owns the copy
-      copiedFrom: articleId,    // Optional: track origin
-    };
-    const newArticleId = createArticle(localCopy);
-    addToList(targetListId, newArticleId);
-  } else {
-    // User B owns it, just reference it
-    addToList(targetListId, articleId);
-  }
-}
+// AFTER:
+case 'lastAdded':
+  return sorted.sort((a, b) => {
+    const dateA = a.stats?.lastAddedToListDate instanceof Date
+      ? a.stats.lastAddedToListDate.getTime()
+      : (typeof a.stats?.lastAddedToListDate?.toDate === 'function'
+        ? a.stats.lastAddedToListDate.toDate().getTime()
+        : 0);
+    const dateB = b.stats?.lastAddedToListDate instanceof Date
+      ? b.stats.lastAddedToListDate.getTime()
+      : (typeof b.stats?.lastAddedToListDate?.toDate === 'function'
+        ? b.stats.lastAddedToListDate.toDate().getTime()
+        : 0);
+    ...
+  });
 ```
 
-**Behavior:**
-- **On shared list:** Article instance belongs to original owner (User A)
-  - If User A changes it → changes for everyone on that shared list
-- **On User B's own list:** User B has a local copy
-  - User A's changes don't affect User B's copy
-  - User B can modify their copy independently
+**Also check:** article-stats.service.ts for proper date conversion from Firestore
 
-**Implementation Scope:**
-- Add copy logic to article selection/addition flow
-- Update UI to indicate when using original vs. copy
-- Consider "Update from original" feature for copies
+### Issue 3: Anonymous User Still Loading (~450 reads wasted) 🔥
+**Severity:** HIGH - Major quota waste
+
+**Commit:** efda91b (attempted fix)
+
+**Symptom:**
+```
+📊 QUOTA: Articles Collection Listener (+461 reads)
+🔄 NGRX REDUCER: loadArticlesSuccess - updating store with 467 articles
+```
+
+**Expected:** Should only load 22 articles (authenticated user)
+**Actual:** Loading 461-467 articles (anonymous/shared user)
+
+**Fix Applied (Not Working):**
+- Skip `initializeDataLoading()` if no user (firebase-data.service.ts:394-397)
+- Removed `SHARED_USER_ID` fallback (line 384)
+
+**Why It's Not Working:**
+Unknown - need to trace where 461 articles are coming from
+
+**Debug Steps:**
+1. Add logging to show `getUserBasePath()` result in setupRealtimeListeners()
+2. Check if listeners are created before auth completes
+3. Verify `currentUserId` check is working
+
+### Issue 4: Participant Articles Not Visible to Owner
+**Severity:** HIGH - Core feature
+
+**Status:** Partially working
+- ✅ Owner sees article in shared list (after leaving/re-entering)
+- ❌ Real-time sync not working
+- ❌ Article not in owner's article overview
+- ❌ Copying to owner's collection not happening
+
+**Root Cause:** Article copying code (firebase-data.service.ts:2196-2264) never called because actual code path doesn't go through repository
+
+### Issue 5: Articles Not Found Warning
+**Console Shows:**
+```
+📱 DATA: ⚠️ 30 articles not found in any owner's collection
+```
+
+**Analysis:** This is EXPECTED until copying architecture works. Confirms articles are in wrong user collections.
 
 ---
 
-### 2. Partial Edit Permissions for Articles
+## 📋 Code Changes Summary
 
-**Problem:**
-Currently, when User B tries to edit an article owned by User A:
-- No indication that editing is restricted
-- Changes are not persisted (silent failure)
-- User B doesn't know they can't edit
+### Files Modified (Commits e445d71 + c72a665):
 
-**Required Solution:**
-Implement field-level permissions:
-
-**Editable by non-owners (contextual fields):**
-- ✅ `quantity/amount` - personal to each user's shopping context
-- ✅ `notes` - personal notes about the article
-
-**Read-only for non-owners (core properties):**
-- 🔒 `name` - defined by article owner
-- 🔒 `icon` - defined by article owner
-- 🔒 `departmentId` - defined by article owner
-- 🔒 `categoryId` - defined by article owner
-
-**UI Requirements:**
-- Grey out read-only fields when editing non-owned article
-- Show tooltip: "Only [Owner Name] can edit this field"
-- Show article owner name/indicator
-- Clearly distinguish owned vs. shared articles
-
-**Data Model:**
-Option A: Store quantity/notes per-user in itemStates:
+**1. src/app/core/models/index.ts**
 ```typescript
-itemStates: {
-  [articleId]: {
-    isChecked: boolean,
-    amount: string,        // User-specific
-    notes: string,         // User-specific
-    addedAt: Date
-  }
-}
+// Line 21 - Added field
+sharedFrom?: string;  // User ID of participant who created this
 ```
 
-Option B: Create user-specific article overlays:
+**2. src/app/core/services/firebase-data.service.ts**
+
+New methods:
+- `copyArticleToOwnerCollection()` (lines 2196-2264) - Copy participant article to owner
+- Updated `updateArticleInFirebase()` (lines 2150-2209) - Dual-write to both copies
+- Updated `executeMergeLists()` (lines 747-753) - Added detailed logging
+- Updated `initializeDataLoading()` (lines 390-398) - Skip until authenticated
+
+**3. src/app/core/services/lists-repository.service.ts**
+
+Modified methods:
+- `addArticleToListInternal()` (lines 447-505) - Check if copy needed, detailed logging
+- Added `addArticleIdToList()` helper (lines 507-573)
+
+**4. src/app/features/articles/article-overview/article-overview.ts**
+
+Updated filters:
+- `applyFilter()` (lines 222-238) - Use `sharedFrom` field
+- `isSharedArticle()` (lines 249-255) - Check `sharedFrom`
+
+**⚠️ THIS FILE HAS BUGS - lastAddedToListDate error**
+
+---
+
+## 🧪 Test Results
+
+### Test 1: Participant Creates Article on Shared List
+
+**Steps:**
+1. Participant creates article "AAB4"
+2. Adds to shared list "Frisch"
+
+**Results:**
+- ✅ Article created in `users-v2/{participantId}/articles`
+- ✅ Article ID added to shared list
+- ✅ Owner sees article in shared list (after leaving/re-entering list)
+- ❌ No article copying logs (code not running)
+- ❌ Real-time sync not working
+- ❌ Article not in owner's article overview
+
+### Test 2: List Visibility (Participant)
+
+**Console:**
+```
+📊 MERGE LISTS: 2 owned + 1 shared = 3 total
+📊 Owned lists: ADEG, Skifahren
+📊 Shared lists: Frisch
+```
+
+**Result:** ✅ Participant sees all lists correctly
+
+### Test 3: Article Overview (Owner)
+
+**Result:** ❌ Shows ZERO articles
+**Error:** `TypeError: lastAddedToListDate?.getTime is not a function`
+
+### Test 4: Quota Monitor
+
+**Results:**
+- Articles Collection Listener: +461 reads
+- Session total: 11,756 reads
+- **Gap from target:** ~11,000 extra reads
+
+---
+
+## 🚨 URGENT: Next Steps
+
+### Priority 1: Fix Article Overview Crash 🔥
+**File:** `article-overview.ts:297`
+**Issue:** Date conversion error crashes UI
+**Impact:** Owner can't see any articles
+
+**Fix:** Add defensive date handling (see Issue #2 above)
+
+### Priority 2: Find Actual Article Adding Code Path 🔥
+**Current Problem:** Repository layer is bypassed
+
+**Search for:**
+```bash
+# Find where articles are added to lists
+grep -rn "articleIds" src/app/features/lists/list-detail/
+grep -rn "updateListInFirebase" src/app/features/lists/
+grep -rn "addArticle" src/app/features/lists/
+```
+
+**Likely locations:**
+- `list-detail.ts` - Component adding articles directly?
+- `lists.effects.ts` - NgRx bypassing repository?
+- `data.service.ts` - Facade bypassing repository?
+
+**Action:** Add logging to find the actual code path, then implement copying there
+
+### Priority 3: Debug Anonymous User Loading 🔥
+**Add logging:**
 ```typescript
-articleOverrides: {
-  [articleId]: {
-    userId: string,
-    amount: string,
-    notes: string
-  }
-}
+// In setupRealtimeListeners() after getUserBasePath()
+const basePath = this.getUserBasePath();
+this.logger.info('data', `📊 LOADING PATH: ${basePath}`);
+this.logger.info('data', `📊 USER ID: ${this.authService.getCurrentUserId()}`);
 ```
 
-**Recommend:** Option A (already partially in place via itemStates)
+**Expected:** Should show `users-v2/{authenticatedUserId}`
+**If shows:** `users/{SHARED_USER_ID}` → fix not working
+
+### Priority 4: Implement Copying (Once Code Path Found)
+
+After finding where articles are added:
+1. Call `copyArticleToOwnerCollection()` for participant articles on shared lists
+2. Use owner's copy ID in the list (not participant's original)
+3. Verify `sharedFrom` field is set
 
 ---
 
-### 3. Automated Integration Tests for Firebase Collaboration
+## 📊 Architecture
 
-**Problem:**
-Currently testing requires:
-- Manual testing with two browser sessions
-- Manual verification in Firebase Console
-- Prone to regression when making changes
-- Time-consuming to verify all scenarios
-
-**Required Solution:**
-Implement automated Firebase integration tests:
-
-**Test Framework:**
-- Use Firebase Emulator Suite for local testing
-- Write tests using Jest + Firebase Admin SDK
-- Test actual Firestore reads/writes, not mocks
-
-**Critical Test Scenarios:**
-
-```typescript
-describe('Phase 8: List Sharing', () => {
-  let userAAuth, userBAuth;
-  let userAFirestore, userBFirestore;
-
-  beforeEach(async () => {
-    // Set up two test users with Firebase Auth
-    userAAuth = await createTestUser('userA@test.com');
-    userBAuth = await createTestUser('userB@test.com');
-
-    // Get Firestore instances authenticated as each user
-    userAFirestore = getAuthenticatedFirestore(userAAuth);
-    userBFirestore = getAuthenticatedFirestore(userBAuth);
-  });
-
-  test('User B can check/uncheck items on shared list', async () => {
-    // User A creates list and shares with User B
-    const listId = await createList(userAFirestore, 'Test List');
-    await shareList(userAFirestore, listId, userBAuth.uid);
-
-    // User B checks an item
-    await updateItemState(userBFirestore, listId, articleId, { isChecked: true });
-
-    // Verify both users see the change
-    const userAList = await getList(userAFirestore, listId);
-    const userBList = await getList(userBFirestore, listId);
-    expect(userAList.itemStates[articleId].isChecked).toBe(true);
-    expect(userBList.itemStates[articleId].isChecked).toBe(true);
-  });
-
-  test('User B creates article - visible to User A on shared list', async () => {
-    const listId = await createList(userAFirestore, 'Test List');
-    await shareList(userAFirestore, listId, userBAuth.uid);
-
-    // User B creates article and adds to shared list
-    const articleId = await createArticle(userBFirestore, { name: 'Test Article' });
-    await addArticleToList(userBFirestore, listId, articleId);
-
-    // Verify article exists in User B's collection
-    const article = await getArticle(userBFirestore, articleId);
-    expect(article.ownerId).toBe(userBAuth.uid);
-
-    // Verify User A can see the article on the shared list
-    const userAList = await getList(userAFirestore, listId);
-    expect(userAList.articleIds).toContain(articleId);
-
-    // Verify User A can load the article
-    const userAArticle = await getArticle(userAFirestore, articleId);
-    expect(userAArticle.name).toBe('Test Article');
-  });
-
-  test('Orphaned cleanup does NOT remove collaborator articles', async () => {
-    const listId = await createList(userAFirestore, 'Test List');
-    await shareList(userAFirestore, listId, userBAuth.uid);
-
-    // User B creates and adds article
-    const articleId = await createArticle(userBFirestore, { name: 'Test' });
-    await addArticleToList(userBFirestore, listId, articleId);
-
-    // User A runs cleanup
-    await runOrphanedCleanup(userAFirestore);
-
-    // Verify article ID still in list
-    const list = await getList(userAFirestore, listId);
-    expect(list.articleIds).toContain(articleId);
-  });
-
-  test('Firestore rules: collaborator cannot change ownerId', async () => {
-    const listId = await createList(userAFirestore, 'Test List');
-    await shareList(userAFirestore, listId, userBAuth.uid);
-
-    // User B attempts to change ownerId (should fail)
-    await expect(
-      updateList(userBFirestore, listId, { ownerId: userBAuth.uid })
-    ).rejects.toThrow('Missing or insufficient permissions');
-  });
-
-  test('Firestore rules: collaborator cannot change sharedWith', async () => {
-    const listId = await createList(userAFirestore, 'Test List');
-    await shareList(userAFirestore, listId, userBAuth.uid);
-
-    // User B attempts to add User C to sharedWith (should fail)
-    const userCAuth = await createTestUser('userC@test.com');
-    await expect(
-      updateList(userBFirestore, listId, {
-        sharedWith: [userBAuth.uid, userCAuth.uid]
-      })
-    ).rejects.toThrow('Missing or insufficient permissions');
-  });
-});
+### Current Flow (BROKEN):
+```
+Participant creates article
+    ↓
+users-v2/{participantId}/articles/{articleId}
+    ↓
+articleId added to shared list
+    ↓
+Owner loads list
+    ↓
+❌ Tries to load from owner's collection → NOT FOUND
 ```
 
-**Test Coverage Goals:**
-- ✅ Real-time sync (check/uncheck)
-- ✅ Article creation and visibility
-- ✅ Orphaned reference cleanup
-- ✅ Firestore security rules
-- ✅ Article loading from collaborators
-- ✅ Local copy creation (new feature)
-- ✅ Partial edit permissions (new feature)
-
-**Implementation Files:**
-- Create: `src/app/core/services/firebase-data.service.spec.ts`
-- Create: `test/integration/list-sharing.spec.ts`
-- Update: `package.json` (add test scripts)
-- Create: `firebase.json` (configure emulator)
-
----
-
-## Deployment Steps (If Needed)
-
-1. **Deploy Firestore Rules:**
-   ```bash
-   firebase deploy --only firestore:rules
-   ```
-
-2. **Rebuild Frontend:**
-   ```bash
-   npm start
-   ```
-
-3. **Test with two user accounts:**
-   - User A shares list with User B
-   - User B adds article
-   - Verify both users see the article
-
----
-
-## Known Issues / Limitations
-
-1. **No real-time article creation notification**
-   - When User B creates article, User A must refresh to see it
-   - Item check/uncheck syncs in real-time ✅
-   - New articles require refresh ⚠️
-
-2. **Privacy rules could be tighter**
-   - Currently: all authenticated users can read all articles
-   - Should restrict to: owner + users with article on shared list
-
-3. **Performance optimization opportunity**
-   - Article loading tries all collaborators sequentially
-   - Could store ownerId in itemStates for direct lookup
-
----
-
-## Future Phase Suggestions (After Phase 8.2 Complete)
-
-### High Priority
-1. **Real-time article creation sync** - Add listeners for new articles from collaborators
-2. **Invite management UI** - View/revoke invites, leave shared lists, see collaborators
-3. **"Update from original" feature** - For copied articles, offer to sync with original
-
-### Medium Priority
-4. **Activity feed** - Show who added/checked items with timestamps and user attribution
-5. **Role-based permissions** - Viewer vs. Editor vs. Admin roles
-6. **Performance optimization** - Cache ownerId in itemStates for faster article loading
-
-### Low Priority
-7. **Offline conflict resolution** - Handle simultaneous edits with CRDTs or OT
-8. **Push notifications** - Notify on list changes, new invites, etc.
-9. **Bulk operations** - Add multiple articles at once, batch import/export
-
----
-
-## How to Start a Fresh Session
-
-### ⚠️ DO NOT MERGE TO MAIN - Continue on Same Branch
-
-**USE THIS EXACT PROMPT FOR NEXT SESSION:**
-
+### Intended Flow (NOT WORKING):
 ```
-Continue working on Phase 8 (List Sharing) for the Shoplisl app.
-
-Current Branch: claude/list-sharing-sync-phase-8-01RYsEDWkskrAnZ6PtpWJyTQ
-DO NOT create a new branch. DO NOT merge to main yet.
-
-Context:
-Phase 8 core features are working (real-time sync, collaboration, article ownership).
-However, there are CRITICAL UX issues that must be fixed before production.
-
-Required Tasks (in priority order):
-
-1. **Local Copy Function for Shared Articles**
-   Problem: When User B uses an article from User A's shared list in their own
-   list, if User A deletes/renames it, User B's list breaks.
-
-   Solution: When User B adds an article they don't own to their own list,
-   automatically create a local copy in User B's collection. On shared lists,
-   the article instance still belongs to the original owner.
-
-   See SESSION_HANDOFF.md "Critical Pending Features #1" for full specification.
-
-2. **Partial Edit Permissions for Articles**
-   Problem: When User B tries to edit an article owned by User A, there's no
-   indication that editing is restricted, and changes silently fail.
-
-   Solution: Implement field-level permissions where User B can edit quantity
-   and notes (contextual fields) but NOT name, icon, or department (core
-   properties). UI should grey out read-only fields with tooltips.
-
-   See SESSION_HANDOFF.md "Critical Pending Features #2" for full specification.
-
-3. **Automated Integration Tests**
-   Problem: Currently all testing is manual with two browser sessions and
-   Firebase Console verification. This is error-prone and time-consuming.
-
-   Solution: Set up Firebase Emulator Suite and write automated integration
-   tests for all collaboration scenarios using Jest + Firebase Admin SDK.
-
-   See SESSION_HANDOFF.md "Critical Pending Features #3" for test scenarios.
-
-Documentation to Review:
-- SESSION_HANDOFF.md - Critical pending features with full specifications
-- PHASE_8_LIST_SHARING.md - Existing implementation details
-
-Please start by:
-1. Reading SESSION_HANDOFF.md "Critical Pending Features" section
-2. Understanding the local copy flow and partial edit permissions requirements
-3. Planning the implementation approach
-4. Asking any clarifying questions before starting
+Participant creates article
+    ↓
+users-v2/{participantId}/articles/{articleId}
+    ↓
+🎯 COPY to users-v2/{ownerId}/articles/{newId}
+   with sharedFrom: participantId
+    ↓
+Owner's copy ID added to list
+    ↓
+Owner loads list
+    ↓
+✅ Loads from owner's collection → FOUND
 ```
 
-### If ready to merge to main (NOT YET):
+---
 
-**Requirements before merge:**
-1. ✅ Local copy function implemented and tested
-2. ✅ Partial edit permissions working with proper UI
-3. ✅ Automated integration tests passing
-4. ✅ All tests pass with Firebase Emulator
-5. ✅ Manual testing with two real accounts confirms all features work
+## 💾 Key File Locations
 
-**Then follow these steps:**
-1. Create pull request from branch to main
-2. Review all changes
-3. Run full test suite
-4. Merge PR
-5. Deploy to production
-6. Delete feature branch
+### Services:
+- `firebase-data.service.ts:2196` - copyArticleToOwnerCollection()
+- `lists-repository.service.ts:447` - addArticleToListInternal()
+- `article-stats.service.ts` - Check date conversion here
+
+### Components:
+- `list-detail.ts` - **CHECK HERE for actual article adding**
+- `article-overview.ts:297` - **FIX THIS FIRST** (date error)
+
+### State:
+- `lists.effects.ts` - Check for direct list updates
+- `articles.effects.ts` - Has NgRx logging
 
 ---
 
-## Important Notes
+## 🎬 Prompt for New Session
 
-⚠️ **Do NOT modify these without careful consideration:**
-- `data-migration.service.ts` cleanup functions - skip shared lists
-- `firebase-data.service.ts` article loading - includes owned-but-shared lists
-- `firestore.rules` collaborator update rules - security critical
+```
+Continue iPhone sharing conflicts & quota optimization.
 
-✅ **Safe to modify/extend:**
-- UI components for sharing features
-- Invite acceptance flow
-- Article display on shared lists
-- Real-time sync notifications
+CRITICAL CONTEXT:
+- Read /home/user/shoplisl/SESSION_HANDOFF.md first
+- Branch: claude/fix-iphone-sharing-conflicts-3cjzI
+- Quota: 11,756 reads (target: 500-600) - 11K extra!
 
----
+TOP 3 BLOCKERS:
+1. Article overview crashes: lastAddedToListDate?.getTime is not a function (article-overview.ts:297)
+2. Article copying code not running - no "📥 ADD ARTICLE" logs despite code in commit c72a665
+3. Still loading 461 anonymous articles despite fix (commit efda91b)
 
-## Documentation References
+FIRST TASK:
+Fix article-overview.ts:297 date error so owner can see articles.
+Change:
+  const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
+To:
+  const dateA = a.stats?.lastAddedToListDate instanceof Date
+    ? a.stats.lastAddedToListDate.getTime()
+    : (a.stats?.lastAddedToListDate?.toDate?.() instanceof Function
+      ? a.stats.lastAddedToListDate.toDate().getTime()
+      : 0);
 
-- **Full Phase 8 docs:** `PHASE_8_LIST_SHARING.md`
-- **Firestore rules:** `firestore.rules` (lines 46-97)
-- **Article loading:** `firebase-data.service.ts:457-545`
-- **List updates:** `firebase-data.service.ts:786-831`
+SECOND TASK:
+Find where articles are ACTUALLY added to lists (not going through repository):
+  grep -rn "updateListInFirebase" src/app/features/lists/list-detail/
 
----
+Then add article copying logic to that code path.
 
-## Contact/Questions
+ARCHITECTURE GOAL:
+When participant adds article to shared list:
+- Copy to owner's collection with sharedFrom field
+- Use owner's copy in list (not participant's original)
+- Saves ~600 reads vs multi-user queries
 
-If something breaks or needs clarification:
-
-1. Check `PHASE_8_LIST_SHARING.md` debugging section
-2. Look for log patterns (search for "📱 DATA:")
-3. Verify Firestore rules are deployed
-4. Check Firebase Console for data structure
-
-**Key debugging logs:**
-- `Creating article in creator's path`
-- `articleIds being written`
-- `Verified articleIds in Firestore`
-- `Found article {id} owned by {userId}`
-- `Searching for X articles across Y users`
-
----
-
-## Success Criteria
-
-### ✅ Phase 8.1: Core Collaboration (COMPLETE)
-
-- [x] User B can check/uncheck items → User A sees changes
-- [x] User B can add articles → Article persists in Firestore
-- [x] User A can see User B's articles after refresh
-- [x] No orphaned reference cleanup removes collaborator articles
-- [x] Real-time sync works bidirectionally
-- [x] Firestore security rules prevent unauthorized access
-
-### ⚠️ Phase 8.2: Production Readiness (PENDING)
-
-- [ ] **Local copy function:** User B can use shared articles in own lists without dependency
-- [ ] **Partial edit permissions:** Clear UI for editable vs. read-only fields
-- [ ] **Automated tests:** Integration tests with Firebase Emulator passing
-- [ ] **Test coverage:** All collaboration scenarios verified automatically
-- [ ] **Security:** Article privacy rules tightened (only shared list collaborators can read)
+Start with the date fix, then find the real code path.
+```
 
 ---
 
-**Phase 8 Status: ⚠️ CORE COMPLETE - ENHANCEMENTS REQUIRED**
-
-**NOT ready for production deployment.**
-**DO NOT merge to main until Phase 8.2 criteria met.**
+**Session handoff complete. New developer: Please read thoroughly before proceeding.**

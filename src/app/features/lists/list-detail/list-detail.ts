@@ -899,32 +899,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private async addExistingArticleToList(article: any): Promise<void> {
     if (!this.currentList) return;
-  
-    const updatedArticleIds = [...this.currentList.articleIds];
-    if (!updatedArticleIds.includes(article.id)) {
-      updatedArticleIds.push(article.id);
-    }
-  
-    const updatedItemStates = { ...this.currentList.itemStates };
-    updatedItemStates[article.id] = {
+
+    // QUOTA OPTIMIZATION: Use NgRx action which goes through repository
+    // This ensures article copying logic is triggered for shared lists
+    this.store.dispatch(ListsActions.addArticleToList({
+      listId: this.currentList.id,
       articleId: article.id,
-      isChecked: false,
       amount: article.amount || ''
-    };
-  
-    const success = await this.dataService.updateList(this.currentList.id, {
-      articleIds: updatedArticleIds,
-      itemStates: updatedItemStates
-    }).pipe(take(1)).toPromise();
-  
-    if (success) {
-      this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
-      
-      // Restore previous filter if we had auto-switched
-      this.restorePreviousFilter();
-      
-      setTimeout(() => this.searchDisambiguation$.next(null), 100);
-    }
+    }));
+
+    // Optimistic UI update
+    this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
+
+    // Restore previous filter if we had auto-switched
+    this.restorePreviousFilter();
+
+    setTimeout(() => this.searchDisambiguation$.next(null), 100);
   }
 
   private async createAndAddNewArticle(itemName: string, option: any): Promise<void> {

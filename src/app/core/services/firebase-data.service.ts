@@ -512,7 +512,12 @@ export class FirebaseDataService {
     // Calling cleanup here would reset collectionListenersActive to false!
 
     try {
+      // QUOTA DEBUG: Log authentication state before loading
+      const currentUserId = this.authService.getCurrentUserId();
+      this.logger.info('data', `📊 QUOTA DEBUG: Current user ID: ${currentUserId || 'NONE'}`);
+
       const basePath = this.getUserBasePath();
+      this.logger.info('data', `📊 QUOTA DEBUG: Loading from path: ${basePath}`);
 
       // Articles listener
       this.logger.info('data', '📡 Creating Articles collection listener...');

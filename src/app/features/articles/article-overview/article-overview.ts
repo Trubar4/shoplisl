@@ -261,6 +261,16 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     return article.copiedFrom !== undefined && article.copiedFrom !== null;
   }
 
+  /**
+   * Helper to safely get time from Date or Firestore Timestamp
+   */
+  private getTimestamp(date: any): number {
+    if (!date) return 0;
+    if (date instanceof Date) return date.getTime();
+    if (typeof date.toDate === 'function') return date.toDate().getTime();
+    return 0;
+  }
+
   private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
     const sorted = [...articles];
 
@@ -282,8 +292,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
       case 'lastChecked':
         return sorted.sort((a, b) => {
-          const dateA = a.stats?.lastCheckedDate?.getTime() ?? 0;
-          const dateB = b.stats?.lastCheckedDate?.getTime() ?? 0;
+          const dateA = this.getTimestamp(a.stats?.lastCheckedDate);
+          const dateB = this.getTimestamp(b.stats?.lastCheckedDate);
           // Sort descending (most recent first)
           if (dateA !== dateB) {
             return dateB - dateA;
@@ -294,8 +304,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
       case 'lastAdded':
         return sorted.sort((a, b) => {
-          const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
-          const dateB = b.stats?.lastAddedToListDate?.getTime() ?? 0;
+          const dateA = this.getTimestamp(a.stats?.lastAddedToListDate);
+          const dateB = this.getTimestamp(b.stats?.lastAddedToListDate);
           // Sort descending (most recent first)
           if (dateA !== dateB) {
             return dateB - dateA;
