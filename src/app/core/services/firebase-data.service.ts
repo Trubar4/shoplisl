@@ -2146,6 +2146,8 @@ export class FirebaseDataService {
     // CRITICAL FIX: Add article to ownedArticles immediately (optimistic update)
     // This prevents timing issues where listener fires before Firestore commits
     const currentUserId = this.authService.getCurrentUserId();
+    this.logger.info('data', `🔍 Optimistic update check: currentUserId=${currentUserId}, ownedArticles.length=${this.ownedArticles.length}`);
+
     if (currentUserId) {
       const newArticle: Article = {
         id: docRef.id,
@@ -2164,13 +2166,21 @@ export class FirebaseDataService {
       };
 
       // Add to ownedArticles if not already there
-      if (!this.ownedArticles.find(a => a.id === docRef.id)) {
+      const existingArticle = this.ownedArticles.find(a => a.id === docRef.id);
+      this.logger.info('data', `🔍 Article already exists? ${!!existingArticle}`);
+
+      if (!existingArticle) {
         this.ownedArticles.push(newArticle);
-        this.logger.debug('data', `➕ Optimistically added new article to ownedArticles: ${newArticle.name}`);
+        this.logger.info('data', `➕ Optimistically added article to ownedArticles: ${newArticle.name} (total: ${this.ownedArticles.length})`);
 
         // Trigger merge to update UI immediately
         this.mergeArticles();
+        this.logger.info('data', `✅ mergeArticles() called - UI should update now`);
+      } else {
+        this.logger.warn('data', `⚠️ Article ${docRef.id} already in ownedArticles, skipping optimistic update`);
       }
+    } else {
+      this.logger.error('data', `❌ No currentUserId - optimistic update SKIPPED!`);
     }
 
     return docRef.id;
