@@ -164,6 +164,13 @@ export class ListsRepositoryService {
       );
     }
 
+    // CRITICAL FIX: Update local state immediately for optimistic UI (even when online!)
+    const currentLists = this.firebaseData.getCurrentLists();
+    const updatedLists = currentLists.map(list =>
+      list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
+    );
+    this.firebaseData.updateLocalLists(updatedLists);
+
     return from(this.firebaseData.updateListInFirebase(id, updateData)).pipe(
       map(() => {
         // Track list updated event
