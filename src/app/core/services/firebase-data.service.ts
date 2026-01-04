@@ -448,9 +448,14 @@ export class FirebaseDataService {
       // Saves ~441 reads per session (loading only needed articles, not all 463)
       this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
 
+      // FIX: Use flag to prevent multiple loads instead of unsubscribing inside callback
+      let hasLoadedOwnedArticles = false;
+
       // Wait for lists to load first, then load only articles on those lists
-      const listsSubscription = this.listsSubject.subscribe(lists => {
-        if (lists.length > 0 && this.ownedArticles.length === 0) {
+      this.listsSubject.subscribe(lists => {
+        if (lists.length > 0 && !hasLoadedOwnedArticles) {
+          hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
+
           // Lists have loaded - now load only articles that are on these lists
           const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
           const articleIdsOnLists = new Set<string>();
@@ -461,14 +466,11 @@ export class FirebaseDataService {
 
           if (articleIdsOnLists.size > 0) {
             this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
-            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists)).then(() => {
-              listsSubscription.unsubscribe(); // Only run once
-            });
+            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
           } else {
             this.logger.info('data', '📦 No articles on current lists, skipping article load');
             this.ownedArticles = [];
             this.mergeArticles();
-            listsSubscription.unsubscribe();
           }
         }
       });
@@ -822,13 +824,18 @@ export class FirebaseDataService {
           // Update the list in sharedLists array
           const index = this.sharedLists.findIndex(l => l.id === list.id);
           if (index !== -1) {
+            // CRITICAL FIX: Detect new articles BEFORE optimistic update check
+            // Otherwise optimistic updates prevent detection of new articles
+            const previousArticleIds = this.sharedLists[index].articleIds || [];
+            const serverArticleIds = data['articleIds'] || [];
+            const newArticleIds = serverArticleIds.filter(id => !previousArticleIds.includes(id));
+
             // Check if this is OUR OWN write (collaborator's recent change)
             const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
             const timeSinceWrite = Date.now() - lastWriteTime;
             const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const serverArticleIds = data['articleIds'] || [];
 
             let finalItemStates: { [articleId: string]: any };
             let finalArticleIds: string[];
@@ -849,10 +856,6 @@ export class FirebaseDataService {
 
               this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
             }
-
-            // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
-            const previousArticleIds = this.sharedLists[index].articleIds || [];
-            const newArticleIds = finalArticleIds.filter(id => !previousArticleIds.includes(id));
 
             this.sharedLists[index] = {
               ...this.sharedLists[index],
@@ -1609,10 +1612,23 @@ export class FirebaseDataService {
                   copiedFrom: data['copiedFrom'] || undefined
                 };
 
-                // Only add if NOT owned by current user (those are already in ownedArticles)
-                if (article.ownerId !== currentUserId) {
+                // CRITICAL FIX: Always add article if not already found
+                // Previous bug: Filtered out owner's articles assuming they're in ownedArticles
+                // But with lazy loading, new articles aren't in ownedArticles yet!
+                // Solution: Check if already loaded instead of checking ownership
+                const alreadyInOwned = this.ownedArticles.find(a => a.id === doc.id);
+                const alreadyInShared = allArticles.find(a => a.id === doc.id);
+
+                if (!alreadyInOwned && !alreadyInShared) {
+                  // Article not loaded yet - add it
                   allArticles.push(article);
                   foundArticleIds.add(doc.id);
+
+                  // If it's owned by current user, also add to ownedArticles
+                  if (article.ownerId === currentUserId) {
+                    this.ownedArticles.push(article);
+                    this.logger.debug('data', `➕ Added new owned article to ownedArticles: ${article.name}`);
+                  }
                 }
               }
             });
