@@ -443,46 +443,37 @@ export class FirebaseDataService {
     try {
       const basePath = this.getUserBasePath();
 
-      // Articles listener
-      this.logger.info('data', '📡 Creating Articles collection listener...');
-      const articlesRef = collection(this.firestore, `${basePath}/articles`);
-      const articlesQuery = query(articlesRef, orderBy('name'));
+      // QUOTA OPTIMIZATION: Load owned articles AFTER lists are loaded
+      // This allows us to filter and only load articles that are on current lists
+      // Saves ~441 reads per session (loading only needed articles, not all 463)
+      this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
 
-      this.articlesUnsubscribe = onSnapshot(articlesQuery,
-        (snapshot) => {
-          this.quotaMonitor.trackRead('Articles Collection Listener', snapshot.size);
-          this.logger.debug('data', `Fresh articles received: ${snapshot.size}`);
-          const articles: Article[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            articles.push({
-              id: doc.id,
-              name: data['name'],
-              amount: data['amount'],
-              notes: data['notes'],
-              icon: data['icon'],
-              categoryId: data['categoryId'],
-              departmentId: data['departmentId'],
-              createdAt: data['createdAt']?.toDate() || new Date(),
-              updatedAt: data['updatedAt']?.toDate() || new Date(),
-              availableInShops: data['availableInShops'] || [],
-              usageCount: data['usageCount'] || 0,
-              // Phase 8: Include ownership field
-              ownerId: data['ownerId'] || '',
-              // Phase 8.2: Include copiedFrom field
-              copiedFrom: data['copiedFrom'] || undefined
-            });
+      // Wait for lists to load first, then load only articles on those lists
+      const listsSubscription = this.listsSubject.subscribe(lists => {
+        if (lists.length > 0 && this.ownedArticles.length === 0) {
+          // Lists have loaded - now load only articles that are on these lists
+          const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
+          const articleIdsOnLists = new Set<string>();
+
+          ownedLists.forEach(list => {
+            (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
           });
 
-          // Phase 8.2: Store owned articles separately and merge
-          this.ownedArticles = articles;
-          this.mergeArticles();
-        },
-        (error) => {
-          this.logger.error('data', 'Articles listener error', error);
-          this.loadCachedData();
+          if (articleIdsOnLists.size > 0) {
+            this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
+            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists)).then(() => {
+              listsSubscription.unsubscribe(); // Only run once
+            });
+          } else {
+            this.logger.info('data', '📦 No articles on current lists, skipping article load');
+            this.ownedArticles = [];
+            this.mergeArticles();
+            listsSubscription.unsubscribe();
+          }
         }
-      );
+      });
+
+      this.articlesUnsubscribe = undefined; // No collection listener
 
       // Lists listener
       this.logger.info('data', '📡 Creating Lists collection listener...');
@@ -745,6 +736,10 @@ export class FirebaseDataService {
             const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
+            // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
+            const previousArticleIds = this.ownedLists[index].articleIds || [];
+            const newArticleIds = mergedArticleIds.filter(id => !previousArticleIds.includes(id));
+
             this.ownedLists[index] = {
               ...this.ownedLists[index],
               name: data['name'],
@@ -764,6 +759,18 @@ export class FirebaseDataService {
               this.lastMergeWrite.set(list.id, Date.now());
               this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                 this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+              });
+            }
+
+            // REAL-TIME SYNC FIX: Load new articles when participants add them
+            // This fixes Issue #1: Owner can't see participant articles in real-time
+            if (newArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in owned list "${data['name']}", loading them now...`);
+              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+
+              // Load articles for the updated list (will fetch from all participants)
+              this.loadArticlesForList(this.ownedLists[index]).catch(error => {
+                this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
               });
             }
 
@@ -843,6 +850,10 @@ export class FirebaseDataService {
               this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
             }
 
+            // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
+            const previousArticleIds = this.sharedLists[index].articleIds || [];
+            const newArticleIds = finalArticleIds.filter(id => !previousArticleIds.includes(id));
+
             this.sharedLists[index] = {
               ...this.sharedLists[index],
               name: data['name'],
@@ -855,6 +866,18 @@ export class FirebaseDataService {
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               sharedWith: sharedWith
             };
+
+            // REAL-TIME SYNC FIX: Load new articles when owner adds them
+            // This fixes Issue #2: Participant can't see owner articles in real-time
+            if (newArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
+              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+
+              // Load articles for the updated list (will fetch from owner and all participants)
+              this.loadArticlesForList(this.sharedLists[index]).catch(error => {
+                this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
+              });
+            }
 
             this.mergeLists();
           }
@@ -1455,6 +1478,77 @@ export class FirebaseDataService {
     } finally {
       this.isBatchLoading = false;
     }
+  }
+
+  /**
+   * QUOTA OPTIMIZATION: Load only owned articles that are on current lists
+   * This replaces the Articles collection listener that loads ALL articles (463+)
+   * Now we only load articles that are actually needed (~22)
+   * Saves ~441 unnecessary reads per session
+   */
+  private async loadOwnedArticlesByIds(articleIds: string[]): Promise<void> {
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No user ID, cannot load owned articles');
+      return;
+    }
+
+    if (articleIds.length === 0) {
+      this.logger.debug('data', 'No article IDs to load');
+      return;
+    }
+
+    const BATCH_SIZE = 30; // Firestore IN query limit
+    const chunks = this.chunkArray(articleIds, BATCH_SIZE);
+    const articles: Article[] = [];
+
+    this.logger.info('data', `📦 Loading ${articleIds.length} owned articles in ${chunks.length} batch(es)`);
+
+    // Load all chunks in parallel
+    const chunkPromises = chunks.map(async (chunk) => {
+      const articlesRef = collection(this.firestore, `users-v2/${userId}/articles`);
+      const batchQuery = query(
+        articlesRef,
+        where(documentId(), 'in', chunk)
+      );
+
+      const snapshot = await getDocs(batchQuery);
+      this.quotaMonitor.trackRead('Load Owned Articles (Quota Optimized)', snapshot.size, { userId, chunkSize: chunk.length });
+
+      const chunkArticles: Article[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        chunkArticles.push({
+          id: doc.id,
+          name: data['name'],
+          amount: data['amount'],
+          notes: data['notes'],
+          icon: data['icon'],
+          categoryId: data['categoryId'],
+          departmentId: data['departmentId'],
+          createdAt: data['createdAt']?.toDate() || new Date(),
+          updatedAt: data['updatedAt']?.toDate() || new Date(),
+          availableInShops: data['availableInShops'] || [],
+          usageCount: data['usageCount'] || 0,
+          ownerId: data['ownerId'] || userId,
+          copiedFrom: data['copiedFrom'] || undefined
+        });
+      });
+
+      return chunkArticles;
+    });
+
+    // Wait for all chunks to complete
+    const chunkResults = await Promise.all(chunkPromises);
+    chunkResults.forEach(chunkArticles => {
+      articles.push(...chunkArticles);
+    });
+
+    this.logger.info('data', `✅ Loaded ${articles.length} owned articles (saved ${463 - articles.length} unnecessary reads)`);
+
+    // Store in ownedArticles and merge with shared articles
+    this.ownedArticles = articles;
+    this.mergeArticles();
   }
 
   /**
