@@ -344,9 +344,13 @@ export class FirebaseDataService {
 
       if (articlesToAdd.length > 0) {
         this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
-        this.mergeArticles();
         this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
       }
+
+      // CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
+      // This ensures optimistically-added articles (already in ownedArticles) get merged and UI updates
+      // Without this, newly created articles won't appear until Firestore indexes them (eventual consistency)
+      this.mergeArticles();
     } catch (error) {
       this.logger.error('data', `Failed to load articles for ${list.name}:`, error);
     }
