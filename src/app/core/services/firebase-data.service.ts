@@ -740,7 +740,7 @@ export class FirebaseDataService {
 
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
             const previousArticleIds = this.ownedLists[index].articleIds || [];
-            const newArticleIds = mergedArticleIds.filter(id => !previousArticleIds.includes(id));
+            const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
 
             this.ownedLists[index] = {
               ...this.ownedLists[index],
@@ -828,7 +828,7 @@ export class FirebaseDataService {
             // Otherwise optimistic updates prevent detection of new articles
             const previousArticleIds = this.sharedLists[index].articleIds || [];
             const serverArticleIds = data['articleIds'] || [];
-            const newArticleIds = serverArticleIds.filter(id => !previousArticleIds.includes(id));
+            const newArticleIds = serverArticleIds.filter((id: string) => !previousArticleIds.includes(id));
 
             // Check if this is OUR OWN write (collaborator's recent change)
             const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
