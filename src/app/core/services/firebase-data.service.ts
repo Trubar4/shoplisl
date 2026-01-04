@@ -2142,6 +2142,37 @@ export class FirebaseDataService {
 
     const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
     this.logger.info('data', `✅ Article created with ID: ${docRef.id}`);
+
+    // CRITICAL FIX: Add article to ownedArticles immediately (optimistic update)
+    // This prevents timing issues where listener fires before Firestore commits
+    const currentUserId = this.authService.getCurrentUserId();
+    if (currentUserId) {
+      const newArticle: Article = {
+        id: docRef.id,
+        name: articleData.name,
+        amount: articleData.amount || '',
+        notes: articleData.notes || '',
+        icon: articleData.icon || '',
+        categoryId: articleData.categoryId || '',
+        departmentId: articleData.departmentId || '',
+        createdAt: articleData.createdAt || new Date(),
+        updatedAt: articleData.updatedAt || new Date(),
+        availableInShops: articleData.availableInShops || [],
+        usageCount: articleData.usageCount || 0,
+        ownerId: currentUserId,
+        copiedFrom: articleData.copiedFrom
+      };
+
+      // Add to ownedArticles if not already there
+      if (!this.ownedArticles.find(a => a.id === docRef.id)) {
+        this.ownedArticles.push(newArticle);
+        this.logger.debug('data', `➕ Optimistically added new article to ownedArticles: ${newArticle.name}`);
+
+        // Trigger merge to update UI immediately
+        this.mergeArticles();
+      }
+    }
+
     return docRef.id;
   }
 
