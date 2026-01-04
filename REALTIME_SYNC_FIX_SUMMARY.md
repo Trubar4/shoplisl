@@ -8,38 +8,68 @@
 
 ## 🔍 Root Cause
 
-The component uses **Angular OnPush change detection** strategy (line 66 in list-detail.ts), which only triggers change detection when:
-1. Input properties change (by reference)
-2. Events occur in the template
-3. Observables with async pipe emit
-4. Manual `ChangeDetectorRef.detectChanges()` or `markForCheck()` is called
+**Primary Issue: `mergeArticles()` Not Called After Failed Batch Load**
 
-While the NgRx store was correctly updated via optimistic updates, **Angular's OnPush change detection was not being triggered** after the async operations completed, preventing the UI from re-rendering with the new article.
+The real issue was in `loadArticlesForList()` (firebase-data.service.ts:345-349):
+
+1. Participant creates article → optimistically added to `ownedArticles` ✅
+2. List listener fires → calls `loadArticlesForList()` to search for new articles
+3. Batch query searches Firestore for the new article
+4. **BUT** Firestore hasn't indexed it yet (eventual consistency, <100ms delay)
+5. Batch query returns EMPTY (articles not found) ❌
+6. `mergeArticles()` was ONLY called if `articlesToAdd.length > 0`
+7. Since no articles were found, `mergeArticles()` was SKIPPED ❌
+8. Optimistic articles never merged → `articlesSubject` never emits → NgRx store never updates → UI never updates ❌
+
+**Secondary Issue: OnPush Change Detection**
+
+The component uses Angular's OnPush change detection strategy, which requires explicit triggering in some async scenarios.
 
 ---
 
 ## ✅ What Was Fixed
 
-### Final Fix: Manual Change Detection Trigger
+### Primary Fix: Always Call `mergeArticles()` (CRITICAL)
+- **File:** `src/app/core/services/firebase-data.service.ts`
+- **Line:** 353 (moved `this.mergeArticles()` outside conditional)
+- **Location:** `loadArticlesForList()` method
+
+**Before:**
+```typescript
+if (articlesToAdd.length > 0) {
+  this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
+  this.mergeArticles(); // ❌ Only called if new articles loaded from Firestore
+  this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles...`);
+}
+```
+
+**After:**
+```typescript
+if (articlesToAdd.length > 0) {
+  this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
+  this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles...`);
+}
+
+// CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
+// This ensures optimistically-added articles (already in ownedArticles) get merged and UI updates
+// Without this, newly created articles won't appear until Firestore indexes them (eventual consistency)
+this.mergeArticles(); // ✅ Always called, merges optimistic articles
+```
+
+**Why This Works:**
+- Optimistic update adds article to `ownedArticles` before Firestore write
+- Even if batch query fails to find it (Firestore indexing delay <100ms)
+- `mergeArticles()` combines `ownedArticles` + `sharedArticles`
+- Optimistic article is included in the merge
+- `articlesSubject` emits → NgRx effect triggers → Store updates → UI updates immediately
+- Later when Firestore completes indexing, article is already visible
+
+### Secondary Fix: Manual Change Detection Trigger
 - **File:** `src/app/features/lists/list-detail/list-detail.ts`
 - **Line:** 930 (added `this.triggerChangeDetection()`)
 - **Location:** `addExistingArticleToList()` method
 
-Added manual change detection trigger after successfully adding an article to the list:
-
-```typescript
-if (success) {
-  this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
-  this.restorePreviousFilter();
-  setTimeout(() => this.searchDisambiguation$.next(null), 100);
-
-  // CRITICAL FIX: Trigger change detection for OnPush components
-  // This ensures the UI updates after optimistic article/list updates complete
-  this.triggerChangeDetection();
-}
-```
-
-This ensures that after the optimistic article and list updates complete, Angular runs change detection to update the UI immediately.
+Added manual change detection trigger for OnPush components after successfully adding an article.
 
 ---
 
@@ -175,11 +205,16 @@ All real-time sync issues are now resolved:
 
 ## 📝 Files Modified
 
-### This Commit (OnPush Fix):
+### Latest Commit (CRITICAL FIX - mergeArticles):
+- `src/app/core/services/firebase-data.service.ts` (line 353)
+  - Always call `mergeArticles()` after `loadArticlesForList()`, even if batch query returns empty
+  - This ensures optimistic articles are merged and UI updates immediately
+
+### Previous Commit (OnPush Fix):
 - `src/app/features/lists/list-detail/list-detail.ts` (line 930)
   - Added `triggerChangeDetection()` call in `addExistingArticleToList()`
 
-### Previous Commits (Full Branch):
+### Earlier Commits (Full Branch):
 - `src/app/core/services/firebase-data.service.ts`
   - Optimistic article updates (lines 2136-2187)
   - Multi-collection search (lines 307-332)
