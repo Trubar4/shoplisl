@@ -105,9 +105,40 @@ export class ArticlesRepositoryService {
 
       this.logger.info('data', `✅ Offline article created: ${tempArticle.name} (temp ID: ${tempId})`);
 
-      // Queue for sync when online
+      // CRITICAL FIX: Queue operation that replaces temp ID with real ID after sync
       this.offlineSync.queueOperation(async () => {
-        await this.firebaseData.createArticleInFirebase(articleData);
+        this.logger.info('data', `🔄 Syncing offline article: ${article.name} (temp ID: ${tempId})`);
+
+        // Create article in Firebase and get real ID
+        const realId = await this.firebaseData.createArticleInFirebase(articleData);
+        this.logger.info('data', `✅ Article synced with real ID: ${realId}`);
+
+        // CRITICAL: Replace temp ID with real ID in all local state and lists
+        const currentArticles = this.firebaseData.getCurrentArticles();
+        const updatedArticles = currentArticles.map(a =>
+          a.id === tempId ? { ...a, id: realId } : a
+        );
+        this.firebaseData.updateLocalArticles(updatedArticles);
+
+        // Update all lists that reference the temp ID
+        const currentLists = this.firebaseData.getCurrentLists();
+        const updatedLists = currentLists.map(list => {
+          if (list.articleIds.includes(tempId)) {
+            return {
+              ...list,
+              articleIds: list.articleIds.map(id => id === tempId ? realId : id),
+              itemStates: Object.fromEntries(
+                Object.entries(list.itemStates).map(([key, value]) =>
+                  key === tempId ? [realId, { ...value, articleId: realId }] : [key, value]
+                )
+              )
+            };
+          }
+          return list;
+        });
+        this.firebaseData.updateLocalLists(updatedLists);
+
+        this.logger.info('data', `🔄 Replaced temp ID ${tempId} with real ID ${realId} in local state`);
       }, `Create article: ${article.name}`);
 
       return of(tempArticle);
