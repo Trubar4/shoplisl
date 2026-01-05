@@ -7,7 +7,7 @@ export default defineConfig({
     environment: 'jsdom',
 
     // Include test files
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
 
     // Exclude files
     exclude: ['node_modules', 'dist', '.angular'],
