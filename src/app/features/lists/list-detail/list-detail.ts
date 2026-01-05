@@ -899,31 +899,35 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
   private async addExistingArticleToList(article: any): Promise<void> {
     if (!this.currentList) return;
-  
+
     const updatedArticleIds = [...this.currentList.articleIds];
     if (!updatedArticleIds.includes(article.id)) {
       updatedArticleIds.push(article.id);
     }
-  
+
     const updatedItemStates = { ...this.currentList.itemStates };
     updatedItemStates[article.id] = {
       articleId: article.id,
       isChecked: false,
       amount: article.amount || ''
     };
-  
+
     const success = await this.dataService.updateList(this.currentList.id, {
       articleIds: updatedArticleIds,
       itemStates: updatedItemStates
     }).pipe(take(1)).toPromise();
-  
+
     if (success) {
       this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
-      
+
       // Restore previous filter if we had auto-switched
       this.restorePreviousFilter();
-      
+
       setTimeout(() => this.searchDisambiguation$.next(null), 100);
+
+      // CRITICAL FIX: Trigger change detection for OnPush components
+      // This ensures the UI updates after optimistic article/list updates complete
+      this.triggerChangeDetection();
     }
   }
 
@@ -934,10 +938,17 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       departmentId: option.suggestedDepartmentId || 'miscellaneous',
       icon: option.icon || '📦'
     };
-  
+
     const newArticle = await this.dataService.createArticle(articleData).pipe(take(1)).toPromise();
     if (newArticle) {
       await this.addExistingArticleToList(newArticle);
+
+      // CRITICAL: Trigger change detection multiple times to ensure UI updates
+      // This handles async timing issues with NgRx store updates
+      this.triggerChangeDetection();
+      setTimeout(() => this.triggerChangeDetection(), 100);
+      setTimeout(() => this.triggerChangeDetection(), 200);
+
       // restorePreviousFilter() is called in addExistingArticleToList, so no need to call it here
     }
   }
@@ -988,7 +999,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private triggerChangeDetection(): void {
-    setTimeout(() => this.cdr.detectChanges(), 100);
+    // Use markForCheck() for OnPush - more appropriate than detectChanges()
+    // This marks the component and its ancestors for checking on the next CD cycle
+    this.cdr.markForCheck();
+
+    // Also schedule a detectChanges() for safety in case markForCheck isn't enough
+    setTimeout(() => this.cdr.detectChanges(), 50);
   }
 
   /**

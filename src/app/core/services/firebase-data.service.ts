@@ -306,9 +306,26 @@ export class FirebaseDataService {
 
     this.logger.info('data', `📦 Loading ${articlesToLoad.length} articles for list: ${list.name}`);
 
-    // Load articles from the list owner
-    const ownerIds = [list.ownerId];
+    // CRITICAL FIX: Load articles from ALL list participants, not just owner
+    // When a participant creates an article, it's in their collection: users-v2/{participantId}/articles
     const currentUserId = this.authService.getCurrentUserId();
+    const ownerIds = [list.ownerId];
+
+    // Add all shared participants as potential article owners
+    if (list.sharedWith && list.sharedWith.length > 0) {
+      list.sharedWith.forEach((userId: string) => {
+        if (!ownerIds.includes(userId)) {
+          ownerIds.push(userId);
+        }
+      });
+    }
+
+    // Also add current user if they're a participant (for their own articles)
+    if (currentUserId && !ownerIds.includes(currentUserId)) {
+      ownerIds.push(currentUserId);
+    }
+
+    this.logger.info('data', `🔍 Searching for articles in ${ownerIds.length} user collections (owner + ${list.sharedWith?.length || 0} participants)`);
 
     try {
       const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
@@ -327,9 +344,13 @@ export class FirebaseDataService {
 
       if (articlesToAdd.length > 0) {
         this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
-        this.mergeArticles();
         this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
       }
+
+      // CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
+      // This ensures optimistically-added articles (already in ownedArticles) get merged and UI updates
+      // Without this, newly created articles won't appear until Firestore indexes them (eventual consistency)
+      this.mergeArticles();
     } catch (error) {
       this.logger.error('data', `Failed to load articles for ${list.name}:`, error);
     }
@@ -443,46 +464,39 @@ export class FirebaseDataService {
     try {
       const basePath = this.getUserBasePath();
 
-      // Articles listener
-      this.logger.info('data', '📡 Creating Articles collection listener...');
-      const articlesRef = collection(this.firestore, `${basePath}/articles`);
-      const articlesQuery = query(articlesRef, orderBy('name'));
+      // QUOTA OPTIMIZATION: Load owned articles AFTER lists are loaded
+      // This allows us to filter and only load articles that are on current lists
+      // Saves ~441 reads per session (loading only needed articles, not all 463)
+      this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
 
-      this.articlesUnsubscribe = onSnapshot(articlesQuery,
-        (snapshot) => {
-          this.quotaMonitor.trackRead('Articles Collection Listener', snapshot.size);
-          this.logger.debug('data', `Fresh articles received: ${snapshot.size}`);
-          const articles: Article[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            articles.push({
-              id: doc.id,
-              name: data['name'],
-              amount: data['amount'],
-              notes: data['notes'],
-              icon: data['icon'],
-              categoryId: data['categoryId'],
-              departmentId: data['departmentId'],
-              createdAt: data['createdAt']?.toDate() || new Date(),
-              updatedAt: data['updatedAt']?.toDate() || new Date(),
-              availableInShops: data['availableInShops'] || [],
-              usageCount: data['usageCount'] || 0,
-              // Phase 8: Include ownership field
-              ownerId: data['ownerId'] || '',
-              // Phase 8.2: Include copiedFrom field
-              copiedFrom: data['copiedFrom'] || undefined
-            });
+      // FIX: Use flag to prevent multiple loads instead of unsubscribing inside callback
+      let hasLoadedOwnedArticles = false;
+
+      // Wait for lists to load first, then load only articles on those lists
+      this.listsSubject.subscribe(lists => {
+        if (lists.length > 0 && !hasLoadedOwnedArticles) {
+          hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
+
+          // Lists have loaded - now load only articles that are on these lists
+          const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
+          const articleIdsOnLists = new Set<string>();
+
+          ownedLists.forEach(list => {
+            (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
           });
 
-          // Phase 8.2: Store owned articles separately and merge
-          this.ownedArticles = articles;
-          this.mergeArticles();
-        },
-        (error) => {
-          this.logger.error('data', 'Articles listener error', error);
-          this.loadCachedData();
+          if (articleIdsOnLists.size > 0) {
+            this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
+            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
+          } else {
+            this.logger.info('data', '📦 No articles on current lists, skipping article load');
+            this.ownedArticles = [];
+            this.mergeArticles();
+          }
         }
-      );
+      });
+
+      this.articlesUnsubscribe = undefined; // No collection listener
 
       // Lists listener
       this.logger.info('data', '📡 Creating Lists collection listener...');
@@ -745,6 +759,10 @@ export class FirebaseDataService {
             const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
+            // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
+            const previousArticleIds = this.ownedLists[index].articleIds || [];
+            const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+
             this.ownedLists[index] = {
               ...this.ownedLists[index],
               name: data['name'],
@@ -764,6 +782,18 @@ export class FirebaseDataService {
               this.lastMergeWrite.set(list.id, Date.now());
               this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                 this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+              });
+            }
+
+            // REAL-TIME SYNC FIX: Load new articles when participants add them
+            // This fixes Issue #1: Owner can't see participant articles in real-time
+            if (newArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in owned list "${data['name']}", loading them now...`);
+              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+
+              // Load articles for the updated list (will fetch from all participants)
+              this.loadArticlesForList(this.ownedLists[index]).catch(error => {
+                this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
               });
             }
 
@@ -815,13 +845,18 @@ export class FirebaseDataService {
           // Update the list in sharedLists array
           const index = this.sharedLists.findIndex(l => l.id === list.id);
           if (index !== -1) {
+            // CRITICAL FIX: Detect new articles BEFORE optimistic update check
+            // Otherwise optimistic updates prevent detection of new articles
+            const previousArticleIds = this.sharedLists[index].articleIds || [];
+            const serverArticleIds = data['articleIds'] || [];
+            const newArticleIds = serverArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+
             // Check if this is OUR OWN write (collaborator's recent change)
             const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
             const timeSinceWrite = Date.now() - lastWriteTime;
             const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const serverArticleIds = data['articleIds'] || [];
 
             let finalItemStates: { [articleId: string]: any };
             let finalArticleIds: string[];
@@ -855,6 +890,18 @@ export class FirebaseDataService {
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               sharedWith: sharedWith
             };
+
+            // REAL-TIME SYNC FIX: Load new articles when owner adds them
+            // This fixes Issue #2: Participant can't see owner articles in real-time
+            if (newArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
+              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+
+              // Load articles for the updated list (will fetch from owner and all participants)
+              this.loadArticlesForList(this.sharedLists[index]).catch(error => {
+                this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
+              });
+            }
 
             this.mergeLists();
           }
@@ -1458,6 +1505,77 @@ export class FirebaseDataService {
   }
 
   /**
+   * QUOTA OPTIMIZATION: Load only owned articles that are on current lists
+   * This replaces the Articles collection listener that loads ALL articles (463+)
+   * Now we only load articles that are actually needed (~22)
+   * Saves ~441 unnecessary reads per session
+   */
+  private async loadOwnedArticlesByIds(articleIds: string[]): Promise<void> {
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.logger.warn('data', 'No user ID, cannot load owned articles');
+      return;
+    }
+
+    if (articleIds.length === 0) {
+      this.logger.debug('data', 'No article IDs to load');
+      return;
+    }
+
+    const BATCH_SIZE = 30; // Firestore IN query limit
+    const chunks = this.chunkArray(articleIds, BATCH_SIZE);
+    const articles: Article[] = [];
+
+    this.logger.info('data', `📦 Loading ${articleIds.length} owned articles in ${chunks.length} batch(es)`);
+
+    // Load all chunks in parallel
+    const chunkPromises = chunks.map(async (chunk) => {
+      const articlesRef = collection(this.firestore, `users-v2/${userId}/articles`);
+      const batchQuery = query(
+        articlesRef,
+        where(documentId(), 'in', chunk)
+      );
+
+      const snapshot = await getDocs(batchQuery);
+      this.quotaMonitor.trackRead('Load Owned Articles (Quota Optimized)', snapshot.size, { userId, chunkSize: chunk.length });
+
+      const chunkArticles: Article[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        chunkArticles.push({
+          id: doc.id,
+          name: data['name'],
+          amount: data['amount'],
+          notes: data['notes'],
+          icon: data['icon'],
+          categoryId: data['categoryId'],
+          departmentId: data['departmentId'],
+          createdAt: data['createdAt']?.toDate() || new Date(),
+          updatedAt: data['updatedAt']?.toDate() || new Date(),
+          availableInShops: data['availableInShops'] || [],
+          usageCount: data['usageCount'] || 0,
+          ownerId: data['ownerId'] || userId,
+          copiedFrom: data['copiedFrom'] || undefined
+        });
+      });
+
+      return chunkArticles;
+    });
+
+    // Wait for all chunks to complete
+    const chunkResults = await Promise.all(chunkPromises);
+    chunkResults.forEach(chunkArticles => {
+      articles.push(...chunkArticles);
+    });
+
+    this.logger.info('data', `✅ Loaded ${articles.length} owned articles (saved ${463 - articles.length} unnecessary reads)`);
+
+    // Store in ownedArticles and merge with shared articles
+    this.ownedArticles = articles;
+    this.mergeArticles();
+  }
+
+  /**
    * PERFORMANCE OPTIMIZED: Batch load articles using Firestore IN queries
    * This is 10-20x faster than sequential loading
    *
@@ -1515,10 +1633,23 @@ export class FirebaseDataService {
                   copiedFrom: data['copiedFrom'] || undefined
                 };
 
-                // Only add if NOT owned by current user (those are already in ownedArticles)
-                if (article.ownerId !== currentUserId) {
+                // CRITICAL FIX: Always add article if not already found
+                // Previous bug: Filtered out owner's articles assuming they're in ownedArticles
+                // But with lazy loading, new articles aren't in ownedArticles yet!
+                // Solution: Check if already loaded instead of checking ownership
+                const alreadyInOwned = this.ownedArticles.find(a => a.id === doc.id);
+                const alreadyInShared = allArticles.find(a => a.id === doc.id);
+
+                if (!alreadyInOwned && !alreadyInShared) {
+                  // Article not loaded yet - add it
                   allArticles.push(article);
                   foundArticleIds.add(doc.id);
+
+                  // If it's owned by current user, also add to ownedArticles
+                  if (article.ownerId === currentUserId) {
+                    this.ownedArticles.push(article);
+                    this.logger.debug('data', `➕ Added new owned article to ownedArticles: ${article.name}`);
+                  }
                 }
               }
             });
@@ -2015,6 +2146,47 @@ export class FirebaseDataService {
 
     const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
     this.logger.info('data', `✅ Article created with ID: ${docRef.id}`);
+
+    // CRITICAL FIX: Add article to ownedArticles immediately (optimistic update)
+    // This prevents timing issues where listener fires before Firestore commits
+    const currentUserId = this.authService.getCurrentUserId();
+    this.logger.info('data', `🔍 Optimistic update check: currentUserId=${currentUserId}, ownedArticles.length=${this.ownedArticles.length}`);
+
+    if (currentUserId) {
+      const newArticle: Article = {
+        id: docRef.id,
+        name: articleData.name,
+        amount: articleData.amount || '',
+        notes: articleData.notes || '',
+        icon: articleData.icon || '',
+        categoryId: articleData.categoryId || '',
+        departmentId: articleData.departmentId || '',
+        createdAt: articleData.createdAt || new Date(),
+        updatedAt: articleData.updatedAt || new Date(),
+        availableInShops: articleData.availableInShops || [],
+        usageCount: articleData.usageCount || 0,
+        ownerId: currentUserId,
+        copiedFrom: articleData.copiedFrom
+      };
+
+      // Add to ownedArticles if not already there
+      const existingArticle = this.ownedArticles.find(a => a.id === docRef.id);
+      this.logger.info('data', `🔍 Article already exists? ${!!existingArticle}`);
+
+      if (!existingArticle) {
+        this.ownedArticles.push(newArticle);
+        this.logger.info('data', `➕ Optimistically added article to ownedArticles: ${newArticle.name} (total: ${this.ownedArticles.length})`);
+
+        // Trigger merge to update UI immediately
+        this.mergeArticles();
+        this.logger.info('data', `✅ mergeArticles() called - UI should update now`);
+      } else {
+        this.logger.warn('data', `⚠️ Article ${docRef.id} already in ownedArticles, skipping optimistic update`);
+      }
+    } else {
+      this.logger.error('data', `❌ No currentUserId - optimistic update SKIPPED!`);
+    }
+
     return docRef.id;
   }
 

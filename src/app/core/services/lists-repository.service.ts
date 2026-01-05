@@ -141,8 +141,20 @@ export class ListsRepositoryService {
       this.firebaseData.updateLocalLists(updatedLists);
 
       // Queue for sync when online
+      // CRITICAL FIX: Read CURRENT list state when executing, not captured state
+      // This ensures temp IDs are replaced with real IDs before syncing
       this.offlineSync.queueOperation(async () => {
-        await this.firebaseData.updateListInFirebase(id, updateData);
+        const currentLists = this.firebaseData.getCurrentLists();
+        const currentList = currentLists.find(l => l.id === id);
+        if (currentList) {
+          const syncData = {
+            articleIds: currentList.articleIds,
+            itemStates: currentList.itemStates,
+            updatedAt: Timestamp.now()
+          };
+          await this.firebaseData.updateListInFirebase(id, syncData);
+          this.logger.info('data', `✅ List synced with current state (${currentList.articleIds.length} articles)`);
+        }
       }, `Update list: ${id}`);
 
       // Track list updated event
@@ -163,6 +175,13 @@ export class ListsRepositoryService {
         map(lists => lists.find(l => l.id === id))
       );
     }
+
+    // CRITICAL FIX: Update local state immediately for optimistic UI (even when online!)
+    const currentLists = this.firebaseData.getCurrentLists();
+    const updatedLists = currentLists.map(list =>
+      list.id === id ? { ...list, ...updates, updatedAt: new Date() } : list
+    );
+    this.firebaseData.updateLocalLists(updatedLists);
 
     return from(this.firebaseData.updateListInFirebase(id, updateData)).pipe(
       map(() => {

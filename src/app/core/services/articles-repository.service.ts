@@ -85,7 +85,7 @@ export class ArticlesRepositoryService {
 
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: Article creation will be synced when online');
-      
+
       const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const tempArticle: Article = {
         id: tempId,
@@ -97,19 +97,50 @@ export class ArticlesRepositoryService {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-    
-      // Update local state immediately
-      const currentArticles = this.firebaseData.getArticles().pipe(map(articles => articles)).subscribe().unsubscribe;
-      this.firebaseData.getArticles().subscribe(currentArticles => {
-        const updatedArticles = [...currentArticles, tempArticle];
-        this.firebaseData.updateLocalArticles(updatedArticles);
-      }).unsubscribe();
-    
-      // Queue for sync when online
+
+      // CRITICAL FIX: Update local state immediately using synchronous method
+      const currentArticles = this.firebaseData.getCurrentArticles();
+      const updatedArticles = [...currentArticles, tempArticle];
+      this.firebaseData.updateLocalArticles(updatedArticles);
+
+      this.logger.info('data', `✅ Offline article created: ${tempArticle.name} (temp ID: ${tempId})`);
+
+      // CRITICAL FIX: Queue operation that replaces temp ID with real ID after sync
       this.offlineSync.queueOperation(async () => {
-        await this.firebaseData.createArticleInFirebase(articleData);
+        this.logger.info('data', `🔄 Syncing offline article: ${article.name} (temp ID: ${tempId})`);
+
+        // Create article in Firebase and get real ID
+        const realId = await this.firebaseData.createArticleInFirebase(articleData);
+        this.logger.info('data', `✅ Article synced with real ID: ${realId}`);
+
+        // CRITICAL: Replace temp ID with real ID in all local state and lists
+        const currentArticles = this.firebaseData.getCurrentArticles();
+        const updatedArticles = currentArticles.map(a =>
+          a.id === tempId ? { ...a, id: realId } : a
+        );
+        this.firebaseData.updateLocalArticles(updatedArticles);
+
+        // Update all lists that reference the temp ID
+        const currentLists = this.firebaseData.getCurrentLists();
+        const updatedLists = currentLists.map(list => {
+          if (list.articleIds.includes(tempId)) {
+            return {
+              ...list,
+              articleIds: list.articleIds.map(id => id === tempId ? realId : id),
+              itemStates: Object.fromEntries(
+                Object.entries(list.itemStates).map(([key, value]) =>
+                  key === tempId ? [realId, { ...value, articleId: realId }] : [key, value]
+                )
+              )
+            };
+          }
+          return list;
+        });
+        this.firebaseData.updateLocalLists(updatedLists);
+
+        this.logger.info('data', `🔄 Replaced temp ID ${tempId} with real ID ${realId} in local state`);
       }, `Create article: ${article.name}`);
-    
+
       return of(tempArticle);
     }
 
