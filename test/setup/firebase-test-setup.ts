@@ -2,133 +2,128 @@
  * Firebase Emulator Test Setup
  *
  * Provides utilities for connecting to Firebase Emulator Suite in tests
+ * Uses @firebase/rules-unit-testing for proper security rules testing
  */
 
-import { initializeApp, FirebaseApp, deleteApp } from 'firebase/app';
 import {
-  getFirestore,
-  connectFirestoreEmulator,
-  Firestore,
-  collection,
-  getDocs,
-  deleteDoc
-} from 'firebase/firestore';
-import { getAuth, connectAuthEmulator, Auth } from 'firebase/auth';
+  initializeTestEnvironment,
+  RulesTestEnvironment,
+  RulesTestContext,
+  assertSucceeds,
+  assertFails,
+} from '@firebase/rules-unit-testing';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import type { Firestore } from 'firebase/firestore';
 
 /**
  * Firebase Emulator configuration
  * Must match values in firebase.json
  */
 const EMULATOR_CONFIG = {
+  projectId: 'test-project-id',
   firestore: {
     host: 'localhost',
     port: 8081, // Updated from 8080 to avoid conflict with PWA
   },
-  auth: {
-    host: 'localhost',
-    port: 9099,
-  },
 };
 
 /**
- * Test Firebase configuration
- * Uses fake project ID for emulator testing
- */
-const TEST_FIREBASE_CONFIG = {
-  apiKey: 'test-api-key',
-  authDomain: 'test-project.firebaseapp.com',
-  projectId: 'test-project-id',
-  storageBucket: 'test-project.appspot.com',
-  messagingSenderId: '123456789',
-  appId: '1:123456789:web:abcdef123456',
-};
-
-/**
- * Active Firebase app instance
+ * Active test environment instance
  * Stored globally to allow cleanup
  */
-let testApp: FirebaseApp | null = null;
-let testFirestore: Firestore | null = null;
-let testAuth: Auth | null = null;
+let testEnv: RulesTestEnvironment | null = null;
 
 /**
- * Initialize Firebase app connected to emulator
+ * Initialize Firebase test environment with security rules
  *
- * @param appName Optional unique name for the app instance
- * @returns Object with initialized Firebase services
+ * @returns Test environment with Firestore and Auth
  */
-export function initializeTestFirebase(appName = `test-app-${Date.now()}`): {
-  app: FirebaseApp;
+export async function initializeTestFirebase(): Promise<{
+  env: RulesTestEnvironment;
   firestore: Firestore;
-  auth: Auth;
-} {
+  getAuthContext: (userId: string) => RulesTestContext;
+  getUnauthContext: () => RulesTestContext;
+}> {
   // Clean up existing instance if any
-  if (testApp) {
-    deleteApp(testApp);
+  if (testEnv) {
+    await testEnv.cleanup();
   }
 
-  // Initialize new app
-  testApp = initializeApp(TEST_FIREBASE_CONFIG, appName);
+  // Load security rules from firestore.rules
+  const rulesPath = resolve(__dirname, '../../firestore.rules');
+  const rules = readFileSync(rulesPath, 'utf8');
 
-  // Initialize Firestore and connect to emulator
-  testFirestore = getFirestore(testApp);
-  connectFirestoreEmulator(
-    testFirestore,
-    EMULATOR_CONFIG.firestore.host,
-    EMULATOR_CONFIG.firestore.port
-  );
+  // Initialize test environment
+  testEnv = await initializeTestEnvironment({
+    projectId: EMULATOR_CONFIG.projectId,
+    firestore: {
+      host: EMULATOR_CONFIG.firestore.host,
+      port: EMULATOR_CONFIG.firestore.port,
+      rules,
+    },
+  });
 
-  // Initialize Auth and connect to emulator
-  testAuth = getAuth(testApp);
-  connectAuthEmulator(
-    testAuth,
-    `http://${EMULATOR_CONFIG.auth.host}:${EMULATOR_CONFIG.auth.port}`,
-    { disableWarnings: true }
-  );
+  // Get unauthenticated context for initial setup
+  const unauthContext = testEnv.unauthenticatedContext();
 
   return {
-    app: testApp,
-    firestore: testFirestore,
-    auth: testAuth,
+    env: testEnv,
+    firestore: unauthContext.firestore() as unknown as Firestore,
+    getAuthContext: (userId: string) => testEnv!.authenticatedContext(userId),
+    getUnauthContext: () => testEnv!.unauthenticatedContext(),
   };
 }
 
 /**
- * Clean up Firebase app instance
- * Should be called in afterEach or afterAll
+ * Clean up Firebase test environment
+ * Should be called in afterAll
  */
 export async function cleanupTestFirebase(): Promise<void> {
-  if (testApp) {
-    await deleteApp(testApp);
-    testApp = null;
-    testFirestore = null;
-    testAuth = null;
+  if (testEnv) {
+    await testEnv.cleanup();
+    testEnv = null;
   }
 }
 
 /**
  * Clear all data from Firestore emulator
  * Useful for ensuring clean state between tests
- *
- * @param firestore Firestore instance to clear
- * @param collections Array of collection names to clear
  */
-export async function clearFirestoreData(
-  firestore: Firestore,
-  collections: string[]
-): Promise<void> {
-  const deletePromises: Promise<void>[] = [];
+export async function clearFirestoreData(): Promise<void> {
+  if (testEnv) {
+    await testEnv.clearFirestore();
+  }
+}
 
-  for (const collectionName of collections) {
-    const collectionRef = collection(firestore, collectionName);
-    const snapshot = await getDocs(collectionRef);
-
-    snapshot.docs.forEach((doc) => {
-      deletePromises.push(deleteDoc(doc.ref));
-    });
+/**
+ * Get authenticated Firestore instance for a specific user
+ *
+ * @param userId User ID to authenticate as
+ * @returns Firestore instance with auth context
+ */
+export function getAuthenticatedFirestore(userId: string): Firestore {
+  if (!testEnv) {
+    throw new Error('Test environment not initialized. Call initializeTestFirebase() first.');
   }
 
-  await Promise.all(deletePromises);
+  const context = testEnv.authenticatedContext(userId);
+  return context.firestore() as unknown as Firestore;
+}
+
+/**
+ * Get unauthenticated Firestore instance
+ * Useful for testing security rules that should block unauthenticated access
+ *
+ * @returns Firestore instance without auth context
+ */
+export function getUnauthenticatedFirestore(): Firestore {
+  if (!testEnv) {
+    throw new Error('Test environment not initialized. Call initializeTestFirebase() first.');
+  }
+
+  const context = testEnv.unauthenticatedContext();
+  return context.firestore() as unknown as Firestore;
 }
 
 /**
@@ -162,3 +157,8 @@ export async function isEmulatorRunning(): Promise<boolean> {
 export function getEmulatorUrl(): string {
   return `http://${EMULATOR_CONFIG.firestore.host}:${EMULATOR_CONFIG.firestore.port}`;
 }
+
+/**
+ * Export assertion helpers for security rules testing
+ */
+export { assertSucceeds, assertFails };

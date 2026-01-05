@@ -16,6 +16,7 @@ import {
   cleanupTestFirebase,
   clearFirestoreData,
   waitForFirestoreSync,
+  getAuthenticatedFirestore,
 } from '../setup/firebase-test-setup';
 import {
   createTestUser,
@@ -24,25 +25,24 @@ import {
   createTestSharedList,
 } from '../helpers/test-data-factory';
 import {
-  getFirestore,
   collection,
   addDoc,
   doc,
+  setDoc,
   getDoc,
   getDocs,
   onSnapshot,
+  updateDoc,
   Timestamp,
   Unsubscribe,
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 
 describe('Real-Time Sync Integration Tests', () => {
-  let firestore: Firestore;
   let unsubscribers: Unsubscribe[] = [];
 
-  beforeAll(() => {
-    const { firestore: fs } = initializeTestFirebase();
-    firestore = fs;
+  beforeAll(async () => {
+    await initializeTestFirebase();
   });
 
   afterAll(async () => {
@@ -51,7 +51,7 @@ describe('Real-Time Sync Integration Tests', () => {
 
   beforeEach(async () => {
     // Clear all test data before each test
-    await clearFirestoreData(firestore, ['articles', 'lists', 'users']);
+    await clearFirestoreData();
   });
 
   afterEach(() => {
@@ -74,41 +74,56 @@ describe('Real-Time Sync Integration Tests', () => {
   describe('Test 1: Participant Adds Article (Online)', () => {
     it('should show article immediately to participant and sync to owner', async () => {
       // Setup: Create owner, participant, and shared list
+      const ownerId = 'owner_test1';
+      const participantId = 'participant_test1';
+
       const owner = createTestUser({
-        id: 'owner_test1',
+        id: ownerId,
         displayName: 'Owner User',
       });
 
       const participant = createTestUser({
-        id: 'participant_test1',
+        id: participantId,
         displayName: 'Participant User',
       });
 
       const article = createTestArticle({
         id: 'article_test1',
         name: 'Test Article',
-        ownerId: participant.id,
+        ownerId: participantId,
       });
 
       const list = createTestSharedList(owner, [participant], []);
 
-      // Write initial data to Firestore
-      await addDoc(collection(firestore, 'users'), owner);
-      await addDoc(collection(firestore, 'users'), participant);
+      // Get authenticated Firestore instances
+      const ownerFirestore = getAuthenticatedFirestore(ownerId);
+      const participantFirestore = getAuthenticatedFirestore(participantId);
 
-      const articleRef = await addDoc(collection(firestore, 'articles'), {
-        ...article,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
+      // Write user profiles
+      await setDoc(doc(ownerFirestore, `users-v2/${ownerId}`), owner);
+      await setDoc(doc(participantFirestore, `users-v2/${participantId}`), participant);
 
-      const listRef = await addDoc(collection(firestore, 'lists'), {
-        ...list,
-        articleIds: [],
-        itemStates: {},
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
+      // Participant creates article in their own collection
+      const articleRef = await addDoc(
+        collection(participantFirestore, `users-v2/${participantId}/articles`),
+        {
+          ...article,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }
+      );
+
+      // Owner creates shared list
+      const listRef = await addDoc(
+        collection(ownerFirestore, `users-v2/${ownerId}/lists`),
+        {
+          ...list,
+          articleIds: [],
+          itemStates: {},
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }
+      );
 
       // Step 1: Simulate optimistic update (what participant sees immediately)
       const optimisticList = {
@@ -130,8 +145,8 @@ describe('Real-Time Sync Integration Tests', () => {
       expect(optimisticList.itemStates[articleRef.id]).toBeDefined();
       expect(optimisticList.itemStates[articleRef.id].articleName).toBe('Test Article');
 
-      // Step 2: Write to Firebase (simulating Firebase write)
-      await listRef.update({
+      // Step 2: Participant updates the list (they have access via sharedWith)
+      await updateDoc(listRef, {
         articleIds: [articleRef.id],
         itemStates: {
           [articleRef.id]: {
@@ -184,31 +199,39 @@ describe('Real-Time Sync Integration Tests', () => {
   describe('Test 2: Rapid Addition of Multiple Articles', () => {
     it('should handle rapid addition of 3 articles', async () => {
       // Setup
+      const ownerId = 'owner_test2';
+      const participantId = 'participant_test2';
+
       const owner = createTestUser({
-        id: 'owner_test2',
+        id: ownerId,
         displayName: 'Owner User',
       });
 
       const participant = createTestUser({
-        id: 'participant_test2',
+        id: participantId,
         displayName: 'Participant User',
       });
 
       const articles = [
-        createTestArticle({ id: 'article1', name: 'Article 1', ownerId: participant.id }),
-        createTestArticle({ id: 'article2', name: 'Article 2', ownerId: participant.id }),
-        createTestArticle({ id: 'article3', name: 'Article 3', ownerId: participant.id }),
+        createTestArticle({ id: 'article1', name: 'Article 1', ownerId: participantId }),
+        createTestArticle({ id: 'article2', name: 'Article 2', ownerId: participantId }),
+        createTestArticle({ id: 'article3', name: 'Article 3', ownerId: participantId }),
       ];
 
       const list = createTestSharedList(owner, [participant], []);
 
-      // Write initial data
-      await addDoc(collection(firestore, 'users'), owner);
-      await addDoc(collection(firestore, 'users'), participant);
+      // Get authenticated Firestore instances
+      const ownerFirestore = getAuthenticatedFirestore(ownerId);
+      const participantFirestore = getAuthenticatedFirestore(participantId);
 
+      // Write user profiles
+      await setDoc(doc(ownerFirestore, `users-v2/${ownerId}`), owner);
+      await setDoc(doc(participantFirestore, `users-v2/${participantId}`), participant);
+
+      // Create articles
       const articleRefs = await Promise.all(
         articles.map(article =>
-          addDoc(collection(firestore, 'articles'), {
+          addDoc(collection(participantFirestore, `users-v2/${participantId}/articles`), {
             ...article,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
@@ -216,7 +239,8 @@ describe('Real-Time Sync Integration Tests', () => {
         )
       );
 
-      const listRef = await addDoc(collection(firestore, 'lists'), {
+      // Create list
+      const listRef = await addDoc(collection(ownerFirestore, `users-v2/${ownerId}/lists`), {
         ...list,
         articleIds: [],
         itemStates: {},
@@ -248,7 +272,7 @@ describe('Real-Time Sync Integration Tests', () => {
       expect(optimisticList.articleIds).toContain(articleIds[2]);
 
       // Step 2: Write to Firebase (batched update)
-      await listRef.update({
+      await updateDoc(listRef, {
         articleIds,
         itemStates: optimisticList.itemStates,
         updatedAt: Timestamp.now(),
@@ -296,22 +320,31 @@ describe('Real-Time Sync Integration Tests', () => {
   describe('Test 3: Offline Article Creation', () => {
     it('should create article with temp ID and replace after sync', async () => {
       // Setup
+      const userAId = 'user_a_test3';
+      const userBId = 'user_b_test3';
+
       const userA = createTestUser({
-        id: 'user_a_test3',
+        id: userAId,
         displayName: 'User A',
       });
 
       const userB = createTestUser({
-        id: 'user_b_test3',
+        id: userBId,
         displayName: 'User B',
       });
 
       const list = createTestSharedList(userA, [userB], []);
 
-      await addDoc(collection(firestore, 'users'), userA);
-      await addDoc(collection(firestore, 'users'), userB);
+      // Get authenticated Firestore instances
+      const userAFirestore = getAuthenticatedFirestore(userAId);
+      const userBFirestore = getAuthenticatedFirestore(userBId);
 
-      const listRef = await addDoc(collection(firestore, 'lists'), {
+      // Write user profiles
+      await setDoc(doc(userAFirestore, `users-v2/${userAId}`), userA);
+      await setDoc(doc(userBFirestore, `users-v2/${userBId}`), userB);
+
+      // Create list
+      const listRef = await addDoc(collection(userAFirestore, `users-v2/${userAId}/lists`), {
         ...list,
         articleIds: [],
         itemStates: {},
@@ -324,7 +357,7 @@ describe('Real-Time Sync Integration Tests', () => {
       const offlineArticle = createTestArticle({
         id: tempId,
         name: 'Offline Article',
-        ownerId: userA.id,
+        ownerId: userAId,
       });
 
       // Verify: User A sees article with temp ID immediately
@@ -332,24 +365,27 @@ describe('Real-Time Sync Integration Tests', () => {
       expect(offlineArticle.name).toBe('Offline Article');
 
       // Step 2: Simulate going online and syncing to Firebase
-      const realArticleRef = await addDoc(collection(firestore, 'articles'), {
-        name: offlineArticle.name,
-        amount: offlineArticle.amount,
-        notes: offlineArticle.notes,
-        icon: offlineArticle.icon,
-        categoryId: offlineArticle.categoryId,
-        departmentId: offlineArticle.departmentId,
-        ownerId: offlineArticle.ownerId,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
+      const realArticleRef = await addDoc(
+        collection(userAFirestore, `users-v2/${userAId}/articles`),
+        {
+          name: offlineArticle.name,
+          amount: offlineArticle.amount,
+          notes: offlineArticle.notes,
+          icon: offlineArticle.icon,
+          categoryId: offlineArticle.categoryId,
+          departmentId: offlineArticle.departmentId,
+          ownerId: offlineArticle.ownerId,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }
+      );
 
       const realId = realArticleRef.id;
 
       console.log(`🔄 Temp ID ${tempId} → Real ID ${realId}`);
 
       // Step 3: Simulate temp ID replacement in list
-      await listRef.update({
+      await updateDoc(listRef, {
         articleIds: [realId],
         itemStates: {
           [realId]: {
@@ -369,7 +405,9 @@ describe('Real-Time Sync Integration Tests', () => {
 
           if (listData && listData.articleIds && listData.articleIds.includes(realId)) {
             // Check if article exists in Firebase with real ID
-            const articleDoc = await getDoc(doc(firestore, 'articles', realId));
+            const articleDoc = await getDoc(
+              doc(userAFirestore, `users-v2/${userAId}/articles`, realId)
+            );
 
             if (articleDoc.exists()) {
               console.log(`✅ User B sees article with real ID: ${realId}`);
@@ -406,11 +444,18 @@ describe('Real-Time Sync Integration Tests', () => {
   describe('Test 4: mergeArticles Always Called', () => {
     it('should merge optimistic articles even when batch query is empty', async () => {
       // Setup
-      const user = createTestUser({ id: 'user_test4' });
-      const list = createTestList({ ownerId: user.id, articleIds: [] });
+      const userId = 'user_test4';
+      const user = createTestUser({ id: userId });
+      const list = createTestList({ ownerId: userId, articleIds: [] });
 
-      await addDoc(collection(firestore, 'users'), user);
-      const listRef = await addDoc(collection(firestore, 'lists'), {
+      // Get authenticated Firestore
+      const userFirestore = getAuthenticatedFirestore(userId);
+
+      // Write user profile
+      await setDoc(doc(userFirestore, `users-v2/${userId}`), user);
+
+      // Create list
+      const listRef = await addDoc(collection(userFirestore, `users-v2/${userId}/lists`), {
         ...list,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -419,10 +464,10 @@ describe('Real-Time Sync Integration Tests', () => {
       // Step 1: Create article (simulates optimistic creation)
       const article = createTestArticle({
         name: 'New Article',
-        ownerId: user.id,
+        ownerId: userId,
       });
 
-      const articleRef = await addDoc(collection(firestore, 'articles'), {
+      const articleRef = await addDoc(collection(userFirestore, `users-v2/${userId}/articles`), {
         ...article,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -442,7 +487,7 @@ describe('Real-Time Sync Integration Tests', () => {
       // Verify: Can be found via collection query
       await waitForFirestoreSync(100); // Wait for indexing
 
-      const articlesSnapshot = await getDocs(collection(firestore, 'articles'));
+      const articlesSnapshot = await getDocs(collection(userFirestore, `users-v2/${userId}/articles`));
       const foundArticle = articlesSnapshot.docs.find(
         doc => doc.id === articleRef.id
       );
