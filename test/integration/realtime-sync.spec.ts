@@ -365,16 +365,12 @@ describe('Real-Time Sync Integration Tests', () => {
       expect(offlineArticle.name).toBe('Offline Article');
 
       // Step 2: Simulate going online and syncing to Firebase
+      // Only include defined fields from offlineArticle
+      const { id, createdAt, updatedAt, ...articleData } = offlineArticle;
       const realArticleRef = await addDoc(
         collection(userAFirestore, `users-v2/${userAId}/articles`),
         {
-          name: offlineArticle.name,
-          amount: offlineArticle.amount,
-          notes: offlineArticle.notes,
-          icon: offlineArticle.icon,
-          categoryId: offlineArticle.categoryId,
-          departmentId: offlineArticle.departmentId,
-          ownerId: offlineArticle.ownerId,
+          ...articleData,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         }
