@@ -33,24 +33,28 @@ export function createTestUser(overrides: Partial<{
 export function createTestArticle(overrides: Partial<Article> = {}): Article {
   const timestamp = Date.now();
 
-  return {
+  const article: any = {
     id: overrides.id || `article_${timestamp}`,
     name: overrides.name || `Test Article ${timestamp}`,
-    amount: overrides.amount,
-    notes: overrides.notes,
-    icon: overrides.icon,
-    categoryId: overrides.categoryId,
-    departmentId: overrides.departmentId,
     createdAt: overrides.createdAt || new Date(),
     updatedAt: overrides.updatedAt || new Date(),
-    availableInShops: overrides.availableInShops,
-    usageCount: overrides.usageCount,
-    lastCheckedDate: overrides.lastCheckedDate,
-    lastAddedToListDate: overrides.lastAddedToListDate,
-    numberOfChecks: overrides.numberOfChecks,
     ownerId: overrides.ownerId || 'owner_1',
-    copiedFrom: overrides.copiedFrom,
   };
+
+  // Only include optional fields if they're defined
+  if (overrides.amount !== undefined) article.amount = overrides.amount;
+  if (overrides.notes !== undefined) article.notes = overrides.notes;
+  if (overrides.icon !== undefined) article.icon = overrides.icon;
+  if (overrides.categoryId !== undefined) article.categoryId = overrides.categoryId;
+  if (overrides.departmentId !== undefined) article.departmentId = overrides.departmentId;
+  if (overrides.availableInShops !== undefined) article.availableInShops = overrides.availableInShops;
+  if (overrides.usageCount !== undefined) article.usageCount = overrides.usageCount;
+  if (overrides.lastCheckedDate !== undefined) article.lastCheckedDate = overrides.lastCheckedDate;
+  if (overrides.lastAddedToListDate !== undefined) article.lastAddedToListDate = overrides.lastAddedToListDate;
+  if (overrides.numberOfChecks !== undefined) article.numberOfChecks = overrides.numberOfChecks;
+  if (overrides.copiedFrom !== undefined) article.copiedFrom = overrides.copiedFrom;
+
+  return article as Article;
 }
 
 /**
@@ -61,20 +65,24 @@ export function createTestArticle(overrides: Partial<Article> = {}): Article {
 export function createTestList(overrides: Partial<ShoppingList> = {}): ShoppingList {
   const timestamp = Date.now();
 
-  return {
+  const list: any = {
     id: overrides.id || `list_${timestamp}`,
     name: overrides.name || `Test List ${timestamp}`,
-    color: overrides.color,
     icon: overrides.icon || '📝',
-    shopId: overrides.shopId,
     articleIds: overrides.articleIds || [],
     itemStates: overrides.itemStates || {},
-    departmentOrder: overrides.departmentOrder,
     createdAt: overrides.createdAt || new Date(),
     updatedAt: overrides.updatedAt || new Date(),
     ownerId: overrides.ownerId || 'owner_1',
     sharedWith: overrides.sharedWith || [],
   };
+
+  // Only include optional fields if they're defined
+  if (overrides.color !== undefined) list.color = overrides.color;
+  if (overrides.shopId !== undefined) list.shopId = overrides.shopId;
+  if (overrides.departmentOrder !== undefined) list.departmentOrder = overrides.departmentOrder;
+
+  return list as ShoppingList;
 }
 
 /**
@@ -87,17 +95,21 @@ export function createTestItemState(
   articleId: string,
   overrides: Partial<ListItemState> = {}
 ): ListItemState {
-  return {
+  const itemState: any = {
     articleId,
-    articleName: overrides.articleName,
     isChecked: overrides.isChecked || false,
     amount: overrides.amount || '1',
-    notes: overrides.notes,
-    addedAt: overrides.addedAt,
-    checkedAt: overrides.checkedAt,
-    checkedBy: overrides.checkedBy,
-    history: overrides.history,
   };
+
+  // Only include optional fields if they're defined
+  if (overrides.articleName !== undefined) itemState.articleName = overrides.articleName;
+  if (overrides.notes !== undefined) itemState.notes = overrides.notes;
+  if (overrides.addedAt !== undefined) itemState.addedAt = overrides.addedAt;
+  if (overrides.checkedAt !== undefined) itemState.checkedAt = overrides.checkedAt;
+  if (overrides.checkedBy !== undefined) itemState.checkedBy = overrides.checkedBy;
+  if (overrides.history !== undefined) itemState.history = overrides.history;
+
+  return itemState as ListItemState;
 }
 
 /**
