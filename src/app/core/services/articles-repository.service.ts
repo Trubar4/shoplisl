@@ -85,7 +85,7 @@ export class ArticlesRepositoryService {
 
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: Article creation will be synced when online');
-      
+
       const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const tempArticle: Article = {
         id: tempId,
@@ -97,19 +97,19 @@ export class ArticlesRepositoryService {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-    
-      // Update local state immediately
-      const currentArticles = this.firebaseData.getArticles().pipe(map(articles => articles)).subscribe().unsubscribe;
-      this.firebaseData.getArticles().subscribe(currentArticles => {
-        const updatedArticles = [...currentArticles, tempArticle];
-        this.firebaseData.updateLocalArticles(updatedArticles);
-      }).unsubscribe();
-    
+
+      // CRITICAL FIX: Update local state immediately using synchronous method
+      const currentArticles = this.firebaseData.getCurrentArticles();
+      const updatedArticles = [...currentArticles, tempArticle];
+      this.firebaseData.updateLocalArticles(updatedArticles);
+
+      this.logger.info('data', `✅ Offline article created: ${tempArticle.name} (temp ID: ${tempId})`);
+
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
         await this.firebaseData.createArticleInFirebase(articleData);
       }, `Create article: ${article.name}`);
-    
+
       return of(tempArticle);
     }
 
