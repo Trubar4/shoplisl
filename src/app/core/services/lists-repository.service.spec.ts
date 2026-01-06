@@ -35,6 +35,7 @@ describe('ListsRepositoryService - Batch Operations', () => {
     firebaseDataSpy = {
       getList: vi.fn().mockReturnValue(of(mockList)),
       getCurrentLists: vi.fn().mockReturnValue([mockList]),
+      getCurrentArticles: vi.fn().mockReturnValue([]),
       updateLocalLists: vi.fn(),
       updateListInFirebase: vi.fn().mockResolvedValue(undefined)
     };
@@ -374,6 +375,7 @@ describe('ListsRepositoryService - PRIMARY FIX: Optimistic Updates', () => {
     firebaseDataSpy = {
       getList: vi.fn().mockReturnValue(of(mockList)),
       getCurrentLists: vi.fn().mockReturnValue([mockList]),
+      getCurrentArticles: vi.fn().mockReturnValue([]),
       updateLocalLists: vi.fn(),
       updateListInFirebase: vi.fn().mockResolvedValue(undefined),
       getLists: vi.fn().mockReturnValue(of([mockList]))
