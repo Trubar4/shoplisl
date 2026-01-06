@@ -15,6 +15,8 @@ describe('ListsRepositoryService - Batch Operations', () => {
   let loggerSpy: any;
   let historyServiceSpy: any;
   let authServiceSpy: any;
+  let articlesRepositorySpy: any;
+  let injectorSpy: any;
   let analyticsServiceSpy: any;
 
   const mockList = {
@@ -74,7 +76,16 @@ describe('ListsRepositoryService - Batch Operations', () => {
     };
 
     authServiceSpy = {
-      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id'),
+      getCurrentUserValue: vi.fn().mockReturnValue({ id: 'test-user-id', name: 'Test User' })
+    };
+
+    articlesRepositorySpy = {
+      createLocalCopy: vi.fn()
+    };
+
+    injectorSpy = {
+      get: vi.fn()
     };
 
     analyticsServiceSpy = {
@@ -88,6 +99,8 @@ describe('ListsRepositoryService - Batch Operations', () => {
       loggerSpy as any,
       historyServiceSpy as any,
       authServiceSpy as any,
+      articlesRepositorySpy as any,
+      injectorSpy as any,
       analyticsServiceSpy as any
     );
   });
@@ -112,21 +125,27 @@ describe('ListsRepositoryService - Batch Operations', () => {
       expect(updatedData.articleIds).toEqual(['article1', 'article2', 'article3', 'article4', 'article5']);
 
       // Should have item states for all new articles
-      expect(updatedData.itemStates['article3']).toEqual({
-        articleId: 'article3',
-        isChecked: false,
-        amount: ''
-      });
-      expect(updatedData.itemStates['article4']).toEqual({
-        articleId: 'article4',
-        isChecked: false,
-        amount: ''
-      });
-      expect(updatedData.itemStates['article5']).toEqual({
-        articleId: 'article5',
-        isChecked: false,
-        amount: ''
-      });
+      expect(updatedData.itemStates['article3']).toEqual(
+        expect.objectContaining({
+          articleId: 'article3',
+          isChecked: false,
+          amount: ''
+        })
+      );
+      expect(updatedData.itemStates['article4']).toEqual(
+        expect.objectContaining({
+          articleId: 'article4',
+          isChecked: false,
+          amount: ''
+        })
+      );
+      expect(updatedData.itemStates['article5']).toEqual(
+        expect.objectContaining({
+          articleId: 'article5',
+          isChecked: false,
+          amount: ''
+        })
+      );
     });
 
     it('should handle empty article array', async () => {
@@ -158,11 +177,13 @@ describe('ListsRepositoryService - Batch Operations', () => {
       const updatedData = updateCall[1];
 
       // Should reset to unchecked but preserve amount
-      expect(updatedData.itemStates['article1']).toEqual({
-        articleId: 'article1',
-        isChecked: false,
-        amount: '2' // Preserved from original
-      });
+      expect(updatedData.itemStates['article1']).toEqual(
+        expect.objectContaining({
+          articleId: 'article1',
+          isChecked: false,
+          amount: '2' // Preserved from original
+        })
+      );
     });
 
     it('should handle offline mode by queuing operation', async () => {
