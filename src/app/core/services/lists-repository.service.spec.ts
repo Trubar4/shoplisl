@@ -14,6 +14,8 @@ describe('ListsRepositoryService - Batch Operations', () => {
   let connectionServiceSpy: any;
   let loggerSpy: any;
   let historyServiceSpy: any;
+  let authServiceSpy: any;
+  let analyticsServiceSpy: any;
 
   const mockList = {
     id: 'list1',
@@ -70,12 +72,22 @@ describe('ListsRepositoryService - Batch Operations', () => {
       }))
     };
 
+    authServiceSpy = {
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
+    };
+
+    analyticsServiceSpy = {
+      trackEvent: vi.fn()
+    };
+
     service = new ListsRepositoryService(
       firebaseDataSpy as any,
       offlineSyncSpy as any,
       connectionServiceSpy as any,
       loggerSpy as any,
-      historyServiceSpy as any
+      historyServiceSpy as any,
+      authServiceSpy as any,
+      analyticsServiceSpy as any
     );
   });
 
@@ -340,6 +352,8 @@ describe('ListsRepositoryService - PRIMARY FIX: Optimistic Updates', () => {
   let connectionServiceSpy: any;
   let loggerSpy: any;
   let historyServiceSpy: any;
+  let authServiceSpy: any;
+  let analyticsServiceSpy: any;
 
   const mockList = {
     id: 'list1',
@@ -384,12 +398,22 @@ describe('ListsRepositoryService - PRIMARY FIX: Optimistic Updates', () => {
       createUpdatedItemState: vi.fn()
     };
 
+    authServiceSpy = {
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
+    };
+
+    analyticsServiceSpy = {
+      trackEvent: vi.fn()
+    };
+
     service = new ListsRepositoryService(
       firebaseDataSpy as any,
       offlineSyncSpy as any,
       connectionServiceSpy as any,
       loggerSpy as any,
-      historyServiceSpy as any
+      historyServiceSpy as any,
+      authServiceSpy as any,
+      analyticsServiceSpy as any
     );
   });
 
