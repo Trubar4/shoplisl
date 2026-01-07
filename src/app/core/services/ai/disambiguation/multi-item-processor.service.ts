@@ -80,7 +80,7 @@ export class MultiItemProcessorService {
     getEnhancedSuggestionsFn: (itemName: string) => Promise<{departmentId: string, icon: string}>,
     addArticleToListFn: (articleId: string, listId: string, amount: string) => Promise<void>
   ): Promise<AIExecutionResult> {
-    this.logger.info('multi-item', `Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
+    this.logger.info('disambiguation', `Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
 
     // Safety checks
     if (!action.items || action.items.length === 0) {
@@ -88,7 +88,7 @@ export class MultiItemProcessorService {
     }
 
     if (action.currentItemIndex > 20) {
-      this.logger.error('multi-item', 'SAFETY: Too many iterations - stopping');
+      this.logger.error('disambiguation', 'SAFETY: Too many iterations - stopping');
       return this.executeMultiItemFinalAction(action);
     }
 
@@ -133,7 +133,7 @@ export class MultiItemProcessorService {
       );
 
     } catch (error) {
-      this.logger.error('multi-item', 'Error in sequential processing', error);
+      this.logger.error('disambiguation', 'Error in sequential processing', error);
 
       const failedItem: ProcessedItem = {
         item: currentItem,
@@ -241,7 +241,7 @@ export class MultiItemProcessorService {
       );
 
     } catch (error) {
-      this.logger.error('multi-item', 'ERROR PROCESSING CURRENT ITEM', error);
+      this.logger.error('disambiguation', 'ERROR PROCESSING CURRENT ITEM', error);
 
       const failedItem: any = {
         item: currentItem,
