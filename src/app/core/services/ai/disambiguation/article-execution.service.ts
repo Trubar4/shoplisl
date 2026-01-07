@@ -81,7 +81,7 @@ export class ArticleExecutionService {
       }
 
     } catch (error) {
-      this.logger.error('article-execution', 'Error executing action with existing article', error);
+      this.logger.error('disambiguation', 'Error executing action with existing article', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen von "${article.name}".`
@@ -147,7 +147,7 @@ export class ArticleExecutionService {
       }
 
     } catch (error) {
-      this.logger.error('article-execution', 'Error executing action with new article', error);
+      this.logger.error('disambiguation', 'Error executing action with new article', error);
       return {
         success: false,
         message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`

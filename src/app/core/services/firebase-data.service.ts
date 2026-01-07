@@ -321,7 +321,6 @@ export class FirebaseDataService {
 
     // CRITICAL FIX: Load articles from ALL list participants, not just owner
     // When a participant creates an article, it's in their collection: users-v2/{participantId}/articles
-    const currentUserId = this.authService.getCurrentUserId();
     const ownerIds = [list.ownerId];
 
     // Add all shared participants as potential article owners
