@@ -42,23 +42,28 @@ async function recoverArticleIds() {
       ownerId: null  // Will be determined from list data
     },
     {
-      id: 'REPLACE_WITH_SUTTERLÜTY_ID',  // Sutterlüty
+      id: 'CemqHIYJ868O89362x9V',  // Sutterlüty
       name: 'Sutterlüty',
       ownerId: null
     },
     {
-      id: 'REPLACE_WITH_LÄDELE_ID',  // Lädele
+      id: '62PhcxI5ivkgfhdlNbaR',  // Lädele
       name: 'Lädele',
       ownerId: null
     },
     {
-      id: 'REPLACE_WITH_MESSEPARK_ID',  // Messepark
+      id: 'bDJAexAC29O1oujEf3eq',  // Messepark
       name: 'Messepark',
       ownerId: null
     },
     {
-      id: 'REPLACE_WITH_DM_BIPA_ID',  // DM/Bipa
+      id: 'bwG4wE8gqjn78pRsOwic',  // DM/Bipa
       name: 'DM/Bipa',
+      ownerId: null
+    },
+    {
+      id: 'Krvv5jHvgKeRAZTR6uDH',  // DM/Bipa
+      name: 'DM/Birgit Urlaub Como',
       ownerId: null
     }
   ];
