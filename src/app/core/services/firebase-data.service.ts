@@ -280,11 +280,24 @@ export class FirebaseDataService {
    */
   private async loadArticlesForList(list: ShoppingList): Promise<void> {
     // Only load articles if this is a shared list OR an owned list that's shared with others
-    const isSharedList = list.ownerId !== this.authService.getCurrentUserId();
+    const currentUserId = this.authService.getCurrentUserId();
+    const isSharedList = list.ownerId !== currentUserId;
     const isSharedOwnedList = list.sharedWith && list.sharedWith.length > 0;
 
+    // DEBUG: Log list loading attempt
+    this.logger.info('data', `🔍 loadArticlesForList called for: ${list.name}`, {
+      listId: list.id,
+      currentUserId: currentUserId,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      isSharedList: isSharedList,
+      isSharedOwnedList: isSharedOwnedList,
+      articleIds: list.articleIds,
+      articleCount: list.articleIds?.length || 0
+    });
+
     if (!isSharedList && !isSharedOwnedList) {
-      this.logger.debug('data', `Skipping article load for private list: ${list.name}`);
+      this.logger.warn('data', `⚠️ Skipping article load for private list: ${list.name} (ownerId=${list.ownerId}, sharedWith=${JSON.stringify(list.sharedWith)})`);
       return;
     }
 
