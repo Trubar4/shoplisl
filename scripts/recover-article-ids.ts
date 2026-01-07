@@ -16,21 +16,34 @@
 
 import * as admin from 'firebase-admin';
 import * as readline from 'readline';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // Initialize Firebase Admin
 try {
   if (!admin.apps || admin.apps.length === 0) {
-    // Try to initialize with default credentials
-    // This will use GOOGLE_APPLICATION_CREDENTIALS env var or gcloud auth
-    admin.initializeApp({
-      projectId: 'shoplisl'
-    });
+    // Look for service account key in project root
+    const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
+
+    if (fs.existsSync(serviceAccountPath)) {
+      console.log('✅ Found service account key, initializing...\n');
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: 'shoplisl'
+      });
+    } else {
+      console.error('❌ Service account key not found: serviceAccountKey.json');
+      console.error('\n📝 To get the service account key:');
+      console.error('  1. Go to https://console.firebase.google.com/project/shoplisl/settings/serviceaccounts/adminsdk');
+      console.error('  2. Click "Generate new private key"');
+      console.error('  3. Save as serviceAccountKey.json in project root');
+      console.error('  4. Add serviceAccountKey.json to .gitignore (already done)\n');
+      process.exit(1);
+    }
   }
 } catch (error: any) {
   console.error('❌ Failed to initialize Firebase Admin SDK');
-  console.error('\nPlease authenticate first. Run one of these commands:');
-  console.error('  1. firebase login');
-  console.error('  2. Or set GOOGLE_APPLICATION_CREDENTIALS to your service account key');
   console.error('\nError:', error.message);
   process.exit(1);
 }
