@@ -76,8 +76,8 @@ async function getListsFromOldLocation(): Promise<ListInfo[]> {
     const data = doc.data();
     lists.push({
       id: doc.id,
-      name: data.name || 'Unnamed',
-      ownerId: data.ownerId
+      name: data['name'] || 'Unnamed',
+      ownerId: data['ownerId']
     });
   });
 
@@ -126,7 +126,7 @@ async function findOwnerIdForList(listId: string, listName: string): Promise<str
     const listRef = db.collection('users-v2').doc(userId).collection('lists').doc(listId);
     const listDoc = await listRef.get();
 
-    if (listDoc.exists()) {
+    if (listDoc.exists) {
       console.log(`   ✅ Found list in users-v2/${userId}/lists/${listId}`);
       return userId;
     }
