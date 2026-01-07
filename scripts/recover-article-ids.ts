@@ -18,8 +18,21 @@ import * as admin from 'firebase-admin';
 import * as readline from 'readline';
 
 // Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp();
+try {
+  if (!admin.apps || admin.apps.length === 0) {
+    // Try to initialize with default credentials
+    // This will use GOOGLE_APPLICATION_CREDENTIALS env var or gcloud auth
+    admin.initializeApp({
+      projectId: 'shoplisl'
+    });
+  }
+} catch (error: any) {
+  console.error('❌ Failed to initialize Firebase Admin SDK');
+  console.error('\nPlease authenticate first. Run one of these commands:');
+  console.error('  1. firebase login');
+  console.error('  2. Or set GOOGLE_APPLICATION_CREDENTIALS to your service account key');
+  console.error('\nError:', error.message);
+  process.exit(1);
 }
 
 const db = admin.firestore();
