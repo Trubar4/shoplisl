@@ -1,11 +1,5 @@
-import { of, throwError, firstValueFrom } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import { ListsRepositoryService } from './lists-repository.service';
-import { FirebaseDataService } from './firebase-data.service';
-import { OfflineSyncService } from './offline-sync.service';
-import { ConnectionService } from './connection.service';
-import { LoggerService } from './logger.service';
-import { HistoryService } from './history.service';
-import { Timestamp } from '@angular/fire/firestore';
 
 describe('ListsRepositoryService - Batch Operations', () => {
   let service: ListsRepositoryService;
@@ -15,8 +9,6 @@ describe('ListsRepositoryService - Batch Operations', () => {
   let loggerSpy: any;
   let historyServiceSpy: any;
   let authServiceSpy: any;
-  let articlesRepositorySpy: any;
-  let injectorSpy: any;
   let analyticsServiceSpy: any;
 
   const mockList = {
@@ -76,16 +68,7 @@ describe('ListsRepositoryService - Batch Operations', () => {
     };
 
     authServiceSpy = {
-      getCurrentUserId: vi.fn().mockReturnValue('test-user-id'),
-      getCurrentUserValue: vi.fn().mockReturnValue({ id: 'test-user-id', name: 'Test User' })
-    };
-
-    articlesRepositorySpy = {
-      createLocalCopy: vi.fn()
-    };
-
-    injectorSpy = {
-      get: vi.fn()
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
     };
 
     analyticsServiceSpy = {
@@ -99,8 +82,6 @@ describe('ListsRepositoryService - Batch Operations', () => {
       loggerSpy as any,
       historyServiceSpy as any,
       authServiceSpy as any,
-      articlesRepositorySpy as any,
-      injectorSpy as any,
       analyticsServiceSpy as any
     );
   });
@@ -356,6 +337,245 @@ describe('ListsRepositoryService - Batch Operations', () => {
 
       // This prevents the race condition where multiple parallel reads
       // get the same initial state
+    });
+  });
+});
+
+/**
+ * Phase 1 PRIMARY FIX: Optimistic Local State Updates
+ *
+ * Tests for lines 179-184 in lists-repository.service.ts
+ * Ensures local state is updated immediately BEFORE Firebase write,
+ * even when online, to prevent UI lag.
+ */
+describe('ListsRepositoryService - PRIMARY FIX: Optimistic Updates', () => {
+  let service: ListsRepositoryService;
+  let firebaseDataSpy: any;
+  let offlineSyncSpy: any;
+  let connectionServiceSpy: any;
+  let loggerSpy: any;
+  let historyServiceSpy: any;
+  let authServiceSpy: any;
+  let analyticsServiceSpy: any;
+
+  const mockList = {
+    id: 'list1',
+    name: 'Test List',
+    articleIds: ['article1'],
+    itemStates: {
+      'article1': { articleId: 'article1', isChecked: false, amount: '1' }
+    },
+    ownerId: 'user1',
+    sharedWith: ['user2'],
+    departmentOrder: [],
+    icon: '📝',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  beforeEach(() => {
+    firebaseDataSpy = {
+      getList: vi.fn().mockReturnValue(of(mockList)),
+      getCurrentLists: vi.fn().mockReturnValue([mockList]),
+      getCurrentArticles: vi.fn().mockReturnValue([]),
+      updateLocalLists: vi.fn(),
+      updateListInFirebase: vi.fn().mockResolvedValue(undefined),
+      getLists: vi.fn().mockReturnValue(of([mockList]))
+    };
+
+    offlineSyncSpy = {
+      queueOperation: vi.fn()
+    };
+
+    connectionServiceSpy = {
+      isOnline: vi.fn().mockReturnValue(true) // Online by default
+    };
+
+    loggerSpy = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn()
+    };
+
+    historyServiceSpy = {
+      createUpdatedItemState: vi.fn()
+    };
+
+    authServiceSpy = {
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
+    };
+
+    analyticsServiceSpy = {
+      trackEvent: vi.fn()
+    };
+
+    service = new ListsRepositoryService(
+      firebaseDataSpy as any,
+      offlineSyncSpy as any,
+      connectionServiceSpy as any,
+      loggerSpy as any,
+      historyServiceSpy as any,
+      authServiceSpy as any,
+      analyticsServiceSpy as any
+    );
+  });
+
+  describe('updateList() - Online Mode', () => {
+    it('should update local state IMMEDIATELY before Firebase write (PRIMARY FIX)', async () => {
+      const updates = {
+        name: 'Updated List Name',
+        icon: '🎯'
+      };
+
+      // Track call order
+      const callOrder: string[] = [];
+      firebaseDataSpy.updateLocalLists.mockImplementation(() => {
+        callOrder.push('updateLocalLists');
+      });
+      firebaseDataSpy.updateListInFirebase.mockImplementation(async () => {
+        callOrder.push('updateListInFirebase');
+      });
+
+      // Execute update
+      await firstValueFrom(service.updateList('list1', updates));
+
+      // CRITICAL ASSERTION: Local state updated BEFORE Firebase write
+      expect(callOrder).toEqual(['updateLocalLists', 'updateListInFirebase']);
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalled();
+      expect(firebaseDataSpy.updateListInFirebase).toHaveBeenCalled();
+    });
+
+    it('should update local state even when online (not just offline)', async () => {
+      connectionServiceSpy.isOnline.mockReturnValue(true);
+
+      const updates = { name: 'New Name' };
+      await firstValueFrom(service.updateList('list1', updates));
+
+      // Verify local state was updated despite being online
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalled();
+      expect(connectionServiceSpy.isOnline()).toBe(true);
+    });
+
+    it('should include updated fields in local state immediately', async () => {
+      const updates = {
+        name: 'Participant Update',
+        icon: '⚡'
+      };
+
+      await firstValueFrom(service.updateList('list1', updates));
+
+      // Verify updateLocalLists was called with merged updates
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'list1',
+            name: 'Participant Update',
+            icon: '⚡',
+            updatedAt: expect.any(Date)
+          })
+        ])
+      );
+    });
+
+    it('should preserve other list fields during optimistic update', async () => {
+      const updates = { name: 'New Name' };
+      await firstValueFrom(service.updateList('list1', updates));
+
+      const updatedLists = firebaseDataSpy.updateLocalLists.mock.calls[0][0];
+      const updatedList = updatedLists.find((l: any) => l.id === 'list1');
+
+      // Verify all original fields preserved
+      expect(updatedList.articleIds).toEqual(['article1']);
+      expect(updatedList.itemStates).toEqual(mockList.itemStates);
+      expect(updatedList.ownerId).toBe('user1');
+      expect(updatedList.sharedWith).toEqual(['user2']);
+    });
+
+    it('should update local state for only the specified list', async () => {
+      const mockList2 = { ...mockList, id: 'list2', name: 'List 2' };
+      firebaseDataSpy.getCurrentLists.mockReturnValue([mockList, mockList2]);
+
+      const updates = { name: 'Updated List 1' };
+      await firstValueFrom(service.updateList('list1', updates));
+
+      const updatedLists = firebaseDataSpy.updateLocalLists.mock.calls[0][0];
+
+      // list1 should be updated
+      expect(updatedLists.find((l: any) => l.id === 'list1').name).toBe('Updated List 1');
+      // list2 should remain unchanged
+      expect(updatedLists.find((l: any) => l.id === 'list2').name).toBe('List 2');
+    });
+
+    it('should still write to Firebase after local update', async () => {
+      const updates = { name: 'Updated' };
+      await firstValueFrom(service.updateList('list1', updates));
+
+      // Verify Firebase write still happens
+      expect(firebaseDataSpy.updateListInFirebase).toHaveBeenCalledWith(
+        'list1',
+        expect.objectContaining({ name: 'Updated' })
+      );
+    });
+
+    it('should provide 0ms perceived latency for participant (PRIMARY FIX goal)', async () => {
+      const startTime = Date.now();
+
+      // Simulate slow Firebase write (2 seconds)
+      firebaseDataSpy.updateListInFirebase.mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 2000))
+      );
+
+      const updates = { name: 'Participant sees this immediately' };
+      const updatePromise = firstValueFrom(service.updateList('list1', updates));
+
+      // Local state should be updated immediately (within 50ms)
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const immediateTime = Date.now() - startTime;
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalled();
+      expect(immediateTime).toBeLessThan(100); // ~0ms perceived latency
+
+      // Wait for Firebase write to complete
+      await updatePromise;
+      const totalTime = Date.now() - startTime;
+      expect(totalTime).toBeGreaterThan(2000); // Firebase took 2 seconds
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle multiple rapid updates correctly', async () => {
+      const updates1 = { name: 'Update 1' };
+      const updates2 = { name: 'Update 2' };
+      const updates3 = { name: 'Update 3' };
+
+      // Execute rapid updates
+      await Promise.all([
+        firstValueFrom(service.updateList('list1', updates1)),
+        firstValueFrom(service.updateList('list1', updates2)),
+        firstValueFrom(service.updateList('list1', updates3))
+      ]);
+
+      // All updates should trigger local state updates
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalledTimes(3);
+      expect(firebaseDataSpy.updateListInFirebase).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle Firebase write failure gracefully', async () => {
+      firebaseDataSpy.updateListInFirebase.mockRejectedValue(
+        new Error('Network error')
+      );
+
+      const updates = { name: 'Updated' };
+
+      try {
+        await firstValueFrom(service.updateList('list1', updates));
+      } catch (error) {
+        // Expected to fail
+      }
+
+      // Local state should still have been updated optimistically
+      expect(firebaseDataSpy.updateLocalLists).toHaveBeenCalled();
     });
   });
 });
