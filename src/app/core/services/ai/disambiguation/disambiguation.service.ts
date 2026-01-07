@@ -25,6 +25,7 @@ import { AIMessagingService, ErrorContext, ValidationRules } from '../ai-messagi
 import { CircuitBreakerService } from '../circuit-breaker.service';
 import { ArticleMatcherService } from './article-matcher.service';
 import { ListSelectionService } from './list-selection.service';
+import { MultiItemProcessorService } from './multi-item-processor.service';
 
 @Injectable({
   providedIn: 'root'
@@ -41,7 +42,8 @@ export class DisambiguationService {
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService,
     private articleMatcher: ArticleMatcherService,
-    private listSelection: ListSelectionService
+    private listSelection: ListSelectionService,
+    private multiItemProcessor: MultiItemProcessorService
   ) {}
 
   // ========================================
@@ -454,32 +456,26 @@ export class DisambiguationService {
     action: MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    const currentItem = action.items[action.currentItemIndex];
-
-    const skippedItem: ProcessedItem = {
-      item: currentItem,
-      skipped: true,
-      skipReason: selectedOption.skipReason || 'Übersprungen',
-      originalText: currentItem.itemName
-    };
-
-    action.processedItems.push(skippedItem);
-    action.currentItemIndex++;
-
-    return this.processMultiItemSequentially(action);
+    return this.multiItemProcessor.handleSequentialSkip(
+      action,
+      selectedOption,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.addArticleToList(articleId, listId, amount)
+    );
   }
 
   private async handleMultiItemChoice(
     pendingAction: MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    let selectedArticle: Article | null = null;
-
-    if (selectedOption.type === 'existing' && selectedOption.article) {
-      selectedArticle = selectedOption.article;
-    }
-
-    return this.processCurrentItemAndContinue(pendingAction, selectedArticle);
+    return this.multiItemProcessor.handleMultiItemChoice(
+      pendingAction,
+      selectedOption,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.addArticleToList(articleId, listId, amount)
+    );
   }
 
   // ========================================
@@ -489,264 +485,48 @@ export class DisambiguationService {
   /**
    * Processes multiple items sequentially with disambiguation
    *
+   * Delegates to MultiItemProcessorService for sequential processing.
    * Handles multi-item additions by processing each item one at a time,
    * requesting disambiguation when needed. Maintains context across items.
    *
    * @param action - Multi-item pending action containing array of items to process
    * @returns Promise resolving to execution result (disambiguation prompt or completion)
    *
-   * @example
-   * ```typescript
-   * const action: MultiItemPendingAction = {
-   *   type: 'add_multi_items_to_list',
-   *   items: [
-   *     { itemName: 'Milch', quantity: '1L' },
-   *     { itemName: 'Brot', quantity: undefined },
-   *     { itemName: 'Bananen', quantity: '500g' }
-   *   ],
-   *   currentIndex: 0,
-   *   listId: 'list-123',
-   *   listName: 'Einkaufen',
-   *   processedItems: []
-   * };
-   *
-   * const result = await service.processMultiItemSequentially(action);
-   * // First call: Returns disambiguation for "Milch"
-   * // After user selects: Processes "Milch", returns disambiguation for "Brot"
-   * // Continues until all items processed
-   * ```
-   *
-   * @see {@link processCurrentItemAndContinue} for single item processing
+   * @see {@link MultiItemProcessorService.processMultiItemSequentially} for implementation
    * @see {@link MultiItemPendingAction} for action structure
    */
   async processMultiItemSequentially(action: MultiItemPendingAction): Promise<AIExecutionResult> {
-    console.log(`🎯 Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
-
-    // Safety checks
-    if (!action.items || action.items.length === 0) {
-      return { success: false, message: '❌ Keine Artikel zu verarbeiten.' };
-    }
-
-    if (action.currentItemIndex > 20) {
-      console.error('🎯 SAFETY: Too many iterations - stopping');
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    // Check completion
-    if (action.currentItemIndex >= action.items.length) {
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    const currentItem = action.items[action.currentItemIndex];
-    if (!currentItem) {
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    try {
-      const disambiguationOptions = await this.getDisambiguationOptions(currentItem.itemName);
-      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-
-      if (existingOptions.length > 0) {
-        // Mark as sequential processing
-        (action as any).isMultiItemSequential = true;
-        (action as any).isFromRecipe = true;
-        action.itemName = currentItem.itemName;
-
-        const message = `"${currentItem.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`;
-
-        return {
-          success: true,
-          message,
-          needsUserInput: true,
-          disambiguationOptions,
-          pendingAction: action
-        };
-      }
-
-      // No disambiguation needed - create new article and continue
-      return this.processCurrentItemAndContinue(action, null);
-
-    } catch (error) {
-      console.error('🎯 Error in sequential processing:', error);
-
-      const failedItem: ProcessedItem = {
-        item: currentItem,
-        failed: true,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        originalText: currentItem.itemName
-      };
-
-      action.processedItems.push(failedItem);
-      action.currentItemIndex++;
-
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          this.processMultiItemSequentially(action).then(resolve);
-        }, 0);
-      });
-    }
+    return this.multiItemProcessor.processMultiItemSequentially(
+      action,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.addArticleToList(articleId, listId, amount)
+    );
   }
 
   /**
    * Processes the current item in a multi-item sequence and continues to the next
    *
-   * Handles article creation (if needed), adds to list, and continues sequential processing.
-   * This method is tightly coupled with processMultiItemSequentially and should remain in this service.
+   * Delegates to MultiItemProcessorService. Handles article creation (if needed),
+   * adds to list, and continues sequential processing.
    *
    * @param action - Multi-item pending action
    * @param selectedArticle - Article selected by user (null if creating new)
    * @returns Promise resolving to next step in sequence
+   *
+   * @see {@link MultiItemProcessorService.processCurrentItemAndContinue} for implementation
    */
   async processCurrentItemAndContinue(
     action: MultiItemPendingAction,
     selectedArticle: Article | null
   ): Promise<AIExecutionResult> {
-    const currentItem = action.items[action.currentItemIndex];
-
-    if (!currentItem) {
-      action.currentItemIndex++;
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    const targetListId = (action as any).confirmedTargetListId;
-    const targetListName = (action as any).confirmedTargetListName;
-
-    if (!targetListId || !targetListName) {
-      return {
-        success: false,
-        message: '❌ Fehler: Keine Zielliste bestätigt.'
-      };
-    }
-
-    try {
-      let articleId: string;
-
-      if (selectedArticle) {
-        articleId = selectedArticle.id;
-      } else {
-        // Create new article with enhanced suggestions
-        const suggestions = await this.getEnhancedSuggestions(currentItem.itemName);
-        const articleData = {
-          name: currentItem.itemName,
-          amount: currentItem.quantity || '',
-          departmentId: suggestions.departmentId,
-          icon: suggestions.icon
-        };
-
-        const newArticle = await this.dataService.createArticle(articleData).toPromise();
-        if (!newArticle) {
-          throw new Error(`Failed to create article: ${currentItem.itemName}`);
-        }
-        articleId = newArticle.id;
-      }
-
-      // Add to target list atomically
-      await this.addArticleToList(articleId, targetListId, currentItem.quantity || '');
-
-      const processedItem: any = {
-        item: currentItem,
-        articleId,
-        disambiguationResolved: true,
-        quantity: currentItem.quantity || '',
-        originalText: currentItem.itemName,
-        addedToList: true,
-        addedToListId: targetListId,
-        addedToListName: targetListName
-      };
-
-      action.processedItems.push(processedItem);
-      action.currentItemIndex++;
-
-      return this.processMultiItemSequentially(action);
-
-    } catch (error) {
-      console.error('🎯 ERROR PROCESSING CURRENT ITEM:', error);
-
-      const failedItem: any = {
-        item: currentItem,
-        failed: true,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        originalText: currentItem.itemName
-      };
-
-      action.processedItems.push(failedItem);
-      action.currentItemIndex++;
-
-      return this.processMultiItemSequentially(action);
-    }
-  }
-
-  private async executeMultiItemFinalAction(action: MultiItemPendingAction): Promise<AIExecutionResult> {
-    const addedItems = action.processedItems.filter(p => (p as any).addedToList);
-    const skippedItems = action.processedItems.filter(p => p.skipped);
-    const failedItems = action.processedItems.filter(p => p.failed);
-
-    if (addedItems.length === 0 && skippedItems.length === 0) {
-      return { success: false, message: '❌ Keine Artikel konnten verarbeitet werden.' };
-    }
-
-    const targetListId = (action as any).confirmedTargetListId;
-    const targetListName = (action as any).confirmedTargetListName;
-
-    let message = this.buildFinalMessage(addedItems, skippedItems, failedItems, targetListName);
-
-    let conversationContext: any = undefined;
-    let followUpPrompt: string | undefined = undefined;
-
-    if (targetListId && targetListName && addedItems.length > 0) {
-      conversationContext = {
-        lastAction: {
-          type: 'article_added' as const,
-          listId: targetListId,
-          listName: targetListName,
-          articleName: `${addedItems.length} Artikel`,
-          timestamp: new Date()
-        },
-        waitingForArticles: {
-          listId: targetListId,
-          listName: targetListName,
-          prompt: 'Multi-item processing completed'
-        }
-      };
-
-      followUpPrompt = `Möchtest du noch weitere Artikel zu "${targetListName}" hinzufügen?`;
-    }
-
-    return {
-      success: true,
-      message: message,
-      listId: targetListId,
-      conversationContext,
-      followUpPrompt
-    };
-  }
-
-  private buildFinalMessage(
-    addedItems: any[],
-    skippedItems: any[],
-    failedItems: any[],
-    targetListName?: string
-  ): string {
-    let message = '';
-
-    if (addedItems.length > 0) {
-      const addedSummary = addedItems.map(p =>
-        `"${p.item.itemName}"${p.quantity ? ` (${p.quantity})` : ''}`
-      );
-      message += `✅ ${addedItems.length} Artikel erfolgreich zu "${targetListName || 'Liste'}" hinzugefügt:\n${addedSummary.join(', ')}`;
-    }
-
-    if (skippedItems.length > 0) {
-      const skippedSummary = skippedItems.map(p => `"${p.originalText || p.item.itemName}"`);
-      message += `${message ? '\n\n' : ''}⏭️ ${skippedItems.length} Artikel übersprungen:\n${skippedSummary.join(', ')}`;
-    }
-
-    if (failedItems.length > 0) {
-      const failedSummary = failedItems.map(p => `"${p.originalText || p.item.itemName}"`);
-      message += `${message ? '\n\n' : ''}❌ ${failedItems.length} Artikel fehlgeschlagen:\n${failedSummary.join(', ')}`;
-    }
-
-    return message;
+    return this.multiItemProcessor.processCurrentItemAndContinue(
+      action,
+      selectedArticle,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.addArticleToList(articleId, listId, amount)
+    );
   }
 
   // ========================================
