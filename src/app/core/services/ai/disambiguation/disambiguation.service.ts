@@ -26,6 +26,7 @@ import { CircuitBreakerService } from '../circuit-breaker.service';
 import { ArticleMatcherService } from './article-matcher.service';
 import { ListSelectionService } from './list-selection.service';
 import { MultiItemProcessorService } from './multi-item-processor.service';
+import { ArticleExecutionService } from './article-execution.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,7 +44,8 @@ export class DisambiguationService {
     private circuitBreaker: CircuitBreakerService,
     private articleMatcher: ArticleMatcherService,
     private listSelection: ListSelectionService,
-    private multiItemProcessor: MultiItemProcessorService
+    private multiItemProcessor: MultiItemProcessorService,
+    private articleExecution: ArticleExecutionService
   ) {}
 
   // ========================================
@@ -675,377 +677,61 @@ export class DisambiguationService {
   // ========================================
 
   private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    try {
-      const targetInfo = this.getTargetListInfo(action);
-
-      if (targetInfo.listName) {
-        const targetList = await this.findTargetList(targetInfo);
-
-        if (!targetList) {
-          return {
-            success: false,
-            message: `❌ Liste "${targetInfo.listName}" nicht gefunden.`
-          };
-        }
-
-        return this.addExistingArticleToList(targetList, article, action);
-
-      } else {
-        return this.handleNoTargetList(action, article);
-      }
-
-    } catch (error) {
-      console.error('🎯 Error executing action with existing article:', error);
-      return {
-        success: false,
-        message: `❌ Fehler beim Hinzufügen von "${article.name}".`
-      };
-    }
+    return this.articleExecution.executeActionWithArticle(
+      action,
+      article,
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      () => this.getListSelectionOptions(),
+      (options) => this.convertListsToDisambiguationOptions(options)
+    );
   }
 
   private async executeActionWithNewArticle(pendingAction: PendingAction): Promise<AIExecutionResult> {
-    try {
-      // Create new article with enhanced suggestions
-      const suggestions = await this.getEnhancedSuggestions(pendingAction.itemName);
-      const articleData = {
-        name: pendingAction.itemName,
-        amount: pendingAction.extractedQuantity || '',
-        departmentId: suggestions.departmentId,
-        icon: suggestions.icon
-      };
-
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
-
-      if (!newArticle) {
-        return {
-          success: false,
-          message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
-        };
-      }
-
-      // Handle target list
-      const targetInfo = this.getTargetListInfo(pendingAction);
-      if (targetInfo.listName) {
-        const targetList = await this.findTargetList(targetInfo);
-
-        if (!targetList) {
-          return {
-            success: false,
-            message: `❌ Liste "${targetInfo.listName}" nicht gefunden.`
-          };
-        }
-
-        return this.addNewArticleToList(targetList, newArticle, pendingAction);
-
-      } else {
-        return this.handleNoTargetListForNewArticle(pendingAction, newArticle);
-      }
-
-    } catch (error) {
-      console.error('🎯 Error executing action with new article:', error);
-      return {
-        success: false,
-        message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
-      };
-    }
+    return this.articleExecution.executeActionWithNewArticle(
+      pendingAction,
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      () => this.getListSelectionOptions(),
+      (options) => this.convertListsToDisambiguationOptions(options)
+    );
   }
 
   // ========================================
-  // HELPER METHODS
+  // HELPER METHODS (Delegated to ArticleExecutionService)
   // ========================================
 
-  private getTargetListInfo(action: PendingAction): {listName?: string, listId?: string} {
-    return {
-      listName: action.listName,
-      listId: (action as any).conversationListId
-    };
-  }
-
-  private async findTargetList(targetInfo: {listName?: string, listId?: string}): Promise<any> {
-    if (targetInfo.listId) {
-      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-      const listById = lists?.find(list => list.id === targetInfo.listId);
-      if (listById) return listById;
-    }
-
-    if (targetInfo.listName) {
-      return this.listSelection.findListByName(targetInfo.listName);
-    }
-
-    return null;
-  }
-
+  /**
+   * Delegates to ArticleExecutionService
+   */
   private async addArticleToList(articleId: string, listId: string, amount: string): Promise<void> {
-    // Use repository's addArticleToList for optimistic UI updates
-    const result = await this.dataService.addArticleToList(listId, articleId).pipe(take(1)).toPromise();
-
-    if (!result) {
-      throw new Error(`Failed to add article to list`);
-    }
-
-    // Update amount if specified
-    if (amount) {
-      await this.dataService.updateListItemAmount(listId, articleId, amount).pipe(take(1)).toPromise();
-    }
+    return this.articleExecution.addArticleToList(articleId, listId, amount);
   }
 
+  /**
+   * Delegates to ArticleExecutionService
+   */
   private async addMultipleArticlesToList(
     targetList: any,
     multipleArticleIds: string[],
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
-    // Use repository's addMultipleArticlesToList for optimistic UI updates and race condition prevention
-    const updateResult = await this.dataService.addMultipleArticlesToList(targetList.id, multipleArticleIds)
-      .pipe(take(1)).toPromise();
-
-    if (updateResult) {
-      const processedItems = (pendingAction as any).processedItems || [];
-      const itemSummary = processedItems
-        .map((p: any) => `"${p.item?.itemName || p.originalText}"${p.item?.quantity ? ` (${p.item.quantity})` : ''}`)
-        .join(', ');
-
-      return {
-        success: true,
-        message: `✅ ${multipleArticleIds.length} Artikel zur Liste "${targetList.name}" hinzugefügt:\n${itemSummary}`,
-        listId: targetList.id
-      };
-    } else {
-      return {
-        success: false,
-        message: '❌ Fehler beim Hinzufügen der Artikel zur Liste.'
-      };
-    }
+    return this.articleExecution.addMultipleArticlesToList(targetList, multipleArticleIds, pendingAction);
   }
 
+  /**
+   * Delegates to ArticleExecutionService
+   */
   private async addSingleArticleToList(
     targetList: any,
     articleData: any,
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
-    let articleId = articleData.id;
-
-    if (!articleId) {
-      // Check for disambiguation BEFORE creating new article
-      const disambiguationOptions = await this.getDisambiguationOptions(articleData.name);
-      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-
-      if (existingOptions.length > 0) {
-        const newPendingAction: PendingAction = {
-          type: 'add_item',
-          originalInput: pendingAction.originalInput,
-          itemName: articleData.name,
-          extractedQuantity: articleData.amount,
-          listName: targetList.name,
-          suggestedDepartment: articleData.departmentId || 'miscellaneous',
-          conversationListId: targetList.id
-        } as any;
-
-        const enhancedOptions = [
-          ...disambiguationOptions,
-          {
-            id: 'skip_item',
-            displayName: `"${articleData.name}" überspringen`,
-            type: 'skip' as const,
-            confidence: 1.0,
-            icon: '⏭️'
-          }
-        ];
-
-        return {
-          success: true,
-          message: `Für "${articleData.name}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?`,
-          needsUserInput: true,
-          disambiguationOptions: enhancedOptions,
-          pendingAction: newPendingAction
-        };
-      }
-
-      // Create new article
-      const suggestions = await this.getEnhancedSuggestions(articleData.name);
-      const newArticle = await this.dataService.createArticle({
-        name: articleData.name,
-        amount: articleData.amount || '',
-        departmentId: suggestions.departmentId,
-        icon: suggestions.icon
-      }).pipe(take(1), timeout(5000)).toPromise();
-
-      if (!newArticle) {
-        return {
-          success: false,
-          message: '❌ Fehler beim Erstellen des Artikels.'
-        };
-      }
-      articleId = newArticle.id;
-    }
-
-    // Add article to list
-    await this.addArticleToList(articleId, targetList.id, articleData.amount || '');
-
-    return {
-      success: true,
-      message: `✅ "${articleData.name}"${articleData.amount ? ` (${articleData.amount})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id
-    };
-  }
-
-  private async addExistingArticleToList(
-    targetList: any,
-    article: Article,
-    action: PendingAction
-  ): Promise<AIExecutionResult> {
-    await this.addArticleToList(article.id, targetList.id, action.extractedQuantity || article.amount || '');
-
-    const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
-
-    const conversationContext = {
-      lastAction: {
-        type: 'article_added' as const,
-        listId: targetList.id,
-        listName: targetList.name,
-        articleName: article.name,
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: targetList.id,
-        listName: targetList.name,
-        prompt: 'Conversation mode maintained'
-      }
-    };
-
-    return {
-      success: true,
-      message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id,
-      conversationContext: conversationContext,
-      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-    };
-  }
-
-  private async addNewArticleToList(
-    targetList: any,
-    newArticle: Article,
-    pendingAction: PendingAction
-  ): Promise<AIExecutionResult> {
-    await this.addArticleToList(newArticle.id, targetList.id, pendingAction.extractedQuantity || '');
-
-    const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
-
-    const conversationContext = {
-      lastAction: {
-        type: 'article_added' as const,
-        listId: targetList.id,
-        listName: targetList.name,
-        articleName: newArticle.name,
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: targetList.id,
-        listName: targetList.name,
-        prompt: 'Conversation mode maintained'
-      }
-    };
-
-    return {
-      success: true,
-      message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id,
-      conversationContext: conversationContext,
-      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-    };
-  }
-
-  private async handleNoTargetList(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    const listOptions = await this.getListSelectionOptions();
-
-    if (listOptions.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
-      };
-    }
-
-    if (listOptions.length === 1) {
-      // Use the only available list
-      const singleList = listOptions[0];
-      const targetList = await this.listSelection.findListByName(singleList.name);
-
-      if (targetList) {
-        return this.addExistingArticleToList(targetList, article, action);
-      }
-    }
-
-    // Multiple lists - ask user to choose
-    const listSelectionAction: PendingAction = {
-      type: 'select_list',
-      originalInput: action.originalInput,
-      itemName: article.name,
-      extractedQuantity: action.extractedQuantity,
-      listName: undefined,
-      suggestedDepartment: action.suggestedDepartment,
-      articleToAdd: {
-        id: article.id,
-        name: article.name,
-        amount: action.extractedQuantity || article.amount || '',
-        departmentId: article.departmentId || 'miscellaneous',
-        icon: article.icon || '📦'
-      }
-    };
-
-    const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
-    return {
-      success: true,
-      message: `Bitte wähle eine Liste.`,
-      needsUserInput: true,
-      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
-      pendingAction: listSelectionAction
-    };
-  }
-
-  private async handleNoTargetListForNewArticle(pendingAction: PendingAction, newArticle: Article): Promise<AIExecutionResult> {
-    const listOptions = await this.getListSelectionOptions();
-
-    if (listOptions.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
-      };
-    }
-
-    if (listOptions.length === 1) {
-      // Use the only available list
-      const singleList = listOptions[0];
-      const targetList = await this.listSelection.findListByName(singleList.name);
-
-      if (targetList) {
-        return this.addNewArticleToList(targetList, newArticle, pendingAction);
-      }
-    }
-
-    // Multiple lists - ask user to choose
-    const listSelectionAction: PendingAction = {
-      type: 'select_list',
-      originalInput: pendingAction.originalInput,
-      itemName: newArticle.name,
-      extractedQuantity: pendingAction.extractedQuantity,
-      listName: undefined,
-      suggestedDepartment: pendingAction.suggestedDepartment,
-      articleToAdd: {
-        id: newArticle.id,
-        name: newArticle.name,
-        amount: pendingAction.extractedQuantity || '',
-        departmentId: newArticle.departmentId || 'miscellaneous',
-        icon: newArticle.icon || '📦'
-      }
-    };
-
-    const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
-    return {
-      success: true,
-      message: `Bitte wähle eine Liste.`,
-      needsUserInput: true,
-      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
-      pendingAction: listSelectionAction
-    };
+    return this.articleExecution.addSingleArticleToList(
+      targetList,
+      articleData,
+      pendingAction,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName)
+    );
   }
 
 }
