@@ -605,6 +605,15 @@ export class FirebaseDataService {
 
             for (const [listId, ownerId] of listIds.entries()) {
               try {
+                // CRITICAL FIX: Validate ownerId before constructing path to prevent double-slash bug
+                if (!ownerId) {
+                  this.logger.error('data', `Skipping shared list ${listId}: missing ownerId from invitation`, {
+                    listId: listId,
+                    ownerId: ownerId
+                  });
+                  continue;
+                }
+
                 const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
                 const listDoc = await getDoc(listRef);
 
@@ -834,6 +843,16 @@ export class FirebaseDataService {
     const userId = this.authService.getCurrentUserId();
     if (!userId) {
       this.logger.warn('data', 'No user ID, cannot set up shared list listener');
+      return;
+    }
+
+    // CRITICAL FIX: Validate ownerId before constructing path to prevent double-slash bug
+    if (!list.ownerId) {
+      this.logger.error('data', `Cannot set up shared list listener for ${list.name} (${list.id}): missing ownerId`, {
+        listId: list.id,
+        listName: list.name,
+        ownerId: list.ownerId
+      });
       return;
     }
 
@@ -1114,6 +1133,16 @@ export class FirebaseDataService {
 
     // Set up a real-time listener for each shared list
     for (const list of sharedLists) {
+      // CRITICAL FIX: Validate ownerId before constructing path to prevent double-slash bug
+      if (!list.ownerId) {
+        this.logger.error('data', `Skipping shared list listener for ${list.name} (${list.id}): missing ownerId`, {
+          listId: list.id,
+          listName: list.name,
+          ownerId: list.ownerId
+        });
+        continue;
+      }
+
       const listRef = doc(this.firestore, `users-v2/${list.ownerId}/lists/${list.id}`);
 
       const unsubscribe = onSnapshot(listRef,
@@ -1227,6 +1256,15 @@ export class FirebaseDataService {
     mergedArticleIds: string[]
   ): Promise<void> {
     try {
+      // CRITICAL FIX: Validate ownerId before constructing path to prevent double-slash bug
+      if (!ownerId) {
+        this.logger.error('data', `Cannot write merged state for list ${listId}: missing ownerId`, {
+          listId: listId,
+          ownerId: ownerId
+        });
+        throw new Error(`Cannot write merged state: missing ownerId for list ${listId}`);
+      }
+
       const listPath = `users-v2/${ownerId}/lists/${listId}`;
       const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
 
