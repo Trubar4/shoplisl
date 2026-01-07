@@ -72,7 +72,7 @@ async function getListsFromOldLocation(): Promise<ListInfo[]> {
 
   const lists: ListInfo[] = [];
 
-  snapshot.forEach(doc => {
+  snapshot.forEach((doc: admin.firestore.QueryDocumentSnapshot) => {
     const data = doc.data();
     lists.push({
       id: doc.id,
