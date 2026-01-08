@@ -1325,6 +1325,69 @@ export class FirebaseDataService {
   }
 
   /**
+   * SAFETY: Update itemStates only using transaction
+   * Used for operations that don't modify articleIds (check, uncheck, amount update)
+   * Prevents race conditions when multiple users/devices update simultaneously
+   */
+  async updateItemStatesWithTransaction(
+    listId: string,
+    itemStateUpdates: { [articleId: string]: any },
+    operationDescription: string
+  ): Promise<void> {
+    try {
+      const list = this.getCurrentLists().find(l => l.id === listId);
+      if (!list) {
+        throw new Error(`List ${listId} not found`);
+      }
+
+      const ownerId = list.ownerId;
+      if (!ownerId) {
+        throw new Error('Cannot determine list owner');
+      }
+
+      const listPath = `users-v2/${ownerId}/lists/${listId}`;
+      const listRef = doc(this.firestore, listPath);
+
+      this.logger.info('data', `🔒 Starting transaction for ${operationDescription} in ${listPath}`);
+
+      await runTransaction(this.firestore, async (transaction) => {
+        // Step 1: Read latest server state
+        const listDoc = await transaction.get(listRef);
+
+        if (!listDoc.exists()) {
+          throw new Error(`List ${listId} not found in Firestore`);
+        }
+
+        const serverData = listDoc.data();
+        const serverItemStates = this.convertItemStatesFromFirestore(serverData['itemStates'] || {});
+
+        this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
+
+        // Step 2: Merge our updates with server state
+        const mergedItemStates = {
+          ...serverItemStates,  // Keep ALL server items
+          ...itemStateUpdates   // Apply our updates
+        };
+
+        // Step 3: Write merged state back
+        const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+
+        this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (updated ${Object.keys(itemStateUpdates).length})`);
+
+        transaction.update(listRef, {
+          itemStates: firestoreItemStates,
+          updatedAt: Timestamp.now()
+        });
+      });
+
+      this.logger.info('data', `✅ Transaction committed successfully for ${operationDescription}`);
+    } catch (error: any) {
+      this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove a shared list from the local state
    * Cleans up real-time listener and cached data
    */

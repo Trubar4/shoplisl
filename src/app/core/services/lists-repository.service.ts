@@ -764,11 +764,13 @@ export class ListsRepositoryService {
           return of(true);
         }
 
-        // Online - update Firebase directly and wait for completion
-        return from(this.firebaseData.updateListInFirebase(listId, {
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        })).pipe(
+        // SAFETY: Use transaction to prevent race conditions
+        // This ensures we read latest server state, merge with our changes, then write atomically
+        return from(this.firebaseData.updateItemStatesWithTransaction(
+          listId,
+          newItemStates,
+          `Mark ${articleIds.length} articles as checked`
+        )).pipe(
           map(() => true),
           catchError(error => {
             this.logger.error('data', `Error updating Firebase when marking ${articleIds.length} articles as checked`, error);
@@ -942,11 +944,17 @@ export class ListsRepositoryService {
           return of(true);
         }
 
-        // Online - update Firebase directly and wait for completion
-        return from(this.firebaseData.updateListInFirebase(listId, {
-          itemStates: newItemStates,
-          updatedAt: Timestamp.now()
-        })).pipe(
+        // SAFETY: Use transaction to prevent race conditions
+        // This ensures we read latest server state, merge with our change, then write atomically
+        const itemStateUpdate = {
+          [articleId]: newItemStates[articleId]
+        };
+
+        return from(this.firebaseData.updateItemStatesWithTransaction(
+          listId,
+          itemStateUpdate,
+          `Update amount for article ${articleId}`
+        )).pipe(
           map(() => true),
           catchError(error => {
             this.logger.error('data', 'Error updating Firebase when updating item amount', error);
