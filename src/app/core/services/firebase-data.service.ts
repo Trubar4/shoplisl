@@ -1707,14 +1707,19 @@ export class FirebaseDataService {
     serverIds: string[],
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
-    // CRITICAL FIX: Preserve articleIds when itemStates is empty (migration case)
-    // This prevents data loss when lists have articleIds but no itemStates yet
-    const hasItemStates = Object.keys(mergedItemStates).length > 0;
-    const hasArticleIds = localIds.length > 0 || serverIds.length > 0;
+    const itemStatesCount = Object.keys(mergedItemStates).length;
+    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
 
-    if (!hasItemStates && hasArticleIds) {
-      // Migration/edge case: articleIds exist but itemStates is empty
-      // Preserve articleIds by doing a simple union, preferring server order
+    // CRITICAL FIX: Detect migration/partial state
+    // If articleIds significantly outnumber itemStates, we're in migration or partial state
+    // This happens when:
+    // 1. Initial migration (articleIds exist, itemStates empty)
+    // 2. Partial migration (some articles checked, others not yet interacted with)
+    // In these cases, preserve ALL articleIds instead of filtering by itemStates
+    const isMigrationState = maxArticleIdsCount > itemStatesCount;
+
+    if (isMigrationState) {
+      // Migration mode: Preserve all articleIds via union
       const serverSet = new Set(serverIds);
       const merged = [...serverIds]; // Start with server order
 
@@ -1725,11 +1730,12 @@ export class FirebaseDataService {
         }
       }
 
-      this.logger.warn('data', `⚠️ Preserving ${merged.length} articleIds despite empty itemStates (migration case: ${serverIds.length} server + ${localIds.length} local)`);
+      this.logger.warn('data', `⚠️ Migration state: Preserving ${merged.length} articleIds (${itemStatesCount} have states, ${merged.length - itemStatesCount} pending)`);
       return merged;
     }
 
-    // Use merged itemStates as source of truth for which articles should exist
+    // Normal mode: Use itemStates as source of truth for which articles should exist
+    // This only runs when articleIds count == itemStates count (fully synchronized)
     const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
 
     // Start with server order as base, but only include articles that are in merged itemStates
