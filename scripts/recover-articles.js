@@ -167,7 +167,8 @@ async function recoverList(list, dryRun) {
 
     oldArticleIds.forEach(articleId => {
       itemStates[articleId] = {
-        checked: true,  // Set all recovered articles to CHECKED
+        articleId: articleId,
+        isChecked: true,  // Set all recovered articles to CHECKED (app uses "isChecked" not "checked")
         addedAt: timestamp
       };
     });
