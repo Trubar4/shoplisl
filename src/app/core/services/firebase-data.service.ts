@@ -1707,6 +1707,28 @@ export class FirebaseDataService {
     serverIds: string[],
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
+    // CRITICAL FIX: Preserve articleIds when itemStates is empty (migration case)
+    // This prevents data loss when lists have articleIds but no itemStates yet
+    const hasItemStates = Object.keys(mergedItemStates).length > 0;
+    const hasArticleIds = localIds.length > 0 || serverIds.length > 0;
+
+    if (!hasItemStates && hasArticleIds) {
+      // Migration/edge case: articleIds exist but itemStates is empty
+      // Preserve articleIds by doing a simple union, preferring server order
+      const serverSet = new Set(serverIds);
+      const merged = [...serverIds]; // Start with server order
+
+      // Add local IDs that aren't in server yet
+      for (const localId of localIds) {
+        if (!serverSet.has(localId)) {
+          merged.push(localId);
+        }
+      }
+
+      this.logger.warn('data', `⚠️ Preserving ${merged.length} articleIds despite empty itemStates (migration case: ${serverIds.length} server + ${localIds.length} local)`);
+      return merged;
+    }
+
     // Use merged itemStates as source of truth for which articles should exist
     const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
 
