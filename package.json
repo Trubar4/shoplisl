@@ -14,7 +14,8 @@
     "firebase:emulator": "firebase emulators:start",
     "i18n:extract": "ng extract-i18n",
     "backup:firestore": "echo 'See scripts/backup-firestore.ts for backup instructions'",
-    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'"
+    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'",
+    "recover:articles": "node scripts/recover-articles.js"
   },
   "private": true,
   "dependencies": {
@@ -47,6 +48,7 @@
     "@types/jasmine": "~5.1.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "firebase-admin": "^13.6.0",
     "firebase-tools": "^14.5.1",
     "jasmine-core": "~5.7.0",
     "jsdom": "^27.0.1",

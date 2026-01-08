@@ -1,55 +1,41 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
 /**
- * Article IDs Recovery Script
+ * Article IDs Recovery Script (CommonJS version)
  *
- * Recovers articleIds from old database location (users/shared-shoplisl-user/lists)
- * to new database location (users-v2/{ownerId}/lists)
- *
- * UPDATED: Now ensures all recovered articles are set to CHECKED state
+ * Recovers articleIds from old database location and sets all articles to CHECKED state
  *
  * Usage:
- *   npx ts-node scripts/recover-article-ids.ts [--dry-run] [--force]
- *
- * Options:
- *   --dry-run    Preview without writing to Firestore
- *   --force      Skip confirmation prompt
- *   --list=<id>  Recover only specific list by ID (for testing)
+ *   npm run recover:articles -- --dry-run
+ *   npm run recover:articles -- --force
+ *   npm run recover:articles -- --list=<listId>
  */
 
-import * as admin from 'firebase-admin';
-import * as readline from 'readline';
-import * as path from 'path';
-import * as fs from 'fs';
-import { fileURLToPath } from 'url';
-
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const admin = require('firebase-admin');
+const readline = require('readline');
+const path = require('path');
+const fs = require('fs');
 
 // Initialize Firebase Admin
 try {
-  if (!admin.apps || admin.apps.length === 0) {
-    // Look for service account key in project root
-    const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
+  const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
 
-    if (fs.existsSync(serviceAccountPath)) {
-      console.log('✅ Found service account key, initializing...\n');
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: 'shoplisl'
-      });
-    } else {
-      console.error('❌ Service account key not found: serviceAccountKey.json');
-      console.error('\n📝 To get the service account key:');
-      console.error('  1. Go to https://console.firebase.google.com/project/shoplisl/settings/serviceaccounts/adminsdk');
-      console.error('  2. Click "Generate new private key"');
-      console.error('  3. Save as serviceAccountKey.json in project root');
-      console.error('  4. Add serviceAccountKey.json to .gitignore (already done)\n');
-      process.exit(1);
-    }
+  if (!fs.existsSync(serviceAccountPath)) {
+    console.error('❌ Service account key not found: serviceAccountKey.json');
+    console.error('\n📝 To get the service account key:');
+    console.error('  1. Go to https://console.firebase.google.com/project/shoplisl/settings/serviceaccounts/adminsdk');
+    console.error('  2. Click "Generate new private key"');
+    console.error('  3. Save as serviceAccountKey.json in project root\n');
+    process.exit(1);
   }
-} catch (error: any) {
+
+  console.log('✅ Found service account key, initializing...\n');
+  const serviceAccount = require(serviceAccountPath);
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: 'shoplisl'
+  });
+} catch (error) {
   console.error('❌ Failed to initialize Firebase Admin SDK');
   console.error('\nError:', error.message);
   process.exit(1);
@@ -57,101 +43,54 @@ try {
 
 const db = admin.firestore();
 
-interface RecoveryOptions {
-  dryRun: boolean;
-  force: boolean;
-  listId?: string;
-}
-
-interface ListInfo {
-  id: string;
-  name: string;
-  ownerId?: string;
-}
-
-/**
- * Parse command line arguments
- */
-function parseArgs(): RecoveryOptions {
+// Parse command line arguments
+function parseArgs() {
   const args = process.argv.slice(2);
-  const options: RecoveryOptions = {
-    dryRun: false,
-    force: false
+  return {
+    dryRun: args.includes('--dry-run'),
+    force: args.includes('--force'),
+    listId: args.find(arg => arg.startsWith('--list='))?.split('=')[1]
   };
-
-  args.forEach(arg => {
-    if (arg === '--dry-run') {
-      options.dryRun = true;
-    }
-    if (arg === '--force') {
-      options.force = true;
-    }
-    if (arg.startsWith('--list=')) {
-      options.listId = arg.split('=')[1];
-    }
-  });
-
-  return options;
 }
 
-/**
- * Get all lists from old location
- */
-async function getListsFromOldLocation(): Promise<ListInfo[]> {
+// Get all lists from old location
+async function getListsFromOldLocation() {
   console.log('📖 Reading lists from OLD location: users/shared-shoplisl-user/lists\n');
 
   const listsRef = db.collection('users').doc('shared-shoplisl-user').collection('lists');
   const snapshot = await listsRef.get();
 
-  const lists: ListInfo[] = [];
-
-  snapshot.forEach((doc: admin.firestore.QueryDocumentSnapshot) => {
+  const lists = [];
+  snapshot.forEach(doc => {
     const data = doc.data();
     lists.push({
       id: doc.id,
-      name: data['name'] || 'Unnamed',
-      ownerId: data['ownerId']
+      name: data.name || 'Unnamed',
+      ownerId: data.ownerId
     });
   });
 
   return lists;
 }
 
-/**
- * Get list details from old location
- */
-async function getOldListData(listId: string): Promise<any> {
+// Get list data from old location
+async function getOldListData(listId) {
   const docRef = db.collection('users').doc('shared-shoplisl-user').collection('lists').doc(listId);
   const doc = await docRef.get();
-
-  if (!doc.exists) {
-    return null;
-  }
-
-  return doc.data();
+  return doc.exists ? doc.data() : null;
 }
 
-/**
- * Get list details from new location
- */
-async function getNewListData(ownerId: string, listId: string): Promise<any> {
+// Get list data from new location
+async function getNewListData(ownerId, listId) {
   const docRef = db.collection('users-v2').doc(ownerId).collection('lists').doc(listId);
   const doc = await docRef.get();
-
-  if (!doc.exists) {
-    return null;
-  }
-
-  return doc.data();
+  return doc.exists ? doc.data() : null;
 }
 
-/**
- * Find the ownerId for a list by checking all users-v2
- */
-async function findOwnerIdForList(listId: string, listName: string): Promise<string | null> {
+// Find ownerId by searching users-v2
+async function findOwnerIdForList(listId, listName) {
   console.log(`   🔍 Searching for list "${listName}" in users-v2...`);
 
-  // Get all users from users-v2
   const usersSnapshot = await db.collection('users-v2').get();
 
   for (const userDoc of usersSnapshot.docs) {
@@ -169,16 +108,14 @@ async function findOwnerIdForList(listId: string, listName: string): Promise<str
   return null;
 }
 
-/**
- * Recover articleIds for a single list
- */
-async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
+// Recover a single list
+async function recoverList(list, dryRun) {
   console.log(`\n${'─'.repeat(70)}`);
   console.log(`📦 Processing: ${list.name} (${list.id})`);
   console.log(`${'─'.repeat(70)}`);
 
   try {
-    // Step 1: Read from OLD location
+    // Read from OLD location
     console.log(`   📖 Reading from OLD: users/shared-shoplisl-user/lists/${list.id}`);
     const oldData = await getOldListData(list.id);
 
@@ -195,22 +132,22 @@ async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
       return false;
     }
 
-    // Step 2: Determine ownerId
+    // Determine ownerId
     let ownerId = list.ownerId || oldData.ownerId;
 
     if (!ownerId) {
-      console.log(`   ⚠️  No ownerId found in old data, searching users-v2...`);
+      console.log(`   ⚠️  No ownerId found, searching users-v2...`);
       ownerId = await findOwnerIdForList(list.id, list.name);
 
       if (!ownerId) {
-        console.log(`   ❌ Cannot determine ownerId - skipping this list`);
+        console.log(`   ❌ Cannot determine ownerId - skipping`);
         return false;
       }
     }
 
     console.log(`   👤 Owner ID: ${ownerId}`);
 
-    // Step 3: Read from NEW location
+    // Read from NEW location
     const newPath = `users-v2/${ownerId}/lists/${list.id}`;
     console.log(`   📖 Reading from NEW: ${newPath}`);
 
@@ -218,18 +155,17 @@ async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
 
     if (!newData) {
       console.log(`   ❌ List not found in new location: ${newPath}`);
-      console.log(`   ℹ️  You may need to migrate the entire list structure first`);
       return false;
     }
 
     const currentArticleIds = newData.articleIds || [];
     console.log(`   📊 Current articles in new location: ${currentArticleIds.length}`);
 
-    // Step 4: Create itemStates for all recovered articles (CHECKED state)
-    const itemStates: Record<string, { checked: boolean; addedAt: admin.firestore.Timestamp }> = {};
+    // Create itemStates for all recovered articles (CHECKED state)
+    const itemStates = {};
     const timestamp = admin.firestore.Timestamp.now();
 
-    oldArticleIds.forEach((articleId: string) => {
+    oldArticleIds.forEach(articleId => {
       itemStates[articleId] = {
         checked: true,  // Set all recovered articles to CHECKED
         addedAt: timestamp
@@ -238,7 +174,7 @@ async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
 
     console.log(`   ✅ Created itemStates for ${oldArticleIds.length} articles (all CHECKED)`);
 
-    // Step 5: Show recovery plan
+    // Show recovery plan
     console.log(`\n   📋 RECOVERY PLAN:`);
     console.log(`      OLD location has: ${oldArticleIds.length} articles`);
     console.log(`      NEW location has: ${currentArticleIds.length} articles`);
@@ -248,7 +184,7 @@ async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
       console.log(`      ⚠️  NEW location has different number of articles!`);
     }
 
-    // Step 6: Write to new location
+    // Write to new location
     if (!dryRun) {
       console.log(`\n   💾 Writing ${oldArticleIds.length} articleIds with CHECKED state to: ${newPath}`);
 
@@ -269,20 +205,14 @@ async function recoverList(list: ListInfo, dryRun: boolean): Promise<boolean> {
 
     return true;
 
-  } catch (error: any) {
+  } catch (error) {
     console.error(`   ❌ ERROR: ${error.message}`);
     return false;
   }
 }
 
-/**
- * Confirm recovery operation
- */
-async function confirmRecovery(lists: ListInfo[], dryRun: boolean): Promise<boolean> {
-  if (dryRun) {
-    return true; // No confirmation needed for dry run
-  }
-
+// Confirm recovery
+async function confirmRecovery(lists) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -306,10 +236,8 @@ async function confirmRecovery(lists: ListInfo[], dryRun: boolean): Promise<bool
   });
 }
 
-/**
- * Main recovery function
- */
-async function recover(): Promise<void> {
+// Main recovery function
+async function recover() {
   console.log('🚀 Starting Article IDs Recovery...\n');
   console.log('This script will:');
   console.log('1. Read articleIds from OLD location: users/shared-shoplisl-user/lists');
@@ -324,10 +252,9 @@ async function recover(): Promise<void> {
   }
 
   // Get lists to recover
-  let listsToRecover: ListInfo[];
+  let listsToRecover;
 
   if (options.listId) {
-    // Recover specific list only
     console.log(`📌 Recovering specific list: ${options.listId}\n`);
     const oldData = await getOldListData(options.listId);
 
@@ -342,7 +269,6 @@ async function recover(): Promise<void> {
       ownerId: oldData.ownerId
     }];
   } else {
-    // Recover all lists
     listsToRecover = await getListsFromOldLocation();
 
     if (listsToRecover.length === 0) {
@@ -356,9 +282,9 @@ async function recover(): Promise<void> {
     });
   }
 
-  // Confirm recovery (unless --force or --dry-run)
+  // Confirm recovery
   if (!options.force && !options.dryRun) {
-    const confirmed = await confirmRecovery(listsToRecover, options.dryRun);
+    const confirmed = await confirmRecovery(listsToRecover);
     if (!confirmed) {
       console.log('\n❌ Recovery cancelled by user');
       process.exit(0);
@@ -370,15 +296,10 @@ async function recover(): Promise<void> {
   console.log('='.repeat(70));
 
   // Recover each list
-  const results = {
-    success: 0,
-    failed: 0,
-    skipped: 0
-  };
+  const results = { success: 0, failed: 0 };
 
   for (const list of listsToRecover) {
     const success = await recoverList(list, options.dryRun);
-
     if (success) {
       results.success++;
     } else {

@@ -1,6 +1,6 @@
-# Firestore Backup & Restore Scripts
+# Firestore Scripts
 
-**Purpose:** Safe backup and restore of Firestore data
+**Purpose:** Safe backup, restore, and recovery of Firestore data
 **Location:** `/scripts`
 
 ---
@@ -12,6 +12,7 @@ These scripts provide command-line tools to:
 - ✅ Restore Firestore data from backups
 - ✅ Migrate data between Firebase projects
 - ✅ Create disaster recovery snapshots
+- ✅ Recover article IDs from old database locations
 
 ---
 
@@ -330,5 +331,109 @@ gpg -d backup-encrypted.tar.gz.gpg | tar -xzf -
 
 ---
 
+## 🔄 Article Recovery
+
+### Purpose
+
+The recovery script recovers `articleIds` from the old database location (`users/shared-shoplisl-user/lists`) and writes them to the new location (`users-v2/{ownerId}/lists`). **All recovered articles are set to CHECKED state.**
+
+### Prerequisites
+
+```bash
+# Ensure firebase-admin is installed
+npm install
+
+# Set up service account key (required)
+# Place serviceAccountKey.json in project root
+```
+
+### Usage
+
+**Dry Run (Preview):**
+```bash
+npm run recover:articles -- --dry-run
+```
+
+**Recover All Lists:**
+```bash
+npm run recover:articles
+```
+
+**Recover Specific List:**
+```bash
+npm run recover:articles -- --list=<listId>
+```
+
+**Skip Confirmation:**
+```bash
+npm run recover:articles -- --force
+```
+
+### What It Does
+
+1. 📖 Reads `articleIds` from OLD location: `users/shared-shoplisl-user/lists`
+2. 🔍 Finds the corresponding list in NEW location: `users-v2/{ownerId}/lists`
+3. ✅ Creates `itemStates` for all articles with `checked: true`
+4. 💾 Updates the list with recovered `articleIds` and `itemStates`
+5. 📊 Preserves original data in OLD location (no deletion)
+
+### Output
+
+The script provides detailed output:
+- Lists found in old location
+- Articles count for each list
+- Recovery plan showing what will change
+- Success/failure status for each list
+- Summary of recovered lists
+
+### Example
+
+```bash
+$ npm run recover:articles -- --dry-run
+
+🚀 Starting Article IDs Recovery...
+
+Found 3 lists in old location:
+1. Shopping List (abc123)
+2. Favorites (def456)
+3. Weekly Menu (ghi789)
+
+──────────────────────────────────────────────────────────────────────
+📦 Processing: Shopping List (abc123)
+──────────────────────────────────────────────────────────────────────
+   📖 Reading from OLD: users/shared-shoplisl-user/lists/abc123
+   ✅ Found 25 articles in old location
+   👤 Owner ID: user123
+   📖 Reading from NEW: users-v2/user123/lists/abc123
+   📊 Current articles in new location: 0
+   ✅ Created itemStates for 25 articles (all CHECKED)
+
+   📋 RECOVERY PLAN:
+      OLD location has: 25 articles
+      NEW location has: 0 articles
+      Will set all recovered articles to: CHECKED ✓
+
+   🔍 DRY RUN: Would write 25 articleIds (all CHECKED) to: users-v2/user123/lists/abc123
+
+══════════════════════════════════════════════════════════════════════
+📊 RECOVERY SUMMARY
+══════════════════════════════════════════════════════════════════════
+✅ Recovered: 3 lists
+❌ Failed: 0 lists
+══════════════════════════════════════════════════════════════════════
+```
+
+### Important Notes
+
+⚠️ **This operation will overwrite `articleIds` and `itemStates` in the NEW location**
+
+✓ All recovered articles will appear as **checked** items in your lists
+
+✓ Use `--dry-run` first to preview changes before applying them
+
+✓ The script is idempotent - you can run it multiple times safely
+
+---
+
 **Created:** 2025-11-23
-**Last Updated:** 2025-11-23
+**Last Updated:** 2026-01-08
