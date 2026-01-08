@@ -63,6 +63,7 @@ import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../../s
         <div class="user-info" mat-menu-item disabled>
           <div class="user-name">{{ (user$ | async)?.name }}</div>
           <div class="user-email">{{ (user$ | async)?.email }}</div>
+          <div class="version-info">{{ buildVersion }}</div>
         </div>
         <mat-divider></mat-divider>
         <button mat-menu-item (click)="openHelp()">
@@ -123,6 +124,13 @@ import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../../s
       margin-top: 4px;
     }
 
+    .version-info {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.5);
+      margin-top: 8px;
+      font-style: italic;
+    }
+
     mat-divider {
       margin: 4px 0;
     }
@@ -132,6 +140,7 @@ export class AuthButtonComponent implements OnInit {
   user$: Observable<User | null>;
   isAuthenticated$: Observable<boolean>;
   loading$: Observable<boolean>;
+  buildVersion: string;
 
   constructor(
     private store: Store<AppState>,
@@ -140,6 +149,15 @@ export class AuthButtonComponent implements OnInit {
     this.user$ = this.store.select(selectUser);
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.loading$ = this.store.select(selectAuthLoading);
+
+    // Generate version string with current build date/time
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    this.buildVersion = `Version: ${day}.${month}.${year} ${hours}:${minutes}`;
   }
 
   ngOnInit(): void {}

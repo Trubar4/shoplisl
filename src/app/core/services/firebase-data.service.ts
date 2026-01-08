@@ -1325,6 +1325,69 @@ export class FirebaseDataService {
   }
 
   /**
+   * SAFETY: Update itemStates only using transaction
+   * Used for operations that don't modify articleIds (check, uncheck, amount update)
+   * Prevents race conditions when multiple users/devices update simultaneously
+   */
+  async updateItemStatesWithTransaction(
+    listId: string,
+    itemStateUpdates: { [articleId: string]: any },
+    operationDescription: string
+  ): Promise<void> {
+    try {
+      const list = this.getCurrentLists().find(l => l.id === listId);
+      if (!list) {
+        throw new Error(`List ${listId} not found`);
+      }
+
+      const ownerId = list.ownerId;
+      if (!ownerId) {
+        throw new Error('Cannot determine list owner');
+      }
+
+      const listPath = `users-v2/${ownerId}/lists/${listId}`;
+      const listRef = doc(this.firestore, listPath);
+
+      this.logger.info('data', `🔒 Starting transaction for ${operationDescription} in ${listPath}`);
+
+      await runTransaction(this.firestore, async (transaction) => {
+        // Step 1: Read latest server state
+        const listDoc = await transaction.get(listRef);
+
+        if (!listDoc.exists()) {
+          throw new Error(`List ${listId} not found in Firestore`);
+        }
+
+        const serverData = listDoc.data();
+        const serverItemStates = this.convertItemStatesFromFirestore(serverData['itemStates'] || {});
+
+        this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
+
+        // Step 2: Merge our updates with server state
+        const mergedItemStates = {
+          ...serverItemStates,  // Keep ALL server items
+          ...itemStateUpdates   // Apply our updates
+        };
+
+        // Step 3: Write merged state back
+        const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+
+        this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (updated ${Object.keys(itemStateUpdates).length})`);
+
+        transaction.update(listRef, {
+          itemStates: firestoreItemStates,
+          updatedAt: Timestamp.now()
+        });
+      });
+
+      this.logger.info('data', `✅ Transaction committed successfully for ${operationDescription}`);
+    } catch (error: any) {
+      this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove a shared list from the local state
    * Cleans up real-time listener and cached data
    */
@@ -1707,7 +1770,35 @@ export class FirebaseDataService {
     serverIds: string[],
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
-    // Use merged itemStates as source of truth for which articles should exist
+    const itemStatesCount = Object.keys(mergedItemStates).length;
+    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
+
+    // CRITICAL FIX: Detect migration/partial state
+    // If articleIds significantly outnumber itemStates, we're in migration or partial state
+    // This happens when:
+    // 1. Initial migration (articleIds exist, itemStates empty)
+    // 2. Partial migration (some articles checked, others not yet interacted with)
+    // In these cases, preserve ALL articleIds instead of filtering by itemStates
+    const isMigrationState = maxArticleIdsCount > itemStatesCount;
+
+    if (isMigrationState) {
+      // Migration mode: Preserve all articleIds via union
+      const serverSet = new Set(serverIds);
+      const merged = [...serverIds]; // Start with server order
+
+      // Add local IDs that aren't in server yet
+      for (const localId of localIds) {
+        if (!serverSet.has(localId)) {
+          merged.push(localId);
+        }
+      }
+
+      this.logger.warn('data', `⚠️ Migration state: Preserving ${merged.length} articleIds (${itemStatesCount} have states, ${merged.length - itemStatesCount} pending)`);
+      return merged;
+    }
+
+    // Normal mode: Use itemStates as source of truth for which articles should exist
+    // This only runs when articleIds count == itemStates count (fully synchronized)
     const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
 
     // Start with server order as base, but only include articles that are in merged itemStates
