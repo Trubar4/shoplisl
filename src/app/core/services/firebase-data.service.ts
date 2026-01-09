@@ -521,14 +521,24 @@ export class FirebaseDataService {
 
             // NOTE: No merge logic here - individual document listeners handle content updates
             // This collection listener is primarily for initial load
+            // BUG 1 FIX: Populate articleIds from itemStates if empty
+            // Firebase may return empty articleIds for shared lists, but itemStates is populated
+            let articleIds = data['articleIds'] || [];
+            const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+              articleIds = Object.keys(itemStates);
+              this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
+            }
+
             lists.push({
               id: doc.id,
               name: data['name'],
               color: data['color'],
               icon: data['icon'],
               shopId: data['shopId'],
-              articleIds: data['articleIds'] || [],
-              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+              articleIds: articleIds,
+              itemStates: itemStates,
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
@@ -601,14 +611,24 @@ export class FirebaseDataService {
                   // Verify user is still in sharedWith array
                   const sharedWith = data['sharedWith'] || [];
                   if (sharedWith.includes(userId)) {
+                    // BUG 1 FIX: Populate articleIds from itemStates if empty
+                    // Firebase may return empty articleIds for shared lists, but itemStates is populated
+                    let articleIds = data['articleIds'] || [];
+                    const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+                    if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+                      articleIds = Object.keys(itemStates);
+                      this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${listDoc.id} (${articleIds.length} articles)`);
+                    }
+
                     sharedLists.push({
                       id: listDoc.id,
                       name: data['name'],
                       color: data['color'],
                       icon: data['icon'],
                       shopId: data['shopId'],
-                      articleIds: data['articleIds'] || [],
-                      itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+                      articleIds: articleIds,
+                      itemStates: itemStates,
                       departmentOrder: data['departmentOrder'],
                       createdAt: data['createdAt']?.toDate() || new Date(),
                       updatedAt: data['updatedAt']?.toDate() || new Date(),
