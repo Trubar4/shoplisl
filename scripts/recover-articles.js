@@ -8,6 +8,8 @@
  *   npm run recover:articles -- --dry-run
  *   npm run recover:articles -- --force
  *   npm run recover:articles -- --list=<listId>
+ *   npm run recover:articles -- --list=<id1>,<id2>,<id3>
+ *   npm run recover:articles -- --list=<id1> --list=<id2>
  */
 
 const admin = require('firebase-admin');
@@ -46,10 +48,21 @@ const db = admin.firestore();
 // Parse command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
+
+  // Support multiple list IDs: --list=id1,id2,id3 or multiple --list=id1 --list=id2
+  const listIds = [];
+  args.forEach(arg => {
+    if (arg.startsWith('--list=')) {
+      const value = arg.split('=')[1];
+      // Split by comma in case multiple IDs are provided comma-separated
+      listIds.push(...value.split(','));
+    }
+  });
+
   return {
     dryRun: args.includes('--dry-run'),
     force: args.includes('--force'),
-    listId: args.find(arg => arg.startsWith('--list='))?.split('=')[1]
+    listIds: listIds.length > 0 ? listIds : undefined
   };
 }
 
@@ -255,20 +268,34 @@ async function recover() {
   // Get lists to recover
   let listsToRecover;
 
-  if (options.listId) {
-    console.log(`📌 Recovering specific list: ${options.listId}\n`);
-    const oldData = await getOldListData(options.listId);
+  if (options.listIds) {
+    console.log(`📌 Recovering specific lists: ${options.listIds.join(', ')}\n`);
+    listsToRecover = [];
 
-    if (!oldData) {
-      console.error(`❌ List ${options.listId} not found in old location`);
+    for (const listId of options.listIds) {
+      const oldData = await getOldListData(listId);
+
+      if (!oldData) {
+        console.error(`❌ List ${listId} not found in old location`);
+        continue;
+      }
+
+      listsToRecover.push({
+        id: listId,
+        name: oldData.name || 'Unnamed',
+        ownerId: oldData.ownerId
+      });
+    }
+
+    if (listsToRecover.length === 0) {
+      console.error('❌ None of the specified lists were found');
       process.exit(1);
     }
 
-    listsToRecover = [{
-      id: options.listId,
-      name: oldData.name || 'Unnamed',
-      ownerId: oldData.ownerId
-    }];
+    console.log(`Found ${listsToRecover.length} of ${options.listIds.length} specified lists:\n`);
+    listsToRecover.forEach((list, index) => {
+      console.log(`${index + 1}. ${list.name} (${list.id})`);
+    });
   } else {
     listsToRecover = await getListsFromOldLocation();
 
