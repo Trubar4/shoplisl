@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { Observable, BehaviorSubject, from, of, Subject } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import {
@@ -103,7 +103,8 @@ export class FirebaseDataService {
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    private ngZone: NgZone
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -615,12 +616,15 @@ export class FirebaseDataService {
             for (const [listId, ownerId] of listIds.entries()) {
               const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
 
-              // Use onSnapshot for initial load (fixes permission error)
-              const unsubscribe = onSnapshot(
-                listRef,
-                (snapshot) => {
-                  // Unsubscribe immediately after first event (quota optimization)
-                  unsubscribe();
+              // FIX: Run onSnapshot inside NgZone to ensure proper auth context
+              // This fixes "Missing or insufficient permissions" errors
+              this.ngZone.run(() => {
+                // Use onSnapshot for initial load (fixes permission error)
+                const unsubscribe = onSnapshot(
+                  listRef,
+                  (snapshot) => {
+                    // Unsubscribe immediately after first event (quota optimization)
+                    unsubscribe();
 
                   if (snapshot.exists()) {
                     const data = snapshot.data();
@@ -683,6 +687,7 @@ export class FirebaseDataService {
                   }
                 }
               );
+              }); // End ngZone.run()
             }
 
             // LAZY LISTENERS: Don't set up listeners for all shared lists anymore
