@@ -570,7 +570,7 @@ export class FirebaseDataService {
         );
 
         this.sharedListsUnsubscribe = onSnapshot(acceptedInvitesQuery,
-          async (inviteSnapshot) => {
+          (inviteSnapshot) => {
             this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
 
             // Extract list info from invites
@@ -587,55 +587,12 @@ export class FirebaseDataService {
 
             this.logger.info('data', `Loading ${listIds.size} shared lists`);
 
-            // Load each shared list directly (avoids collection group query)
-            const sharedLists: ShoppingList[] = [];
-
-            for (const [listId, ownerId] of listIds.entries()) {
-              try {
-                const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
-                const listDoc = await getDoc(listRef);
-
-                if (listDoc.exists()) {
-                  const data = listDoc.data();
-
-                  // Verify user is still in sharedWith array
-                  const sharedWith = data['sharedWith'] || [];
-                  if (sharedWith.includes(userId)) {
-                    sharedLists.push({
-                      id: listDoc.id,
-                      name: data['name'],
-                      color: data['color'],
-                      icon: data['icon'],
-                      shopId: data['shopId'],
-                      articleIds: data['articleIds'] || [],
-                      itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
-                      departmentOrder: data['departmentOrder'],
-                      createdAt: data['createdAt']?.toDate() || new Date(),
-                      updatedAt: data['updatedAt']?.toDate() || new Date(),
-                      ownerId: data['ownerId'] || ownerId,
-                      sharedWith: sharedWith
-                    });
-                    this.logger.debug('data', `Loaded shared list: ${data['name']}`);
-                  } else {
-                    this.logger.warn('data', `List ${listId} no longer shared with user`);
-                  }
-                } else {
-                  this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
-                }
-              } catch (error: any) {
-                this.logger.error('data', `Failed to load shared list ${listId}:`, error);
-              }
-            }
-
-            // Store shared lists
-            this.sharedLists = sharedLists;
-            this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
-            this.mergeLists();
-
-            // LAZY LISTENERS: Don't set up listeners for all shared lists anymore
-            // Instead, listeners are set up ONLY for the active list (98% quota reduction!)
-            // See setupActiveListListener() which subscribes to active list changes
-            // this.setupSharedListRealtimeListeners(sharedLists); // DEPRECATED - using lazy listeners now
+            // FIX: Defer loading to next tick to ensure proper auth context
+            // Firebase API calls inside async onSnapshot callbacks lose auth context
+            // This causes "Missing or insufficient permissions" errors
+            setTimeout(() => {
+              this.loadSharedListsData(listIds, userId);
+            }, 0);
           },
           (error: any) => {
             this.logger.error('data', 'Share invites listener error', error);
@@ -653,6 +610,60 @@ export class FirebaseDataService {
       this.logger.error('data', 'Error setting up listeners', error);
       this.loadCachedData();
     }
+  }
+
+  /**
+   * Load shared lists data outside of async callback to ensure proper auth context
+   * FIX: Firebase API calls inside async onSnapshot callbacks lose auth context
+   */
+  private async loadSharedListsData(listIds: Map<string, string>, userId: string): Promise<void> {
+    const sharedLists: ShoppingList[] = [];
+
+    for (const [listId, ownerId] of listIds.entries()) {
+      try {
+        const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
+        const listDoc = await getDoc(listRef);
+
+        if (listDoc.exists()) {
+          const data = listDoc.data();
+
+          // Verify user is still in sharedWith array
+          const sharedWith = data['sharedWith'] || [];
+          if (sharedWith.includes(userId)) {
+            sharedLists.push({
+              id: listDoc.id,
+              name: data['name'],
+              color: data['color'],
+              icon: data['icon'],
+              shopId: data['shopId'],
+              articleIds: data['articleIds'] || [],
+              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+              departmentOrder: data['departmentOrder'],
+              createdAt: data['createdAt']?.toDate() || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              ownerId: data['ownerId'] || ownerId,
+              sharedWith: sharedWith
+            });
+            this.logger.debug('data', `Loaded shared list: ${data['name']}`);
+          } else {
+            this.logger.warn('data', `List ${listId} no longer shared with user`);
+          }
+        } else {
+          this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+        }
+      } catch (error: any) {
+        this.logger.error('data', `Failed to load shared list ${listId}:`, error);
+      }
+    }
+
+    // Store shared lists
+    this.sharedLists = sharedLists;
+    this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+    this.mergeLists();
+
+    // LAZY LISTENERS: Don't set up listeners for all shared lists anymore
+    // Instead, listeners are set up ONLY for the active list (98% quota reduction!)
+    // See setupActiveListListener() which subscribes to active list changes
   }
 
   /**
