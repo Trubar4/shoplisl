@@ -197,14 +197,21 @@ export class ArticlesRepositoryService {
       );
     }
 
+    // FIX BUG 2: Update local state immediately after Firebase write (optimistic update)
+    // This ensures UI updates instantly without waiting for real-time listener
+    // Matches offline behavior for consistency
     return from(this.firebaseData.updateArticleInFirebase(id, updateData)).pipe(
       map(() => {
-        // Get updated article from local state
-        return this.firebaseData.getArticles().pipe(
-          map(articles => articles.find(a => a.id === id))
+        // Immediately update local state with new data
+        const currentArticles = this.firebaseData.getCurrentArticles();
+        const updatedArticles = currentArticles.map(article =>
+          article.id === id ? { ...article, ...updates, updatedAt: new Date() } : article
         );
+        this.firebaseData.updateLocalArticles(updatedArticles);
+
+        // Return the updated article
+        return updatedArticles.find(a => a.id === id);
       }),
-      mergeMap(result => result),
       catchError(error => {
         this.logger.error('data', 'Error updating article', error);
         return of(undefined);
