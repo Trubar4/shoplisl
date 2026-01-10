@@ -521,14 +521,24 @@ export class FirebaseDataService {
 
             // NOTE: No merge logic here - individual document listeners handle content updates
             // This collection listener is primarily for initial load
+            // BUG 1 FIX: Populate articleIds from itemStates if empty
+            // Firebase may return empty articleIds for shared lists, but itemStates is populated
+            let articleIds = data['articleIds'] || [];
+            const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+              articleIds = Object.keys(itemStates);
+              this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
+            }
+
             lists.push({
               id: doc.id,
               name: data['name'],
               color: data['color'],
               icon: data['icon'],
               shopId: data['shopId'],
-              articleIds: data['articleIds'] || [],
-              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+              articleIds: articleIds,
+              itemStates: itemStates,
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date(),
@@ -587,50 +597,93 @@ export class FirebaseDataService {
 
             this.logger.info('data', `Loading ${listIds.size} shared lists`);
 
-            // Load each shared list directly (avoids collection group query)
+            // BUG 1 FIX: Use onSnapshot instead of getDoc to avoid permission errors
+            // getDoc was failing with "Missing or insufficient permissions" for shared lists
+            // onSnapshot works reliably (same as when visiting the list)
+            // We unsubscribe immediately after first event to maintain quota optimization
             const sharedLists: ShoppingList[] = [];
+            let remainingLists = listIds.size;
 
-            for (const [listId, ownerId] of listIds.entries()) {
-              try {
-                const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
-                const listDoc = await getDoc(listRef);
-
-                if (listDoc.exists()) {
-                  const data = listDoc.data();
-
-                  // Verify user is still in sharedWith array
-                  const sharedWith = data['sharedWith'] || [];
-                  if (sharedWith.includes(userId)) {
-                    sharedLists.push({
-                      id: listDoc.id,
-                      name: data['name'],
-                      color: data['color'],
-                      icon: data['icon'],
-                      shopId: data['shopId'],
-                      articleIds: data['articleIds'] || [],
-                      itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
-                      departmentOrder: data['departmentOrder'],
-                      createdAt: data['createdAt']?.toDate() || new Date(),
-                      updatedAt: data['updatedAt']?.toDate() || new Date(),
-                      ownerId: data['ownerId'] || ownerId,
-                      sharedWith: sharedWith
-                    });
-                    this.logger.debug('data', `Loaded shared list: ${data['name']}`);
-                  } else {
-                    this.logger.warn('data', `List ${listId} no longer shared with user`);
-                  }
-                } else {
-                  this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
-                }
-              } catch (error: any) {
-                this.logger.error('data', `Failed to load shared list ${listId}:`, error);
-              }
+            // Handle case where no lists to load
+            if (remainingLists === 0) {
+              this.sharedLists = [];
+              this.logger.info('data', 'No shared lists to load');
+              this.mergeLists();
+              return;
             }
 
-            // Store shared lists
-            this.sharedLists = sharedLists;
-            this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
-            this.mergeLists();
+            for (const [listId, ownerId] of listIds.entries()) {
+              const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
+
+              // Use onSnapshot for initial load (fixes permission error)
+              const unsubscribe = onSnapshot(
+                listRef,
+                (snapshot) => {
+                  // Unsubscribe immediately after first event (quota optimization)
+                  unsubscribe();
+
+                  if (snapshot.exists()) {
+                    const data = snapshot.data();
+
+                    // Verify user is still in sharedWith array
+                    const sharedWith = data['sharedWith'] || [];
+                    if (sharedWith.includes(userId)) {
+                      // BUG 1 FIX: Populate articleIds from itemStates if empty
+                      // Firebase may return empty articleIds for shared lists, but itemStates is populated
+                      let articleIds = data['articleIds'] || [];
+                      const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+                      if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+                        articleIds = Object.keys(itemStates);
+                        this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
+                      }
+
+                      sharedLists.push({
+                        id: snapshot.id,
+                        name: data['name'],
+                        color: data['color'],
+                        icon: data['icon'],
+                        shopId: data['shopId'],
+                        articleIds: articleIds,
+                        itemStates: itemStates,
+                        departmentOrder: data['departmentOrder'],
+                        createdAt: data['createdAt']?.toDate() || new Date(),
+                        updatedAt: data['updatedAt']?.toDate() || new Date(),
+                        ownerId: data['ownerId'] || ownerId,
+                        sharedWith: sharedWith
+                      });
+                      this.logger.debug('data', `Loaded shared list: ${data['name']}`);
+                    } else {
+                      this.logger.warn('data', `List ${listId} no longer shared with user`);
+                    }
+                  } else {
+                    this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+                  }
+
+                  // Check if all lists have been processed
+                  remainingLists--;
+                  if (remainingLists === 0) {
+                    // All lists loaded, update store
+                    this.sharedLists = sharedLists;
+                    this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                    this.mergeLists();
+                  }
+                },
+                (error: any) => {
+                  // Handle error and unsubscribe
+                  unsubscribe();
+                  this.logger.error('data', `Failed to load shared list ${listId}:`, error);
+
+                  // Continue even if one list fails
+                  remainingLists--;
+                  if (remainingLists === 0) {
+                    this.sharedLists = sharedLists;
+                    this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                    this.mergeLists();
+                  }
+                }
+              );
+            }
 
             // LAZY LISTENERS: Don't set up listeners for all shared lists anymore
             // Instead, listeners are set up ONLY for the active list (98% quota reduction!)
