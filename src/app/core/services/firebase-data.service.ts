@@ -30,6 +30,9 @@ import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
 
+// DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
+const DEBUG_FIREBASE_DATA = true;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -531,7 +534,8 @@ export class FirebaseDataService {
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
             }
 
-            lists.push({
+            const sharedWith = data['sharedWith'] || [];
+            const list = {
               id: doc.id,
               name: data['name'],
               color: data['color'],
@@ -544,8 +548,21 @@ export class FirebaseDataService {
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               // Phase 8: Include ownership and sharing fields
               ownerId: data['ownerId'] || '',
-              sharedWith: data['sharedWith'] || []
-            });
+              sharedWith: sharedWith
+            };
+
+            // DEBUG: Log shared lists that the owner owns
+            if (DEBUG_FIREBASE_DATA && sharedWith.length > 0) {
+              console.log(`\n📥 RAW Firebase data for OWNED shared list ${doc.id}`);
+              console.log(`   - List name: "${data['name']}"`);
+              console.log(`   - Raw articleIds from Firebase: [${(data['articleIds'] || []).join(', ')}]`);
+              console.log(`   - Raw articleIds length: ${(data['articleIds'] || []).length}`);
+              console.log(`   - Raw itemStates keys: [${Object.keys(data['itemStates'] || {}).join(', ')}]`);
+              console.log(`   - Raw itemStates length: ${Object.keys(data['itemStates'] || {}).length}`);
+              console.log(`   - Shared with: ${sharedWith.length} users`);
+            }
+
+            lists.push(list);
           });
 
           // Phase 8: Store owned lists separately
@@ -583,6 +600,13 @@ export class FirebaseDataService {
           async (inviteSnapshot) => {
             this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
 
+            if (DEBUG_FIREBASE_DATA) {
+              console.log('\n🔥 [FIREBASE DEBUG] ========================================');
+              console.log('📡 SHARE INVITES Query Response from Firebase');
+              console.log(`   - Query: share-invites where acceptedByUserId == ${userId} AND status == 'accepted'`);
+              console.log(`   - Number of accepted invites: ${inviteSnapshot.size}`);
+            }
+
             // Extract list info from invites
             const listIds = new Map<string, string>(); // listId -> ownerId
 
@@ -592,10 +616,16 @@ export class FirebaseDataService {
               const fromUserId = data['fromUserId'];
               if (listId && fromUserId) {
                 listIds.set(listId, fromUserId);
+                if (DEBUG_FIREBASE_DATA) {
+                  console.log(`   - Found invite for list ID: ${listId} (owner: ${fromUserId})`);
+                }
               }
             });
 
             this.logger.info('data', `Loading ${listIds.size} shared lists`);
+            if (DEBUG_FIREBASE_DATA) {
+              console.log(`\n📥 Loading ${listIds.size} shared lists from Firebase...`);
+            }
 
             // BUG 1 FIX: Use onSnapshot instead of getDoc to avoid permission errors
             // getDoc was failing with "Missing or insufficient permissions" for shared lists
@@ -622,8 +652,23 @@ export class FirebaseDataService {
                   // Unsubscribe immediately after first event (quota optimization)
                   unsubscribe();
 
+                  if (DEBUG_FIREBASE_DATA) {
+                    console.log(`\n📥 Loading shared list ${listId} from Firebase...`);
+                    console.log(`   - Query: users-v2/${ownerId}/lists/${listId}`);
+                    console.log(`   - Document exists: ${snapshot.exists()}`);
+                  }
+
                   if (snapshot.exists()) {
                     const data = snapshot.data();
+
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`\n📥 RAW Firebase data for shared list ${listId}`);
+                      console.log(`   - List name: "${data['name']}"`);
+                      console.log(`   - Raw articleIds from Firebase: [${(data['articleIds'] || []).join(', ')}]`);
+                      console.log(`   - Raw articleIds length: ${(data['articleIds'] || []).length}`);
+                      console.log(`   - Raw itemStates keys: [${Object.keys(data['itemStates'] || {}).join(', ')}]`);
+                      console.log(`   - Raw itemStates length: ${Object.keys(data['itemStates'] || {}).length}`);
+                    }
 
                     // Verify user is still in sharedWith array
                     const sharedWith = data['sharedWith'] || [];
@@ -633,12 +678,20 @@ export class FirebaseDataService {
                       let articleIds = data['articleIds'] || [];
                       const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`   - Raw articleIds from Firebase: [${articleIds.join(', ')}]`);
+                        console.log(`   - ItemStates keys from Firebase: [${Object.keys(itemStates).join(', ')}]`);
+                      }
+
                       if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
                         articleIds = Object.keys(itemStates);
                         this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
+                        if (DEBUG_FIREBASE_DATA) {
+                          console.log(`🔧 Bug 1 Fix: Populated articleIds from itemStates (${articleIds.length} articles)`);
+                        }
                       }
 
-                      sharedLists.push({
+                      const list = {
                         id: snapshot.id,
                         name: data['name'],
                         color: data['color'],
@@ -651,13 +704,31 @@ export class FirebaseDataService {
                         updatedAt: data['updatedAt']?.toDate() || new Date(),
                         ownerId: data['ownerId'] || ownerId,
                         sharedWith: sharedWith
-                      });
+                      };
+
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`\n📋 Shared List: "${list.name}"`);
+                        console.log(`   - List ID: ${list.id}`);
+                        console.log(`   - Owner ID: ${list.ownerId}`);
+                        console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
+                        console.log(`   - Article IDs (final): [${list.articleIds.join(', ')}]`);
+                        console.log(`   - Total Articles: ${list.articleIds.length}`);
+                        console.log(`   - ItemStates keys (final): [${Object.keys(list.itemStates || {}).join(', ')}]`);
+                      }
+
+                      sharedLists.push(list);
                       this.logger.debug('data', `Loaded shared list: ${data['name']}`);
                     } else {
                       this.logger.warn('data', `List ${listId} no longer shared with user`);
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`⚠️  List ${listId} no longer shared with user`);
+                      }
                     }
                   } else {
                     this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`⚠️  Shared list ${listId} not found (deleted?)`);
+                    }
                   }
 
                   // Check if all lists have been processed
@@ -666,6 +737,10 @@ export class FirebaseDataService {
                     // All lists loaded, update store
                     this.sharedLists = sharedLists;
                     this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`\n✅ All shared lists loaded successfully: ${sharedLists.length} total`);
+                      console.log('🔄 Calling mergeLists() to combine owned and shared lists...');
+                    }
                     this.mergeLists();
                   }
                 },
@@ -735,6 +810,10 @@ export class FirebaseDataService {
     );
 
     this.logger.debug('data', `Merged lists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
+
+    if (DEBUG_FIREBASE_DATA) {
+      console.log(`\n✅ executeMergeLists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total → publishing to store`);
+    }
 
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);

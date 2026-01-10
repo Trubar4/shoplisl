@@ -5,7 +5,11 @@ import { map, catchError, switchMap, mergeMap } from 'rxjs/operators';
 
 import { ListsRepositoryService } from '../../core/services/lists-repository.service';
 import { FirebaseDataService } from '../../core/services/firebase-data.service';
+import { AuthService } from '../../core/services/auth.service';
 import * as ListsActions from './lists.actions';
+
+// DEBUG FLAG - Set to true to enable detailed console logging for debugging NgRx effects
+const DEBUG_LISTS_EFFECTS = true;
 
 /**
  * Lists Effects
@@ -19,6 +23,7 @@ export class ListsEffects {
   private actions$ = inject(Actions);
   private listsRepository = inject(ListsRepositoryService);
   private firebaseData = inject(FirebaseDataService);
+  private authService = inject(AuthService);
 
   /**
    * Load all lists from Firebase
@@ -27,18 +32,45 @@ export class ListsEffects {
   loadLists$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ListsActions.loadLists),
-      switchMap(() =>
-        this.firebaseData.getLists().pipe(
-          map((lists) => ListsActions.loadListsSuccess({ lists })),
-          catchError((error) =>
-            of(
+      switchMap(() => {
+        return this.firebaseData.getLists().pipe(
+          map((lists) => {
+            if (DEBUG_LISTS_EFFECTS) {
+              const currentUserId = this.authService.getCurrentUserId();
+              const sharedParticipantLists = lists.filter(list => {
+                const isOwner = currentUserId && list.ownerId === currentUserId;
+                return !isOwner && list.sharedWith && list.sharedWith.length > 0;
+              });
+
+              if (sharedParticipantLists.length > 0) {
+                console.log('\n🎬 [NGRX EFFECTS] Lists received from Firebase service');
+                console.log(`   - Total lists: ${lists.length}`);
+                console.log(`   - Shared lists (participant): ${sharedParticipantLists.length}`);
+
+                sharedParticipantLists.forEach(list => {
+                  console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
+                  console.log(`   - List ID: ${list.id}`);
+                  console.log(`   - Owner ID: ${list.ownerId}`);
+                  console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
+                  console.log(`   - Total Articles: ${list.articleIds.length}`);
+                  console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
+                });
+              }
+            }
+            return ListsActions.loadListsSuccess({ lists });
+          }),
+          catchError((error) => {
+            if (DEBUG_LISTS_EFFECTS) {
+              console.error('❌ [NGRX EFFECTS] Error loading lists:', error);
+            }
+            return of(
               ListsActions.loadListsFailure({
                 error: error.message || 'Failed to load lists',
               })
-            )
-          )
-        )
-      )
+            );
+          })
+        );
+      })
     )
   );
 
