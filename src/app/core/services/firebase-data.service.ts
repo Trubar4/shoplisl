@@ -534,7 +534,8 @@ export class FirebaseDataService {
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
             }
 
-            lists.push({
+            const sharedWith = data['sharedWith'] || [];
+            const list = {
               id: doc.id,
               name: data['name'],
               color: data['color'],
@@ -547,8 +548,21 @@ export class FirebaseDataService {
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               // Phase 8: Include ownership and sharing fields
               ownerId: data['ownerId'] || '',
-              sharedWith: data['sharedWith'] || []
-            });
+              sharedWith: sharedWith
+            };
+
+            // DEBUG: Log shared lists that the owner owns
+            if (DEBUG_FIREBASE_DATA && sharedWith.length > 0) {
+              console.log(`\n📥 RAW Firebase data for OWNED shared list ${doc.id}`);
+              console.log(`   - List name: "${data['name']}"`);
+              console.log(`   - Raw articleIds from Firebase: [${(data['articleIds'] || []).join(', ')}]`);
+              console.log(`   - Raw articleIds length: ${(data['articleIds'] || []).length}`);
+              console.log(`   - Raw itemStates keys: [${Object.keys(data['itemStates'] || {}).join(', ')}]`);
+              console.log(`   - Raw itemStates length: ${Object.keys(data['itemStates'] || {}).length}`);
+              console.log(`   - Shared with: ${sharedWith.length} users`);
+            }
+
+            lists.push(list);
           });
 
           // Phase 8: Store owned lists separately
@@ -646,6 +660,15 @@ export class FirebaseDataService {
 
                   if (snapshot.exists()) {
                     const data = snapshot.data();
+
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`\n📥 RAW Firebase data for shared list ${listId}`);
+                      console.log(`   - List name: "${data['name']}"`);
+                      console.log(`   - Raw articleIds from Firebase: [${(data['articleIds'] || []).join(', ')}]`);
+                      console.log(`   - Raw articleIds length: ${(data['articleIds'] || []).length}`);
+                      console.log(`   - Raw itemStates keys: [${Object.keys(data['itemStates'] || {}).join(', ')}]`);
+                      console.log(`   - Raw itemStates length: ${Object.keys(data['itemStates'] || {}).length}`);
+                    }
 
                     // Verify user is still in sharedWith array
                     const sharedWith = data['sharedWith'] || [];
