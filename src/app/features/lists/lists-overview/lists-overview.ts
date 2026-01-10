@@ -15,7 +15,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { Store } from '@ngrx/store';
 
-import { ShoppingList } from '../../../core/models';
+import { ShoppingList, ListItemState } from '../../../core/models';
 import { AppState } from '../../../state/app.state';
 import * as ListsActions from '../../../state/lists/lists.actions';
 import * as ArticlesActions from '../../../state/articles/articles.actions';
@@ -100,20 +100,20 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
 
           // STEP 1: Filter out temporary offline articles (temp_*) from ALL lists
           // These are stale IDs that weren't properly cleaned up from Firebase after sync
-          const filterTempArticles = (articleIds: string[]) =>
+          const filterTempArticles = (articleIds: string[]): string[] =>
             articleIds.filter(id => !id.startsWith('temp_'));
 
-          const filterTempFromItemStates = (itemStates: any) =>
+          const filterTempFromItemStates = (itemStates: { [articleId: string]: ListItemState }): { [articleId: string]: ListItemState } =>
             Object.fromEntries(
               Object.entries(itemStates || {})
                 .filter(([articleId]) => !articleId.startsWith('temp_'))
-            );
+            ) as { [articleId: string]: ListItemState };
 
           // STEP 2: Apply ownership-specific cleaning
           // BUG FIX: Only clean orphaned references for lists the user owns
           // For shared lists (where user is a participant), the articles belong to the owner
           // and won't be in the participant's local articles collection
-          const cleaned = isOwner ? {
+          const cleaned: ShoppingList = isOwner ? {
             ...list,
             // For owned lists: Remove temp_ IDs AND orphaned article IDs
             articleIds: filterTempArticles(list.articleIds).filter(id => validIds.has(id)),
@@ -121,7 +121,7 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
             itemStates: Object.fromEntries(
               Object.entries(filterTempFromItemStates(list.itemStates))
                 .filter(([articleId]) => validIds.has(articleId))
-            )
+            ) as { [articleId: string]: ListItemState }
           } : {
             ...list,
             // For shared lists (participant): Only remove temp_ IDs, keep all other articles
