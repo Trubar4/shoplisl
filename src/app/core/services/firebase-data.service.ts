@@ -586,21 +586,24 @@ export class FirebaseDataService {
 
         this.sharedListsUnsubscribe = onSnapshot(acceptedInvitesQuery,
           async (inviteSnapshot) => {
-            this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
+            // CRITICAL FIX: Async callback runs outside zone, wrap everything in ngZone.run()
+            // This ensures all Firebase calls have proper auth context
+            this.ngZone.run(() => {
+              this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
 
-            // Extract list info from invites
-            const listIds = new Map<string, string>(); // listId -> ownerId
+              // Extract list info from invites
+              const listIds = new Map<string, string>(); // listId -> ownerId
 
-            inviteSnapshot.forEach((doc) => {
-              const data = doc.data();
-              const listId = data['listId'];
-              const fromUserId = data['fromUserId'];
-              if (listId && fromUserId) {
-                listIds.set(listId, fromUserId);
-              }
-            });
+              inviteSnapshot.forEach((doc) => {
+                const data = doc.data();
+                const listId = data['listId'];
+                const fromUserId = data['fromUserId'];
+                if (listId && fromUserId) {
+                  listIds.set(listId, fromUserId);
+                }
+              });
 
-            this.logger.info('data', `Loading ${listIds.size} shared lists`);
+              this.logger.info('data', `Loading ${listIds.size} shared lists`);
 
             // BUG 1 FIX: Use onSnapshot instead of getDoc to avoid permission errors
             // getDoc was failing with "Missing or insufficient permissions" for shared lists
@@ -694,6 +697,7 @@ export class FirebaseDataService {
             // Instead, listeners are set up ONLY for the active list (98% quota reduction!)
             // See setupActiveListListener() which subscribes to active list changes
             // this.setupSharedListRealtimeListeners(sharedLists); // DEPRECATED - using lazy listeners now
+            }); // End ngZone.run()
           },
           (error: any) => {
             this.logger.error('data', 'Share invites listener error', error);
