@@ -627,55 +627,58 @@ export class FirebaseDataService {
               const unsubscribe = onSnapshot(
                 listRef,
                 (snapshot) => {
-                  // Unsubscribe immediately after first event (quota optimization)
-                  unsubscribe();
+                  // CRITICAL: Wrap callback in NgZone for complete data access
+                  this.ngZone.run(() => {
+                    // Unsubscribe immediately after first event (quota optimization)
+                    unsubscribe();
 
-                  if (snapshot.exists()) {
-                    const data = snapshot.data();
+                    if (snapshot.exists()) {
+                      const data = snapshot.data();
 
-                    // Verify user is still in sharedWith array
-                    const sharedWith = data['sharedWith'] || [];
-                    if (sharedWith.includes(userId)) {
-                      // BUG 1 FIX: Populate articleIds from itemStates if empty
-                      // Firebase may return empty articleIds for shared lists, but itemStates is populated
-                      let articleIds = data['articleIds'] || [];
-                      const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+                      // Verify user is still in sharedWith array
+                      const sharedWith = data['sharedWith'] || [];
+                      if (sharedWith.includes(userId)) {
+                        // BUG 1 FIX: Populate articleIds from itemStates if empty
+                        // Firebase may return empty articleIds for shared lists, but itemStates is populated
+                        let articleIds = data['articleIds'] || [];
+                        const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
-                      if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
-                        articleIds = Object.keys(itemStates);
-                        this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
+                        if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+                          articleIds = Object.keys(itemStates);
+                          this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
+                        }
+
+                        sharedLists.push({
+                          id: snapshot.id,
+                          name: data['name'],
+                          color: data['color'],
+                          icon: data['icon'],
+                          shopId: data['shopId'],
+                          articleIds: articleIds,
+                          itemStates: itemStates,
+                          departmentOrder: data['departmentOrder'],
+                          createdAt: data['createdAt']?.toDate() || new Date(),
+                          updatedAt: data['updatedAt']?.toDate() || new Date(),
+                          ownerId: data['ownerId'] || ownerId,
+                          sharedWith: sharedWith
+                        });
+                        this.logger.debug('data', `Loaded shared list: ${data['name']}`);
+                      } else {
+                        this.logger.warn('data', `List ${listId} no longer shared with user`);
                       }
-
-                      sharedLists.push({
-                        id: snapshot.id,
-                        name: data['name'],
-                        color: data['color'],
-                        icon: data['icon'],
-                        shopId: data['shopId'],
-                        articleIds: articleIds,
-                        itemStates: itemStates,
-                        departmentOrder: data['departmentOrder'],
-                        createdAt: data['createdAt']?.toDate() || new Date(),
-                        updatedAt: data['updatedAt']?.toDate() || new Date(),
-                        ownerId: data['ownerId'] || ownerId,
-                        sharedWith: sharedWith
-                      });
-                      this.logger.debug('data', `Loaded shared list: ${data['name']}`);
                     } else {
-                      this.logger.warn('data', `List ${listId} no longer shared with user`);
+                      this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
                     }
-                  } else {
-                    this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
-                  }
 
-                  // Check if all lists have been processed
-                  remainingLists--;
-                  if (remainingLists === 0) {
-                    // All lists loaded, update store
-                    this.sharedLists = sharedLists;
-                    this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
-                    this.mergeLists();
-                  }
+                    // Check if all lists have been processed
+                    remainingLists--;
+                    if (remainingLists === 0) {
+                      // All lists loaded, update store
+                      this.sharedLists = sharedLists;
+                      this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                      this.mergeLists();
+                    }
+                  });
                 },
                 (error: any) => {
                   // Handle error and unsubscribe
