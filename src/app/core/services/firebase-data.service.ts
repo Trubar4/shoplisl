@@ -511,20 +511,10 @@ export class FirebaseDataService {
           this.quotaMonitor.trackRead('Lists Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
 
-          if (DEBUG_FIREBASE_DATA) {
-            console.log('🔥 [FIREBASE DEBUG] ========================================');
-            console.log('📡 OWNED LISTS Query Response from Firebase');
-            console.log(`   - Query: users-v2/{userId}/lists`);
-            console.log(`   - Number of documents received: ${snapshot.size}`);
-          }
-
           // OPTIMIZATION: Once individual listeners are active, they handle all updates
           // Collection listener only needed for initial load
           if (this.ownedListListenersActive) {
             this.logger.debug('data', '⏭️ Skipping collection update - individual listeners active');
-            if (DEBUG_FIREBASE_DATA) {
-              console.log('⏭️  Individual listeners active - skipping collection update');
-            }
             return;
           }
 
@@ -542,12 +532,9 @@ export class FirebaseDataService {
             if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
               articleIds = Object.keys(itemStates);
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
-              if (DEBUG_FIREBASE_DATA) {
-                console.log(`🔧 Bug 1 Fix: Populated articleIds from itemStates for list "${data['name']}" (${articleIds.length} articles)`);
-              }
             }
 
-            const list = {
+            lists.push({
               id: doc.id,
               name: data['name'],
               color: data['color'],
@@ -561,24 +548,8 @@ export class FirebaseDataService {
               // Phase 8: Include ownership and sharing fields
               ownerId: data['ownerId'] || '',
               sharedWith: data['sharedWith'] || []
-            };
-
-            if (DEBUG_FIREBASE_DATA) {
-              console.log(`\n📋 Owned List: "${list.name}"`);
-              console.log(`   - List ID: ${list.id}`);
-              console.log(`   - Owner ID: ${list.ownerId}`);
-              console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
-              console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
-              console.log(`   - Total Articles: ${list.articleIds.length}`);
-              console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
-            }
-
-            lists.push(list);
+            });
           });
-
-          if (DEBUG_FIREBASE_DATA) {
-            console.log(`\n✅ Total owned lists received: ${lists.length}`);
-          }
 
           // Phase 8: Store owned lists separately
           this.ownedLists = lists;
@@ -807,13 +778,6 @@ export class FirebaseDataService {
   }
 
   private executeMergeLists(): void {
-    if (DEBUG_FIREBASE_DATA) {
-      console.log('\n🔄 [FIREBASE DEBUG] ========================================');
-      console.log('🔄 executeMergeLists() called - Merging owned and shared lists');
-      console.log(`   - Owned lists: ${this.ownedLists.length}`);
-      console.log(`   - Shared lists: ${this.sharedLists.length}`);
-    }
-
     // Combine owned and shared lists
     const allLists = [...this.ownedLists, ...this.sharedLists];
 
@@ -825,24 +789,11 @@ export class FirebaseDataService {
     this.logger.debug('data', `Merged lists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
 
     if (DEBUG_FIREBASE_DATA) {
-      console.log(`   - Total unique lists: ${uniqueLists.length}`);
-      console.log('\n📤 Publishing merged lists to listsSubject (will trigger NgRx store update)...');
-      uniqueLists.forEach(list => {
-        console.log(`\n📋 Publishing: "${list.name}"`);
-        console.log(`   - List ID: ${list.id}`);
-        console.log(`   - Owner ID: ${list.ownerId}`);
-        console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
-        console.log(`   - Total Articles: ${list.articleIds.length}`);
-        console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
-      });
+      console.log(`\n✅ executeMergeLists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total → publishing to store`);
     }
 
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
-
-    if (DEBUG_FIREBASE_DATA) {
-      console.log('\n✅ Lists published to listsSubject - NgRx store will be updated');
-    }
 
     // LAZY LISTENERS + LAZY ARTICLE LOADING: DISABLED
     // Don't batch load articles for ALL shared lists anymore!

@@ -92,60 +92,57 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
-        if (DEBUG_LISTS_OVERVIEW) {
-          console.log('🔍 [LISTS OVERVIEW DEBUG] ========================================');
-          console.log(`📊 Total lists received from NgRx store: ${lists.length}`);
-          console.log(`📦 Total articles available: ${articles.length}`);
-        }
-
         const validIds = new Set(articles.map(a => a.id));
 
         // First clean the lists data
         const cleanedLists = lists.map(list => {
-          const cleaned = {
+          const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
+
+          // BUG FIX: Only clean orphaned references for lists the user owns
+          // For shared lists (where user is a participant), the articles belong to the owner
+          // and won't be in the participant's local articles collection
+          const cleaned = isOwner ? {
             ...list,
-            // Filter out orphaned article IDs
+            // Filter out orphaned article IDs (only for owned lists)
             articleIds: list.articleIds.filter(id => validIds.has(id)),
-            // Clean item states
+            // Clean item states (only for owned lists)
             itemStates: Object.fromEntries(
               Object.entries(list.itemStates || {})
                 .filter(([articleId]) => validIds.has(articleId))
             )
+          } : {
+            ...list
+            // Keep all articleIds and itemStates for shared lists (participant)
           };
 
           if (DEBUG_LISTS_OVERVIEW) {
-            const activeCount = cleaned.articleIds.filter(articleId => {
-              const itemState = cleaned.itemStates?.[articleId];
-              return !itemState?.isChecked;
-            }).length;
-            const totalCount = cleaned.articleIds.length;
-            const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
+            const isSharedParticipant = !isOwner && list.sharedWith && list.sharedWith.length > 0;
 
-            console.log(`\n📋 List: "${list.name}"`);
-            console.log(`   - List ID: ${list.id}`);
-            console.log(`   - Owner ID: ${list.ownerId}`);
-            console.log(`   - Current User ID: ${this.currentUserId}`);
-            console.log(`   - Is Owner: ${isOwner}`);
-            console.log(`   - Is Shared: ${!!(list.sharedWith && list.sharedWith.length > 0)}`);
-            console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
-            console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
-            console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
-            console.log(`   - Total Articles: ${totalCount}`);
-            console.log(`   - Active (unchecked) Articles: ${activeCount}`);
-            console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
-            console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
-            console.log(`   - ItemStates details:`, Object.entries(cleaned.itemStates || {}).map(([id, state]) => ({
-              articleId: id,
-              isChecked: state.isChecked
-            })));
+            // Only log shared lists where user is a participant
+            if (isSharedParticipant) {
+              const activeCount = cleaned.articleIds.filter(articleId => {
+                const itemState = cleaned.itemStates?.[articleId];
+                return !itemState?.isChecked;
+              }).length;
+              const totalCount = cleaned.articleIds.length;
+
+              console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
+              console.log(`   - List ID: ${list.id}`);
+              console.log(`   - Owner ID: ${list.ownerId}`);
+              console.log(`   - Current User ID: ${this.currentUserId}`);
+              console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
+              console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
+              console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
+              console.log(`   - Total Articles: ${totalCount}`);
+              console.log(`   - Active (unchecked) Articles: ${activeCount}`);
+              console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
+              console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
+              console.log(`   - ItemStates details:`, Object.values(cleaned.itemStates || {}));
+            }
           }
 
           return cleaned;
         });
-
-        if (DEBUG_LISTS_OVERVIEW) {
-          console.log(`\n✅ Total lists after cleaning: ${cleanedLists.length}`);
-        }
 
         // Then apply search filter
         let filteredLists = cleanedLists;
@@ -153,9 +150,6 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
           filteredLists = cleanedLists.filter(list =>
             list.name.toLowerCase().includes(query.toLowerCase())
           );
-          if (DEBUG_LISTS_OVERVIEW) {
-            console.log(`🔎 Search query: "${query}" - Filtered to ${filteredLists.length} lists`);
-          }
         }
 
         // Finally apply sorting
