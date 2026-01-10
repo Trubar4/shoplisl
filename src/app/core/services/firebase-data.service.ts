@@ -30,6 +30,9 @@ import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
 
+// DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
+const DEBUG_FIREBASE_DATA = true;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -508,10 +511,20 @@ export class FirebaseDataService {
           this.quotaMonitor.trackRead('Lists Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
 
+          if (DEBUG_FIREBASE_DATA) {
+            console.log('🔥 [FIREBASE DEBUG] ========================================');
+            console.log('📡 OWNED LISTS Query Response from Firebase');
+            console.log(`   - Query: users-v2/{userId}/lists`);
+            console.log(`   - Number of documents received: ${snapshot.size}`);
+          }
+
           // OPTIMIZATION: Once individual listeners are active, they handle all updates
           // Collection listener only needed for initial load
           if (this.ownedListListenersActive) {
             this.logger.debug('data', '⏭️ Skipping collection update - individual listeners active');
+            if (DEBUG_FIREBASE_DATA) {
+              console.log('⏭️  Individual listeners active - skipping collection update');
+            }
             return;
           }
 
@@ -529,9 +542,12 @@ export class FirebaseDataService {
             if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
               articleIds = Object.keys(itemStates);
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
+              if (DEBUG_FIREBASE_DATA) {
+                console.log(`🔧 Bug 1 Fix: Populated articleIds from itemStates for list "${data['name']}" (${articleIds.length} articles)`);
+              }
             }
 
-            lists.push({
+            const list = {
               id: doc.id,
               name: data['name'],
               color: data['color'],
@@ -545,8 +561,24 @@ export class FirebaseDataService {
               // Phase 8: Include ownership and sharing fields
               ownerId: data['ownerId'] || '',
               sharedWith: data['sharedWith'] || []
-            });
+            };
+
+            if (DEBUG_FIREBASE_DATA) {
+              console.log(`\n📋 Owned List: "${list.name}"`);
+              console.log(`   - List ID: ${list.id}`);
+              console.log(`   - Owner ID: ${list.ownerId}`);
+              console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
+              console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
+              console.log(`   - Total Articles: ${list.articleIds.length}`);
+              console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
+            }
+
+            lists.push(list);
           });
+
+          if (DEBUG_FIREBASE_DATA) {
+            console.log(`\n✅ Total owned lists received: ${lists.length}`);
+          }
 
           // Phase 8: Store owned lists separately
           this.ownedLists = lists;
@@ -583,6 +615,13 @@ export class FirebaseDataService {
           async (inviteSnapshot) => {
             this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
 
+            if (DEBUG_FIREBASE_DATA) {
+              console.log('\n🔥 [FIREBASE DEBUG] ========================================');
+              console.log('📡 SHARE INVITES Query Response from Firebase');
+              console.log(`   - Query: share-invites where acceptedByUserId == ${userId} AND status == 'accepted'`);
+              console.log(`   - Number of accepted invites: ${inviteSnapshot.size}`);
+            }
+
             // Extract list info from invites
             const listIds = new Map<string, string>(); // listId -> ownerId
 
@@ -592,10 +631,16 @@ export class FirebaseDataService {
               const fromUserId = data['fromUserId'];
               if (listId && fromUserId) {
                 listIds.set(listId, fromUserId);
+                if (DEBUG_FIREBASE_DATA) {
+                  console.log(`   - Found invite for list ID: ${listId} (owner: ${fromUserId})`);
+                }
               }
             });
 
             this.logger.info('data', `Loading ${listIds.size} shared lists`);
+            if (DEBUG_FIREBASE_DATA) {
+              console.log(`\n📥 Loading ${listIds.size} shared lists from Firebase...`);
+            }
 
             // BUG 1 FIX: Use onSnapshot instead of getDoc to avoid permission errors
             // getDoc was failing with "Missing or insufficient permissions" for shared lists
@@ -622,6 +667,12 @@ export class FirebaseDataService {
                   // Unsubscribe immediately after first event (quota optimization)
                   unsubscribe();
 
+                  if (DEBUG_FIREBASE_DATA) {
+                    console.log(`\n📥 Loading shared list ${listId} from Firebase...`);
+                    console.log(`   - Query: users-v2/${ownerId}/lists/${listId}`);
+                    console.log(`   - Document exists: ${snapshot.exists()}`);
+                  }
+
                   if (snapshot.exists()) {
                     const data = snapshot.data();
 
@@ -633,12 +684,20 @@ export class FirebaseDataService {
                       let articleIds = data['articleIds'] || [];
                       const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`   - Raw articleIds from Firebase: [${articleIds.join(', ')}]`);
+                        console.log(`   - ItemStates keys from Firebase: [${Object.keys(itemStates).join(', ')}]`);
+                      }
+
                       if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
                         articleIds = Object.keys(itemStates);
                         this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
+                        if (DEBUG_FIREBASE_DATA) {
+                          console.log(`🔧 Bug 1 Fix: Populated articleIds from itemStates (${articleIds.length} articles)`);
+                        }
                       }
 
-                      sharedLists.push({
+                      const list = {
                         id: snapshot.id,
                         name: data['name'],
                         color: data['color'],
@@ -651,13 +710,31 @@ export class FirebaseDataService {
                         updatedAt: data['updatedAt']?.toDate() || new Date(),
                         ownerId: data['ownerId'] || ownerId,
                         sharedWith: sharedWith
-                      });
+                      };
+
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`\n📋 Shared List: "${list.name}"`);
+                        console.log(`   - List ID: ${list.id}`);
+                        console.log(`   - Owner ID: ${list.ownerId}`);
+                        console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
+                        console.log(`   - Article IDs (final): [${list.articleIds.join(', ')}]`);
+                        console.log(`   - Total Articles: ${list.articleIds.length}`);
+                        console.log(`   - ItemStates keys (final): [${Object.keys(list.itemStates || {}).join(', ')}]`);
+                      }
+
+                      sharedLists.push(list);
                       this.logger.debug('data', `Loaded shared list: ${data['name']}`);
                     } else {
                       this.logger.warn('data', `List ${listId} no longer shared with user`);
+                      if (DEBUG_FIREBASE_DATA) {
+                        console.log(`⚠️  List ${listId} no longer shared with user`);
+                      }
                     }
                   } else {
                     this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`⚠️  Shared list ${listId} not found (deleted?)`);
+                    }
                   }
 
                   // Check if all lists have been processed
@@ -666,6 +743,10 @@ export class FirebaseDataService {
                     // All lists loaded, update store
                     this.sharedLists = sharedLists;
                     this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                    if (DEBUG_FIREBASE_DATA) {
+                      console.log(`\n✅ All shared lists loaded successfully: ${sharedLists.length} total`);
+                      console.log('🔄 Calling mergeLists() to combine owned and shared lists...');
+                    }
                     this.mergeLists();
                   }
                 },
@@ -726,6 +807,13 @@ export class FirebaseDataService {
   }
 
   private executeMergeLists(): void {
+    if (DEBUG_FIREBASE_DATA) {
+      console.log('\n🔄 [FIREBASE DEBUG] ========================================');
+      console.log('🔄 executeMergeLists() called - Merging owned and shared lists');
+      console.log(`   - Owned lists: ${this.ownedLists.length}`);
+      console.log(`   - Shared lists: ${this.sharedLists.length}`);
+    }
+
     // Combine owned and shared lists
     const allLists = [...this.ownedLists, ...this.sharedLists];
 
@@ -736,8 +824,25 @@ export class FirebaseDataService {
 
     this.logger.debug('data', `Merged lists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total`);
 
+    if (DEBUG_FIREBASE_DATA) {
+      console.log(`   - Total unique lists: ${uniqueLists.length}`);
+      console.log('\n📤 Publishing merged lists to listsSubject (will trigger NgRx store update)...');
+      uniqueLists.forEach(list => {
+        console.log(`\n📋 Publishing: "${list.name}"`);
+        console.log(`   - List ID: ${list.id}`);
+        console.log(`   - Owner ID: ${list.ownerId}`);
+        console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
+        console.log(`   - Total Articles: ${list.articleIds.length}`);
+        console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
+      });
+    }
+
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
+
+    if (DEBUG_FIREBASE_DATA) {
+      console.log('\n✅ Lists published to listsSubject - NgRx store will be updated');
+    }
 
     // LAZY LISTENERS + LAZY ARTICLE LOADING: DISABLED
     // Don't batch load articles for ALL shared lists anymore!

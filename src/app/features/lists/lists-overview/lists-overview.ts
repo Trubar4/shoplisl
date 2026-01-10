@@ -25,6 +25,9 @@ import { ConnectionService } from '../../../core/services/connection.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 
+// DEBUG FLAG - Set to true to enable detailed console logging for debugging shared lists article count issue
+const DEBUG_LISTS_OVERVIEW = true;
+
 @Component({
   selector: 'app-lists-overview',
   standalone: true,
@@ -89,19 +92,60 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
+        if (DEBUG_LISTS_OVERVIEW) {
+          console.log('🔍 [LISTS OVERVIEW DEBUG] ========================================');
+          console.log(`📊 Total lists received from NgRx store: ${lists.length}`);
+          console.log(`📦 Total articles available: ${articles.length}`);
+        }
+
         const validIds = new Set(articles.map(a => a.id));
 
         // First clean the lists data
-        const cleanedLists = lists.map(list => ({
-          ...list,
-          // Filter out orphaned article IDs
-          articleIds: list.articleIds.filter(id => validIds.has(id)),
-          // Clean item states
-          itemStates: Object.fromEntries(
-            Object.entries(list.itemStates || {})
-              .filter(([articleId]) => validIds.has(articleId))
-          )
-        }));
+        const cleanedLists = lists.map(list => {
+          const cleaned = {
+            ...list,
+            // Filter out orphaned article IDs
+            articleIds: list.articleIds.filter(id => validIds.has(id)),
+            // Clean item states
+            itemStates: Object.fromEntries(
+              Object.entries(list.itemStates || {})
+                .filter(([articleId]) => validIds.has(articleId))
+            )
+          };
+
+          if (DEBUG_LISTS_OVERVIEW) {
+            const activeCount = cleaned.articleIds.filter(articleId => {
+              const itemState = cleaned.itemStates?.[articleId];
+              return !itemState?.isChecked;
+            }).length;
+            const totalCount = cleaned.articleIds.length;
+            const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
+
+            console.log(`\n📋 List: "${list.name}"`);
+            console.log(`   - List ID: ${list.id}`);
+            console.log(`   - Owner ID: ${list.ownerId}`);
+            console.log(`   - Current User ID: ${this.currentUserId}`);
+            console.log(`   - Is Owner: ${isOwner}`);
+            console.log(`   - Is Shared: ${!!(list.sharedWith && list.sharedWith.length > 0)}`);
+            console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
+            console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
+            console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
+            console.log(`   - Total Articles: ${totalCount}`);
+            console.log(`   - Active (unchecked) Articles: ${activeCount}`);
+            console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
+            console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
+            console.log(`   - ItemStates details:`, Object.entries(cleaned.itemStates || {}).map(([id, state]) => ({
+              articleId: id,
+              isChecked: state.isChecked
+            })));
+          }
+
+          return cleaned;
+        });
+
+        if (DEBUG_LISTS_OVERVIEW) {
+          console.log(`\n✅ Total lists after cleaning: ${cleanedLists.length}`);
+        }
 
         // Then apply search filter
         let filteredLists = cleanedLists;
@@ -109,6 +153,9 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
           filteredLists = cleanedLists.filter(list =>
             list.name.toLowerCase().includes(query.toLowerCase())
           );
+          if (DEBUG_LISTS_OVERVIEW) {
+            console.log(`🔎 Search query: "${query}" - Filtered to ${filteredLists.length} lists`);
+          }
         }
 
         // Finally apply sorting
@@ -126,11 +173,24 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   ngOnInit(): void {
+    if (DEBUG_LISTS_OVERVIEW) {
+      console.log('🚀 [LISTS OVERVIEW DEBUG] ngOnInit() called - Loading lists overview');
+      console.log(`   - Current User ID: ${this.currentUserId}`);
+      console.log(`   - Online status: ${this.connectionService?.isOnline()}`);
+    }
+
     // Load data from NgRx store (effects will call Firebase services)
     // Only dispatch load actions when online - preserve offline changes when offline
     if (this.connectionService?.isOnline()) {
+      if (DEBUG_LISTS_OVERVIEW) {
+        console.log('📡 Dispatching loadLists() and loadArticles() actions to NgRx store');
+      }
       this.store.dispatch(ListsActions.loadLists());
       this.store.dispatch(ArticlesActions.loadArticles());
+    } else {
+      if (DEBUG_LISTS_OVERVIEW) {
+        console.log('⚠️  Offline - skipping data load');
+      }
     }
 
     // Fix viewport height issues on mobile
@@ -410,13 +470,22 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
    */
   getActiveItemCount(list: ShoppingList): number {
     if (!list || !list.articleIds || list.articleIds.length === 0) {
+      if (DEBUG_LISTS_OVERVIEW) {
+        console.log(`⚠️  getActiveItemCount("${list?.name || 'unknown'}"): No articles found`);
+      }
       return 0;
     }
-  
-    return list.articleIds.filter(articleId => {
+
+    const activeCount = list.articleIds.filter(articleId => {
       const itemState = list.itemStates?.[articleId];
       return !itemState?.isChecked;
     }).length;
+
+    if (DEBUG_LISTS_OVERVIEW) {
+      console.log(`📊 getActiveItemCount("${list.name}"): ${activeCount} active out of ${list.articleIds.length} total`);
+    }
+
+    return activeCount;
   }
 
   /**
@@ -425,9 +494,19 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
   getListInfoText(list: ShoppingList): string {
     const activeCount = this.getActiveItemCount(list);
     const totalCount = list.articleIds.length;
-    
-    if (totalCount === 0) return '';
-    return `${activeCount}/${totalCount} Artikel`;
+
+    if (totalCount === 0) {
+      if (DEBUG_LISTS_OVERVIEW) {
+        console.log(`ℹ️  getListInfoText("${list.name}"): Empty (no articles)`);
+      }
+      return '';
+    }
+
+    const displayText = `${activeCount}/${totalCount} Artikel`;
+    if (DEBUG_LISTS_OVERVIEW) {
+      console.log(`ℹ️  getListInfoText("${list.name}"): "${displayText}"`);
+    }
+    return displayText;
   }
 
   /**

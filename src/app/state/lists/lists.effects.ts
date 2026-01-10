@@ -7,6 +7,9 @@ import { ListsRepositoryService } from '../../core/services/lists-repository.ser
 import { FirebaseDataService } from '../../core/services/firebase-data.service';
 import * as ListsActions from './lists.actions';
 
+// DEBUG FLAG - Set to true to enable detailed console logging for debugging NgRx effects
+const DEBUG_LISTS_EFFECTS = true;
+
 /**
  * Lists Effects
  * Handles side effects for list operations by calling existing Firebase services
@@ -27,18 +30,40 @@ export class ListsEffects {
   loadLists$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ListsActions.loadLists),
-      switchMap(() =>
-        this.firebaseData.getLists().pipe(
-          map((lists) => ListsActions.loadListsSuccess({ lists })),
-          catchError((error) =>
-            of(
+      switchMap(() => {
+        if (DEBUG_LISTS_EFFECTS) {
+          console.log('🎬 [NGRX EFFECTS DEBUG] ========================================');
+          console.log('🎬 loadLists action received - calling firebaseData.getLists()');
+        }
+        return this.firebaseData.getLists().pipe(
+          map((lists) => {
+            if (DEBUG_LISTS_EFFECTS) {
+              console.log('\n✅ [NGRX EFFECTS DEBUG] Lists received from Firebase service');
+              console.log(`   - Number of lists: ${lists.length}`);
+              lists.forEach(list => {
+                console.log(`\n📋 List: "${list.name}"`);
+                console.log(`   - List ID: ${list.id}`);
+                console.log(`   - Owner ID: ${list.ownerId}`);
+                console.log(`   - Article IDs: [${list.articleIds.join(', ')}]`);
+                console.log(`   - Total Articles: ${list.articleIds.length}`);
+                console.log(`   - ItemStates keys: [${Object.keys(list.itemStates || {}).join(', ')}]`);
+              });
+              console.log('\n📤 Dispatching loadListsSuccess action to NgRx store');
+            }
+            return ListsActions.loadListsSuccess({ lists });
+          }),
+          catchError((error) => {
+            if (DEBUG_LISTS_EFFECTS) {
+              console.error('❌ [NGRX EFFECTS DEBUG] Error loading lists:', error);
+            }
+            return of(
               ListsActions.loadListsFailure({
                 error: error.message || 'Failed to load lists',
               })
-            )
-          )
-        )
-      )
+            );
+          })
+        );
+      })
     )
   );
 
