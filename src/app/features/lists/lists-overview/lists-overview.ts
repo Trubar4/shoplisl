@@ -113,20 +113,31 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
           // BUG FIX: Only clean orphaned references for lists the user owns
           // For shared lists (where user is a participant), the articles belong to the owner
           // and won't be in the participant's local articles collection
+
+          // STEP 2a: Filter both articleIds and itemStates
+          const filteredArticleIds = filterTempArticles(list.articleIds);
+          const filteredItemStates = filterTempFromItemStates(list.itemStates);
+
+          // STEP 2b: Sync articleIds and itemStates - only keep articles that exist in BOTH
+          // This fixes the mismatch where an article might be in one but not the other
+          const syncedArticleIds = filteredArticleIds.filter(id => filteredItemStates[id]);
+          const syncedItemStates: { [articleId: string]: ListItemState } = Object.fromEntries(
+            Object.entries(filteredItemStates).filter(([id]) => syncedArticleIds.includes(id))
+          );
+
           const cleaned: ShoppingList = isOwner ? {
             ...list,
-            // For owned lists: Remove temp_ IDs AND orphaned article IDs
-            articleIds: filterTempArticles(list.articleIds).filter(id => validIds.has(id)),
-            // Clean item states
+            // For owned lists: Apply syncing THEN filter orphaned article IDs
+            articleIds: syncedArticleIds.filter(id => validIds.has(id)),
             itemStates: Object.fromEntries(
-              Object.entries(filterTempFromItemStates(list.itemStates))
+              Object.entries(syncedItemStates)
                 .filter(([articleId]) => validIds.has(articleId))
             ) as { [articleId: string]: ListItemState }
           } : {
             ...list,
-            // For shared lists (participant): Only remove temp_ IDs, keep all other articles
-            articleIds: filterTempArticles(list.articleIds),
-            itemStates: filterTempFromItemStates(list.itemStates)
+            // For shared lists (participant): Only apply syncing (already filtered temp_)
+            articleIds: syncedArticleIds,
+            itemStates: syncedItemStates
           };
 
           if (DEBUG_LISTS_OVERVIEW) {
@@ -135,25 +146,33 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
             // Only log shared lists where user is a participant
             if (isSharedParticipant) {
               const rawTempCount = list.articleIds.filter(id => id.startsWith('temp_')).length;
+              const rawTempInItemStates = Object.keys(list.itemStates || {}).filter(id => id.startsWith('temp_')).length;
+
               const activeCount = cleaned.articleIds.filter(articleId => {
                 const itemState = cleaned.itemStates?.[articleId];
                 return !itemState?.isChecked;
               }).length;
               const totalCount = cleaned.articleIds.length;
 
-              console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
+              console.log(`\n📋 [COMPONENT] SHARED LIST (participant): "${list.name}"`);
               console.log(`   - List ID: ${list.id}`);
               console.log(`   - Owner ID: ${list.ownerId}`);
-              console.log(`   - Current User ID: ${this.currentUserId}`);
-              console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
-              console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
-              console.log(`   - Article IDs (raw count): ${list.articleIds.length}`);
-              console.log(`   - Temp articles filtered out: ${rawTempCount}`);
-              console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
-              console.log(`   - Total Articles (after cleanup): ${totalCount}`);
-              console.log(`   - Active (unchecked) Articles: ${activeCount}`);
-              console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
-              console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
+              console.log(`   - STEP 1: Raw data from Firebase`);
+              console.log(`     • Article IDs (raw): ${list.articleIds.length} items`);
+              console.log(`     • ItemStates (raw): ${Object.keys(list.itemStates || {}).length} items`);
+              console.log(`     • Temp IDs in articleIds: ${rawTempCount}`);
+              console.log(`     • Temp IDs in itemStates: ${rawTempInItemStates}`);
+              console.log(`   - STEP 2: After filtering temp_`);
+              console.log(`     • Article IDs (after temp filter): ${filteredArticleIds.length} items`);
+              console.log(`     • ItemStates (after temp filter): ${Object.keys(filteredItemStates).length} items`);
+              console.log(`   - STEP 3: After syncing (only in BOTH)`);
+              console.log(`     • Synced Article IDs: ${syncedArticleIds.length} items`);
+              console.log(`     • Synced ItemStates: ${Object.keys(syncedItemStates).length} items`);
+              console.log(`   - FINAL RESULT`);
+              console.log(`     • Article IDs: [${cleaned.articleIds.join(', ')}]`);
+              console.log(`     • Total Articles: ${totalCount}`);
+              console.log(`     • Active (unchecked): ${activeCount}`);
+              console.log(`     • Display: "${activeCount}/${totalCount} Artikel"`);
             }
           }
 
