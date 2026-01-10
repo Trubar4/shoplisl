@@ -117,22 +117,26 @@ export class FirebaseDataService {
    */
   private setupAuthListener(): void {
     this.authService.getCurrentUser().subscribe(user => {
-      if (user) {
-        this.logger.info('data', `User changed to ${user.email}, reloading data`);
-        // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
-        // Without this, old listeners stay active and both users' data loads!
-        this.cleanupListeners();
-        this.loadFreshData();
+      // CRITICAL FIX: Run in NgZone to ensure proper auth context for all Firebase calls
+      // RxJS subscription callbacks run outside Angular zone, causing auth issues
+      this.ngZone.run(() => {
+        if (user) {
+          this.logger.info('data', `User changed to ${user.email}, reloading data`);
+          // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
+          // Without this, old listeners stay active and both users' data loads!
+          this.cleanupListeners();
+          this.loadFreshData();
 
-        // CRITICAL FIX: Re-setup active list listener after cleanup
-        // cleanupListeners() destroys the subscription, so we need to recreate it
-        this.setupActiveListListener();
-      } else {
-        this.logger.info('data', 'User logged out, clearing data');
-        this.cleanupListeners();
-        this.articlesSubject.next([]);
-        this.listsSubject.next([]);
-      }
+          // CRITICAL FIX: Re-setup active list listener after cleanup
+          // cleanupListeners() destroys the subscription, so we need to recreate it
+          this.setupActiveListListener();
+        } else {
+          this.logger.info('data', 'User logged out, clearing data');
+          this.cleanupListeners();
+          this.articlesSubject.next([]);
+          this.listsSubject.next([]);
+        }
+      });
     });
   }
 
@@ -616,15 +620,12 @@ export class FirebaseDataService {
             for (const [listId, ownerId] of listIds.entries()) {
               const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
 
-              // FIX: Run onSnapshot inside NgZone to ensure proper auth context
-              // This fixes "Missing or insufficient permissions" errors
-              this.ngZone.run(() => {
-                // Use onSnapshot for initial load (fixes permission error)
-                const unsubscribe = onSnapshot(
-                  listRef,
-                  (snapshot) => {
-                    // Unsubscribe immediately after first event (quota optimization)
-                    unsubscribe();
+              // Use onSnapshot for initial load (fixes permission error)
+              const unsubscribe = onSnapshot(
+                listRef,
+                (snapshot) => {
+                  // Unsubscribe immediately after first event (quota optimization)
+                  unsubscribe();
 
                   if (snapshot.exists()) {
                     const data = snapshot.data();
@@ -687,7 +688,6 @@ export class FirebaseDataService {
                   }
                 }
               );
-              }); // End ngZone.run()
             }
 
             // LAZY LISTENERS: Don't set up listeners for all shared lists anymore
