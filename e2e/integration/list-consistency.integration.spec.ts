@@ -59,7 +59,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -104,7 +111,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -146,7 +160,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -188,7 +209,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -246,7 +274,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -307,7 +342,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });

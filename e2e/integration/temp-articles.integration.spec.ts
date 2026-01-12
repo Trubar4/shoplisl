@@ -63,10 +63,17 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       [tempId2]: createItemState(tempId2, { isChecked: false }),
     };
 
-    // Write to Firestore
+    // Write to Firestore - be explicit about all fields
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,  // Explicitly use the temp IDs we set
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -100,9 +107,16 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
 
-    // Create document
+    // Create document - be explicit about all fields
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,  // Explicitly use the temp IDs we set
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -172,7 +186,14 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -240,7 +261,14 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
@@ -311,7 +339,14 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
 
     const listRef = doc(ownerDb, `users-v2/${ownerId}/lists/${list.id}`);
     await setDoc(listRef, {
-      ...list,
+      id: list.id,
+      name: list.name,
+      color: list.color,
+      icon: list.icon,
+      ownerId: list.ownerId,
+      sharedWith: list.sharedWith,
+      articleIds: list.articleIds,
+      itemStates: list.itemStates,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
