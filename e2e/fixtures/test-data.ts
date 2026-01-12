@@ -113,13 +113,22 @@ export function createTestList(data: Partial<typeof TEST_LISTS.shopping> & { own
 
 /**
  * Create a list item state object
+ * Note: Firestore doesn't allow undefined values, so we only include defined fields
  */
 export function createItemState(articleId: string, options: { isChecked?: boolean; amount?: string; notes?: string } = {}) {
-  return {
+  const state: any = {
     articleId,
     isChecked: options.isChecked ?? false,
-    amount: options.amount,
-    notes: options.notes,
     addedAt: new Date(),
   };
+
+  // Only include amount and notes if they are defined (Firestore doesn't allow undefined)
+  if (options.amount !== undefined) {
+    state.amount = options.amount;
+  }
+  if (options.notes !== undefined) {
+    state.notes = options.notes;
+  }
+
+  return state;
 }

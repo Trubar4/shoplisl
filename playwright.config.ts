@@ -13,6 +13,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
 
+  // Exclude integration tests (they use Vitest, not Playwright)
+  testIgnore: '**/integration/**',
+
   // Maximum time one test can run
   timeout: 30 * 1000,
 
