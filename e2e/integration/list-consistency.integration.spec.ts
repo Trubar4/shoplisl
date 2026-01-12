@@ -206,10 +206,17 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
     const currentDoc = await getDoc(listRef);
     const currentData = currentDoc.data()!;
 
+    // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
-      ...currentData,
+      id: currentData.id,
+      name: currentData.name,
+      color: currentData.color,
+      icon: currentData.icon,
+      ownerId: currentData.ownerId,
+      sharedWith: currentData.sharedWith || [],
       articleIds: validIds,
       itemStates: repairedItemStates,
+      createdAt: currentData.createdAt,
       updatedAt: Timestamp.now(),
     });
 
@@ -245,13 +252,21 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
     const currentData = currentDoc.data()!;
 
     const newArticleId = `article_${Date.now()}`;
+
+    // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
-      ...currentData,
+      id: currentData.id,
+      name: currentData.name,
+      color: currentData.color,
+      icon: currentData.icon,
+      ownerId: currentData.ownerId,
+      sharedWith: currentData.sharedWith || [],
       articleIds: [...currentData.articleIds, newArticleId],
       itemStates: {
         ...currentData.itemStates,
         [newArticleId]: createItemState(newArticleId),
       },
+      createdAt: currentData.createdAt,
       updatedAt: Timestamp.now(),
     });
 
