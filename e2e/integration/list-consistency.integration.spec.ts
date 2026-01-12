@@ -202,12 +202,16 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       validIds.map(id => [id, list.itemStates[id]])
     );
 
-    // Use setDoc with merge instead of updateDoc to avoid permission issues
+    // Read current document, modify, write back completely (no merge to avoid nested object merging)
+    const currentDoc = await getDoc(listRef);
+    const currentData = currentDoc.data()!;
+
     await setDoc(listRef, {
+      ...currentData,
       articleIds: validIds,
       itemStates: repairedItemStates,
       updatedAt: Timestamp.now(),
-    }, { merge: true });
+    });
 
     // Verify repair
     const snapshot = await getDoc(listRef);
@@ -235,15 +239,21 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       updatedAt: Timestamp.now(),
     });
 
-    // Add article (both arrays updated atomically) - use setDoc with merge
+    // Add article (both arrays updated atomically)
+    // Read current document, add new article, write back completely
+    const currentDoc = await getDoc(listRef);
+    const currentData = currentDoc.data()!;
+
     const newArticleId = `article_${Date.now()}`;
     await setDoc(listRef, {
-      articleIds: [newArticleId],
+      ...currentData,
+      articleIds: [...currentData.articleIds, newArticleId],
       itemStates: {
+        ...currentData.itemStates,
         [newArticleId]: createItemState(newArticleId),
       },
       updatedAt: Timestamp.now(),
-    }, { merge: true });
+    });
 
     const snapshot = await getDoc(listRef);
     const data = snapshot.data();

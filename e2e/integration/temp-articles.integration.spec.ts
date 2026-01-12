@@ -111,15 +111,19 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     const createdSnapshot = await getDoc(listRef);
     expect(createdSnapshot.exists()).toBe(true);
 
-    // Simulate sync: Replace temp ID with real ID using setDoc with merge
-    // This avoids permission issues with updateDoc
+    // Simulate sync: Replace temp ID with real ID
+    // Read current document, modify, write back completely
+    const currentDoc = await getDoc(listRef);
+    const currentData = currentDoc.data()!;
+
     await setDoc(listRef, {
+      ...currentData,
       articleIds: [realId],
       itemStates: {
         [realId]: createItemState(realId, { isChecked: false }),
       },
       updatedAt: Timestamp.now(),
-    }, { merge: true });
+    });
 
     // Verify temp ID is gone and real ID is present
     const snapshot = await getDoc(listRef);
@@ -161,7 +165,12 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     });
 
     // Simulate sync: Replace all temp IDs with real IDs
-    await updateDoc(listRef, {
+    // Read current document, modify, write back completely
+    const currentDoc = await getDoc(listRef);
+    const currentData = currentDoc.data()!;
+
+    await setDoc(listRef, {
+      ...currentData,
       articleIds: [realId1, realId2],
       itemStates: {
         [realId1]: createItemState(realId1, { isChecked: false }),
@@ -265,14 +274,19 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       updatedAt: Timestamp.now(),
     });
 
-    // Owner syncs and replaces temp ID - use setDoc with merge
+    // Owner syncs and replaces temp ID
+    // Read current document, modify, write back completely
+    const currentDoc = await getDoc(listRef);
+    const currentData = currentDoc.data()!;
+
     await setDoc(listRef, {
+      ...currentData,
       articleIds: [realId],
       itemStates: {
         [realId]: createItemState(realId, { isChecked: false }),
       },
       updatedAt: Timestamp.now(),
-    }, { merge: true });
+    });
 
     // Switch to participant to read the list
     await getAuthenticatedFirestore(TEST_USERS.participant.email);
