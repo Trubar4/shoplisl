@@ -114,7 +114,13 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     // Simulate sync: Replace temp ID with real ID
     // Read current document, modify, write back completely
     const currentDoc = await getDoc(listRef);
-    const currentData = currentDoc.data()!;
+
+    // Verify document exists before accessing data
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
 
     // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
@@ -174,7 +180,12 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     // Simulate sync: Replace all temp IDs with real IDs
     // Read current document, modify, write back completely
     const currentDoc = await getDoc(listRef);
-    const currentData = currentDoc.data()!;
+
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
 
     // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
@@ -235,8 +246,24 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     });
 
     // Replace temp ID, preserving state
+    // Read current document, modify, write back completely
+    const currentDoc = await getDoc(listRef);
+
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
     const oldState = list.itemStates[tempId];
-    await updateDoc(listRef, {
+
+    // Explicitly preserve all required fields to avoid permission issues
+    await setDoc(listRef, {
+      id: currentData.id,
+      name: currentData.name,
+      color: currentData.color,
+      icon: currentData.icon,
+      ownerId: currentData.ownerId,
+      sharedWith: currentData.sharedWith || [],
       articleIds: [realId],
       itemStates: {
         [realId]: {
@@ -244,6 +271,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
           articleId: realId,
         },
       },
+      createdAt: currentData.createdAt,
       updatedAt: Timestamp.now(),
     });
 
@@ -291,7 +319,12 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     // Owner syncs and replaces temp ID
     // Read current document, modify, write back completely
     const currentDoc = await getDoc(listRef);
-    const currentData = currentDoc.data()!;
+
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
 
     // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {

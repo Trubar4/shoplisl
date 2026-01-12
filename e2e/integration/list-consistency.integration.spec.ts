@@ -204,7 +204,12 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
 
     // Read current document, modify, write back completely (no merge to avoid nested object merging)
     const currentDoc = await getDoc(listRef);
-    const currentData = currentDoc.data()!;
+
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
 
     // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
@@ -249,7 +254,12 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
     // Add article (both arrays updated atomically)
     // Read current document, add new article, write back completely
     const currentDoc = await getDoc(listRef);
-    const currentData = currentDoc.data()!;
+
+    if (!currentDoc.exists()) {
+      throw new Error('Document does not exist after creation');
+    }
+
+    const currentData = currentDoc.data();
 
     const newArticleId = `article_${Date.now()}`;
 
