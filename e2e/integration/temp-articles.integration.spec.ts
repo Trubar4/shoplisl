@@ -126,15 +126,12 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     expect(createdSnapshot.exists()).toBe(true);
 
     // Simulate sync: Replace temp ID with real ID
-    // Read current document, modify, write back completely
-    const currentDoc = await getDoc(listRef);
-
-    // Verify document exists before accessing data
-    if (!currentDoc.exists()) {
+    // Reuse the snapshot we just read (no need to read again)
+    if (!createdSnapshot.exists()) {
       throw new Error('Document does not exist after creation');
     }
 
-    const currentData = currentDoc.data();
+    const currentData = createdSnapshot.data();
 
     // Explicitly preserve all required fields to avoid permission issues
     await setDoc(listRef, {
