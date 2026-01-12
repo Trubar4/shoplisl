@@ -139,6 +139,22 @@ export class ArticlesRepositoryService {
         this.firebaseData.updateLocalLists(updatedLists);
 
         this.logger.info('data', `🔄 Replaced temp ID ${tempId} with real ID ${realId} in local state`);
+
+        // CRITICAL FIX: Persist temp ID replacement to Firebase
+        // Update each list in Firebase that had the temp ID
+        const listsToUpdate = updatedLists.filter(list => list.articleIds.includes(realId));
+        for (const list of listsToUpdate) {
+          try {
+            await this.firebaseData.updateListInFirebase(list.id, {
+              articleIds: list.articleIds,
+              itemStates: list.itemStates,
+              updatedAt: new Date()
+            });
+            this.logger.info('data', `✅ Updated list ${list.name} in Firebase: replaced temp ID with real ID ${realId}`);
+          } catch (error) {
+            this.logger.error('data', `❌ Failed to update list ${list.id} in Firebase after temp ID replacement`, error);
+          }
+        }
       }, `Create article: ${article.name}`);
 
       return of(tempArticle);
