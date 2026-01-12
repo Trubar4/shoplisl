@@ -1,6 +1,6 @@
-# Firestore Backup & Restore Scripts
+# Firestore Management Scripts
 
-**Purpose:** Safe backup and restore of Firestore data
+**Purpose:** Backup, restore, cleanup, and validate Firestore data
 **Location:** `/scripts`
 
 ---
@@ -10,8 +10,128 @@
 These scripts provide command-line tools to:
 - ✅ Backup all Firestore data to JSON files
 - ✅ Restore Firestore data from backups
+- ✅ Clean up temporary article IDs from lists
+- ✅ Validate articleIds/itemStates consistency
 - ✅ Migrate data between Firebase projects
 - ✅ Create disaster recovery snapshots
+
+---
+
+## 🧹 Temporary Article Cleanup
+
+### Overview
+
+During offline operation, the app creates articles with temporary IDs (starting with `temp_`). These should be replaced with real IDs once synced to Firebase, but sometimes persist incorrectly. This script removes them.
+
+### Dry Run (Safe Preview)
+
+```bash
+# See what would be cleaned without making changes
+npm run cleanup:temp-articles:dry-run
+
+# Or for a specific user
+npx ts-node scripts/cleanup-temp-articles.ts --dry-run --user=USER_ID
+```
+
+### Clean All Lists
+
+```bash
+# Remove temp articles from all users' lists
+npm run cleanup:temp-articles
+
+# Clean specific user only
+npx ts-node scripts/cleanup-temp-articles.ts --user=USER_ID
+```
+
+### Output Example
+
+```
+🧹 Starting Temporary Article Cleanup
+=====================================
+
+Found 15 users
+
+👤 User: abc123xyz
+
+  📋 List: Weekly Shopping
+     User: abc123xyz
+     Temp articles: 2
+     Temp IDs: temp_1705234567890_abc, temp_1705234568901_def
+     ✅ Cleaned
+
+📊 Cleanup Summary
+==================
+Lists scanned:           45
+Lists with temp articles: 3
+Temp articles removed:    7
+
+✅ Cleanup complete!
+```
+
+---
+
+## ✅ List Consistency Validation
+
+### Overview
+
+Validates that `articleIds` and `itemStates` arrays are properly synchronized. Detects:
+- Articles in articleIds but not in itemStates (orphaned)
+- Articles in itemStates but not in articleIds (orphaned)
+- Temporary article IDs that shouldn't exist
+
+### Validate Only
+
+```bash
+# Check for issues without fixing
+npm run validate:lists
+
+# Check specific user
+npx ts-node scripts/validate-list-consistency.ts --user=USER_ID
+
+# Show all lists (not just problematic ones)
+npx ts-node scripts/validate-list-consistency.ts --verbose
+```
+
+### Validate and Fix
+
+```bash
+# Automatically repair inconsistencies
+npm run validate:lists:fix
+
+# Fix specific user
+npx ts-node scripts/validate-list-consistency.ts --user=USER_ID --fix
+```
+
+### Output Example
+
+```
+🔍 Starting List Consistency Validation
+========================================
+
+Found 15 users
+
+👤 User: abc123xyz
+
+  📋 List: Groceries (list_1705234567890)
+     Issues found: 3
+     - Article article_123 in articleIds but not in itemStates
+     - Article article_456 in itemStates but not in articleIds
+     - Temp article temp_789 found in articleIds
+     ✅ Fixed
+
+📊 Validation Summary
+=====================
+Lists scanned:               45
+Lists with issues:           2
+Total issues:                5
+
+Issues by type:
+  Orphaned in articleIds:    2
+  Orphaned in itemStates:    1
+  Temp articles:             2
+
+✅ All issues have been repaired!
+```
 
 ---
 

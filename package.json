@@ -22,7 +22,11 @@
     "firebase:emulator": "firebase emulators:start",
     "i18n:extract": "ng extract-i18n",
     "backup:firestore": "echo 'See scripts/backup-firestore.ts for backup instructions'",
-    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'"
+    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'",
+    "cleanup:temp-articles": "ts-node scripts/cleanup-temp-articles.ts",
+    "cleanup:temp-articles:dry-run": "ts-node scripts/cleanup-temp-articles.ts --dry-run",
+    "validate:lists": "ts-node scripts/validate-list-consistency.ts",
+    "validate:lists:fix": "ts-node scripts/validate-list-consistency.ts --fix"
   },
   "private": true,
   "dependencies": {
