@@ -12,7 +12,7 @@ import {
   setupEmulators,
   clearEmulators,
   cleanupEmulators,
-  getAuthenticatedContext
+  getAuthenticatedFirestore
 } from '../utils/firebase-emulator';
 import {
   TEST_USERS,
@@ -41,14 +41,13 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should have matching keys between articleIds and itemStates', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const articleId1 = `article_${Date.now()}_1`;
     const articleId2 = `article_${Date.now()}_2`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -58,7 +57,7 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       [articleId2]: createItemState(articleId2),
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -84,15 +83,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should detect when articleIds has an ID not in itemStates', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const articleId1 = `article_${Date.now()}_1`;
     const articleId2 = `article_${Date.now()}_2`;
     const articleId3 = `article_${Date.now()}_3`; // Orphaned in articleIds
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Inconsistent List',
     });
 
@@ -104,7 +102,7 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       // articleId3 missing from itemStates!
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -127,15 +125,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should detect when itemStates has a key not in articleIds', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const articleId1 = `article_${Date.now()}_1`;
     const articleId2 = `article_${Date.now()}_2`;
     const articleId3 = `article_${Date.now()}_3`; // Orphaned in itemStates
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Inconsistent List',
     });
 
@@ -147,7 +144,7 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       [articleId3]: createItemState(articleId3), // Orphaned!
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -170,15 +167,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should repair inconsistencies by removing orphaned entries', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const articleId1 = `article_${Date.now()}_1`;
     const articleId2 = `article_${Date.now()}_2`;
     const articleId3 = `article_${Date.now()}_3`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Inconsistent List',
     });
 
@@ -190,7 +186,7 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       // articleId3 missing from itemStates
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -224,15 +220,14 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should add article with both articleId and itemState', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -258,14 +253,13 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
   });
 
   it('should remove article from both articleIds and itemStates', async () => {
-    const context = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = context.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const articleId1 = `article_${Date.now()}_1`;
     const articleId2 = `article_${Date.now()}_2`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -275,7 +269,7 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       [articleId2]: createItemState(articleId2),
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),

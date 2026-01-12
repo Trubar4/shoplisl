@@ -2,7 +2,7 @@
  * Firebase Integration Tests for Temporary Article Cleanup
  *
  * These tests directly test Firebase operations without requiring a browser.
- * They can be run automatically by Claude to verify the temp article cleanup logic.
+ * They can be run automatically to verify the temp article cleanup logic.
  *
  * Run with: npm run test:integration
  */
@@ -12,7 +12,8 @@ import {
   setupEmulators,
   clearEmulators,
   cleanupEmulators,
-  getAuthenticatedContext
+  getAuthenticatedFirestore,
+  getTestFirestore
 } from '../utils/firebase-emulator';
 import {
   TEST_USERS,
@@ -44,15 +45,14 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
   });
 
   it('should create a list with temp article IDs', async () => {
-    const ownerContext = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = ownerContext.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     // Create articles with temp IDs (simulating offline creation)
     const tempId1 = generateTempId();
     const tempId2 = generateTempId();
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -64,7 +64,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     };
 
     // Write to Firestore
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -82,15 +82,14 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
   });
 
   it('should replace temp IDs with real IDs in Firebase', async () => {
-    const ownerContext = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = ownerContext.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     // Create list with temp IDs
     const tempId = generateTempId();
     const realId = `article_${Date.now()}`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -99,7 +98,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       [tempId]: createItemState(tempId, { isChecked: false }),
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -128,8 +127,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
   });
 
   it('should handle multiple temp IDs being replaced', async () => {
-    const ownerContext = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = ownerContext.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     // Create list with multiple temp IDs
     const tempId1 = generateTempId();
@@ -138,7 +136,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     const realId2 = `article_${Date.now()}_2`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -148,7 +146,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       [tempId2]: createItemState(tempId2, { isChecked: true }),
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -179,14 +177,13 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
   });
 
   it('should maintain checked state when replacing temp IDs', async () => {
-    const ownerContext = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const db = ownerContext.firestore();
+    const { db, userId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const tempId = generateTempId();
     const realId = `article_${Date.now()}`;
 
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: userId,
       name: 'Test List',
     });
 
@@ -200,7 +197,7 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       }),
     };
 
-    const listRef = doc(db, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -231,27 +228,27 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
   });
 
   it('should work with shared lists - participant view', async () => {
-    const ownerContext = getAuthenticatedContext(TEST_USERS.owner.uid);
-    const participantContext = getAuthenticatedContext(TEST_USERS.participant.uid);
-    const ownerDb = ownerContext.firestore();
-    const participantDb = participantContext.firestore();
+    // Owner creates list with temp ID
+    const { db: ownerDb, userId: ownerId } = await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     const tempId = generateTempId();
     const realId = `article_${Date.now()}`;
 
-    // Owner creates list with temp ID
     const list = createTestList({
-      ownerId: TEST_USERS.owner.uid,
+      ownerId: ownerId,
       name: 'Shared List',
     });
 
-    list.sharedWith = [TEST_USERS.participant.uid];
+    // Get participant user ID
+    const { userId: participantId } = await getAuthenticatedFirestore(TEST_USERS.participant.email);
+
+    list.sharedWith = [participantId];
     list.articleIds = [tempId];
     list.itemStates = {
       [tempId]: createItemState(tempId, { isChecked: false }),
     };
 
-    const listRef = doc(ownerDb, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`);
+    const listRef = doc(ownerDb, `users-v2/${ownerId}/lists/${list.id}`);
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
@@ -268,8 +265,9 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     });
 
     // Participant reads list (via owner's path since it's shared)
+    const db = getTestFirestore();
     const participantSnapshot = await getDoc(
-      doc(participantDb, `users-v2/${TEST_USERS.owner.uid}/lists/${list.id}`)
+      doc(db, `users-v2/${ownerId}/lists/${list.id}`)
     );
     const participantData = participantSnapshot.data();
 

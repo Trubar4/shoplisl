@@ -2,128 +2,188 @@
  * Firebase Emulator Test Utilities
  *
  * These utilities are for integration tests that directly test Firebase operations
- * without needing a browser. These tests can be run by Claude automatically.
+ * without needing a browser. These tests can be run automatically.
+ *
+ * Uses the regular Firebase SDK with emulator connection (compatible with Firebase 11.x)
  */
 
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import * as fs from 'fs';
-import * as path from 'path';
+import { initializeApp, FirebaseApp, deleteApp } from 'firebase/app';
+import { getAuth, connectAuthEmulator, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, Firestore, connectFirestoreEmulator, collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
-let testEnv: RulesTestEnvironment | null = null;
+let testApp: FirebaseApp | null = null;
+let testAuth: Auth | null = null;
+let testFirestore: Firestore | null = null;
+
+const TEST_CONFIG = {
+  apiKey: 'fake-api-key',
+  authDomain: 'localhost',
+  projectId: 'shoplisl-test',
+  storageBucket: 'shoplisl-test.appspot.com',
+  messagingSenderId: '000000000000',
+  appId: '1:000000000000:web:test'
+};
 
 /**
  * Initialize Firebase emulator test environment
  */
-export async function setupEmulators(): Promise<RulesTestEnvironment> {
-  if (testEnv) {
-    return testEnv;
+export async function setupEmulators(): Promise<{ app: FirebaseApp; auth: Auth; firestore: Firestore }> {
+  if (testApp && testAuth && testFirestore) {
+    return { app: testApp, auth: testAuth, firestore: testFirestore };
   }
 
-  const rulesPath = path.resolve(__dirname, '../../firestore.rules');
-  const rules = fs.readFileSync(rulesPath, 'utf8');
+  // Initialize Firebase app
+  testApp = initializeApp(TEST_CONFIG, 'test-app');
 
-  testEnv = await initializeTestEnvironment({
-    projectId: 'shoplisl-test',
-    firestore: {
-      host: 'localhost',
-      port: 8080,
-      rules,
-    },
-  });
+  // Initialize Auth and connect to emulator
+  testAuth = getAuth(testApp);
+  connectAuthEmulator(testAuth, 'http://localhost:9099', { disableWarnings: true });
 
-  return testEnv;
+  // Initialize Firestore and connect to emulator
+  testFirestore = getFirestore(testApp);
+  connectFirestoreEmulator(testFirestore, 'localhost', 8080);
+
+  return { app: testApp, auth: testAuth, firestore: testFirestore };
+}
+
+/**
+ * Clear all data from Firestore emulator
+ */
+export async function clearFirestore(): Promise<void> {
+  try {
+    const response = await fetch('http://localhost:8080/emulator/v1/projects/shoplisl-test/databases/(default)/documents', {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to clear Firestore emulator:', response.statusText);
+    }
+  } catch (error) {
+    console.warn('Error clearing Firestore emulator:', error);
+  }
+}
+
+/**
+ * Clear all users from Auth emulator
+ */
+export async function clearAuth(): Promise<void> {
+  try {
+    const response = await fetch('http://localhost:9099/emulator/v1/projects/shoplisl-test/accounts', {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to clear Auth emulator:', response.statusText);
+    }
+  } catch (error) {
+    console.warn('Error clearing Auth emulator:', error);
+  }
 }
 
 /**
  * Clear all data from emulators (reset state)
  */
 export async function clearEmulators(): Promise<void> {
-  if (testEnv) {
-    await testEnv.clearFirestore();
-  }
+  await Promise.all([
+    clearFirestore(),
+    clearAuth()
+  ]);
 }
 
 /**
  * Cleanup and close emulator connections
  */
 export async function cleanupEmulators(): Promise<void> {
-  if (testEnv) {
-    await testEnv.cleanup();
-    testEnv = null;
+  if (testApp) {
+    await deleteApp(testApp);
+    testApp = null;
+    testAuth = null;
+    testFirestore = null;
   }
 }
 
 /**
- * Get authenticated context for a user
+ * Get Firestore instance for testing
  */
-export function getAuthenticatedContext(userId: string) {
-  if (!testEnv) {
+export function getTestFirestore(): Firestore {
+  if (!testFirestore) {
     throw new Error('Test environment not initialized. Call setupEmulators() first.');
   }
-  return testEnv.authenticatedContext(userId);
+  return testFirestore;
 }
 
 /**
- * Get unauthenticated context
+ * Get Auth instance for testing
  */
-export function getUnauthenticatedContext() {
-  if (!testEnv) {
+export function getTestAuth(): Auth {
+  if (!testAuth) {
     throw new Error('Test environment not initialized. Call setupEmulators() first.');
   }
-  return testEnv.unauthenticatedContext();
+  return testAuth;
 }
 
 /**
- * Create a test user in Auth emulator via REST API
+ * Create a test user in Auth emulator
  */
 export async function createTestUser(email: string, password: string = 'testPassword123'): Promise<any> {
-  const response = await fetch('http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email,
-      password,
-      returnSecureToken: true,
-    }),
-  });
+  const auth = getTestAuth();
 
-  if (!response.ok) {
-    throw new Error(`Failed to create test user: ${response.statusText}`);
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    return {
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      localId: userCredential.user.uid,
+    };
+  } catch (error: any) {
+    // If user already exists, sign them in instead
+    if (error.code === 'auth/email-already-in-use') {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        localId: userCredential.user.uid,
+      };
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
- * Sign in test user via Auth emulator REST API
+ * Sign in test user
  */
 export async function signInTestUser(email: string, password: string = 'testPassword123'): Promise<any> {
-  const response = await fetch('http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email,
-      password,
-      returnSecureToken: true,
-    }),
-  });
+  const auth = getTestAuth();
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-  if (!response.ok) {
-    throw new Error(`Failed to sign in test user: ${response.statusText}`);
-  }
-
-  return response.json();
+  return {
+    uid: userCredential.user.uid,
+    email: userCredential.user.email,
+    localId: userCredential.user.uid,
+  };
 }
 
 /**
- * Delete all users from Auth emulator
+ * Sign out current user
  */
-export async function clearAuthUsers(): Promise<void> {
-  const response = await fetch('http://localhost:9099/emulator/v1/projects/shoplisl-test/accounts', {
-    method: 'DELETE',
-  });
+export async function signOutTestUser(): Promise<void> {
+  const auth = getTestAuth();
+  await auth.signOut();
+}
 
-  if (!response.ok) {
-    throw new Error(`Failed to clear auth users: ${response.statusText}`);
-  }
+/**
+ * Helper to get a Firestore reference with authentication context
+ * This simulates having a user authenticated when accessing Firestore
+ */
+export async function getAuthenticatedFirestore(email: string, password: string = 'testPassword123'): Promise<{ db: Firestore; userId: string }> {
+  const auth = getTestAuth();
+  const db = getTestFirestore();
+
+  // Create or sign in user
+  const user = await createTestUser(email, password);
+
+  return {
+    db,
+    userId: user.uid
+  };
 }
