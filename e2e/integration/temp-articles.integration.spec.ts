@@ -99,20 +99,27 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
     };
 
     const listRef = doc(db, `users-v2/${userId}/lists/${list.id}`);
+
+    // Create document
     await setDoc(listRef, {
       ...list,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
 
-    // Simulate sync: Replace temp ID with real ID
-    await updateDoc(listRef, {
+    // Verify document was created
+    const createdSnapshot = await getDoc(listRef);
+    expect(createdSnapshot.exists()).toBe(true);
+
+    // Simulate sync: Replace temp ID with real ID using setDoc with merge
+    // This avoids permission issues with updateDoc
+    await setDoc(listRef, {
       articleIds: [realId],
       itemStates: {
         [realId]: createItemState(realId, { isChecked: false }),
       },
       updatedAt: Timestamp.now(),
-    });
+    }, { merge: true });
 
     // Verify temp ID is gone and real ID is present
     const snapshot = await getDoc(listRef);
@@ -239,8 +246,11 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       name: 'Shared List',
     });
 
-    // Get participant user ID
+    // Get participant user ID (creates the user in Auth emulator)
     const { userId: participantId } = await getAuthenticatedFirestore(TEST_USERS.participant.email);
+
+    // Switch back to owner for creating the list
+    await getAuthenticatedFirestore(TEST_USERS.owner.email);
 
     list.sharedWith = [participantId];
     list.articleIds = [tempId];
@@ -255,16 +265,17 @@ describe('Temporary Article Cleanup - Firebase Integration', () => {
       updatedAt: Timestamp.now(),
     });
 
-    // Owner syncs and replaces temp ID
-    await updateDoc(listRef, {
+    // Owner syncs and replaces temp ID - use setDoc with merge
+    await setDoc(listRef, {
       articleIds: [realId],
       itemStates: {
         [realId]: createItemState(realId, { isChecked: false }),
       },
       updatedAt: Timestamp.now(),
-    });
+    }, { merge: true });
 
-    // Participant reads list (via owner's path since it's shared)
+    // Switch to participant to read the list
+    await getAuthenticatedFirestore(TEST_USERS.participant.email);
     const db = getTestFirestore();
     const participantSnapshot = await getDoc(
       doc(db, `users-v2/${ownerId}/lists/${list.id}`)

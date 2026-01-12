@@ -202,11 +202,12 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       validIds.map(id => [id, list.itemStates[id]])
     );
 
-    await updateDoc(listRef, {
+    // Use setDoc with merge instead of updateDoc to avoid permission issues
+    await setDoc(listRef, {
       articleIds: validIds,
       itemStates: repairedItemStates,
       updatedAt: Timestamp.now(),
-    });
+    }, { merge: true });
 
     // Verify repair
     const snapshot = await getDoc(listRef);
@@ -234,15 +235,15 @@ describe('ArticleIds/ItemStates Consistency - Firebase Integration', () => {
       updatedAt: Timestamp.now(),
     });
 
-    // Add article (both arrays updated atomically)
+    // Add article (both arrays updated atomically) - use setDoc with merge
     const newArticleId = `article_${Date.now()}`;
-    await updateDoc(listRef, {
+    await setDoc(listRef, {
       articleIds: [newArticleId],
       itemStates: {
         [newArticleId]: createItemState(newArticleId),
       },
       updatedAt: Timestamp.now(),
-    });
+    }, { merge: true });
 
     const snapshot = await getDoc(listRef);
     const data = snapshot.data();

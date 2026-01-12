@@ -179,8 +179,11 @@ export async function getAuthenticatedFirestore(email: string, password: string 
   const auth = getTestAuth();
   const db = getTestFirestore();
 
-  // Create or sign in user
+  // Create or sign in user (this sets the auth state)
   const user = await createTestUser(email, password);
+
+  // Wait a moment for auth state to propagate to Firestore
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   return {
     db,
