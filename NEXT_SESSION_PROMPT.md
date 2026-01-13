@@ -19,12 +19,13 @@ I'm continuing work on the ShopLisl temp article cleanup project. Please read th
 - Files: `e2e/integration/temp-articles.integration.spec.ts`, `e2e/integration/list-consistency.integration.spec.ts`
 - All tests validate temp article cleanup and articleIds/itemStates consistency
 
-#### ✅ Phase 2: Database Cleanup Scripts (COMPLETE - WITH NOTES)
+#### ⚠️ Phase 2: Database Cleanup Scripts (PARTIALLY COMPLETE - NEEDS WORK)
 - Created `scripts/cleanup-temp-articles.ts` - removes temp articles from production
 - Created `scripts/validate-list-consistency.ts` - validates list consistency
-- **Scripts compile successfully** but require Firebase Admin credentials to run
+- **Status:** Scripts have TypeScript compilation issues on Windows
+- **Issue:** `firebase-admin` dependency not found, TypeScript errors remain
 - Added 4 npm scripts: `cleanup:temp-articles`, `cleanup:temp-articles:dry-run`, `validate:lists`, `validate:lists:fix`
-- **Note:** Scripts need to be tested against production database by user with credentials
+- **Note:** User needs to run `npm install` first, then scripts may still need fixes
 
 #### ✅ Phase 3: Core Sync Bug Fix (COMPLETE)
 - Fixed critical bug in `src/app/core/services/articles-repository.service.ts` (lines 143-157)
@@ -63,7 +64,24 @@ I'm continuing work on the ShopLisl temp article cleanup project. Please read th
 
 ### Your Task
 
-Please continue with **Phase 5**: Create Playwright E2E browser tests.
+**IMPORTANT:** Before starting Phase 5, you need to fix Phase 2 scripts first.
+
+#### Step 1: Fix Phase 2 Scripts (Priority)
+
+The database cleanup scripts have compilation issues:
+
+1. **User needs to run:** `npm install` (to get firebase-admin dependency)
+2. **Then test if scripts compile:**
+   ```bash
+   npm run validate:lists
+   npm run cleanup:temp-articles:dry-run
+   ```
+3. **Fix any remaining TypeScript errors**
+4. **Verify scripts work** (at least compile successfully)
+
+#### Step 2: Then Continue with Phase 5
+
+Once scripts are working, create Playwright E2E browser tests.
 
 1. **Read the original plan:** `TEMP_ARTICLE_E2E_PLAN.md` (lines 720-900 have Phase 5 details)
 

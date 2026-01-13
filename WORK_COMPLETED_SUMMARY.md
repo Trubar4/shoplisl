@@ -18,13 +18,13 @@ Three core deliverables were completed:
    - Scans all user lists for temp article IDs
    - Removes temp IDs from articleIds and itemStates
    - Supports `--dry-run` and `--user=ID` options
-   - **Status:** Compiles successfully, needs Firebase Admin credentials to run
+   - **Status:** ⚠️ Has compilation errors - user must run `npm install` first
 
 2. **Validation Script** (`scripts/validate-list-consistency.ts` - 327 lines)
    - Validates articleIds/itemStates synchronization
    - Detects orphaned entries and temp articles
    - Supports `--fix` and `--verbose` options
-   - **Status:** Compiles successfully, needs Firebase Admin credentials to run
+   - **Status:** ⚠️ Has compilation errors - user must run `npm install` first
 
 3. **Validation Service** (`src/app/core/services/list-validation.service.ts` - 204 lines)
    - Runtime validation and repair methods
@@ -106,9 +106,15 @@ npm run emulators:start
 npm run test:integration
 ```
 
-### 2. Use Cleanup Scripts (Requires Firebase Admin Credentials)
+### 2. Use Cleanup Scripts (Requires Setup First)
+
+**IMPORTANT: First run `npm install` to get firebase-admin dependency!**
+
 ```bash
-# Validate current state
+# Install dependencies (required)
+npm install
+
+# Then validate current state
 npm run validate:lists
 
 # Preview cleanup (dry run)

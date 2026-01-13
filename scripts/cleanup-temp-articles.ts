@@ -140,7 +140,7 @@ async function cleanupTempArticles(options: CleanupOptions): Promise<CleanupResu
       console.log(`Processing single user: ${options.userId}\n`);
     } else {
       const usersSnapshot = await db.collection('users-v2').get();
-      userIds = usersSnapshot.docs.map(doc => doc.id);
+      userIds = usersSnapshot.docs.map((doc: any) => doc.id);
       console.log(`Found ${userIds.length} users\n`);
     }
 
