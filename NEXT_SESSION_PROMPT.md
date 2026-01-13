@@ -1,73 +1,102 @@
 # Next Session Prompt
 
-## Context
-We just completed **Phase 6: History Feature** for the shoplisl app (Angular 20 + NgRx + Firebase). The core functionality is complete and tested.
+Use this prompt to continue work on the temp article cleanup project in a fresh conversation:
 
-## What Was Completed in Last Session
+---
 
-### Features Implemented ✅
-1. **Article Count Chips**: Display #N format in articles overview showing how many times each article was checked off
-2. **Statistics Section**: Added to article details page with:
-   - Last added date chip (+prefix, green)
-   - Last checked date chip (-prefix, blue)
-   - Check count chip (#N, orange)
-   - Edit buttons for all three statistics
-3. **Edit Functionality**:
-   - DateEditDialogComponent with date/time picker
-   - NumberEditDialogComponent with number input
-   - Temporary overrides (overwritten on next action)
-4. **History Log**: Full "Verlauf" section showing:
-   - All check/uncheck events
-   - Date, time, list name for each event
-   - Color-coded prefixes (+ green for adds, - blue for checks)
-5. **Sorting**: Article overview supports sorting by:
-   - Name (A-Z)
-   - Check count (descending)
-   - Last checked date (most recent first)
-   - Last added date (most recent first)
-6. **Sort Persistence**: Uses localStorage to remember last sort selection
-7. **Bug Fixes**:
-   - Fixed addedAt field being lost during toggle operations
-   - Fixed count chips not loading on initial page load (added ListsActions.loadLists)
-   - Fixed history not displaying on initial load (switched to NgRx store selector)
+## Prompt for Next Session:
 
-### Files Modified
-- `src/app/shared/components/count-chip/count-chip.component.ts` (created)
-- `src/app/shared/components/date-edit-dialog/date-edit-dialog.component.ts` (created)
-- `src/app/shared/components/number-edit-dialog/number-edit-dialog.component.ts` (created)
-- `src/app/features/articles/article-overview/article-overview.ts` (sorting, count chips, loadLists)
-- `src/app/features/articles/article-overview/article-overview.html` (sort dropdown, count chips)
-- `src/app/shared/components/article-form/article-form.component.ts` (stats, history, edit functions)
-- `src/app/shared/components/article-form/article-form.component.html` (stats section, history log)
-- `src/app/shared/components/article-form/article-form.component.scss` (styling)
-- `src/app/core/services/article-stats.service.ts` (track uncheck events)
-- `src/app/core/services/history.service.ts` (preserve addedAt field)
+I'm continuing work on the ShopLisl temp article cleanup project. Please read the following context:
 
-### Known Minor Issues (Postponed)
-- Layout spacing/width between department cards and statistics section in article details (user decided to move on)
+### Current Branch
+`claude/fix-shared-list-articles-ZjaQa`
 
-## Current Branch
-`claude/prepare-history-feature-014rHQRZ4siC5BJswD4SnTjP`
+### What's Been Completed
 
-All changes are committed and pushed.
+#### ✅ Phase 1: Integration Tests (COMPLETE)
+- Created E2E testing infrastructure with Firebase Emulator Suite + Vitest
+- **11/11 integration tests passing (100%)**
+- Files: `e2e/integration/temp-articles.integration.spec.ts`, `e2e/integration/list-consistency.integration.spec.ts`
+- All tests validate temp article cleanup and articleIds/itemStates consistency
 
-## What to Do Next
+#### ✅ Phase 2: Database Cleanup Scripts (COMPLETE - WITH NOTES)
+- Created `scripts/cleanup-temp-articles.ts` - removes temp articles from production
+- Created `scripts/validate-list-consistency.ts` - validates list consistency
+- **Scripts compile successfully** but require Firebase Admin credentials to run
+- Added 4 npm scripts: `cleanup:temp-articles`, `cleanup:temp-articles:dry-run`, `validate:lists`, `validate:lists:fix`
+- **Note:** Scripts need to be tested against production database by user with credentials
 
-### Option 1: Create PR and Merge
-If testing is successful (see TESTING_CHECKLIST.md), create a PR to merge the history feature.
+#### ✅ Phase 3: Core Sync Bug Fix (COMPLETE)
+- Fixed critical bug in `src/app/core/services/articles-repository.service.ts` (lines 143-157)
+- Temp article ID replacements now persist to Firebase (not just local state)
+- This was the root cause of article count discrepancies
 
-### Option 2: Address Layout Issues (if needed)
-If the user wants to fix the department/statistics spacing/width issues in article-form.component.scss.
+#### ✅ Phase 4: Validation Service (COMPLETE)
+- Created `src/app/core/services/list-validation.service.ts` with `validateList()` and `repairList()` methods
+- Created `list-validation.service.spec.ts` with 12 passing unit tests
+- Service ready for integration into list operations
 
-### Option 3: Continue with Next Feature
-Move on to the next phase of development.
+### What Remains To Be Done
 
-## Important Notes
-- **Firebase Config**: Both dev and prod use same project
-- **Shared User**: Data uses `shared-shoplisl-user` ID
-- **Data Model**: History in `itemStates[articleId].history[]`
-- **Temporary Edits**: Stat overrides are component state only
+#### ❌ Phase 5: Playwright E2E Browser Tests (NOT STARTED)
+**This is what needs to be done next:**
+- Create browser-based Playwright tests for UI flows
+- Test complete user journeys (offline → online → sync)
+- Test shared list scenarios from UI perspective
+- Requires Playwright browser automation
+- User will run these locally (requires installed browsers)
 
-## Git Status
-Current branch: `claude/prepare-history-feature-014rHQRZ4siC5BJswD4SnTjP`
-All changes committed and pushed ✅
+#### ❌ Phase 6: CI/CD Integration (NOT STARTED)
+- Add integration tests to CI pipeline
+- Automate testing on every PR
+- Configure CI environment for Firebase emulators
+
+### Current State of Tests
+
+**Integration Tests (Node environment):** ✅ 11/11 passing
+- Can be run with: `npm run emulators:start` + `npm run test:integration`
+
+**Unit Tests:** ✅ 12/12 passing
+- `list-validation.service.spec.ts`
+
+**Playwright E2E Tests:** ❌ Not created yet
+
+### Your Task
+
+Please continue with **Phase 5**: Create Playwright E2E browser tests.
+
+1. **Read the original plan:** `TEMP_ARTICLE_E2E_PLAN.md` (lines 720-900 have Phase 5 details)
+
+2. **Create browser-based E2E tests** that test the full user experience:
+   - Offline article creation (generates temp IDs)
+   - Going back online
+   - Article sync to Firebase
+   - Temp ID replacement
+   - Shared list scenarios (owner vs participant view)
+
+3. **Test files to create:**
+   - `e2e/temp-articles.spec.ts` - Playwright tests for temp article flows
+   - `e2e/shared-lists.spec.ts` - Playwright tests for shared list scenarios
+   - Use the existing `e2e/utils/firebase-emulator.ts` for test helpers
+
+4. **Configuration:**
+   - `playwright.config.ts` already exists
+   - Target: `http://localhost:4200` (Angular dev server)
+   - Use Firebase emulators on ports 9099 (Auth) and 8080 (Firestore)
+
+### Important Notes
+
+- **Do NOT claim phases are complete if they're not done**
+- Playwright tests are DIFFERENT from the integration tests (those use Vitest/Node, Playwright uses real browsers)
+- The user will run these tests locally with `npm run test:e2e`
+- Focus on testing the actual user experience, not just backend logic
+
+### Reference Documents
+
+- `TEMP_ARTICLE_E2E_PLAN.md` - Original 6-phase plan
+- `SESSION_HANDOFF_E2E_TESTING.md` - Previous session context
+- Integration tests in `e2e/integration/` - Use as reference for test data patterns
+
+---
+
+**Ready to start?** Yes, let's create the Playwright E2E browser tests for Phase 5.
