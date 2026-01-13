@@ -89,8 +89,8 @@ function validateList(
   userId: string,
   listData: admin.firestore.DocumentData
 ): ValidationIssue | null {
-  const articleIds = new Set(listData.articleIds || []);
-  const itemStateKeys = new Set(Object.keys(listData.itemStates || {}));
+  const articleIds = new Set(listData['articleIds'] || []);
+  const itemStateKeys = new Set(Object.keys(listData['itemStates'] || {}));
 
   const issues: string[] = [];
   const orphanedInArticleIds: string[] = [];
@@ -99,35 +99,39 @@ function validateList(
 
   // Check for articleIds not in itemStates
   for (const articleId of articleIds) {
-    if (!itemStateKeys.has(articleId)) {
-      issues.push(`Article ${articleId} in articleIds but not in itemStates`);
-      orphanedInArticleIds.push(articleId);
+    const id = articleId as string;
+    if (!itemStateKeys.has(id)) {
+      issues.push(`Article ${id} in articleIds but not in itemStates`);
+      orphanedInArticleIds.push(id);
     }
   }
 
   // Check for itemStates not in articleIds
   for (const articleId of itemStateKeys) {
-    if (!articleIds.has(articleId)) {
-      issues.push(`Article ${articleId} in itemStates but not in articleIds`);
-      orphanedInItemStates.push(articleId);
+    const id = articleId as string;
+    if (!articleIds.has(id)) {
+      issues.push(`Article ${id} in itemStates but not in articleIds`);
+      orphanedInItemStates.push(id);
     }
   }
 
   // Check for temp articles (shouldn't exist in production)
   for (const articleId of articleIds) {
-    if (articleId.startsWith('temp_')) {
-      issues.push(`Temp article ${articleId} found in articleIds`);
-      if (!tempArticles.includes(articleId)) {
-        tempArticles.push(articleId);
+    const id = articleId as string;
+    if (id.startsWith('temp_')) {
+      issues.push(`Temp article ${id} found in articleIds`);
+      if (!tempArticles.includes(id)) {
+        tempArticles.push(id);
       }
     }
   }
 
   for (const articleId of itemStateKeys) {
-    if (articleId.startsWith('temp_')) {
-      issues.push(`Temp article ${articleId} found in itemStates`);
-      if (!tempArticles.includes(articleId)) {
-        tempArticles.push(articleId);
+    const id = articleId as string;
+    if (id.startsWith('temp_')) {
+      issues.push(`Temp article ${id} found in itemStates`);
+      if (!tempArticles.includes(id)) {
+        tempArticles.push(id);
       }
     }
   }
@@ -136,7 +140,7 @@ function validateList(
     return {
       listId,
       userId,
-      listName: listData.name || 'Unnamed List',
+      listName: listData['name'] || 'Unnamed List',
       issues,
       orphanedInArticleIds,
       orphanedInItemStates,
@@ -160,8 +164,8 @@ async function fixList(issue: ValidationIssue): Promise<void> {
   }
 
   const listData = listDoc.data()!;
-  const articleIds = new Set(listData.articleIds || []);
-  const itemStates = { ...(listData.itemStates || {}) };
+  const articleIds = new Set(listData['articleIds'] || []);
+  const itemStates = { ...(listData['itemStates'] || {}) };
 
   // Remove orphaned entries
   for (const articleId of issue.orphanedInArticleIds) {
@@ -179,13 +183,13 @@ async function fixList(issue: ValidationIssue): Promise<void> {
   }
 
   // Keep only valid articles (exist in both)
-  const validArticleIds = Array.from(articleIds).filter(id =>
-    Object.keys(itemStates).includes(id) && !id.startsWith('temp_')
+  const validArticleIds = Array.from(articleIds).filter((id: any) =>
+    Object.keys(itemStates).includes(id as string) && !(id as string).startsWith('temp_')
   );
 
   const validItemStates: any = {};
   for (const articleId of validArticleIds) {
-    validItemStates[articleId] = itemStates[articleId];
+    validItemStates[articleId as string] = itemStates[articleId as string];
   }
 
   await listRef.update({
@@ -229,7 +233,7 @@ async function validateListConsistency(options: ValidationOptions): Promise<Vali
       console.log(`Validating single user: ${options.userId}\n`);
     } else {
       const usersSnapshot = await db.collection('users-v2').get();
-      userIds = usersSnapshot.docs.map(doc => doc.id);
+      userIds = usersSnapshot.docs.map((doc: any) => doc.id);
       console.log(`Found ${userIds.length} users\n`);
     }
 
@@ -275,7 +279,7 @@ async function validateListConsistency(options: ValidationOptions): Promise<Vali
               await fixList(issue);
             }
           } else if (options.verbose) {
-            console.log(`  ✅ List: ${listDoc.data().name || listDoc.id} - OK`);
+            console.log(`  ✅ List: ${listDoc.data()['name'] || listDoc.id} - OK`);
           }
         }
       } catch (error) {

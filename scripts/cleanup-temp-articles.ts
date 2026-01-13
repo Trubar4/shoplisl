@@ -71,8 +71,8 @@ async function cleanupList(
   listData: admin.firestore.DocumentData,
   dryRun: boolean
 ): Promise<{ tempArticlesCount: number; cleaned: boolean }> {
-  const originalArticleIds = listData.articleIds || [];
-  const originalItemStates = listData.itemStates || {};
+  const originalArticleIds = listData['articleIds'] || [];
+  const originalItemStates = listData['itemStates'] || {};
 
   // Filter out temp articles
   const cleanedArticleIds = originalArticleIds.filter(
@@ -90,7 +90,7 @@ async function cleanupList(
 
   if (tempArticlesCount > 0) {
     const tempArticleIds = originalArticleIds.filter((id: string) => id.startsWith('temp_'));
-    console.log(`  📋 List: ${listData.name || listId}`);
+    console.log(`  📋 List: ${listData['name'] || listId}`);
     console.log(`     User: ${userId}`);
     console.log(`     Temp articles: ${tempArticlesCount}`);
     console.log(`     Temp IDs: ${tempArticleIds.join(', ')}`);
