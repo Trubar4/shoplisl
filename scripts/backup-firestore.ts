@@ -187,7 +187,7 @@ async function backup(): Promise<void> {
   // Create metadata file
   const metadata: BackupMetadata = {
     timestamp: new Date().toISOString(),
-    project: options.project || process.env.GCLOUD_PROJECT || 'shoplisl',
+    project: options.project || process.env['GCLOUD_PROJECT'] || 'shoplisl',
     collections,
     totalDocuments
   };

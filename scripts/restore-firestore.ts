@@ -244,7 +244,7 @@ async function restore(): Promise<void> {
 
   // Load metadata
   const metadata = loadMetadata(options.backup);
-  const targetProject = options.project || process.env.GCLOUD_PROJECT || 'shoplisl';
+  const targetProject = options.project || process.env['GCLOUD_PROJECT'] || 'shoplisl';
 
   console.log(`📂 Backup directory: ${options.backup}`);
   console.log(`📅 Backup date: ${metadata.timestamp}`);

@@ -51,10 +51,10 @@ async function diagnoseSharing(userId?: string): Promise<void> {
       const userData = userDoc.data();
       results.push({
         success: true,
-        message: `User found: ${userData?.email || userId}`,
+        message: `User found: ${userData?.['email'] || userId}`,
         details: userData
       });
-      console.log(`✅ User found: ${userData?.email || userId}`);
+      console.log(`✅ User found: ${userData?.['email'] || userId}`);
     } else {
       results.push({
         success: false,
@@ -76,9 +76,9 @@ async function diagnoseSharing(userId?: string): Promise<void> {
     const ownedListsSnapshot = await db.collection(`users-v2/${userId}/lists`).get();
     const ownedLists = ownedListsSnapshot.docs.map(doc => ({
       id: doc.id,
-      name: doc.data().name,
-      ownerId: doc.data().ownerId,
-      sharedWith: doc.data().sharedWith || []
+      name: doc.data()['name'],
+      ownerId: doc.data()['ownerId'],
+      sharedWith: doc.data()['sharedWith'] || []
     }));
 
     results.push({
@@ -112,9 +112,9 @@ async function diagnoseSharing(userId?: string): Promise<void> {
     const sharedLists = sharedListsSnapshot.docs.map(doc => ({
       id: doc.id,
       path: doc.ref.path,
-      name: doc.data().name,
-      ownerId: doc.data().ownerId,
-      sharedWith: doc.data().sharedWith || []
+      name: doc.data()['name'],
+      ownerId: doc.data()['ownerId'],
+      sharedWith: doc.data()['sharedWith'] || []
     }));
 
     results.push({
@@ -153,10 +153,10 @@ async function diagnoseSharing(userId?: string): Promise<void> {
 
     const invites = invitesSnapshot.docs.map(doc => ({
       id: doc.id,
-      listName: doc.data().listName,
-      fromUserEmail: doc.data().fromUserEmail,
-      inviteToken: doc.data().inviteToken,
-      createdAt: doc.data().createdAt
+      listName: doc.data()['listName'],
+      fromUserEmail: doc.data()['fromUserEmail'],
+      inviteToken: doc.data()['inviteToken'],
+      createdAt: doc.data()['createdAt']
     }));
 
     results.push({
@@ -188,14 +188,14 @@ async function diagnoseSharing(userId?: string): Promise<void> {
 
     for (const listDoc of sharedListsSnapshot.docs) {
       const listData = listDoc.data();
-      const ownerId = listData.ownerId;
-      const articleIds = listData.articleIds || [];
+      const ownerId = listData['ownerId'];
+      const articleIds = listData['articleIds'] || [];
 
       if (articleIds.length === 0 || ownerId === userId) {
         continue;
       }
 
-      console.log(`\n   Checking articles for "${listData.name}" (owner: ${ownerId})...`);
+      console.log(`\n   Checking articles for "${listData['name']}" (owner: ${ownerId})...`);
 
       let accessibleCount = 0;
       let deniedCount = 0;
@@ -205,7 +205,7 @@ async function diagnoseSharing(userId?: string): Promise<void> {
           const articleDoc = await db.doc(`users-v2/${ownerId}/articles/${articleId}`).get();
           if (articleDoc.exists) {
             accessibleCount++;
-            console.log(`      ✅ Article ${articleId}: ${articleDoc.data()?.name}`);
+            console.log(`      ✅ Article ${articleId}: ${articleDoc.data()?.['name']}`);
           } else {
             console.log(`      ⚠️  Article ${articleId}: Not found`);
           }
