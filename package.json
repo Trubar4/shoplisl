@@ -20,7 +20,8 @@
     "i18n:extract": "ng extract-i18n",
     "backup:firestore": "ts-node scripts/backup-firestore.ts",
     "restore:firestore": "ts-node scripts/restore-firestore.ts",
-    "diagnose:sharing": "ts-node scripts/diagnose-sharing.ts"
+    "diagnose:sharing": "ts-node scripts/diagnose-sharing.ts",
+    "create-test-users": "ts-node scripts/create-test-users.ts"
   },
   "private": true,
   "dependencies": {
