@@ -12,7 +12,8 @@ export const E2E_TEST_MODE = {
     id: 'test-user-e2e-1',
     email: 'test@e2e.local',
     name: 'E2E Test User',
-    photoURL: null
+    photoURL: null,
+    createdAt: new Date()
   }
 };
 
