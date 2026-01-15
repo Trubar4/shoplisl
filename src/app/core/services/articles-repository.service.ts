@@ -139,6 +139,26 @@ export class ArticlesRepositoryService {
         this.firebaseData.updateLocalLists(updatedLists);
 
         this.logger.info('data', `🔄 Replaced temp ID ${tempId} with real ID ${realId} in local state`);
+
+        // CRITICAL: Update Firebase with cleaned list data (remove temp IDs)
+        for (const list of updatedLists) {
+          // Only process lists that were actually modified (had the temp ID)
+          const originalList = currentLists.find(l => l.id === list.id);
+          if (originalList && originalList.articleIds.includes(tempId)) {
+            try {
+              await this.firebaseData.updateListInFirebase(list.id, {
+                articleIds: list.articleIds,
+                itemStates: list.itemStates,
+                updatedAt: Timestamp.now()
+              });
+
+              this.logger.info('data', `✅ Cleaned temp ID ${tempId} from list ${list.id} in Firebase`);
+            } catch (error) {
+              this.logger.error('data', `❌ Failed to clean list ${list.id} in Firebase:`, error);
+              // Don't throw - local state is already updated, Firebase cleanup can be retried later
+            }
+          }
+        }
       }, `Create article: ${article.name}`);
 
       return of(tempArticle);
