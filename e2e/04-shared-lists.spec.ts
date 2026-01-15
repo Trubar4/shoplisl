@@ -47,7 +47,7 @@ test.describe('Shared Lists', () => {
     }
   });
 
-  test('should display shared lists for participant', async ({ page, page }) => {
+  test('should display shared lists for participant', async ({ page }) => {
     // This test requires User 2 to have been invited to a list by User 1
 
     // Sign in as User 2 (in the same page)
@@ -117,7 +117,6 @@ test.describe('Shared Lists', () => {
   });
 
   test('should sync item check/uncheck between users in real-time', async ({
-    page,
     page,
   }) => {
     // This test requires real-time sync implementation (Phase 8 handoff)
