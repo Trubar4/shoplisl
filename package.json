@@ -10,11 +10,18 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:karma": "ng test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
     "serve:pwa": "ng build && npx http-server dist/shoplisl-app -p 8080",
     "firebase:emulator": "firebase emulators:start",
     "i18n:extract": "ng extract-i18n",
-    "backup:firestore": "echo 'See scripts/backup-firestore.ts for backup instructions'",
-    "restore:firestore": "echo 'See scripts/restore-firestore.ts for restore instructions'"
+    "backup:firestore": "ts-node scripts/backup-firestore.ts",
+    "restore:firestore": "ts-node scripts/restore-firestore.ts",
+    "diagnose:sharing": "ts-node scripts/diagnose-sharing.ts",
+    "create-test-users": "node --loader ts-node/esm scripts/create-test-users.ts"
   },
   "private": true,
   "dependencies": {
@@ -44,9 +51,12 @@
     "@angular/cli": "^20.0.0",
     "@angular/compiler-cli": "^20.0.0",
     "@angular/localize": "^20.0.0",
+    "@playwright/test": "^1.57.0",
     "@types/jasmine": "~5.1.0",
+    "@types/node": "^25.0.8",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "firebase-admin": "^13.6.0",
     "firebase-tools": "^14.5.1",
     "jasmine-core": "~5.7.0",
     "jsdom": "^27.0.1",
@@ -55,6 +65,8 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "playwright": "^1.57.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.2",
     "vitest": "^3.2.4"
   }

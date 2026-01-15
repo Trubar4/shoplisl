@@ -21,6 +21,7 @@ import { FirebaseDataService } from './core/services/firebase-data.service';
 import { AppState } from './state/app.state';
 import * as AuthActions from './state/auth/auth.actions';
 import { selectIsAuthenticated } from './state/auth/auth.selectors';
+import { isE2ETestMode, getTestUser } from './core/config/test-auth.config';
 
 @Component({
   selector: 'app-root',
@@ -80,6 +81,15 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   signIn(): void {
+    // E2E Test Mode: Auto-login with test user
+    if (isE2ETestMode()) {
+      this.logger.info('auth', '🧪 E2E Test Mode: Auto-login enabled');
+      const testUser = getTestUser();
+      this.store.dispatch(AuthActions.setUser({ user: testUser }));
+      return;
+    }
+
+    // Production: Use Google Sign-In
     this.store.dispatch(AuthActions.signInWithGoogle());
   }
 
@@ -87,7 +97,15 @@ export class AppComponent implements OnInit, OnDestroy {
    * Initialize authentication and sync with NgRx store
    */
   private initializeAuth(): void {
-    // Subscribe to auth changes and dispatch to store
+    // E2E Test Mode: Auto-login immediately
+    if (isE2ETestMode()) {
+      this.logger.info('auth', '🧪 E2E Test Mode: Auto-login on init');
+      const testUser = getTestUser();
+      this.store.dispatch(AuthActions.setUser({ user: testUser }));
+      return;
+    }
+
+    // Production: Subscribe to Firebase auth changes
     this.subscriptions.add(
       this.authService.getCurrentUser().subscribe(user => {
         this.store.dispatch(AuthActions.setUser({ user }));
