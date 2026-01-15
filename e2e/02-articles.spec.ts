@@ -6,22 +6,22 @@ import { test, expect } from './fixtures/auth.fixture';
  */
 
 test.describe('Articles', () => {
-  test.beforeEach(async ({ authenticatedPage }) => {
+  test.beforeEach(async ({ page }) => {
     // Navigate to a list (or create one first)
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     // Click on first list to open it
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     if (await listCard.isVisible({ timeout: 5000 }).catch(() => false)) {
       await listCard.click();
-      await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+      await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
     }
   });
 
-  test('should add an article to a list', async ({ authenticatedPage }) => {
+  test('should add an article to a list', async ({ page }) => {
     // Find the add article input
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"], input[formControlName="articleName"]'
     );
     await articleInput.fill('Test Article');
@@ -30,23 +30,23 @@ test.describe('Articles', () => {
     await articleInput.press('Enter');
 
     // Wait for article to appear
-    await authenticatedPage.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify article appears in the list
-    await expect(authenticatedPage.getByText('Test Article')).toBeVisible();
+    await expect(page.getByText('Test Article')).toBeVisible();
   });
 
-  test('should check and uncheck an article', async ({ authenticatedPage }) => {
+  test('should check and uncheck an article', async ({ page }) => {
     // Add an article first if needed
-    const articleInput = authenticatedPage.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
+    const articleInput = page.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await articleInput.fill('Article to Check');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
     }
 
     // Find the article checkbox
-    const articleCheckbox = authenticatedPage
+    const articleCheckbox = page
       .getByText('Article to Check')
       .locator('..')
       .locator('mat-checkbox, input[type="checkbox"]')
@@ -55,75 +55,75 @@ test.describe('Articles', () => {
     if (await articleCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
       // Check the article
       await articleCheckbox.click();
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       // Verify checked state (might be moved to "checked" section)
       // The implementation may vary - adjust selector as needed
 
       // Uncheck the article
       await articleCheckbox.click();
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       // Verify article is back in unchecked state
       await expect(articleCheckbox).not.toBeChecked();
     }
   });
 
-  test('should remove an article from a list', async ({ authenticatedPage }) => {
+  test('should remove an article from a list', async ({ page }) => {
     // Add an article to delete
-    const articleInput = authenticatedPage.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
+    const articleInput = page.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await articleInput.fill('Article to Delete');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
     }
 
     // Find the article delete button
-    const articleRow = authenticatedPage.getByText('Article to Delete').locator('..');
+    const articleRow = page.getByText('Article to Delete').locator('..');
     const deleteButton = articleRow.getByRole('button', { name: /delete|remove|löschen/i });
 
     if (await deleteButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       await deleteButton.click();
 
       // Confirm if dialog appears
-      const confirmButton = authenticatedPage.getByRole('button', { name: /delete|löschen|confirm/i });
+      const confirmButton = page.getByRole('button', { name: /delete|löschen|confirm/i });
       if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
         await confirmButton.click();
       }
 
       // Verify article is removed
-      await expect(authenticatedPage.getByText('Article to Delete')).not.toBeVisible({ timeout: 3000 });
+      await expect(page.getByText('Article to Delete')).not.toBeVisible({ timeout: 3000 });
     }
   });
 
-  test('should edit article amount', async ({ authenticatedPage }) => {
+  test('should edit article amount', async ({ page }) => {
     // Add an article first
-    const articleInput = authenticatedPage.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
+    const articleInput = page.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await articleInput.fill('Article with Amount');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
     }
 
     // Find the article amount input
-    const articleRow = authenticatedPage.getByText('Article with Amount').locator('..');
+    const articleRow = page.getByText('Article with Amount').locator('..');
     const amountInput = articleRow.locator('input[placeholder*="amount"], input[placeholder*="menge"]');
 
     if (await amountInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await amountInput.fill('5');
       await amountInput.blur(); // Trigger save
 
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       // Verify amount is saved
       await expect(amountInput).toHaveValue('5');
     }
   });
 
-  test('should display article department', async ({ authenticatedPage }) => {
+  test('should display article department', async ({ page }) => {
     // Articles might be grouped by department
     // Check if department headers or badges are visible
-    const departmentLabel = authenticatedPage.locator(
+    const departmentLabel = page.locator(
       '[data-testid="department"], .department-label, mat-chip'
     );
 
@@ -133,22 +133,22 @@ test.describe('Articles', () => {
     expect(hasDepartments).toBeTruthy();
   });
 
-  test('should filter articles by checked/unchecked', async ({ authenticatedPage }) => {
+  test('should filter articles by checked/unchecked', async ({ page }) => {
     // Add and check some articles
-    const articleInput = authenticatedPage.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
+    const articleInput = page.locator('input[placeholder*="article"], input[placeholder*="artikel"]');
 
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       // Add two articles
       await articleInput.fill('Checked Article');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       await articleInput.fill('Unchecked Article');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       // Check one article
-      const checkbox = authenticatedPage
+      const checkbox = page
         .getByText('Checked Article')
         .locator('..')
         .locator('mat-checkbox, input[type="checkbox"]')
@@ -156,18 +156,18 @@ test.describe('Articles', () => {
 
       if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
         await checkbox.click();
-        await authenticatedPage.waitForTimeout(500);
+        await page.waitForTimeout(500);
       }
 
       // Look for filter/toggle buttons
-      const filterButton = authenticatedPage.getByRole('button', {
+      const filterButton = page.getByRole('button', {
         name: /filter|show|hide|checked|unchecked/i,
       });
 
       if (await filterButton.isVisible({ timeout: 2000 }).catch(() => false)) {
         // Click filter to show/hide checked items
         await filterButton.click();
-        await authenticatedPage.waitForTimeout(500);
+        await page.waitForTimeout(500);
 
         // Verify filtering works (implementation-specific)
         // This is a basic check that the filter UI exists

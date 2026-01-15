@@ -8,21 +8,21 @@ import { test, expect, TEST_USERS, signIn } from './fixtures/auth.fixture';
  */
 
 test.describe('Shared Lists', () => {
-  test.beforeEach(async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
   });
 
-  test('should share a list with another user', async ({ authenticatedPage }) => {
+  test('should share a list with another user', async ({ page }) => {
     // Click on a list to open it
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     if (await listCard.isVisible({ timeout: 5000 }).catch(() => false)) {
       await listCard.click();
-      await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+      await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
     }
 
     // Find the share button
-    const shareButton = authenticatedPage.getByRole('button', {
+    const shareButton = page.getByRole('button', {
       name: /share|teilen|invite/i,
     });
 
@@ -30,16 +30,16 @@ test.describe('Shared Lists', () => {
       await shareButton.click();
 
       // Fill in email to share with
-      const emailInput = authenticatedPage.locator('input[type="email"], input[name="email"]');
+      const emailInput = page.locator('input[type="email"], input[name="email"]');
       if (await emailInput.isVisible({ timeout: 2000 }).catch(() => false)) {
         await emailInput.fill(TEST_USERS.user2.email);
 
         // Click share/send button
-        const sendButton = authenticatedPage.getByRole('button', {
+        const sendButton = page.getByRole('button', {
           name: /share|send|teilen|senden/i,
         });
         await sendButton.click();
-        await authenticatedPage.waitForTimeout(1000);
+        await page.waitForTimeout(1000);
 
         // Verify success message or that dialog closed
         await expect(emailInput).not.toBeVisible({ timeout: 3000 });
@@ -47,20 +47,20 @@ test.describe('Shared Lists', () => {
     }
   });
 
-  test('should display shared lists for participant', async ({ page, authenticatedPage }) => {
+  test('should display shared lists for participant', async ({ page, page }) => {
     // This test requires User 2 to have been invited to a list by User 1
 
     // Sign in as User 2 (in the same page)
-    await signIn(authenticatedPage, TEST_USERS.user2);
-    await authenticatedPage.waitForLoadState('networkidle');
+    await signIn(page, TEST_USERS.user2);
+    await page.waitForLoadState('networkidle');
 
     // Check for shared lists section or indicator
-    const sharedListIndicator = authenticatedPage.locator(
+    const sharedListIndicator = page.locator(
       '[data-testid="shared-list"], .shared-list, mat-chip:has-text("shared")'
     );
 
     // Count total lists visible to user 2
-    const listCards = authenticatedPage.locator('mat-card, .list-item');
+    const listCards = page.locator('mat-card, .list-item');
     const count = await listCards.count();
 
     console.log(`User 2 sees ${count} lists (including shared lists)`);
@@ -71,40 +71,40 @@ test.describe('Shared Lists', () => {
   });
 
   test('should show correct article count for shared list participant', async ({
-    authenticatedPage,
+    page,
   }) => {
     // This is the critical test from TEMP_ARTICLE_CLEANUP.md:
     // Participants should see correct article counts, not inflated by temp_ IDs
 
     // User 1 shares a list with articles
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     await listCard.click();
-    await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+    await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
 
     // Add some articles
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await articleInput.fill('Shared Article 1');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
 
       await articleInput.fill('Shared Article 2');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
     }
 
     // Get article count from UI
-    const articles = authenticatedPage.locator('[data-testid="article-item"], .article-item');
+    const articles = page.locator('[data-testid="article-item"], .article-item');
     const articleCount = await articles.count();
 
     // Go back to lists overview
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     // Check that the list card shows correct article count (should be 2 + any existing)
-    const listCardAfter = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCardAfter = page.locator('mat-card, .list-item').first();
     const countBadge = listCardAfter.locator('[data-testid="article-count"], .article-count, mat-chip');
 
     if (await countBadge.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -118,28 +118,28 @@ test.describe('Shared Lists', () => {
 
   test('should sync item check/uncheck between users in real-time', async ({
     page,
-    authenticatedPage,
+    page,
   }) => {
     // This test requires real-time sync implementation (Phase 8 handoff)
     // For now, we test the basic UI behavior
 
     // Open a shared list
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     await listCard.click();
-    await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+    await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
 
     // Add an article
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     if (await articleInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await articleInput.fill('Sync Test Article');
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
     }
 
     // Check the article
-    const checkbox = authenticatedPage
+    const checkbox = page
       .getByText('Sync Test Article')
       .locator('..')
       .locator('mat-checkbox, input[type="checkbox"]')
@@ -147,18 +147,18 @@ test.describe('Shared Lists', () => {
 
     if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
       await checkbox.click();
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
 
       // In a full test with 2 browsers:
       // - User 2 would open the same list in another browser
       // - User 2 should see the article as checked
       // For now, we verify the check persists after refresh
 
-      await authenticatedPage.reload();
-      await authenticatedPage.waitForLoadState('networkidle');
+      await page.reload();
+      await page.waitForLoadState('networkidle');
 
       // Verify article remains checked
-      const checkboxAfter = authenticatedPage
+      const checkboxAfter = page
         .getByText('Sync Test Article')
         .locator('..')
         .locator('mat-checkbox, input[type="checkbox"]')
@@ -173,14 +173,14 @@ test.describe('Shared Lists', () => {
     }
   });
 
-  test('should allow unsharing a list', async ({ authenticatedPage }) => {
+  test('should allow unsharing a list', async ({ page }) => {
     // Open a list
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     await listCard.click();
-    await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+    await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
 
     // Find the share/manage sharing button
-    const shareButton = authenticatedPage.getByRole('button', {
+    const shareButton = page.getByRole('button', {
       name: /share|teilen|manage/i,
     });
 
@@ -188,7 +188,7 @@ test.describe('Shared Lists', () => {
       await shareButton.click();
 
       // Look for remove/unshare button for a shared user
-      const unshareButton = authenticatedPage.getByRole('button', {
+      const unshareButton = page.getByRole('button', {
         name: /remove|unshare|entfernen/i,
       });
 
@@ -196,12 +196,12 @@ test.describe('Shared Lists', () => {
         await unshareButton.click();
 
         // Confirm in dialog
-        const confirmButton = authenticatedPage.getByRole('button', {
+        const confirmButton = page.getByRole('button', {
           name: /confirm|remove|bestätigen/i,
         });
         if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
           await confirmButton.click();
-          await authenticatedPage.waitForTimeout(1000);
+          await page.waitForTimeout(1000);
         }
 
         // Verify user was removed from shared list
@@ -210,28 +210,28 @@ test.describe('Shared Lists', () => {
     }
   });
 
-  test('should not show temp_ IDs to list participants', async ({ authenticatedPage }) => {
+  test('should not show temp_ IDs to list participants', async ({ page }) => {
     // Critical test: Participants should never see temp_ IDs
     // even if owner created articles offline and they haven't synced yet
 
     // Navigate through all visible lists
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
-    const listCards = authenticatedPage.locator('mat-card, .list-item');
+    const listCards = page.locator('mat-card, .list-item');
     const count = await listCards.count();
 
     for (let i = 0; i < Math.min(count, 3); i++) {
       await listCards.nth(i).click();
-      await authenticatedPage.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
 
       // Check that no temp_ IDs are visible
-      const pageContent = await authenticatedPage.content();
+      const pageContent = await page.content();
       expect(pageContent).not.toMatch(/temp_\d+_/);
 
       // Go back
-      await authenticatedPage.goto('/');
-      await authenticatedPage.waitForLoadState('networkidle');
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
     }
   });
 });

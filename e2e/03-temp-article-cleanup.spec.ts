@@ -16,93 +16,93 @@ import { getTempArticleCount, getListArticleIdsFromCache } from './helpers/stora
  */
 
 test.describe('Temp Article Cleanup', () => {
-  test.beforeEach(async ({ authenticatedPage }) => {
+  test.beforeEach(async ({ page }) => {
     // Navigate to app and open a list
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     // Open or create a test list
-    const listCard = authenticatedPage.locator('mat-card, .list-item').first();
+    const listCard = page.locator('mat-card, .list-item').first();
     if (await listCard.isVisible({ timeout: 5000 }).catch(() => false)) {
       await listCard.click();
-      await authenticatedPage.waitForURL(/\/lists\/.*/, { timeout: 5000 });
+      await page.waitForURL(/\/lists\/.*/, { timeout: 5000 });
     }
   });
 
-  test('should create article with temp ID when offline', async ({ authenticatedPage }) => {
+  test('should create article with temp ID when offline', async ({ page }) => {
     // Get initial temp article count
-    const initialTempCount = await getTempArticleCount(authenticatedPage);
+    const initialTempCount = await getTempArticleCount(page);
 
     // Go offline
-    await goOffline(authenticatedPage);
-    await authenticatedPage.waitForTimeout(1000);
+    await goOffline(page);
+    await page.waitForTimeout(1000);
 
     // Add an article while offline
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     await articleInput.fill('Offline Test Article');
     await articleInput.press('Enter');
-    await authenticatedPage.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify article appears in UI with temp ID
-    await expect(authenticatedPage.getByText('Offline Test Article')).toBeVisible();
+    await expect(page.getByText('Offline Test Article')).toBeVisible();
 
     // Check that a temp article was created in IndexedDB
-    const newTempCount = await getTempArticleCount(authenticatedPage);
+    const newTempCount = await getTempArticleCount(page);
     expect(newTempCount).toBeGreaterThan(initialTempCount);
 
     // Go back online
-    await goOnline(authenticatedPage);
+    await goOnline(page);
   });
 
-  test('should replace temp ID with real ID after going online', async ({ authenticatedPage }) => {
+  test('should replace temp ID with real ID after going online', async ({ page }) => {
     // Go offline
-    await goOffline(authenticatedPage);
+    await goOffline(page);
 
     // Add article with temp ID
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     await articleInput.fill('Article for Sync Test');
     await articleInput.press('Enter');
-    await authenticatedPage.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify temp article exists
-    const tempCountOffline = await getTempArticleCount(authenticatedPage);
+    const tempCountOffline = await getTempArticleCount(page);
     expect(tempCountOffline).toBeGreaterThan(0);
 
     // Go online and wait for sync
-    await goOnline(authenticatedPage);
-    await waitForNetworkIdle(authenticatedPage, 5000);
+    await goOnline(page);
+    await waitForNetworkIdle(page, 5000);
 
     // Wait for offline sync to complete (might take a few seconds)
-    await authenticatedPage.waitForTimeout(3000);
+    await page.waitForTimeout(3000);
 
     // Verify temp article was replaced with real ID
     // The temp article count should decrease as temp IDs are replaced
-    const tempCountOnline = await getTempArticleCount(authenticatedPage);
+    const tempCountOnline = await getTempArticleCount(page);
 
     // Note: This might still be > 0 if sync is slow, but should eventually be 0
     // In a real test environment, you'd want to wait for sync completion event
     console.log(`Temp articles after sync: ${tempCountOnline} (was ${tempCountOffline})`);
 
     // Verify article still appears in UI (with real ID now)
-    await expect(authenticatedPage.getByText('Article for Sync Test')).toBeVisible();
+    await expect(page.getByText('Article for Sync Test')).toBeVisible();
   });
 
-  test('should not display temp_ articles in list overview', async ({ authenticatedPage }) => {
+  test('should not display temp_ articles in list overview', async ({ page }) => {
     // Go back to lists overview
-    await authenticatedPage.goto('/');
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     // Check that no temp_ IDs are visible in the UI
     // (They should be filtered out per TEMP_ARTICLE_CLEANUP.md workaround)
-    const tempIdText = authenticatedPage.getByText(/temp_\d+_/);
+    const tempIdText = page.getByText(/temp_\d+_/);
     await expect(tempIdText).not.toBeVisible();
 
     // Verify article counts don't include temp articles
-    const listCards = authenticatedPage.locator('mat-card, .list-item');
+    const listCards = page.locator('mat-card, .list-item');
     const count = await listCards.count();
 
     for (let i = 0; i < Math.min(count, 3); i++) {
@@ -114,11 +114,11 @@ test.describe('Temp Article Cleanup', () => {
     }
   });
 
-  test('should handle multiple offline articles correctly', async ({ authenticatedPage }) => {
+  test('should handle multiple offline articles correctly', async ({ page }) => {
     // Go offline
-    await goOffline(authenticatedPage);
+    await goOffline(page);
 
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
 
@@ -128,74 +128,74 @@ test.describe('Temp Article Cleanup', () => {
     for (const name of articleNames) {
       await articleInput.fill(name);
       await articleInput.press('Enter');
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
     }
 
     // Verify all 3 articles appear
     for (const name of articleNames) {
-      await expect(authenticatedPage.getByText(name)).toBeVisible();
+      await expect(page.getByText(name)).toBeVisible();
     }
 
     // Check temp article count
-    const tempCount = await getTempArticleCount(authenticatedPage);
+    const tempCount = await getTempArticleCount(page);
     expect(tempCount).toBeGreaterThanOrEqual(3);
 
     // Go online and wait for sync
-    await goOnline(authenticatedPage);
-    await waitForNetworkIdle(authenticatedPage, 5000);
-    await authenticatedPage.waitForTimeout(3000);
+    await goOnline(page);
+    await waitForNetworkIdle(page, 5000);
+    await page.waitForTimeout(3000);
 
     // All articles should still be visible (with real IDs now)
     for (const name of articleNames) {
-      await expect(authenticatedPage.getByText(name)).toBeVisible();
+      await expect(page.getByText(name)).toBeVisible();
     }
   });
 
   test('should clean up temp IDs from Firebase (not just local cache)', async ({
-    authenticatedPage,
+    page,
   }) => {
     // This test verifies the critical fix from TEMP_ARTICLE_CLEANUP.md:
     // Firebase lists must be updated to remove temp IDs, not just local state
 
     // Go offline and add article
-    await goOffline(authenticatedPage);
+    await goOffline(page);
 
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     await articleInput.fill('Firebase Cleanup Test');
     await articleInput.press('Enter');
-    await authenticatedPage.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Get list ID from URL
-    const url = authenticatedPage.url();
+    const url = page.url();
     const listIdMatch = url.match(/\/lists\/([^\/]+)/);
     const listId = listIdMatch ? listIdMatch[1] : null;
 
     if (listId) {
       // Check that temp ID exists in local cache
-      const articleIdsBeforeSync = await getListArticleIdsFromCache(authenticatedPage, listId);
+      const articleIdsBeforeSync = await getListArticleIdsFromCache(page, listId);
       const hasTempIdBefore = articleIdsBeforeSync.some((id) => id.startsWith('temp_'));
       expect(hasTempIdBefore).toBeTruthy();
 
       // Go online and wait for sync
-      await goOnline(authenticatedPage);
-      await waitForNetworkIdle(authenticatedPage, 5000);
-      await authenticatedPage.waitForTimeout(5000); // Wait for Firebase update
+      await goOnline(page);
+      await waitForNetworkIdle(page, 5000);
+      await page.waitForTimeout(5000); // Wait for Firebase update
 
       // Refresh page to force load from Firebase (not cache)
-      await authenticatedPage.reload();
-      await authenticatedPage.waitForLoadState('networkidle');
+      await page.reload();
+      await page.waitForLoadState('networkidle');
 
       // Navigate back to the list
-      await authenticatedPage.goto(`/lists/${listId}`);
-      await authenticatedPage.waitForLoadState('networkidle');
+      await page.goto(`/lists/${listId}`);
+      await page.waitForLoadState('networkidle');
 
       // Verify article still exists (proving Firebase was updated)
-      await expect(authenticatedPage.getByText('Firebase Cleanup Test')).toBeVisible();
+      await expect(page.getByText('Firebase Cleanup Test')).toBeVisible();
 
       // Check that temp IDs are gone from cache after sync
-      const articleIdsAfterSync = await getListArticleIdsFromCache(authenticatedPage, listId);
+      const articleIdsAfterSync = await getListArticleIdsFromCache(page, listId);
       const hasTempIdAfter = articleIdsAfterSync.some((id) => id.startsWith('temp_'));
 
       // After proper cleanup, temp IDs should be removed
@@ -205,44 +205,44 @@ test.describe('Temp Article Cleanup', () => {
   });
 
   test('should preserve article metadata during temp ID replacement', async ({
-    authenticatedPage,
+    page,
   }) => {
     // Verify that article properties (name, department, etc.) are preserved
     // when temp ID is replaced with real ID
 
-    await goOffline(authenticatedPage);
+    await goOffline(page);
 
     // Add article with specific name
-    const articleInput = authenticatedPage.locator(
+    const articleInput = page.locator(
       'input[placeholder*="article"], input[placeholder*="artikel"]'
     );
     const testArticleName = 'Article with Metadata';
     await articleInput.fill(testArticleName);
     await articleInput.press('Enter');
-    await authenticatedPage.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Add amount if possible
-    const articleRow = authenticatedPage.getByText(testArticleName).locator('..');
+    const articleRow = page.getByText(testArticleName).locator('..');
     const amountInput = articleRow.locator('input[placeholder*="amount"], input[placeholder*="menge"]');
     if (await amountInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await amountInput.fill('3');
       await amountInput.blur();
-      await authenticatedPage.waitForTimeout(500);
+      await page.waitForTimeout(500);
     }
 
     // Go online and sync
-    await goOnline(authenticatedPage);
-    await waitForNetworkIdle(authenticatedPage, 5000);
-    await authenticatedPage.waitForTimeout(3000);
+    await goOnline(page);
+    await waitForNetworkIdle(page, 5000);
+    await page.waitForTimeout(3000);
 
     // Refresh to load from Firebase
-    await authenticatedPage.reload();
-    await authenticatedPage.waitForLoadState('networkidle');
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     // Verify article name and amount are preserved
-    await expect(authenticatedPage.getByText(testArticleName)).toBeVisible();
+    await expect(page.getByText(testArticleName)).toBeVisible();
 
-    const articleRowAfter = authenticatedPage.getByText(testArticleName).locator('..');
+    const articleRowAfter = page.getByText(testArticleName).locator('..');
     const amountInputAfter = articleRowAfter.locator(
       'input[placeholder*="amount"], input[placeholder*="menge"]'
     );
