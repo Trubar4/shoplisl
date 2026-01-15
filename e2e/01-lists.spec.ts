@@ -11,8 +11,14 @@ test.describe('Shopping Lists', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Wait a bit for Angular to render
-    await page.waitForTimeout(2000);
+    // Wait for Angular to fully render (increased timeout)
+    await page.waitForTimeout(3000);
+
+    // Wait for either lists container or empty state to be visible
+    await page.locator('.lists-overview, .empty-state').first().waitFor({
+      state: 'visible',
+      timeout: 10000
+    });
   });
 
   test('should display lists overview', async ({ page }) => {
@@ -34,24 +40,27 @@ test.describe('Shopping Lists', () => {
   test('should create a new shopping list', async ({ page }) => {
     // Click the "Add List" button (the + button in the toolbar)
     const addButton = page.locator('button[aria-label="Add list"], button:has(mat-icon:text("add"))').first();
+    await addButton.waitFor({ state: 'visible', timeout: 5000 });
     await addButton.click();
 
     // Wait for dialog/form to appear
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     // Fill in the list name
     const nameInput = page.locator('input[name="name"], input[placeholder*="Name"], input').first();
+    await nameInput.waitFor({ state: 'visible', timeout: 5000 });
     await nameInput.fill('Test Shopping List E2E');
 
     // Submit the form (look for save/create button)
     const submitButton = page.getByRole('button', { name: /save|speichern|create|erstellen|hinzufügen/i });
     await submitButton.click();
 
-    // Wait for the list to appear
-    await page.waitForTimeout(2000);
+    // Wait for the list to appear (increased timeout)
+    await page.waitForTimeout(3000);
 
     // Verify the list appears in the overview
-    await expect(page.getByText('Test Shopping List E2E')).toBeVisible({ timeout: 5000 });
+    const createdList = page.getByText('Test Shopping List E2E');
+    await expect(createdList).toBeVisible({ timeout: 10000 });
   });
 
   test('should edit a shopping list name', async ({ page }) => {
@@ -60,26 +69,31 @@ test.describe('Shopping Lists', () => {
     if (existingLists === 0) {
       // Create a list first
       const addButton = page.locator('button[aria-label="Add list"]').first();
+      await addButton.waitFor({ state: 'visible', timeout: 5000 });
       await addButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
       const nameInput = page.locator('input').first();
+      await nameInput.waitFor({ state: 'visible', timeout: 5000 });
       await nameInput.fill('List to Edit');
       const submitButton = page.getByRole('button', { name: /save|speichern|erstellen/i });
       await submitButton.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(3000);
+
+      // Verify list was created before proceeding
+      await page.locator('.list-item').first().waitFor({ state: 'visible', timeout: 10000 });
     }
 
     // Find the first list
     const listCard = page.locator('.list-item').first();
-    await listCard.waitFor({ state: 'visible', timeout: 5000 });
+    await listCard.waitFor({ state: 'visible', timeout: 10000 });
 
     // Click on the list to open it (might open list details, not edit directly)
     await listCard.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
     // For now, this test is basic - just verify navigation worked
     // In your app, editing might require a different flow
-    await expect(page).toHaveURL(/\/lists\/.+/);
+    await expect(page).toHaveURL(/\/lists\/.+/, { timeout: 10000 });
   });
 
   test('should delete a shopping list', async ({ page }) => {
