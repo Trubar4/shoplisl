@@ -1,15 +1,20 @@
 import { test as base, expect as baseExpect, Page } from '@playwright/test';
 
 /**
- * IMPORTANT: ShopLisl uses Google Sign-In
+ * E2E Test Fixture with Auto-Login
  *
- * You MUST log in manually before running tests:
- * 1. Run: npm run test:e2e:headed
- * 2. Browser opens - manually click "melden Sie sich an" and log in with Google
- * 3. After logging in, run tests again - browser stays logged in
- *
- * OR use headed mode to log in during test run
+ * Enables test mode in the app to bypass Google Sign-In
  */
 
-export const test = base;
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    // Enable test mode before navigating to app
+    await page.addInitScript(() => {
+      (window as any).E2E_TEST_MODE = true;
+    });
+
+    await use(page);
+  },
+});
+
 export const expect = baseExpect;
