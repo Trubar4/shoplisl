@@ -29,10 +29,11 @@
 
 import { Injectable } from '@angular/core';
 import { Timestamp } from '@angular/fire/firestore';
-import { FirebaseDataService } from './app/core/services/firebase-data.service';
-import { AuthService } from './app/core/services/auth.service';
-import { LoggerService } from './app/core/services/logger.service';
-import { ConnectionService } from './app/core/services/connection.service';
+import { FirebaseDataService } from './src/app/core/services/firebase-data.service';
+import { AuthService } from './src/app/core/services/auth.service';
+import { LoggerService } from './src/app/core/services/logger.service';
+import { ConnectionService } from './src/app/core/services/connection.service';
+import { ShoppingList, Article } from './src/app/core/models';
 
 export interface CleanupResult {
   totalLists: number;
@@ -113,8 +114,8 @@ export class OrphanedArticleIdCleanupService {
       const lists = await this.firebaseData.getAllListsFromFirebase();
       result.totalLists = lists.length;
 
-      const ownedLists = lists.filter(l => l.ownerId === currentUserId);
-      const sharedLists = lists.filter(l => l.ownerId !== currentUserId);
+      const ownedLists = lists.filter((l: ShoppingList) => l.ownerId === currentUserId);
+      const sharedLists = lists.filter((l: ShoppingList) => l.ownerId !== currentUserId);
       result.ownedLists = ownedLists.length;
       result.sharedLists = sharedLists.length;
 
@@ -127,10 +128,10 @@ export class OrphanedArticleIdCleanupService {
 
       // Collect all unique user IDs (list owners + collaborators)
       const allUserIds = new Set<string>();
-      lists.forEach(list => {
+      lists.forEach((list: ShoppingList) => {
         allUserIds.add(list.ownerId);
         if (list.sharedWith) {
-          list.sharedWith.forEach(userId => allUserIds.add(userId));
+          list.sharedWith.forEach((userId: string) => allUserIds.add(userId));
         }
       });
 
@@ -144,7 +145,7 @@ export class OrphanedArticleIdCleanupService {
         try {
           // Use batch loading to get articles for each user
           const userArticles = await this.firebaseData.getAllArticlesFromFirebase(userId);
-          userArticles.forEach(article => {
+          userArticles.forEach((article: Article) => {
             validArticleIds.add(article.id);
             articleOwnerMap.set(article.id, userId);
           });
@@ -167,10 +168,10 @@ export class OrphanedArticleIdCleanupService {
         const itemStates = list.itemStates || {};
 
         // Find orphaned article IDs (in articleIds but article doesn't exist)
-        const orphanedIds = articleIds.filter(id => !validArticleIds.has(id));
+        const orphanedIds = articleIds.filter((id: string) => !validArticleIds.has(id));
 
         // Find orphaned itemStates (in itemStates but article doesn't exist)
-        const orphanedStates = Object.keys(itemStates).filter(id => !validArticleIds.has(id));
+        const orphanedStates = Object.keys(itemStates).filter((id: string) => !validArticleIds.has(id));
 
         const totalOrphans = new Set([...orphanedIds, ...orphanedStates]).size;
 
@@ -214,10 +215,10 @@ export class OrphanedArticleIdCleanupService {
         this.logger.info('cleanup', `\n⚠️  Step 4: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
 
         for (const detail of result.details) {
-          const list = lists.find(l => l.id === detail.listId);
+          const list = lists.find((l: ShoppingList) => l.id === detail.listId);
           if (!list) continue;
 
-          const cleanedArticleIds = list.articleIds.filter(id => validArticleIds.has(id));
+          const cleanedArticleIds = list.articleIds.filter((id: string) => validArticleIds.has(id));
           const cleanedItemStates: any = {};
           Object.entries(list.itemStates || {}).forEach(([articleId, state]) => {
             if (validArticleIds.has(articleId)) {
