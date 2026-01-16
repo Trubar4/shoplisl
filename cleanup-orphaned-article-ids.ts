@@ -86,11 +86,11 @@ export class OrphanedArticleIdCleanupService {
       throw new Error('❌ No authenticated user');
     }
 
-    this.logger.info('cleanup', `\n${'='.repeat(80)}`);
-    this.logger.info('cleanup', `🧹 ORPHANED ARTICLE ID CLEANUP`);
-    this.logger.info('cleanup', `${'='.repeat(80)}`);
-    this.logger.info('cleanup', `Mode: ${dryRun ? '🔍 DRY RUN (preview only)' : confirmCleanup ? '⚠️  LIVE RUN (will make changes)' : '❌ Invalid mode'}`);
-    this.logger.info('cleanup', `Current User: ${currentUserId}\n`);
+    this.logger.info('data', `\n${'='.repeat(80)}`);
+    this.logger.info('data', `🧹 ORPHANED ARTICLE ID CLEANUP`);
+    this.logger.info('data', `${'='.repeat(80)}`);
+    this.logger.info('data', `Mode: ${dryRun ? '🔍 DRY RUN (preview only)' : confirmCleanup ? '⚠️  LIVE RUN (will make changes)' : '❌ Invalid mode'}`);
+    this.logger.info('data', `Current User: ${currentUserId}\n`);
 
     if (!dryRun && !confirmCleanup) {
       throw new Error('❌ Must set confirmCleanup=true to run in live mode');
@@ -110,7 +110,7 @@ export class OrphanedArticleIdCleanupService {
 
     try {
       // Step 1: Load all lists
-      this.logger.info('cleanup', '📋 Step 1: Loading all lists...');
+      this.logger.info('data', '📋 Step 1: Loading all lists...');
       const lists = await this.firebaseData.getAllListsFromFirebase();
       result.totalLists = lists.length;
 
@@ -119,12 +119,12 @@ export class OrphanedArticleIdCleanupService {
       result.ownedLists = ownedLists.length;
       result.sharedLists = sharedLists.length;
 
-      this.logger.info('cleanup', `  ✅ Found ${lists.length} total lists`);
-      this.logger.info('cleanup', `     - ${ownedLists.length} owned by you`);
-      this.logger.info('cleanup', `     - ${sharedLists.length} shared with you\n`);
+      this.logger.info('data', `  ✅ Found ${lists.length} total lists`);
+      this.logger.info('data', `     - ${ownedLists.length} owned by you`);
+      this.logger.info('data', `     - ${sharedLists.length} shared with you\n`);
 
       // Step 2: Build map of all articles from all potential owners
-      this.logger.info('cleanup', '📦 Step 2: Loading articles from all collaborators...');
+      this.logger.info('data', '📦 Step 2: Loading articles from all collaborators...');
 
       // Collect all unique user IDs (list owners + collaborators)
       const allUserIds = new Set<string>();
@@ -135,7 +135,7 @@ export class OrphanedArticleIdCleanupService {
         }
       });
 
-      this.logger.info('cleanup', `  🔍 Checking articles from ${allUserIds.size} users...`);
+      this.logger.info('data', `  🔍 Checking articles from ${allUserIds.size} users...`);
 
       // Load articles from each user
       const validArticleIds = new Set<string>();
@@ -149,18 +149,18 @@ export class OrphanedArticleIdCleanupService {
             validArticleIds.add(article.id);
             articleOwnerMap.set(article.id, userId);
           });
-          this.logger.info('cleanup', `     ✅ User ${userId}: ${userArticles.length} articles`);
+          this.logger.info('data', `     ✅ User ${userId}: ${userArticles.length} articles`);
         } catch (error: any) {
           const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
-          this.logger.error('cleanup', `     ❌ ${errorMsg}`);
+          this.logger.error('data', `     ❌ ${errorMsg}`);
           result.errors.push(errorMsg);
         }
       }
 
-      this.logger.info('cleanup', `  ✅ Total valid article IDs: ${validArticleIds.size}\n`);
+      this.logger.info('data', `  ✅ Total valid article IDs: ${validArticleIds.size}\n`);
 
       // Step 3: Analyze each list for orphaned IDs
-      this.logger.info('cleanup', '🔍 Step 3: Analyzing lists for orphaned article IDs...\n');
+      this.logger.info('data', '🔍 Step 3: Analyzing lists for orphaned article IDs...\n');
 
       for (const list of lists) {
         const isOwned = list.ownerId === currentUserId;
@@ -183,20 +183,20 @@ export class OrphanedArticleIdCleanupService {
           const listType = isOwned ? 'OWNED' : 'SHARED';
           const sharedInfo = list.sharedWith ? ` (shared with ${list.sharedWith.length} users)` : '';
 
-          this.logger.warn('cleanup', `📋 ${listType} LIST: "${list.name}"${sharedInfo}`);
-          this.logger.warn('cleanup', `   List ID: ${list.id}`);
-          this.logger.warn('cleanup', `   Owner: ${list.ownerId}`);
-          this.logger.warn('cleanup', `   Article IDs: ${articleIds.length} total, ${orphanedIds.length} orphaned`);
-          this.logger.warn('cleanup', `   Item States: ${Object.keys(itemStates).length} total, ${orphanedStates.length} orphaned`);
+          this.logger.warn('data', `📋 ${listType} LIST: "${list.name}"${sharedInfo}`);
+          this.logger.warn('data', `   List ID: ${list.id}`);
+          this.logger.warn('data', `   Owner: ${list.ownerId}`);
+          this.logger.warn('data', `   Article IDs: ${articleIds.length} total, ${orphanedIds.length} orphaned`);
+          this.logger.warn('data', `   Item States: ${Object.keys(itemStates).length} total, ${orphanedStates.length} orphaned`);
 
           if (orphanedIds.length > 0) {
-            this.logger.warn('cleanup', `   🔴 Orphaned article IDs: ${orphanedIds.join(', ')}`);
+            this.logger.warn('data', `   🔴 Orphaned article IDs: ${orphanedIds.join(', ')}`);
           }
           if (orphanedStates.length > 0 && orphanedStates.some(id => !orphanedIds.includes(id))) {
             const uniqueOrphanedStates = orphanedStates.filter(id => !orphanedIds.includes(id));
-            this.logger.warn('cleanup', `   🔴 Orphaned item states (not in articleIds): ${uniqueOrphanedStates.join(', ')}`);
+            this.logger.warn('data', `   🔴 Orphaned item states (not in articleIds): ${uniqueOrphanedStates.join(', ')}`);
           }
-          this.logger.warn('cleanup', '');
+          this.logger.warn('data', '');
 
           result.details.push({
             listId: list.id,
@@ -212,7 +212,7 @@ export class OrphanedArticleIdCleanupService {
 
       // Step 4: Execute cleanup if not dry run
       if (!dryRun && confirmCleanup && result.listsWithOrphans > 0) {
-        this.logger.info('cleanup', `\n⚠️  Step 4: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
+        this.logger.info('data', `\n⚠️  Step 4: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
 
         for (const detail of result.details) {
           const list = lists.find((l: ShoppingList) => l.id === detail.listId);
@@ -234,53 +234,53 @@ export class OrphanedArticleIdCleanupService {
             });
 
             result.listsUpdated++;
-            this.logger.info('cleanup', `   ✅ Updated "${list.name}" (${list.id})`);
-            this.logger.info('cleanup', `      ${detail.articleIdsBefore} → ${detail.articleIdsAfter} article IDs`);
+            this.logger.info('data', `   ✅ Updated "${list.name}" (${list.id})`);
+            this.logger.info('data', `      ${detail.articleIdsBefore} → ${detail.articleIdsAfter} article IDs`);
           } catch (error: any) {
             const errorMsg = `Failed to update list "${list.name}": ${error.message}`;
-            this.logger.error('cleanup', `   ❌ ${errorMsg}`);
+            this.logger.error('data', `   ❌ ${errorMsg}`);
             result.errors.push(errorMsg);
           }
         }
 
         // Refresh data after cleanup
         if (result.listsUpdated > 0) {
-          this.logger.info('cleanup', '\n🔄 Refreshing local data...');
+          this.logger.info('data', '\n🔄 Refreshing local data...');
           await this.firebaseData.refreshData();
-          this.logger.info('cleanup', '✅ Data refreshed\n');
+          this.logger.info('data', '✅ Data refreshed\n');
         }
       }
 
       // Step 5: Print summary
-      this.logger.info('cleanup', `\n${'='.repeat(80)}`);
-      this.logger.info('cleanup', '📊 CLEANUP SUMMARY');
-      this.logger.info('cleanup', `${'='.repeat(80)}`);
-      this.logger.info('cleanup', `Total lists analyzed: ${result.totalLists}`);
-      this.logger.info('cleanup', `  - Owned: ${result.ownedLists}`);
-      this.logger.info('cleanup', `  - Shared: ${result.sharedLists}`);
-      this.logger.info('cleanup', `Lists with orphaned IDs: ${result.listsWithOrphans}`);
-      this.logger.info('cleanup', `Orphaned article IDs found: ${result.orphanedIdsRemoved}`);
-      this.logger.info('cleanup', `Orphaned item states found: ${result.orphanedStatesRemoved}`);
+      this.logger.info('data', `\n${'='.repeat(80)}`);
+      this.logger.info('data', '📊 CLEANUP SUMMARY');
+      this.logger.info('data', `${'='.repeat(80)}`);
+      this.logger.info('data', `Total lists analyzed: ${result.totalLists}`);
+      this.logger.info('data', `  - Owned: ${result.ownedLists}`);
+      this.logger.info('data', `  - Shared: ${result.sharedLists}`);
+      this.logger.info('data', `Lists with orphaned IDs: ${result.listsWithOrphans}`);
+      this.logger.info('data', `Orphaned article IDs found: ${result.orphanedIdsRemoved}`);
+      this.logger.info('data', `Orphaned item states found: ${result.orphanedStatesRemoved}`);
 
       if (dryRun) {
-        this.logger.info('cleanup', `\n💡 This was a DRY RUN - no changes were made`);
-        this.logger.info('cleanup', `   To apply these changes, run with:`);
-        this.logger.info('cleanup', `   runOrphanedArticleIdCleanup(false, true)`);
+        this.logger.info('data', `\n💡 This was a DRY RUN - no changes were made`);
+        this.logger.info('data', `   To apply these changes, run with:`);
+        this.logger.info('data', `   runOrphanedArticleIdCleanup(false, true)`);
       } else {
-        this.logger.info('cleanup', `\nLists successfully updated: ${result.listsUpdated}`);
+        this.logger.info('data', `\nLists successfully updated: ${result.listsUpdated}`);
       }
 
       if (result.errors.length > 0) {
-        this.logger.error('cleanup', `\n⚠️  Errors encountered: ${result.errors.length}`);
-        result.errors.forEach(err => this.logger.error('cleanup', `   - ${err}`));
+        this.logger.error('data', `\n⚠️  Errors encountered: ${result.errors.length}`);
+        result.errors.forEach(err => this.logger.error('data', `   - ${err}`));
       }
 
-      this.logger.info('cleanup', `${'='.repeat(80)}\n`);
+      this.logger.info('data', `${'='.repeat(80)}\n`);
 
       return result;
 
     } catch (error: any) {
-      this.logger.error('cleanup', `\n❌ CLEANUP FAILED: ${error.message}`);
+      this.logger.error('data', `\n❌ CLEANUP FAILED: ${error.message}`);
       result.errors.push(error.message);
       throw error;
     }
