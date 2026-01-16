@@ -123,41 +123,13 @@ export class OrphanedArticleIdCleanupService {
       this.logger.info('data', `     - ${ownedLists.length} owned by you`);
       this.logger.info('data', `     - ${sharedLists.length} shared with you\n`);
 
-      // Step 2: Build map of all articles from all potential owners
-      this.logger.info('data', '📦 Step 2: Loading articles from all collaborators...');
+      // Step 2: Load all accessible articles (owned + shared)
+      this.logger.info('data', '📦 Step 2: Loading all accessible articles...');
 
-      // Collect all unique user IDs (list owners + collaborators)
-      const allUserIds = new Set<string>();
-      lists.forEach((list: ShoppingList) => {
-        allUserIds.add(list.ownerId);
-        if (list.sharedWith) {
-          list.sharedWith.forEach((userId: string) => allUserIds.add(userId));
-        }
-      });
+      const allArticles = await this.firebaseData.getAllArticlesFromFirebase();
+      const validArticleIds = new Set<string>(allArticles.map((article: Article) => article.id));
 
-      this.logger.info('data', `  🔍 Checking articles from ${allUserIds.size} users...`);
-
-      // Load articles from each user
-      const validArticleIds = new Set<string>();
-      const articleOwnerMap = new Map<string, string>(); // articleId -> ownerId
-
-      for (const userId of allUserIds) {
-        try {
-          // Use batch loading to get articles for each user
-          const userArticles = await this.firebaseData.getAllArticlesFromFirebase(userId);
-          userArticles.forEach((article: Article) => {
-            validArticleIds.add(article.id);
-            articleOwnerMap.set(article.id, userId);
-          });
-          this.logger.info('data', `     ✅ User ${userId}: ${userArticles.length} articles`);
-        } catch (error: any) {
-          const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
-          this.logger.error('data', `     ❌ ${errorMsg}`);
-          result.errors.push(errorMsg);
-        }
-      }
-
-      this.logger.info('data', `  ✅ Total valid article IDs: ${validArticleIds.size}\n`);
+      this.logger.info('data', `  ✅ Total accessible articles: ${validArticleIds.size}\n`);
 
       // Step 3: Analyze each list for orphaned IDs
       this.logger.info('data', '🔍 Step 3: Analyzing lists for orphaned article IDs...\n');
