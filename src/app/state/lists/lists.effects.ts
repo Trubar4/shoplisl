@@ -9,7 +9,7 @@ import { AuthService } from '../../core/services/auth.service';
 import * as ListsActions from './lists.actions';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging NgRx effects
-const DEBUG_LISTS_EFFECTS = true;
+const DEBUG_LISTS_EFFECTS = false;
 
 /**
  * Lists Effects

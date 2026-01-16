@@ -1,6 +1,7 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ArticlesState } from './articles.state';
 import { articlesAdapter } from './articles.reducer';
+import { Article } from '../../core/models';
 
 /**
  * Feature selector for articles state
@@ -87,26 +88,26 @@ export const selectArticlesSortedByName = selectAll;
 /** Select articles sorted by creation date (most recent first) */
 export const selectArticlesSortedByCreationDate = createSelector(
   selectAllArticles,
-  (articles) =>
+  (articles: Article[]) =>
     [...articles].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 );
 
 /** Select articles sorted by update date (most recent first) */
 export const selectArticlesSortedByUpdateDate = createSelector(
   selectAllArticles,
-  (articles) =>
+  (articles: Article[]) =>
     [...articles].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 );
 
 /** Select articles by department ID */
 export const selectArticlesByDepartment = (departmentId: string) =>
-  createSelector(selectAllArticles, (articles) =>
+  createSelector(selectAllArticles, (articles: Article[]) =>
     articles.filter((article) => article.departmentId === departmentId)
   );
 
 /** Select articles by category ID */
 export const selectArticlesByCategory = (categoryId: string) =>
-  createSelector(selectAllArticles, (articles) =>
+  createSelector(selectAllArticles, (articles: Article[]) =>
     articles.filter((article) => article.categoryId === categoryId)
   );
 
@@ -147,19 +148,19 @@ export const selectArticlesByIcon = (icon: string) =>
 /** Check if any articles are loading */
 export const selectHasLoadingArticles = createSelector(
   selectArticlesLoading,
-  (loading) => loading
+  (loading: boolean) => loading
 );
 
 /** Check if articles have been loaded */
 export const selectArticlesLoaded = createSelector(
   selectArticlesLastSync,
-  (lastSync) => lastSync !== null
+  (lastSync: Date | null) => lastSync !== null
 );
 
 /** Select article count by department */
 export const selectArticleCountByDepartment = createSelector(
   selectAllArticles,
-  (articles) => {
+  (articles: Article[]) => {
     const counts = new Map<string, number>();
     articles.forEach((article) => {
       const dept = article.departmentId || 'none';
@@ -172,7 +173,7 @@ export const selectArticleCountByDepartment = createSelector(
 /** Select article count by category */
 export const selectArticleCountByCategory = createSelector(
   selectAllArticles,
-  (articles) => {
+  (articles: Article[]) => {
     const counts = new Map<string, number>();
     articles.forEach((article) => {
       const cat = article.categoryId || 'none';
@@ -185,7 +186,7 @@ export const selectArticleCountByCategory = createSelector(
 /** Select recently created articles (last 7 days) */
 export const selectRecentlyCreatedArticles = createSelector(
   selectAllArticles,
-  (articles) => {
+  (articles: Article[]) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return articles.filter((article) => article.createdAt >= sevenDaysAgo);
@@ -195,7 +196,7 @@ export const selectRecentlyCreatedArticles = createSelector(
 /** Select recently updated articles (last 7 days) */
 export const selectRecentlyUpdatedArticles = createSelector(
   selectAllArticles,
-  (articles) => {
+  (articles: Article[]) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return articles.filter((article) => article.updatedAt >= sevenDaysAgo);
