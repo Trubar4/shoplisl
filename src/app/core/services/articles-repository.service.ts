@@ -384,7 +384,8 @@ export class ArticlesRepositoryService {
   // === UTILITY METHODS ===
 
   private async removeArticleFromAllLists(articleId: string): Promise<void> {
-    this.logger.info('data', `🗑️ Removing article ${articleId} from all lists`);
+    const currentUserId = this.authService.getCurrentUserId();
+    this.logger.info('data', `🗑️ Removing article ${articleId} from all lists (current user: ${currentUserId})`);
 
     try {
       // Phase 8.2: Use Observable-based getLists() to avoid injection context issues
@@ -392,18 +393,32 @@ export class ArticlesRepositoryService {
 
       this.logger.info('data', `Found ${lists.length} total lists to check`);
 
+      // Log list ownership breakdown
+      const ownedLists = lists.filter(l => l.ownerId === currentUserId);
+      const sharedLists = lists.filter(l => l.ownerId !== currentUserId);
+      this.logger.info('data', `  - Owned lists: ${ownedLists.length}`);
+      this.logger.info('data', `  - Shared lists (participant): ${sharedLists.length}`);
+
       let listsToUpdate = 0;
+      let successfulUpdates = 0;
+      let failedUpdates = 0;
+
       for (const list of lists) {
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
+        const isOwner = list.ownerId === currentUserId;
+        const isShared = list.sharedWith && list.sharedWith.length > 0;
 
         if (articleIds.includes(articleId) || itemStates[articleId]) {
           listsToUpdate++;
-          this.logger.info('data', `📋 Article found in list "${list.name}" (${list.id}), owned by ${list.ownerId}`);
+          this.logger.info('data', `📋 Article found in ${isOwner ? 'OWNED' : 'SHARED'} list "${list.name}" (${list.id}), list owner: ${list.ownerId}${isShared ? `, shared with ${list.sharedWith.length} users` : ''}`);
 
           const newArticleIds = articleIds.filter(id => id !== articleId);
           const newItemStates = { ...itemStates };
           delete newItemStates[articleId];
+
+          this.logger.debug('data', `  - Article IDs before: ${articleIds.length}, after: ${newArticleIds.length}`);
+          this.logger.debug('data', `  - ItemStates before: ${Object.keys(itemStates).length}, after: ${Object.keys(newItemStates).length}`);
 
           try {
             await this.firebaseData.updateListInFirebase(list.id, {
@@ -412,9 +427,21 @@ export class ArticlesRepositoryService {
               updatedAt: Timestamp.now()
             });
 
+            successfulUpdates++;
             this.logger.info('data', `✅ Removed article from list "${list.name}"`);
-          } catch (listError) {
-            this.logger.error('data', `❌ Failed to remove article from list "${list.name}": ${listError}`);
+          } catch (listError: any) {
+            failedUpdates++;
+            const errorMsg = listError?.message || String(listError);
+            this.logger.error('data', `❌ Failed to remove article from list "${list.name}": ${errorMsg}`);
+
+            // Log additional context for debugging
+            this.logger.error('data', `  - List ID: ${list.id}`);
+            this.logger.error('data', `  - List owner: ${list.ownerId}`);
+            this.logger.error('data', `  - Current user: ${currentUserId}`);
+            this.logger.error('data', `  - Is owner: ${isOwner}`);
+            this.logger.error('data', `  - Is shared: ${isShared}`);
+            this.logger.error('data', `  - Error type: ${listError?.code || 'unknown'}`);
+
             throw listError; // Re-throw to stop deletion
           }
         }
@@ -423,7 +450,7 @@ export class ArticlesRepositoryService {
       if (listsToUpdate === 0) {
         this.logger.info('data', `Article ${articleId} is not in any lists`);
       } else {
-        this.logger.info('data', `✅ Successfully removed article from ${listsToUpdate} list(s)`);
+        this.logger.info('data', `✅ Article cleanup complete: ${successfulUpdates} successful, ${failedUpdates} failed out of ${listsToUpdate} lists`);
       }
     } catch (error) {
       this.logger.error('data', 'Error removing article from lists', error);
