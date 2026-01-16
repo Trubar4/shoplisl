@@ -100,6 +100,12 @@ interface BackupData {
  */
 function parseArgs(): CleanupOptions {
   const args = process.argv.slice(2);
+
+  // Debug: Show received arguments
+  if (args.length > 0) {
+    console.log('📝 Arguments received:', args.join(', '));
+  }
+
   const options: CleanupOptions = {
     execute: false,
     backup: false
