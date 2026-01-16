@@ -39,10 +39,21 @@ if (existsSync(serviceAccountPath)) {
 } else {
   // Development: Use Application Default Credentials
   try {
-    admin.initializeApp();
-    console.log('🔑 Initialized with Application Default Credentials\n');
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID;
+
+    if (projectId) {
+      admin.initializeApp({ projectId });
+      console.log(`🔑 Initialized with Application Default Credentials (Project: ${projectId})\n`);
+    } else {
+      admin.initializeApp();
+      console.log('🔑 Initialized with Application Default Credentials\n');
+    }
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
+    console.error('\nTo fix this, either:');
+    console.error('1. Place serviceAccountKey.json in the project root, OR');
+    console.error('2. Set FIREBASE_PROJECT_ID environment variable, OR');
+    console.error('3. Run: gcloud auth application-default login && gcloud config set project YOUR_PROJECT_ID');
     process.exit(1);
   }
 }

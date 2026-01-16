@@ -133,20 +133,37 @@ This pattern is defined in `src/app/core/services/articles-repository.service.ts
 
 ## Firebase Authentication
 
-The script supports two authentication methods:
+The script supports three authentication methods:
 
-### Production (with Service Account)
+### Method 1: Service Account (Recommended)
 If `serviceAccountKey.json` exists in the project root:
 ```bash
 # Automatically uses service account
 npm run cleanup:temp-ids -- --execute
 ```
 
-### Development (Application Default Credentials)
-If no service account file:
+### Method 2: Environment Variable
+Set your Firebase project ID:
+```bash
+# Windows PowerShell
+$env:FIREBASE_PROJECT_ID = "your-project-id"
+npm run cleanup:temp-ids
+
+# Windows CMD
+set FIREBASE_PROJECT_ID=your-project-id
+npm run cleanup:temp-ids
+
+# Linux/Mac
+export FIREBASE_PROJECT_ID=your-project-id
+npm run cleanup:temp-ids
+```
+
+### Method 3: Application Default Credentials
+If no service account file or environment variable:
 ```bash
 # Set up Application Default Credentials first
 gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
 
 # Then run the script
 npm run cleanup:temp-ids -- --execute
