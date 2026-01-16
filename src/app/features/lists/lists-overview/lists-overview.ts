@@ -92,13 +92,9 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
-        const validIds = new Set(articles.map(a => a.id));
-
         // First clean the lists data
         const cleanedLists = lists.map(list => {
-          const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
-
-          // STEP 1: Filter out temporary offline articles (temp_*) from ALL lists
+          // Filter out temporary offline articles (temp_*) from ALL lists
           // These are stale IDs that weren't properly cleaned up from Firebase after sync
           const filterTempArticles = (articleIds: string[]): string[] =>
             articleIds.filter(id => !id.startsWith('temp_'));
@@ -109,31 +105,21 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
                 .filter(([articleId]) => !articleId.startsWith('temp_'))
             ) as { [articleId: string]: ListItemState };
 
-          // STEP 2: Apply ownership-specific cleaning
-          // For owned lists: Remove temp_ IDs AND orphaned article IDs (articles not in store)
-          // For shared lists: Only remove temp_ IDs, keep all other articles
-          // (Shared articles belong to owner and won't be in participant's store until visited)
-          const cleaned: ShoppingList = isOwner ? {
+          // Apply consistent cleaning for ALL lists (owned and shared)
+          // Only remove temp_ IDs - trust Firebase articleIds as source of truth
+          // (Orphaned IDs are now removed by cleanup script, so articleIds.length is reliable)
+          const cleaned: ShoppingList = {
             ...list,
-            // For owned lists: Remove temp_ IDs AND orphaned article IDs
-            articleIds: filterTempArticles(list.articleIds).filter(id => validIds.has(id)),
-            // Clean item states
-            itemStates: Object.fromEntries(
-              Object.entries(filterTempFromItemStates(list.itemStates))
-                .filter(([articleId]) => validIds.has(articleId))
-            ) as { [articleId: string]: ListItemState }
-          } : {
-            ...list,
-            // For shared lists (participant): Only remove temp_ IDs, keep all other articles
             articleIds: filterTempArticles(list.articleIds),
             itemStates: filterTempFromItemStates(list.itemStates)
           };
 
           if (DEBUG_LISTS_OVERVIEW) {
-            const isSharedParticipant = !isOwner && list.sharedWith && list.sharedWith.length > 0;
+            const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
+            const isShared = list.sharedWith && list.sharedWith.length > 0;
 
-            // Only log shared lists where user is a participant
-            if (isSharedParticipant) {
+            // Log details for shared lists
+            if (isShared || !isOwner) {
               const rawTempCount = list.articleIds.filter(id => id.startsWith('temp_')).length;
               const activeCount = cleaned.articleIds.filter(articleId => {
                 const itemState = cleaned.itemStates?.[articleId];
@@ -141,7 +127,8 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
               }).length;
               const totalCount = cleaned.articleIds.length;
 
-              console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
+              const role = isOwner ? 'owner' : 'participant';
+              console.log(`\n📋 SHARED LIST (${role}): "${list.name}"`);
               console.log(`   - List ID: ${list.id}`);
               console.log(`   - Owner ID: ${list.ownerId}`);
               console.log(`   - Current User ID: ${this.currentUserId}`);
