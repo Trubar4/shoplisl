@@ -1001,11 +1001,26 @@ export class FirebaseDataService {
               finalItemStates = currentList?.itemStates || serverItemStates;
               finalArticleIds = currentList?.articleIds || serverArticleIds;
 
+              // BUG FIX: Apply Bug 1 Fix even for optimistic updates
+              // Populate articleIds from itemStates if empty
+              if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
+                finalArticleIds = Object.keys(finalItemStates);
+                this.logger.debug('data', `Bug 1 Fix (optimistic): Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+              }
+
               this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our write ${timeSinceWrite}ms ago)`);
             } else {
               // This is OWNER's write or old data - trust server completely
               finalItemStates = serverItemStates;
               finalArticleIds = serverArticleIds;
+
+              // BUG FIX: Apply Bug 1 Fix to shared list listener
+              // Firebase may return empty articleIds for shared lists, but itemStates is populated
+              // This ensures participants see correct counts even when articleIds is empty on server
+              if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
+                finalArticleIds = Object.keys(finalItemStates);
+                this.logger.debug('data', `Bug 1 Fix (server): Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+              }
 
               this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
             }

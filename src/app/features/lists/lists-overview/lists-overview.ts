@@ -110,9 +110,9 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
             ) as { [articleId: string]: ListItemState };
 
           // STEP 2: Apply ownership-specific cleaning
-          // BUG FIX: Only clean orphaned references for lists the user owns
-          // For shared lists (where user is a participant), the articles belong to the owner
-          // and won't be in the participant's local articles collection
+          // For owned lists: Remove temp_ IDs AND orphaned article IDs (articles not in store)
+          // For shared lists: Only remove temp_ IDs, keep all other articles
+          // (Shared articles belong to owner and won't be in participant's store until visited)
           const cleaned: ShoppingList = isOwner ? {
             ...list,
             // For owned lists: Remove temp_ IDs AND orphaned article IDs
