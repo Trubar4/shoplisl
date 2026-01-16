@@ -123,16 +123,42 @@ export class OrphanedArticleIdCleanupService {
       this.logger.info('data', `     - ${ownedLists.length} owned by you`);
       this.logger.info('data', `     - ${sharedLists.length} shared with you\n`);
 
-      // Step 2: Load all accessible articles (owned + shared)
-      this.logger.info('data', '📦 Step 2: Loading all accessible articles...');
+      // Step 2: Collect all collaborator user IDs from all lists
+      this.logger.info('data', '📦 Step 2: Collecting all collaborator user IDs...');
 
-      const allArticles = await this.firebaseData.getAllArticlesFromFirebase();
-      const validArticleIds = new Set<string>(allArticles.map((article: Article) => article.id));
+      const allUserIds = new Set<string>();
+      allUserIds.add(currentUserId); // Always include current user
 
-      this.logger.info('data', `  ✅ Total accessible articles: ${validArticleIds.size}\n`);
+      lists.forEach((list: ShoppingList) => {
+        allUserIds.add(list.ownerId);
+        if (list.sharedWith && list.sharedWith.length > 0) {
+          list.sharedWith.forEach((userId: string) => allUserIds.add(userId));
+        }
+      });
 
-      // Step 3: Analyze each list for orphaned IDs
-      this.logger.info('data', '🔍 Step 3: Analyzing lists for orphaned article IDs...\n');
+      this.logger.info('data', `  ✅ Found ${allUserIds.size} unique collaborators\n`);
+
+      // Step 3: Load articles from ALL collaborators
+      this.logger.info('data', '📦 Step 3: Loading articles from all collaborators...');
+
+      const validArticleIds = new Set<string>();
+      let totalArticlesLoaded = 0;
+
+      for (const userId of allUserIds) {
+        try {
+          const userArticles = await this.firebaseData.getArticlesForUser(userId);
+          userArticles.forEach((article: Article) => validArticleIds.add(article.id));
+          totalArticlesLoaded += userArticles.length;
+          this.logger.info('data', `  ✅ User ${userId}: ${userArticles.length} articles`);
+        } catch (error: any) {
+          this.logger.error('data', `  ❌ Failed to load articles for user ${userId}: ${error.message}`);
+        }
+      }
+
+      this.logger.info('data', `  ✅ Total articles loaded: ${totalArticlesLoaded}, unique article IDs: ${validArticleIds.size}\n`);
+
+      // Step 4: Analyze each list for orphaned IDs
+      this.logger.info('data', '🔍 Step 4: Analyzing lists for orphaned article IDs...\n');
 
       for (const list of lists) {
         const isOwned = list.ownerId === currentUserId;
@@ -182,9 +208,9 @@ export class OrphanedArticleIdCleanupService {
         }
       }
 
-      // Step 4: Execute cleanup if not dry run
+      // Step 5: Execute cleanup if not dry run
       if (!dryRun && confirmCleanup && result.listsWithOrphans > 0) {
-        this.logger.info('data', `\n⚠️  Step 4: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
+        this.logger.info('data', `\n⚠️  Step 5: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
 
         for (const detail of result.details) {
           const list = lists.find((l: ShoppingList) => l.id === detail.listId);
@@ -223,7 +249,7 @@ export class OrphanedArticleIdCleanupService {
         }
       }
 
-      // Step 5: Print summary
+      // Step 6: Print summary
       this.logger.info('data', `\n${'='.repeat(80)}`);
       this.logger.info('data', '📊 CLEANUP SUMMARY');
       this.logger.info('data', `${'='.repeat(80)}`);
