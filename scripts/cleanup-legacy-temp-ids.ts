@@ -39,7 +39,7 @@ if (existsSync(serviceAccountPath)) {
 } else {
   // Development: Use Application Default Credentials
   try {
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID;
+    const projectId = process.env['GOOGLE_CLOUD_PROJECT'] || process.env['FIREBASE_PROJECT_ID'];
 
     if (projectId) {
       admin.initializeApp({ projectId });
