@@ -26,7 +26,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging shared lists article count issue
-const DEBUG_LISTS_OVERVIEW = true;
+const DEBUG_LISTS_OVERVIEW = false;
 
 @Component({
   selector: 'app-lists-overview',
