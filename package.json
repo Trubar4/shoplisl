@@ -21,7 +21,9 @@
     "backup:firestore": "ts-node scripts/backup-firestore.ts",
     "restore:firestore": "ts-node scripts/restore-firestore.ts",
     "diagnose:sharing": "ts-node scripts/diagnose-sharing.ts",
-    "create-test-users": "node --loader ts-node/esm scripts/create-test-users.ts"
+    "create-test-users": "node --loader ts-node/esm scripts/create-test-users.ts",
+    "cleanup:temp-ids": "ts-node scripts/cleanup-legacy-temp-ids.ts",
+    "cleanup:temp-ids:execute": "ts-node scripts/cleanup-legacy-temp-ids.ts --execute --backup"
   },
   "private": true,
   "dependencies": {
