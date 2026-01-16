@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadChildren: () => import('./features/articles/articles.module').then(m => m.ArticlesModule)
   },
   {
+    path: 'cleanup',
+    loadComponent: () => import('./features/admin/cleanup-orphaned-ids.component').then(m => m.CleanupOrphanedIdsComponent)
+  },
+  {
     path: 'debug-admin',
     component: DebugUserComponent
   },
