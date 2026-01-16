@@ -109,51 +109,52 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
                 .filter(([articleId]) => !articleId.startsWith('temp_'))
             ) as { [articleId: string]: ListItemState };
 
-          // STEP 2: Apply ownership-specific cleaning
-          // BUG FIX: Only clean orphaned references for lists the user owns
-          // For shared lists (where user is a participant), the articles belong to the owner
-          // and won't be in the participant's local articles collection
-          const cleaned: ShoppingList = isOwner ? {
+          // STEP 2: Remove orphaned article IDs for ALL lists (both owned and shared)
+          // BUG FIX: Participants should also filter by validIds to remove ghost article IDs
+          // When a participant visits a list, loadArticlesForList() loads all real articles
+          // into sharedArticles, which get merged into the store. So validIds includes all
+          // articles that actually exist. Filtering by validIds removes ghost/orphaned IDs
+          // that remain in Firebase after articles are deleted, ensuring accurate counts.
+          const cleaned: ShoppingList = {
             ...list,
-            // For owned lists: Remove temp_ IDs AND orphaned article IDs
+            // Remove temp_ IDs AND orphaned article IDs for all lists
             articleIds: filterTempArticles(list.articleIds).filter(id => validIds.has(id)),
-            // Clean item states
+            // Clean item states to match articleIds
             itemStates: Object.fromEntries(
               Object.entries(filterTempFromItemStates(list.itemStates))
                 .filter(([articleId]) => validIds.has(articleId))
             ) as { [articleId: string]: ListItemState }
-          } : {
-            ...list,
-            // For shared lists (participant): Only remove temp_ IDs, keep all other articles
-            articleIds: filterTempArticles(list.articleIds),
-            itemStates: filterTempFromItemStates(list.itemStates)
           };
 
           if (DEBUG_LISTS_OVERVIEW) {
             const isSharedParticipant = !isOwner && list.sharedWith && list.sharedWith.length > 0;
 
-            // Only log shared lists where user is a participant
-            if (isSharedParticipant) {
+            // Log all lists to show filtering effect
+            if (isSharedParticipant || isOwner) {
               const rawTempCount = list.articleIds.filter(id => id.startsWith('temp_')).length;
+              const rawOrphanedCount = list.articleIds.filter(id => !id.startsWith('temp_') && !validIds.has(id)).length;
               const activeCount = cleaned.articleIds.filter(articleId => {
                 const itemState = cleaned.itemStates?.[articleId];
                 return !itemState?.isChecked;
               }).length;
               const totalCount = cleaned.articleIds.length;
 
-              console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
+              const listType = isOwner ? 'OWNED' : 'SHARED (participant)';
+              console.log(`\n📋 ${listType} LIST: "${list.name}"`);
               console.log(`   - List ID: ${list.id}`);
               console.log(`   - Owner ID: ${list.ownerId}`);
               console.log(`   - Current User ID: ${this.currentUserId}`);
               console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
-              console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
-              console.log(`   - Article IDs (raw count): ${list.articleIds.length}`);
-              console.log(`   - Temp articles filtered out: ${rawTempCount}`);
-              console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
-              console.log(`   - Total Articles (after cleanup): ${totalCount}`);
+              console.log(`   - Article IDs (raw from Firebase): ${list.articleIds.length}`);
+              console.log(`   - Temp IDs filtered out: ${rawTempCount}`);
+              console.log(`   - Orphaned IDs filtered out: ${rawOrphanedCount}`);
+              console.log(`   - Article IDs (cleaned/valid): ${totalCount}`);
               console.log(`   - Active (unchecked) Articles: ${activeCount}`);
               console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
-              console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
+              if (rawOrphanedCount > 0) {
+                const orphanedIds = list.articleIds.filter(id => !id.startsWith('temp_') && !validIds.has(id));
+                console.log(`   - 🔴 Orphaned IDs removed: [${orphanedIds.join(', ')}]`);
+              }
             }
           }
 
