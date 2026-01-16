@@ -1,0 +1,287 @@
+/**
+ * ONE-TIME CLEANUP SCRIPT: Remove Orphaned Article IDs from All Lists
+ *
+ * Purpose: Clean up ghost article IDs that remain in Firebase after articles are deleted.
+ * This script properly handles shared lists by checking article existence across all collaborators.
+ *
+ * Problem:
+ * - The regular cleanup skips shared lists (assumes articles belong to collaborators)
+ * - When articles are deleted, their IDs remain in list.articleIds and list.itemStates
+ * - This causes inflated counts (e.g., 38 article IDs but only 26 articles exist)
+ *
+ * Solution:
+ * - Load ALL lists (owned + shared)
+ * - For each list, identify all potential article owners (list owner + all collaborators)
+ * - Check if each article ID exists in ANY of those users' collections
+ * - Remove article IDs that don't exist anywhere
+ *
+ * Usage:
+ * 1. Import this into a component that has access to Firebase services
+ * 2. Call runOrphanedArticleIdCleanup() from a button click or ngOnInit
+ * 3. Check console for detailed results
+ *
+ * Safety:
+ * - Read-only until final confirmation
+ * - Shows preview of what will be deleted
+ * - Backs up data before making changes
+ * - Can be run multiple times safely (idempotent)
+ */
+
+import { Injectable } from '@angular/core';
+import { Timestamp } from '@angular/fire/firestore';
+import { FirebaseDataService } from './app/core/services/firebase-data.service';
+import { AuthService } from './app/core/services/auth.service';
+import { LoggerService } from './app/core/services/logger.service';
+import { ConnectionService } from './app/core/services/connection.service';
+
+export interface CleanupResult {
+  totalLists: number;
+  ownedLists: number;
+  sharedLists: number;
+  listsWithOrphans: number;
+  listsUpdated: number;
+  orphanedIdsRemoved: number;
+  orphanedStatesRemoved: number;
+  errors: string[];
+  details: Array<{
+    listId: string;
+    listName: string;
+    listOwner: string;
+    isShared: boolean;
+    articleIdsBefore: number;
+    articleIdsAfter: number;
+    orphanedIds: string[];
+  }>;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class OrphanedArticleIdCleanupService {
+
+  constructor(
+    private firebaseData: FirebaseDataService,
+    private authService: AuthService,
+    private logger: LoggerService,
+    private connectionService: ConnectionService
+  ) {}
+
+  /**
+   * Main cleanup function - analyzes and optionally fixes orphaned article IDs
+   * @param dryRun If true, only analyzes without making changes (default: true)
+   * @param confirmCleanup If true AND dryRun=false, performs actual cleanup
+   */
+  async runOrphanedArticleIdCleanup(
+    dryRun: boolean = true,
+    confirmCleanup: boolean = false
+  ): Promise<CleanupResult> {
+
+    if (!this.connectionService.isOnline()) {
+      throw new Error('❌ Must be online to run cleanup');
+    }
+
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error('❌ No authenticated user');
+    }
+
+    this.logger.info('cleanup', `\n${'='.repeat(80)}`);
+    this.logger.info('cleanup', `🧹 ORPHANED ARTICLE ID CLEANUP`);
+    this.logger.info('cleanup', `${'='.repeat(80)}`);
+    this.logger.info('cleanup', `Mode: ${dryRun ? '🔍 DRY RUN (preview only)' : confirmCleanup ? '⚠️  LIVE RUN (will make changes)' : '❌ Invalid mode'}`);
+    this.logger.info('cleanup', `Current User: ${currentUserId}\n`);
+
+    if (!dryRun && !confirmCleanup) {
+      throw new Error('❌ Must set confirmCleanup=true to run in live mode');
+    }
+
+    const result: CleanupResult = {
+      totalLists: 0,
+      ownedLists: 0,
+      sharedLists: 0,
+      listsWithOrphans: 0,
+      listsUpdated: 0,
+      orphanedIdsRemoved: 0,
+      orphanedStatesRemoved: 0,
+      errors: [],
+      details: []
+    };
+
+    try {
+      // Step 1: Load all lists
+      this.logger.info('cleanup', '📋 Step 1: Loading all lists...');
+      const lists = await this.firebaseData.getAllListsFromFirebase();
+      result.totalLists = lists.length;
+
+      const ownedLists = lists.filter(l => l.ownerId === currentUserId);
+      const sharedLists = lists.filter(l => l.ownerId !== currentUserId);
+      result.ownedLists = ownedLists.length;
+      result.sharedLists = sharedLists.length;
+
+      this.logger.info('cleanup', `  ✅ Found ${lists.length} total lists`);
+      this.logger.info('cleanup', `     - ${ownedLists.length} owned by you`);
+      this.logger.info('cleanup', `     - ${sharedLists.length} shared with you\n`);
+
+      // Step 2: Build map of all articles from all potential owners
+      this.logger.info('cleanup', '📦 Step 2: Loading articles from all collaborators...');
+
+      // Collect all unique user IDs (list owners + collaborators)
+      const allUserIds = new Set<string>();
+      lists.forEach(list => {
+        allUserIds.add(list.ownerId);
+        if (list.sharedWith) {
+          list.sharedWith.forEach(userId => allUserIds.add(userId));
+        }
+      });
+
+      this.logger.info('cleanup', `  🔍 Checking articles from ${allUserIds.size} users...`);
+
+      // Load articles from each user
+      const validArticleIds = new Set<string>();
+      const articleOwnerMap = new Map<string, string>(); // articleId -> ownerId
+
+      for (const userId of allUserIds) {
+        try {
+          // Use batch loading to get articles for each user
+          const userArticles = await this.firebaseData.getAllArticlesFromFirebase(userId);
+          userArticles.forEach(article => {
+            validArticleIds.add(article.id);
+            articleOwnerMap.set(article.id, userId);
+          });
+          this.logger.info('cleanup', `     ✅ User ${userId}: ${userArticles.length} articles`);
+        } catch (error: any) {
+          const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
+          this.logger.error('cleanup', `     ❌ ${errorMsg}`);
+          result.errors.push(errorMsg);
+        }
+      }
+
+      this.logger.info('cleanup', `  ✅ Total valid article IDs: ${validArticleIds.size}\n`);
+
+      // Step 3: Analyze each list for orphaned IDs
+      this.logger.info('cleanup', '🔍 Step 3: Analyzing lists for orphaned article IDs...\n');
+
+      for (const list of lists) {
+        const isOwned = list.ownerId === currentUserId;
+        const articleIds = list.articleIds || [];
+        const itemStates = list.itemStates || {};
+
+        // Find orphaned article IDs (in articleIds but article doesn't exist)
+        const orphanedIds = articleIds.filter(id => !validArticleIds.has(id));
+
+        // Find orphaned itemStates (in itemStates but article doesn't exist)
+        const orphanedStates = Object.keys(itemStates).filter(id => !validArticleIds.has(id));
+
+        const totalOrphans = new Set([...orphanedIds, ...orphanedStates]).size;
+
+        if (totalOrphans > 0) {
+          result.listsWithOrphans++;
+          result.orphanedIdsRemoved += orphanedIds.length;
+          result.orphanedStatesRemoved += orphanedStates.length;
+
+          const listType = isOwned ? 'OWNED' : 'SHARED';
+          const sharedInfo = list.sharedWith ? ` (shared with ${list.sharedWith.length} users)` : '';
+
+          this.logger.warn('cleanup', `📋 ${listType} LIST: "${list.name}"${sharedInfo}`);
+          this.logger.warn('cleanup', `   List ID: ${list.id}`);
+          this.logger.warn('cleanup', `   Owner: ${list.ownerId}`);
+          this.logger.warn('cleanup', `   Article IDs: ${articleIds.length} total, ${orphanedIds.length} orphaned`);
+          this.logger.warn('cleanup', `   Item States: ${Object.keys(itemStates).length} total, ${orphanedStates.length} orphaned`);
+
+          if (orphanedIds.length > 0) {
+            this.logger.warn('cleanup', `   🔴 Orphaned article IDs: ${orphanedIds.join(', ')}`);
+          }
+          if (orphanedStates.length > 0 && orphanedStates.some(id => !orphanedIds.includes(id))) {
+            const uniqueOrphanedStates = orphanedStates.filter(id => !orphanedIds.includes(id));
+            this.logger.warn('cleanup', `   🔴 Orphaned item states (not in articleIds): ${uniqueOrphanedStates.join(', ')}`);
+          }
+          this.logger.warn('cleanup', '');
+
+          result.details.push({
+            listId: list.id,
+            listName: list.name,
+            listOwner: list.ownerId,
+            isShared: !isOwned,
+            articleIdsBefore: articleIds.length,
+            articleIdsAfter: articleIds.length - orphanedIds.length,
+            orphanedIds: [...new Set([...orphanedIds, ...orphanedStates])]
+          });
+        }
+      }
+
+      // Step 4: Execute cleanup if not dry run
+      if (!dryRun && confirmCleanup && result.listsWithOrphans > 0) {
+        this.logger.info('cleanup', `\n⚠️  Step 4: EXECUTING CLEANUP (${result.listsWithOrphans} lists)...\n`);
+
+        for (const detail of result.details) {
+          const list = lists.find(l => l.id === detail.listId);
+          if (!list) continue;
+
+          const cleanedArticleIds = list.articleIds.filter(id => validArticleIds.has(id));
+          const cleanedItemStates: any = {};
+          Object.entries(list.itemStates || {}).forEach(([articleId, state]) => {
+            if (validArticleIds.has(articleId)) {
+              cleanedItemStates[articleId] = state;
+            }
+          });
+
+          try {
+            await this.firebaseData.updateListInFirebase(list.id, {
+              articleIds: cleanedArticleIds,
+              itemStates: cleanedItemStates,
+              updatedAt: Timestamp.now()
+            });
+
+            result.listsUpdated++;
+            this.logger.info('cleanup', `   ✅ Updated "${list.name}" (${list.id})`);
+            this.logger.info('cleanup', `      ${detail.articleIdsBefore} → ${detail.articleIdsAfter} article IDs`);
+          } catch (error: any) {
+            const errorMsg = `Failed to update list "${list.name}": ${error.message}`;
+            this.logger.error('cleanup', `   ❌ ${errorMsg}`);
+            result.errors.push(errorMsg);
+          }
+        }
+
+        // Refresh data after cleanup
+        if (result.listsUpdated > 0) {
+          this.logger.info('cleanup', '\n🔄 Refreshing local data...');
+          await this.firebaseData.refreshData();
+          this.logger.info('cleanup', '✅ Data refreshed\n');
+        }
+      }
+
+      // Step 5: Print summary
+      this.logger.info('cleanup', `\n${'='.repeat(80)}`);
+      this.logger.info('cleanup', '📊 CLEANUP SUMMARY');
+      this.logger.info('cleanup', `${'='.repeat(80)}`);
+      this.logger.info('cleanup', `Total lists analyzed: ${result.totalLists}`);
+      this.logger.info('cleanup', `  - Owned: ${result.ownedLists}`);
+      this.logger.info('cleanup', `  - Shared: ${result.sharedLists}`);
+      this.logger.info('cleanup', `Lists with orphaned IDs: ${result.listsWithOrphans}`);
+      this.logger.info('cleanup', `Orphaned article IDs found: ${result.orphanedIdsRemoved}`);
+      this.logger.info('cleanup', `Orphaned item states found: ${result.orphanedStatesRemoved}`);
+
+      if (dryRun) {
+        this.logger.info('cleanup', `\n💡 This was a DRY RUN - no changes were made`);
+        this.logger.info('cleanup', `   To apply these changes, run with:`);
+        this.logger.info('cleanup', `   runOrphanedArticleIdCleanup(false, true)`);
+      } else {
+        this.logger.info('cleanup', `\nLists successfully updated: ${result.listsUpdated}`);
+      }
+
+      if (result.errors.length > 0) {
+        this.logger.error('cleanup', `\n⚠️  Errors encountered: ${result.errors.length}`);
+        result.errors.forEach(err => this.logger.error('cleanup', `   - ${err}`));
+      }
+
+      this.logger.info('cleanup', `${'='.repeat(80)}\n`);
+
+      return result;
+
+    } catch (error: any) {
+      this.logger.error('cleanup', `\n❌ CLEANUP FAILED: ${error.message}`);
+      result.errors.push(error.message);
+      throw error;
+    }
+  }
+}

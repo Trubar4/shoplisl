@@ -411,7 +411,7 @@ export class ArticlesRepositoryService {
 
         if (articleIds.includes(articleId) || itemStates[articleId]) {
           listsToUpdate++;
-          this.logger.info('data', `📋 Article found in ${isOwner ? 'OWNED' : 'SHARED'} list "${list.name}" (${list.id}), list owner: ${list.ownerId}${isShared ? `, shared with ${list.sharedWith.length} users` : ''}`);
+          this.logger.info('data', `📋 Article found in ${isOwner ? 'OWNED' : 'SHARED'} list "${list.name}" (${list.id}), list owner: ${list.ownerId}${isShared ? `, shared with ${list.sharedWith?.length || 0} users` : ''}`);
 
           const newArticleIds = articleIds.filter(id => id !== articleId);
           const newItemStates = { ...itemStates };
