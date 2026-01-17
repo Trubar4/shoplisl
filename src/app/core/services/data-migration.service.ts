@@ -361,12 +361,7 @@ export class DataMigrationService {
       const lists = await this.firebaseData.getAllListsFromFirebase();
 
       // Collect all collaborator user IDs from all lists
-      const currentUserId = this.authService.getCurrentUserId();
       const allUserIds = new Set<string>();
-
-      if (currentUserId) {
-        allUserIds.add(currentUserId);
-      }
 
       lists.forEach(list => {
         allUserIds.add(list.ownerId);
