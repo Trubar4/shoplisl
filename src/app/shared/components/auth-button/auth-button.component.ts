@@ -13,6 +13,7 @@ import { AppState } from '../../../state/app.state';
 import { User } from '../../../core/models';
 import * as AuthActions from '../../../state/auth/auth.actions';
 import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../../state/auth/auth.selectors';
+import { BUILD_INFO } from '../../../../environments/version';
 
 @Component({
   selector: 'app-auth-button',
@@ -150,14 +151,8 @@ export class AuthButtonComponent implements OnInit {
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
     this.loading$ = this.store.select(selectAuthLoading);
 
-    // Generate version string with current build date/time
-    const now = new Date();
-    const day = now.getDate();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const hours = now.getHours();
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    this.buildVersion = `Version: ${day}.${month}.${year} ${hours}:${minutes}`;
+    // Use build time from CI workflow
+    this.buildVersion = `${BUILD_INFO.buildDateTime} | ${BUILD_INFO.branch}`;
   }
 
   ngOnInit(): void {}

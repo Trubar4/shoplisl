@@ -23,7 +23,20 @@ jobs:
       
     - name: Install Angular CLI
       run: npm install -g @angular/cli
-      
+
+    - name: Generate build metadata
+      run: |
+        BUILD_TIME_UTC="$(date -u +'%d %b %Y, %H:%M UTC')"
+        BRANCH="${GITHUB_REF_NAME}"
+        mkdir -p src/environments
+        cat > src/environments/version.ts <<EOF
+        export const BUILD_INFO = {
+          buildDateTime: '${BUILD_TIME_UTC}',
+          branch: '${BRANCH}'
+        } as const;
+        EOF
+        echo "Generated version.ts with build time: ${BUILD_TIME_UTC} and branch: ${BRANCH}"
+
     - name: Build Angular application
       run: ng build --configuration production
       
