@@ -349,6 +349,7 @@ export class DataMigrationService {
 
   /**
    * Clean up orphaned references immediately (for use after article deletion)
+   * Now supports shared lists by loading articles from all collaborators
    */
   async quickCleanupOrphanedReferences(): Promise<{ listsUpdated: number; referencesRemoved: number }> {
     if (!this.connectionService.isOnline()) {
@@ -358,52 +359,65 @@ export class DataMigrationService {
 
     try {
       const lists = await this.firebaseData.getAllListsFromFirebase();
-      const articles = await this.firebaseData.getAllArticlesFromFirebase();
 
-      const validArticleIds = new Set(articles.map(article => article.id));
+      // Collect all collaborator user IDs from all lists
+      const allUserIds = new Set<string>();
 
-      // Phase 8: For shared lists, don't remove article IDs - they might belong to collaborators
-      const sharedListIds = new Set(
-        lists.filter(list => list.sharedWith && list.sharedWith.length > 0).map(list => list.id)
-      );
+      lists.forEach(list => {
+        allUserIds.add(list.ownerId);
+        if (list.sharedWith && list.sharedWith.length > 0) {
+          list.sharedWith.forEach(userId => allUserIds.add(userId));
+        }
+      });
+
+      this.logger.debug('data', `Quick cleanup: Loading articles from ${allUserIds.size} collaborators`);
+
+      // Load articles from ALL collaborators
+      const validArticleIds = new Set<string>();
+      for (const userId of allUserIds) {
+        try {
+          const userArticles = await this.firebaseData.getArticlesForUser(userId);
+          userArticles.forEach(article => validArticleIds.add(article.id));
+        } catch (error: any) {
+          this.logger.error('data', `Failed to load articles for user ${userId}: ${error.message}`);
+        }
+      }
+
+      this.logger.debug('data', `Quick cleanup: Found ${validArticleIds.size} valid articles across all collaborators`);
 
       let listsUpdated = 0;
       let referencesRemoved = 0;
 
       for (const list of lists) {
-        // Phase 8: Skip cleanup for shared lists - articles may belong to collaborators
-        if (sharedListIds.has(list.id)) {
-          continue;
-        }
-
         const articleIds = list.articleIds || [];
         const itemStates = list.itemStates || {};
 
         const cleanedArticleIds = articleIds.filter((id: string) => validArticleIds.has(id));
-        
+
         const cleanedItemStates: any = {};
         Object.entries(itemStates).forEach(([articleId, state]) => {
           if (validArticleIds.has(articleId)) {
             cleanedItemStates[articleId] = state;
           }
         });
-        
+
         const articleIdsRemoved = articleIds.length - cleanedArticleIds.length;
         const itemStatesRemoved = Object.keys(itemStates).length - Object.keys(cleanedItemStates).length;
         const totalRemoved = articleIdsRemoved + itemStatesRemoved;
-        
+
         if (totalRemoved > 0) {
           await this.firebaseData.updateListInFirebase(list.id, {
             articleIds: cleanedArticleIds,
             itemStates: cleanedItemStates,
             updatedAt: Timestamp.now()
           });
-          
+
           listsUpdated++;
           referencesRemoved += totalRemoved;
-          
-          this.logger.debug('data', 
-            `Quick cleanup "${list.name}": removed ${articleIdsRemoved} article IDs + ${itemStatesRemoved} item states`
+
+          const isShared = list.sharedWith && list.sharedWith.length > 0;
+          this.logger.debug('data',
+            `Quick cleanup "${list.name}"${isShared ? ' (shared)' : ''}: removed ${articleIdsRemoved} article IDs + ${itemStatesRemoved} item states`
           );
         }
       }

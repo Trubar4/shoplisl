@@ -2531,6 +2531,36 @@ export class FirebaseDataService {
     return articles;
   }
 
+  /**
+   * Load all articles for a specific user
+   * Used by cleanup scripts to load collaborator articles
+   */
+  async getArticlesForUser(userId: string): Promise<Article[]> {
+    if (!this.firestore) throw new Error('Firestore not initialized');
+    const snapshot = await getDocs(collection(this.firestore, `users-v2/${userId}/articles`));
+    this.quotaMonitor.trackRead('Get Articles For User', snapshot.size, { userId });
+    const articles: Article[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      articles.push({
+        id: doc.id,
+        name: data['name'],
+        amount: data['amount'],
+        notes: data['notes'],
+        icon: data['icon'],
+        categoryId: data['categoryId'],
+        departmentId: data['departmentId'],
+        createdAt: data['createdAt']?.toDate() || new Date(),
+        updatedAt: data['updatedAt']?.toDate() || new Date(),
+        availableInShops: data['availableInShops'] || [],
+        usageCount: data['usageCount'] || 0,
+        ownerId: data['ownerId'] || userId,
+        copiedFrom: data['copiedFrom'] || undefined
+      });
+    });
+    return articles;
+  }
+
   async getAllListsFromFirebase(): Promise<ShoppingList[]> {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();

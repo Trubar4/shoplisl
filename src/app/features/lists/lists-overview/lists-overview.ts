@@ -25,9 +25,6 @@ import { ConnectionService } from '../../../core/services/connection.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 
-// DEBUG FLAG - Set to true to enable detailed console logging for debugging shared lists article count issue
-const DEBUG_LISTS_OVERVIEW = false;
-
 @Component({
   selector: 'app-lists-overview',
   standalone: true,
@@ -92,13 +89,9 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       this.sortMode$
     ]).pipe(
       map(([lists, articles, query, sortMode]) => {
-        const validIds = new Set(articles.map(a => a.id));
-
         // First clean the lists data
         const cleanedLists = lists.map(list => {
-          const isOwner = this.currentUserId !== null && list.ownerId === this.currentUserId;
-
-          // STEP 1: Filter out temporary offline articles (temp_*) from ALL lists
+          // Filter out temporary offline articles (temp_*) from ALL lists
           // These are stale IDs that weren't properly cleaned up from Firebase after sync
           const filterTempArticles = (articleIds: string[]): string[] =>
             articleIds.filter(id => !id.startsWith('temp_'));
@@ -109,55 +102,14 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
                 .filter(([articleId]) => !articleId.startsWith('temp_'))
             ) as { [articleId: string]: ListItemState };
 
-          // STEP 2: Apply ownership-specific cleaning
-          // For owned lists: Remove temp_ IDs AND orphaned article IDs (articles not in store)
-          // For shared lists: Only remove temp_ IDs, keep all other articles
-          // (Shared articles belong to owner and won't be in participant's store until visited)
-          const cleaned: ShoppingList = isOwner ? {
+          // Apply consistent cleaning for ALL lists (owned and shared)
+          // Only remove temp_ IDs - trust Firebase articleIds as source of truth
+          // (Orphaned IDs are now removed by cleanup script, so articleIds.length is reliable)
+          return {
             ...list,
-            // For owned lists: Remove temp_ IDs AND orphaned article IDs
-            articleIds: filterTempArticles(list.articleIds).filter(id => validIds.has(id)),
-            // Clean item states
-            itemStates: Object.fromEntries(
-              Object.entries(filterTempFromItemStates(list.itemStates))
-                .filter(([articleId]) => validIds.has(articleId))
-            ) as { [articleId: string]: ListItemState }
-          } : {
-            ...list,
-            // For shared lists (participant): Only remove temp_ IDs, keep all other articles
             articleIds: filterTempArticles(list.articleIds),
             itemStates: filterTempFromItemStates(list.itemStates)
           };
-
-          if (DEBUG_LISTS_OVERVIEW) {
-            const isSharedParticipant = !isOwner && list.sharedWith && list.sharedWith.length > 0;
-
-            // Only log shared lists where user is a participant
-            if (isSharedParticipant) {
-              const rawTempCount = list.articleIds.filter(id => id.startsWith('temp_')).length;
-              const activeCount = cleaned.articleIds.filter(articleId => {
-                const itemState = cleaned.itemStates?.[articleId];
-                return !itemState?.isChecked;
-              }).length;
-              const totalCount = cleaned.articleIds.length;
-
-              console.log(`\n📋 SHARED LIST (participant): "${list.name}"`);
-              console.log(`   - List ID: ${list.id}`);
-              console.log(`   - Owner ID: ${list.ownerId}`);
-              console.log(`   - Current User ID: ${this.currentUserId}`);
-              console.log(`   - Shared With: ${list.sharedWith?.length || 0} users`);
-              console.log(`   - Article IDs (raw): [${list.articleIds.join(', ')}]`);
-              console.log(`   - Article IDs (raw count): ${list.articleIds.length}`);
-              console.log(`   - Temp articles filtered out: ${rawTempCount}`);
-              console.log(`   - Article IDs (cleaned): [${cleaned.articleIds.join(', ')}]`);
-              console.log(`   - Total Articles (after cleanup): ${totalCount}`);
-              console.log(`   - Active (unchecked) Articles: ${activeCount}`);
-              console.log(`   - Display Text: "${activeCount}/${totalCount} Artikel"`);
-              console.log(`   - ItemStates keys: [${Object.keys(cleaned.itemStates || {}).join(', ')}]`);
-            }
-          }
-
-          return cleaned;
         });
 
         // Then apply search filter
@@ -183,24 +135,11 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   ngOnInit(): void {
-    if (DEBUG_LISTS_OVERVIEW) {
-      console.log('🚀 [LISTS OVERVIEW DEBUG] ngOnInit() called - Loading lists overview');
-      console.log(`   - Current User ID: ${this.currentUserId}`);
-      console.log(`   - Online status: ${this.connectionService?.isOnline()}`);
-    }
-
     // Load data from NgRx store (effects will call Firebase services)
     // Only dispatch load actions when online - preserve offline changes when offline
     if (this.connectionService?.isOnline()) {
-      if (DEBUG_LISTS_OVERVIEW) {
-        console.log('📡 Dispatching loadLists() and loadArticles() actions to NgRx store');
-      }
       this.store.dispatch(ListsActions.loadLists());
       this.store.dispatch(ArticlesActions.loadArticles());
-    } else {
-      if (DEBUG_LISTS_OVERVIEW) {
-        console.log('⚠️  Offline - skipping data load');
-      }
     }
 
     // Fix viewport height issues on mobile
@@ -476,47 +415,31 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
   // === UTILITY METHODS ===
 
   /**
-   * Count active (non-checked) articles in a list - FIXED to exclude orphaned references
+   * Count active (non-checked) articles in a list
    */
   getActiveItemCount(list: ShoppingList): number {
     if (!list || !list.articleIds || list.articleIds.length === 0) {
-      if (DEBUG_LISTS_OVERVIEW) {
-        console.log(`⚠️  getActiveItemCount("${list?.name || 'unknown'}"): No articles found`);
-      }
       return 0;
     }
 
-    const activeCount = list.articleIds.filter(articleId => {
+    return list.articleIds.filter(articleId => {
       const itemState = list.itemStates?.[articleId];
       return !itemState?.isChecked;
     }).length;
-
-    if (DEBUG_LISTS_OVERVIEW) {
-      console.log(`📊 getActiveItemCount("${list.name}"): ${activeCount} active out of ${list.articleIds.length} total`);
-    }
-
-    return activeCount;
   }
 
   /**
-   * Get display text for list info: "X/Y" format - FIXED to exclude orphaned references
+   * Get display text for list info: "X/Y" format
    */
   getListInfoText(list: ShoppingList): string {
     const activeCount = this.getActiveItemCount(list);
     const totalCount = list.articleIds.length;
 
     if (totalCount === 0) {
-      if (DEBUG_LISTS_OVERVIEW) {
-        console.log(`ℹ️  getListInfoText("${list.name}"): Empty (no articles)`);
-      }
       return '';
     }
 
-    const displayText = `${activeCount}/${totalCount} Artikel`;
-    if (DEBUG_LISTS_OVERVIEW) {
-      console.log(`ℹ️  getListInfoText("${list.name}"): "${displayText}"`);
-    }
-    return displayText;
+    return `${activeCount}/${totalCount} Artikel`;
   }
 
   /**
