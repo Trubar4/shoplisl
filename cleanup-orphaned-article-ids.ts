@@ -151,7 +151,13 @@ export class OrphanedArticleIdCleanupService {
           totalArticlesLoaded += userArticles.length;
           this.logger.info('data', `  ✅ User ${userId}: ${userArticles.length} articles`);
         } catch (error: any) {
-          this.logger.error('data', `  ❌ Failed to load articles for user ${userId}: ${error.message}`);
+          const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
+          this.logger.error('data', `  ❌ ${errorMsg}`);
+
+          // ❌ ABORT cleanup - don't risk data loss
+          // If we can't load articles for a user, we can't safely determine which IDs are orphaned
+          this.logger.error('data', '\n❌ ABORTING CLEANUP - Cannot safely proceed without all article data');
+          throw new Error(`Cannot safely cleanup - ${errorMsg}`);
         }
       }
 

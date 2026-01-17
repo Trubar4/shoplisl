@@ -373,13 +373,19 @@ export class DataMigrationService {
       this.logger.debug('data', `Quick cleanup: Loading articles from ${allUserIds.size} collaborators`);
 
       // Load articles from ALL collaborators
+      // CRITICAL: If loading fails for ANY user, abort cleanup to prevent data loss
       const validArticleIds = new Set<string>();
       for (const userId of allUserIds) {
         try {
           const userArticles = await this.firebaseData.getArticlesForUser(userId);
           userArticles.forEach(article => validArticleIds.add(article.id));
         } catch (error: any) {
-          this.logger.error('data', `Failed to load articles for user ${userId}: ${error.message}`);
+          const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
+          this.logger.error('data', errorMsg);
+
+          // ❌ ABORT cleanup - don't risk data loss
+          // If we can't load articles for a user, we can't safely determine which IDs are orphaned
+          throw new Error(`Cannot safely cleanup - ${errorMsg}`);
         }
       }
 
