@@ -53,3 +53,14 @@ src/environments/version.ts
 # API Keys and secrets
 api-keys.json
 secrets/
+
+# Firestore Backups
+# Keep only the latest backup in git (to save repo space)
+# GitHub Actions automatically updates backups/latest.json
+backups/*
+!backups/latest.json
+!backups/README.md
+!backups/.gitkeep
+
+# Firebase credentials (sensitive!)
+firebase-credentials.json

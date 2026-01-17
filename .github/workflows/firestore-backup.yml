@@ -1,0 +1,89 @@
+name: Firestore Backup
+
+# Run on every push to main/master branches
+# This creates automatic backups of all Firestore data
+on:
+  push:
+    branches:
+      - main
+      - master
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Need full history to commit backup
+          fetch-depth: 0
+          # Use a token that can push to protected branches
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > firebase-credentials.json
+          echo "✅ Firebase credentials configured"
+
+      - name: Create backups directory
+        run: |
+          mkdir -p backups
+          echo "✅ Backups directory ready"
+
+      - name: Run full backup
+        run: |
+          npx tsx scripts/full-backup-firestore.ts --latest
+          echo "✅ Backup completed"
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Commit and push backup
+        run: |
+          # Add backup file
+          git add backups/latest.json
+
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "ℹ️  No changes to backup file, skipping commit"
+          else
+            # Commit and push
+            git commit -m "chore: automated Firestore backup [skip ci]
+
+            Automated backup created by GitHub Actions
+            Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+            Triggered by: ${{ github.event_name }}
+            Commit: ${{ github.sha }}"
+
+            git push
+            echo "✅ Backup committed and pushed"
+          fi
+
+      - name: Cleanup credentials
+        if: always()
+        run: |
+          rm -f firebase-credentials.json
+          echo "✅ Credentials cleaned up"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-backup-${{ github.sha }}
+          path: backups/latest.json
+          retention-days: 30
