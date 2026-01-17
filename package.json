@@ -19,11 +19,18 @@
     "firebase:emulator": "firebase emulators:start",
     "i18n:extract": "ng extract-i18n",
     "backup:firestore": "ts-node scripts/backup-firestore.ts",
+    "backup:full": "ts-node scripts/full-backup-firestore.ts",
+    "backup:full:latest": "ts-node scripts/full-backup-firestore.ts -- --latest",
     "restore:firestore": "ts-node scripts/restore-firestore.ts",
+    "restore:backup": "ts-node scripts/restore-from-backup.ts",
     "diagnose:sharing": "ts-node scripts/diagnose-sharing.ts",
     "create-test-users": "node --loader ts-node/esm scripts/create-test-users.ts",
     "cleanup:temp-ids": "ts-node scripts/cleanup-legacy-temp-ids.ts",
-    "cleanup:temp-ids:execute": "ts-node scripts/cleanup-legacy-temp-ids.ts --execute --backup"
+    "cleanup:temp-ids:execute": "ts-node scripts/cleanup-legacy-temp-ids.ts --execute --backup",
+    "inspect:lists": "ts-node scripts/inspect-affected-lists.ts",
+    "recover:lists": "ts-node scripts/recover-list-data.ts",
+    "migrate:old-backup": "ts-node scripts/migrate-from-old-backup.ts --dry-run",
+    "migrate:old-backup:execute": "ts-node scripts/migrate-from-old-backup.ts --execute"
   },
   "private": true,
   "dependencies": {
