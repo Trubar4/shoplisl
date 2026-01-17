@@ -167,8 +167,8 @@ async function main() {
         newItemStates[articleId] = {
           articleId: articleId,
           isChecked: true,  // ✓ Mark as checked
-          checkedAt: Timestamp.now(),
-          amount: undefined
+          checkedAt: Timestamp.now()
+          // Note: amount field omitted (undefined values not allowed in Firestore)
         };
       }
 
