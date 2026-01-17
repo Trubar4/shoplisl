@@ -13,7 +13,7 @@ import { AppState } from '../../../state/app.state';
 import { User } from '../../../core/models';
 import * as AuthActions from '../../../state/auth/auth.actions';
 import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../../state/auth/auth.selectors';
-import { BUILD_INFO } from '../../../environments/version';
+import { BUILD_INFO } from '../../../../environments/version';
 
 @Component({
   selector: 'app-auth-button',
