@@ -2566,21 +2566,36 @@ export class FirebaseDataService {
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
     this.quotaMonitor.trackRead('Get All Lists', snapshot.size);
+    const currentUserId = this.authService.getCurrentUserId();
     const lists: ShoppingList[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
+
+      // BUG FIX: Apply Bug 1 Fix during initial load for shared lists
+      // Firebase may return empty articleIds for shared lists, but itemStates is populated
+      // This ensures participants see correct counts even when articleIds is empty on server
+      let articleIds = data['articleIds'] || [];
+      const itemStates = data['itemStates'] || {};
+      const ownerId = data['ownerId'] || '';
+      const isSharedList = currentUserId && ownerId !== currentUserId;
+
+      if (isSharedList && articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+        articleIds = Object.keys(itemStates);
+        this.logger.debug('data', `Bug 1 Fix (initial load): Populated articleIds from itemStates for shared list "${data['name']}" (${articleIds.length} articles)`);
+      }
+
       lists.push({
         id: doc.id,
         name: data['name'],
         color: data['color'],
         icon: data['icon'],
         shopId: data['shopId'],
-        articleIds: data['articleIds'] || [],
-        itemStates: data['itemStates'] || {},
+        articleIds,
+        itemStates,
         departmentOrder: data['departmentOrder'],
         createdAt: data['createdAt']?.toDate() || new Date(),
         updatedAt: data['updatedAt']?.toDate() || new Date(),
-        ownerId: data['ownerId'] || '',  // Phase 8: Include ownerId
+        ownerId,
         sharedWith: data['sharedWith'] || []  // Phase 8: Include sharedWith
       });
     });
