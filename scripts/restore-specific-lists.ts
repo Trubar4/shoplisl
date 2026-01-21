@@ -17,11 +17,6 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -73,7 +68,7 @@ async function main() {
   // Load backup file
   const backupPath = path.isAbsolute(backupFile)
     ? backupFile
-    : path.join(__dirname, '..', backupFile);
+    : path.join(process.cwd(), backupFile);
 
   if (!fs.existsSync(backupPath)) {
     console.error(`❌ ERROR: Backup file not found: ${backupPath}`);
@@ -162,7 +157,7 @@ async function main() {
   console.log('⚠️  EXECUTING RESTORE...\n');
 
   // Initialize Firebase Admin
-  const serviceAccountPath = path.join(__dirname, '..', 'firebase-credentials.json');
+  const serviceAccountPath = path.join(process.cwd(), 'firebase-credentials.json');
 
   if (!fs.existsSync(serviceAccountPath)) {
     console.error('❌ ERROR: firebase-credentials.json not found');

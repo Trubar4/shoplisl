@@ -11,11 +11,6 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // SPECIFIC LIST IDs TO CHECK
 const TARGET_LIST_IDS = [
@@ -34,7 +29,7 @@ async function main() {
   console.log(`Date: ${new Date().toISOString()}\n`);
 
   // Initialize Firebase Admin
-  const serviceAccountPath = path.join(__dirname, '..', 'firebase-credentials.json');
+  const serviceAccountPath = path.join(process.cwd(), 'firebase-credentials.json');
 
   if (!fs.existsSync(serviceAccountPath)) {
     console.error('❌ ERROR: firebase-credentials.json not found');
