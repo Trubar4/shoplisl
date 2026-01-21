@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { LoggerService } from './logger.service';
-import { ShoppingList } from '../models/shopping-list.model';
+import { ShoppingList } from '../models';
 
 export interface DataLossEvent {
   timestamp: Date;
@@ -42,7 +42,7 @@ export class DataLossDetectorService {
   private readonly MAX_EVENTS_STORED = 100;
 
   constructor(private logger: LoggerService) {
-    this.logger.info('data-loss-detector', '🛡️ Data Loss Detector initialized');
+    this.logger.info('data', '🛡️ Data Loss Detector initialized');
   }
 
   /**
@@ -83,8 +83,8 @@ export class DataLossDetectorService {
                      (afterItemStateIds.length === 0 && beforeItemStateIds.length > 0);
 
     if (significantLoss || totalLoss) {
-      const lostArticleIds = beforeArticleIds.filter(id => !afterArticleIds.includes(id));
-      const lostItemStateIds = beforeItemStateIds.filter(id => !afterItemStateIds.includes(id));
+      const lostArticleIds = beforeArticleIds.filter((id: string) => !afterArticleIds.includes(id));
+      const lostItemStateIds = beforeItemStateIds.filter((id: string) => !afterItemStateIds.includes(id));
 
       const event: DataLossEvent = {
         timestamp: new Date(),
@@ -120,7 +120,7 @@ export class DataLossDetectorService {
     }
 
     // Log the event
-    this.logger.error('data-loss-detector', `🚨 DATA LOSS DETECTED in ${operation}:`, {
+    this.logger.error('data', `🚨 DATA LOSS DETECTED in ${operation}:`, {
       list: `${event.listName} (${event.listId})`,
       owner: event.ownerId,
       shared: event.isShared,
@@ -131,7 +131,7 @@ export class DataLossDetectorService {
 
     // Log stack trace for debugging
     if (event.stackTrace) {
-      this.logger.error('data-loss-detector', 'Stack trace:', event.stackTrace);
+      this.logger.error('data', 'Stack trace:', event.stackTrace);
     }
 
     // Store in localStorage for persistence across sessions
@@ -185,7 +185,7 @@ export class DataLossDetectorService {
   clearEvents(): void {
     this.dataLossEvents = [];
     this.persistEvents();
-    this.logger.info('data-loss-detector', 'Cleared all data loss events');
+    this.logger.info('data', 'Cleared all data loss events');
   }
 
   /**
@@ -196,7 +196,7 @@ export class DataLossDetectorService {
       const serialized = JSON.stringify(this.dataLossEvents.slice(0, 20)); // Store last 20 events
       localStorage.setItem('data-loss-events', serialized);
     } catch (error) {
-      this.logger.warn('data-loss-detector', 'Failed to persist events to localStorage', error);
+      this.logger.warn('data', 'Failed to persist events to localStorage', error);
     }
   }
 
@@ -213,10 +213,10 @@ export class DataLossDetectorService {
           ...e,
           timestamp: new Date(e.timestamp)
         }));
-        this.logger.info('data-loss-detector', `Loaded ${this.dataLossEvents.length} persisted data loss events`);
+        this.logger.info('data', `Loaded ${this.dataLossEvents.length} persisted data loss events`);
       }
     } catch (error) {
-      this.logger.warn('data-loss-detector', 'Failed to load persisted events', error);
+      this.logger.warn('data', 'Failed to load persisted events', error);
     }
   }
 
