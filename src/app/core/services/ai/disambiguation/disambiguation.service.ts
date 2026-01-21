@@ -25,6 +25,8 @@ import { AIMessagingService, ErrorContext, ValidationRules } from '../ai-messagi
 import { CircuitBreakerService } from '../circuit-breaker.service';
 import { ArticleMatcherService } from './article-matcher.service';
 import { ListSelectionService } from './list-selection.service';
+import { MultiItemProcessorService } from './multi-item-processor.service';
+import { ArticleExecutionService } from './article-execution.service';
 
 @Injectable({
   providedIn: 'root'
@@ -41,7 +43,9 @@ export class DisambiguationService {
     private logger: LoggerService,
     private circuitBreaker: CircuitBreakerService,
     private articleMatcher: ArticleMatcherService,
-    private listSelection: ListSelectionService
+    private listSelection: ListSelectionService,
+    private multiItemProcessor: MultiItemProcessorService,
+    private articleExecution: ArticleExecutionService
   ) {}
 
   // ========================================
@@ -454,32 +458,26 @@ export class DisambiguationService {
     action: MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    const currentItem = action.items[action.currentItemIndex];
-
-    const skippedItem: ProcessedItem = {
-      item: currentItem,
-      skipped: true,
-      skipReason: selectedOption.skipReason || 'Übersprungen',
-      originalText: currentItem.itemName
-    };
-
-    action.processedItems.push(skippedItem);
-    action.currentItemIndex++;
-
-    return this.processMultiItemSequentially(action);
+    return this.multiItemProcessor.handleSequentialSkip(
+      action,
+      selectedOption,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.articleExecution.addArticleToList(articleId, listId, amount)
+    );
   }
 
   private async handleMultiItemChoice(
     pendingAction: MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    let selectedArticle: Article | null = null;
-
-    if (selectedOption.type === 'existing' && selectedOption.article) {
-      selectedArticle = selectedOption.article;
-    }
-
-    return this.processCurrentItemAndContinue(pendingAction, selectedArticle);
+    return this.multiItemProcessor.handleMultiItemChoice(
+      pendingAction,
+      selectedOption,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.articleExecution.addArticleToList(articleId, listId, amount)
+    );
   }
 
   // ========================================
@@ -519,79 +517,27 @@ export class DisambiguationService {
    * @see {@link processCurrentItemAndContinue} for single item processing
    * @see {@link MultiItemPendingAction} for action structure
    */
+  /**
+   * Processes multiple items sequentially with disambiguation
+   *
+   * Delegates to MultiItemProcessorService for implementation.
+   *
+   * @param action - Multi-item pending action
+   * @returns Promise resolving to execution result
+   */
   async processMultiItemSequentially(action: MultiItemPendingAction): Promise<AIExecutionResult> {
-    console.log(`🎯 Processing item ${action.currentItemIndex + 1}/${action.items.length}`);
-
-    // Safety checks
-    if (!action.items || action.items.length === 0) {
-      return { success: false, message: '❌ Keine Artikel zu verarbeiten.' };
-    }
-
-    if (action.currentItemIndex > 20) {
-      console.error('🎯 SAFETY: Too many iterations - stopping');
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    // Check completion
-    if (action.currentItemIndex >= action.items.length) {
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    const currentItem = action.items[action.currentItemIndex];
-    if (!currentItem) {
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    try {
-      const disambiguationOptions = await this.getDisambiguationOptions(currentItem.itemName);
-      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-
-      if (existingOptions.length > 0) {
-        // Mark as sequential processing
-        (action as any).isMultiItemSequential = true;
-        (action as any).isFromRecipe = true;
-        action.itemName = currentItem.itemName;
-
-        const message = `"${currentItem.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`;
-
-        return {
-          success: true,
-          message,
-          needsUserInput: true,
-          disambiguationOptions,
-          pendingAction: action
-        };
-      }
-
-      // No disambiguation needed - create new article and continue
-      return this.processCurrentItemAndContinue(action, null);
-
-    } catch (error) {
-      console.error('🎯 Error in sequential processing:', error);
-
-      const failedItem: ProcessedItem = {
-        item: currentItem,
-        failed: true,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        originalText: currentItem.itemName
-      };
-
-      action.processedItems.push(failedItem);
-      action.currentItemIndex++;
-
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          this.processMultiItemSequentially(action).then(resolve);
-        }, 0);
-      });
-    }
+    return this.multiItemProcessor.processMultiItemSequentially(
+      action,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.articleExecution.addArticleToList(articleId, listId, amount)
+    );
   }
 
   /**
    * Processes the current item in a multi-item sequence and continues to the next
    *
-   * Handles article creation (if needed), adds to list, and continues sequential processing.
-   * This method is tightly coupled with processMultiItemSequentially and should remain in this service.
+   * Delegates to MultiItemProcessorService for implementation.
    *
    * @param action - Multi-item pending action
    * @param selectedArticle - Article selected by user (null if creating new)
@@ -601,152 +547,13 @@ export class DisambiguationService {
     action: MultiItemPendingAction,
     selectedArticle: Article | null
   ): Promise<AIExecutionResult> {
-    const currentItem = action.items[action.currentItemIndex];
-
-    if (!currentItem) {
-      action.currentItemIndex++;
-      return this.executeMultiItemFinalAction(action);
-    }
-
-    const targetListId = (action as any).confirmedTargetListId;
-    const targetListName = (action as any).confirmedTargetListName;
-
-    if (!targetListId || !targetListName) {
-      return {
-        success: false,
-        message: '❌ Fehler: Keine Zielliste bestätigt.'
-      };
-    }
-
-    try {
-      let articleId: string;
-
-      if (selectedArticle) {
-        articleId = selectedArticle.id;
-      } else {
-        // Create new article with enhanced suggestions
-        const suggestions = await this.getEnhancedSuggestions(currentItem.itemName);
-        const articleData = {
-          name: currentItem.itemName,
-          amount: currentItem.quantity || '',
-          departmentId: suggestions.departmentId,
-          icon: suggestions.icon
-        };
-
-        const newArticle = await this.dataService.createArticle(articleData).toPromise();
-        if (!newArticle) {
-          throw new Error(`Failed to create article: ${currentItem.itemName}`);
-        }
-        articleId = newArticle.id;
-      }
-
-      // Add to target list atomically
-      await this.addArticleToList(articleId, targetListId, currentItem.quantity || '');
-
-      const processedItem: any = {
-        item: currentItem,
-        articleId,
-        disambiguationResolved: true,
-        quantity: currentItem.quantity || '',
-        originalText: currentItem.itemName,
-        addedToList: true,
-        addedToListId: targetListId,
-        addedToListName: targetListName
-      };
-
-      action.processedItems.push(processedItem);
-      action.currentItemIndex++;
-
-      return this.processMultiItemSequentially(action);
-
-    } catch (error) {
-      console.error('🎯 ERROR PROCESSING CURRENT ITEM:', error);
-
-      const failedItem: any = {
-        item: currentItem,
-        failed: true,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        originalText: currentItem.itemName
-      };
-
-      action.processedItems.push(failedItem);
-      action.currentItemIndex++;
-
-      return this.processMultiItemSequentially(action);
-    }
-  }
-
-  private async executeMultiItemFinalAction(action: MultiItemPendingAction): Promise<AIExecutionResult> {
-    const addedItems = action.processedItems.filter(p => (p as any).addedToList);
-    const skippedItems = action.processedItems.filter(p => p.skipped);
-    const failedItems = action.processedItems.filter(p => p.failed);
-
-    if (addedItems.length === 0 && skippedItems.length === 0) {
-      return { success: false, message: '❌ Keine Artikel konnten verarbeitet werden.' };
-    }
-
-    const targetListId = (action as any).confirmedTargetListId;
-    const targetListName = (action as any).confirmedTargetListName;
-
-    let message = this.buildFinalMessage(addedItems, skippedItems, failedItems, targetListName);
-
-    let conversationContext: any = undefined;
-    let followUpPrompt: string | undefined = undefined;
-
-    if (targetListId && targetListName && addedItems.length > 0) {
-      conversationContext = {
-        lastAction: {
-          type: 'article_added' as const,
-          listId: targetListId,
-          listName: targetListName,
-          articleName: `${addedItems.length} Artikel`,
-          timestamp: new Date()
-        },
-        waitingForArticles: {
-          listId: targetListId,
-          listName: targetListName,
-          prompt: 'Multi-item processing completed'
-        }
-      };
-
-      followUpPrompt = `Möchtest du noch weitere Artikel zu "${targetListName}" hinzufügen?`;
-    }
-
-    return {
-      success: true,
-      message: message,
-      listId: targetListId,
-      conversationContext,
-      followUpPrompt
-    };
-  }
-
-  private buildFinalMessage(
-    addedItems: any[],
-    skippedItems: any[],
-    failedItems: any[],
-    targetListName?: string
-  ): string {
-    let message = '';
-
-    if (addedItems.length > 0) {
-      const addedSummary = addedItems.map(p =>
-        `"${p.item.itemName}"${p.quantity ? ` (${p.quantity})` : ''}`
-      );
-      message += `✅ ${addedItems.length} Artikel erfolgreich zu "${targetListName || 'Liste'}" hinzugefügt:\n${addedSummary.join(', ')}`;
-    }
-
-    if (skippedItems.length > 0) {
-      const skippedSummary = skippedItems.map(p => `"${p.originalText || p.item.itemName}"`);
-      message += `${message ? '\n\n' : ''}⏭️ ${skippedItems.length} Artikel übersprungen:\n${skippedSummary.join(', ')}`;
-    }
-
-    if (failedItems.length > 0) {
-      const failedSummary = failedItems.map(p => `"${p.originalText || p.item.itemName}"`);
-      message += `${message ? '\n\n' : ''}❌ ${failedItems.length} Artikel fehlgeschlagen:\n${failedSummary.join(', ')}`;
-    }
-
-    return message;
+    return this.multiItemProcessor.processCurrentItemAndContinue(
+      action,
+      selectedArticle,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      (articleId, listId, amount) => this.articleExecution.addArticleToList(articleId, listId, amount)
+    );
   }
 
   // ========================================
@@ -891,381 +698,81 @@ export class DisambiguationService {
   }
 
   // ========================================
-  // ARTICLE EXECUTION METHODS
+  // ARTICLE EXECUTION METHODS (Delegated)
   // ========================================
 
+  /**
+   * Executes action with an existing article
+   *
+   * Delegates to ArticleExecutionService for implementation.
+   */
   private async executeActionWithArticle(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    try {
-      const targetInfo = this.getTargetListInfo(action);
-
-      if (targetInfo.listName) {
-        const targetList = await this.findTargetList(targetInfo);
-
-        if (!targetList) {
-          return {
-            success: false,
-            message: `❌ Liste "${targetInfo.listName}" nicht gefunden.`
-          };
-        }
-
-        return this.addExistingArticleToList(targetList, article, action);
-
-      } else {
-        return this.handleNoTargetList(action, article);
-      }
-
-    } catch (error) {
-      console.error('🎯 Error executing action with existing article:', error);
-      return {
-        success: false,
-        message: `❌ Fehler beim Hinzufügen von "${article.name}".`
-      };
-    }
+    return this.articleExecution.executeActionWithArticle(
+      action,
+      article,
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      () => this.getListSelectionOptions(),
+      (options) => this.convertListsToDisambiguationOptions(options)
+    );
   }
 
+  /**
+   * Executes action by creating a new article
+   *
+   * Delegates to ArticleExecutionService for implementation.
+   */
   private async executeActionWithNewArticle(pendingAction: PendingAction): Promise<AIExecutionResult> {
-    try {
-      // Create new article with enhanced suggestions
-      const suggestions = await this.getEnhancedSuggestions(pendingAction.itemName);
-      const articleData = {
-        name: pendingAction.itemName,
-        amount: pendingAction.extractedQuantity || '',
-        departmentId: suggestions.departmentId,
-        icon: suggestions.icon
-      };
-
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
-
-      if (!newArticle) {
-        return {
-          success: false,
-          message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
-        };
-      }
-
-      // Handle target list
-      const targetInfo = this.getTargetListInfo(pendingAction);
-      if (targetInfo.listName) {
-        const targetList = await this.findTargetList(targetInfo);
-
-        if (!targetList) {
-          return {
-            success: false,
-            message: `❌ Liste "${targetInfo.listName}" nicht gefunden.`
-          };
-        }
-
-        return this.addNewArticleToList(targetList, newArticle, pendingAction);
-
-      } else {
-        return this.handleNoTargetListForNewArticle(pendingAction, newArticle);
-      }
-
-    } catch (error) {
-      console.error('🎯 Error executing action with new article:', error);
-      return {
-        success: false,
-        message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
-      };
-    }
+    return this.articleExecution.executeActionWithNewArticle(
+      pendingAction,
+      (itemName) => this.getEnhancedSuggestions(itemName),
+      () => this.getListSelectionOptions(),
+      (options) => this.convertListsToDisambiguationOptions(options)
+    );
   }
 
   // ========================================
-  // HELPER METHODS
+  // HELPER METHODS (Delegated)
   // ========================================
 
-  private getTargetListInfo(action: PendingAction): {listName?: string, listId?: string} {
-    return {
-      listName: action.listName,
-      listId: (action as any).conversationListId
-    };
-  }
-
-  private async findTargetList(targetInfo: {listName?: string, listId?: string}): Promise<any> {
-    if (targetInfo.listId) {
-      const lists = await this.dataService.getLists().pipe(take(1)).toPromise();
-      const listById = lists?.find(list => list.id === targetInfo.listId);
-      if (listById) return listById;
-    }
-
-    if (targetInfo.listName) {
-      return this.listSelection.findListByName(targetInfo.listName);
-    }
-
-    return null;
-  }
-
+  /**
+   * Adds an article to a list
+   *
+   * Delegates to ArticleExecutionService for implementation.
+   */
   private async addArticleToList(articleId: string, listId: string, amount: string): Promise<void> {
-    // Use repository's addArticleToList for optimistic UI updates
-    const result = await this.dataService.addArticleToList(listId, articleId).pipe(take(1)).toPromise();
-
-    if (!result) {
-      throw new Error(`Failed to add article to list`);
-    }
-
-    // Update amount if specified
-    if (amount) {
-      await this.dataService.updateListItemAmount(listId, articleId, amount).pipe(take(1)).toPromise();
-    }
+    return this.articleExecution.addArticleToList(articleId, listId, amount);
   }
 
+  /**
+   * Adds multiple articles to a list
+   *
+   * Delegates to ArticleExecutionService for implementation.
+   */
   private async addMultipleArticlesToList(
     targetList: any,
     multipleArticleIds: string[],
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
-    // Use repository's addMultipleArticlesToList for optimistic UI updates and race condition prevention
-    const updateResult = await this.dataService.addMultipleArticlesToList(targetList.id, multipleArticleIds)
-      .pipe(take(1)).toPromise();
-
-    if (updateResult) {
-      const processedItems = (pendingAction as any).processedItems || [];
-      const itemSummary = processedItems
-        .map((p: any) => `"${p.item?.itemName || p.originalText}"${p.item?.quantity ? ` (${p.item.quantity})` : ''}`)
-        .join(', ');
-
-      return {
-        success: true,
-        message: `✅ ${multipleArticleIds.length} Artikel zur Liste "${targetList.name}" hinzugefügt:\n${itemSummary}`,
-        listId: targetList.id
-      };
-    } else {
-      return {
-        success: false,
-        message: '❌ Fehler beim Hinzufügen der Artikel zur Liste.'
-      };
-    }
+    return this.articleExecution.addMultipleArticlesToList(targetList, multipleArticleIds, pendingAction);
   }
 
+  /**
+   * Adds a single article to a list
+   *
+   * Delegates to ArticleExecutionService for implementation.
+   */
   private async addSingleArticleToList(
     targetList: any,
     articleData: any,
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
-    let articleId = articleData.id;
-
-    if (!articleId) {
-      // Check for disambiguation BEFORE creating new article
-      const disambiguationOptions = await this.getDisambiguationOptions(articleData.name);
-      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
-
-      if (existingOptions.length > 0) {
-        const newPendingAction: PendingAction = {
-          type: 'add_item',
-          originalInput: pendingAction.originalInput,
-          itemName: articleData.name,
-          extractedQuantity: articleData.amount,
-          listName: targetList.name,
-          suggestedDepartment: articleData.departmentId || 'miscellaneous',
-          conversationListId: targetList.id
-        } as any;
-
-        const enhancedOptions = [
-          ...disambiguationOptions,
-          {
-            id: 'skip_item',
-            displayName: `"${articleData.name}" überspringen`,
-            type: 'skip' as const,
-            confidence: 1.0,
-            icon: '⏭️'
-          }
-        ];
-
-        return {
-          success: true,
-          message: `Für "${articleData.name}" habe ich ähnliche Artikel gefunden. Welchen möchtest du verwenden?`,
-          needsUserInput: true,
-          disambiguationOptions: enhancedOptions,
-          pendingAction: newPendingAction
-        };
-      }
-
-      // Create new article
-      const suggestions = await this.getEnhancedSuggestions(articleData.name);
-      const newArticle = await this.dataService.createArticle({
-        name: articleData.name,
-        amount: articleData.amount || '',
-        departmentId: suggestions.departmentId,
-        icon: suggestions.icon
-      }).pipe(take(1), timeout(5000)).toPromise();
-
-      if (!newArticle) {
-        return {
-          success: false,
-          message: '❌ Fehler beim Erstellen des Artikels.'
-        };
-      }
-      articleId = newArticle.id;
-    }
-
-    // Add article to list
-    await this.addArticleToList(articleId, targetList.id, articleData.amount || '');
-
-    return {
-      success: true,
-      message: `✅ "${articleData.name}"${articleData.amount ? ` (${articleData.amount})` : ''} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id
-    };
-  }
-
-  private async addExistingArticleToList(
-    targetList: any,
-    article: Article,
-    action: PendingAction
-  ): Promise<AIExecutionResult> {
-    await this.addArticleToList(article.id, targetList.id, action.extractedQuantity || article.amount || '');
-
-    const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
-
-    const conversationContext = {
-      lastAction: {
-        type: 'article_added' as const,
-        listId: targetList.id,
-        listName: targetList.name,
-        articleName: article.name,
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: targetList.id,
-        listName: targetList.name,
-        prompt: 'Conversation mode maintained'
-      }
-    };
-
-    return {
-      success: true,
-      message: `✅ "${article.name}"${quantityText} wurde zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id,
-      conversationContext: conversationContext,
-      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-    };
-  }
-
-  private async addNewArticleToList(
-    targetList: any,
-    newArticle: Article,
-    pendingAction: PendingAction
-  ): Promise<AIExecutionResult> {
-    await this.addArticleToList(newArticle.id, targetList.id, pendingAction.extractedQuantity || '');
-
-    const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
-
-    const conversationContext = {
-      lastAction: {
-        type: 'article_added' as const,
-        listId: targetList.id,
-        listName: targetList.name,
-        articleName: newArticle.name,
-        timestamp: new Date()
-      },
-      waitingForArticles: {
-        listId: targetList.id,
-        listName: targetList.name,
-        prompt: 'Conversation mode maintained'
-      }
-    };
-
-    return {
-      success: true,
-      message: `✅ "${newArticle.name}"${quantityText} wurde erstellt und zur Liste "${targetList.name}" hinzugefügt.`,
-      listId: targetList.id,
-      conversationContext: conversationContext,
-      followUpPrompt: 'Möchtest du noch weitere Artikel hinzufügen?'
-    };
-  }
-
-  private async handleNoTargetList(action: PendingAction, article: Article): Promise<AIExecutionResult> {
-    const listOptions = await this.getListSelectionOptions();
-
-    if (listOptions.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
-      };
-    }
-
-    if (listOptions.length === 1) {
-      // Use the only available list
-      const singleList = listOptions[0];
-      const targetList = await this.listSelection.findListByName(singleList.name);
-
-      if (targetList) {
-        return this.addExistingArticleToList(targetList, article, action);
-      }
-    }
-
-    // Multiple lists - ask user to choose
-    const listSelectionAction: PendingAction = {
-      type: 'select_list',
-      originalInput: action.originalInput,
-      itemName: article.name,
-      extractedQuantity: action.extractedQuantity,
-      listName: undefined,
-      suggestedDepartment: action.suggestedDepartment,
-      articleToAdd: {
-        id: article.id,
-        name: article.name,
-        amount: action.extractedQuantity || article.amount || '',
-        departmentId: article.departmentId || 'miscellaneous',
-        icon: article.icon || '📦'
-      }
-    };
-
-    const quantityText = action.extractedQuantity ? ` (${action.extractedQuantity})` : '';
-    return {
-      success: true,
-      message: `Bitte wähle eine Liste.`,
-      needsUserInput: true,
-      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
-      pendingAction: listSelectionAction
-    };
-  }
-
-  private async handleNoTargetListForNewArticle(pendingAction: PendingAction, newArticle: Article): Promise<AIExecutionResult> {
-    const listOptions = await this.getListSelectionOptions();
-
-    if (listOptions.length === 0) {
-      return {
-        success: false,
-        message: '❌ Keine Listen gefunden! Erstelle zuerst eine Liste.'
-      };
-    }
-
-    if (listOptions.length === 1) {
-      // Use the only available list
-      const singleList = listOptions[0];
-      const targetList = await this.listSelection.findListByName(singleList.name);
-
-      if (targetList) {
-        return this.addNewArticleToList(targetList, newArticle, pendingAction);
-      }
-    }
-
-    // Multiple lists - ask user to choose
-    const listSelectionAction: PendingAction = {
-      type: 'select_list',
-      originalInput: pendingAction.originalInput,
-      itemName: newArticle.name,
-      extractedQuantity: pendingAction.extractedQuantity,
-      listName: undefined,
-      suggestedDepartment: pendingAction.suggestedDepartment,
-      articleToAdd: {
-        id: newArticle.id,
-        name: newArticle.name,
-        amount: pendingAction.extractedQuantity || '',
-        departmentId: newArticle.departmentId || 'miscellaneous',
-        icon: newArticle.icon || '📦'
-      }
-    };
-
-    const quantityText = pendingAction.extractedQuantity ? ` (${pendingAction.extractedQuantity})` : '';
-    return {
-      success: true,
-      message: `Bitte wähle eine Liste.`,
-      needsUserInput: true,
-      disambiguationOptions: this.convertListsToDisambiguationOptions(listOptions),
-      pendingAction: listSelectionAction
-    };
+    return this.articleExecution.addSingleArticleToList(
+      targetList,
+      articleData,
+      pendingAction,
+      (itemName) => this.getDisambiguationOptions(itemName),
+      (itemName) => this.getEnhancedSuggestions(itemName)
+    );
   }
 
 }
