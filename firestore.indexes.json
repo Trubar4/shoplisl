@@ -20,14 +20,14 @@
       "collectionGroup": "articles",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "lists",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
