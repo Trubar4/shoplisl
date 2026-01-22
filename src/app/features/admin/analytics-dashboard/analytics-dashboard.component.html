@@ -34,6 +34,9 @@
     <p>Please login with: <strong>philipp.thurnher@gmail.com</strong></p>
   </div>
 
+  <!-- Auth Debug (shows if warning is displayed) -->
+  <app-auth-debug *ngIf="!loading() && !error() && showLoginWarning()"></app-auth-debug>
+
   <!-- Dashboard Content -->
   <div *ngIf="!loading() && !error() && metrics()" class="dashboard-content">
     <!-- Last Updated -->

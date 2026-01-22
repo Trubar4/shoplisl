@@ -13,6 +13,7 @@ import {
   OverviewMetrics,
 } from '../../../core/services/analytics-aggregation.service';
 import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer.component';
+import { AuthDebugComponent } from '../auth-debug/auth-debug.component';
 
 /**
  * Analytics Dashboard Component
@@ -36,6 +37,7 @@ import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer
     MatChipsModule,
     MatTooltipModule,
     RawEventsViewerComponent,
+    AuthDebugComponent,
   ],
   templateUrl: './analytics-dashboard.component.html',
   styleUrls: ['./analytics-dashboard.component.scss'],
