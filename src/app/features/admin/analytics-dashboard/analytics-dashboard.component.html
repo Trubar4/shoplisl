@@ -119,6 +119,18 @@
             <div class="ai-stat-label">Failed</div>
             <div class="ai-stat-value failed">{{ metrics()!.aiFailed }}</div>
           </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Avg Response Time</div>
+            <div class="ai-stat-value">{{ metrics()!.avgResponseTime }}ms</div>
+          </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Cache Hit Rate</div>
+            <mat-chip-set>
+              <mat-chip color="accent">
+                {{ metrics()!.cacheHitRate }}%
+              </mat-chip>
+            </mat-chip-set>
+          </div>
         </div>
       </mat-card-content>
     </mat-card>
@@ -127,6 +139,14 @@
     <mat-card *ngIf="metrics()!.failedCommands.length > 0" class="failed-commands-card">
       <mat-card-header>
         <mat-card-title>Recent Failed Commands (Last 10)</mat-card-title>
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="exportFailedCommands()"
+          matTooltip="Export to CSV"
+        >
+          <mat-icon>download</mat-icon>
+        </button>
       </mat-card-header>
       <mat-card-content>
         <table mat-table [dataSource]="metrics()!.failedCommands" class="failed-commands-table">

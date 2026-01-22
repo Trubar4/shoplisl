@@ -13,6 +13,7 @@ import {
 import { AnalyticsEventType } from '../models/analytics.model';
 import { Observable, from, map, of } from 'rxjs';
 import { QuotaMonitorService } from './quota-monitor.service';
+import { AICachingService } from './ai/caching.service';
 
 /**
  * Analytics Aggregation Service
@@ -28,6 +29,7 @@ import { QuotaMonitorService } from './quota-monitor.service';
 export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
   private quotaMonitor = inject(QuotaMonitorService);
+  private aiCachingService = inject(AICachingService);
   private cache: OverviewMetrics | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
@@ -133,6 +135,19 @@ export class AnalyticsAggregationService {
           : new Date(e.timestamp),
       }));
 
+    // Phase 3 metrics: Response time and cache hit rate
+    // Calculate average response time from AI commands
+    const responseTimes = aiEvents
+      .filter((e: any) => e.metadata?.responseTime !== undefined)
+      .map((e: any) => e.metadata.responseTime);
+    const avgResponseTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
+      : 0;
+
+    // Get real-time cache hit rate from AI caching service
+    const cacheStats = this.aiCachingService.getStats();
+    const cacheHitRate = cacheStats.hitRate;
+
     const metrics: OverviewMetrics = {
       totalUsers,
       totalLists,
@@ -142,6 +157,8 @@ export class AnalyticsAggregationService {
       aiSuccessRate: Math.round(aiSuccessRate * 10) / 10, // Round to 1 decimal
       aiSuccessful,
       aiFailed,
+      avgResponseTime,
+      cacheHitRate,
       failedCommands,
       lastUpdated: new Date(),
     };
@@ -295,6 +312,8 @@ export interface OverviewMetrics {
   aiSuccessRate: number;
   aiSuccessful: number;
   aiFailed: number;
+  avgResponseTime: number; // Average AI response time in ms
+  cacheHitRate: number; // Cache hit rate as percentage (0-100)
   failedCommands: Array<{
     inputText: string;
     commandType: string;

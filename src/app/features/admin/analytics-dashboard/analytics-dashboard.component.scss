@@ -166,6 +166,12 @@
 .failed-commands-card {
   margin-bottom: 24px;
 
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .failed-commands-table {
     width: 100%;
 
