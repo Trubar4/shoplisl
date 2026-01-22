@@ -13,6 +13,22 @@
     </button>
   </div>
 
+  <!-- Navigation -->
+  <div class="dashboard-navigation">
+    <button mat-raised-button routerLink="/admin/analytics" routerLinkActive="active-nav">
+      <mat-icon>bar_chart</mat-icon>
+      Analytics
+    </button>
+    <button mat-raised-button routerLink="/admin/user-support" routerLinkActive="active-nav">
+      <mat-icon>support_agent</mat-icon>
+      User Support
+    </button>
+    <button mat-raised-button routerLink="/admin/quota-monitor" routerLinkActive="active-nav">
+      <mat-icon>speed</mat-icon>
+      Quota Monitor
+    </button>
+  </div>
+
   <!-- Loading State -->
   <div *ngIf="loading()" class="loading-container">
     <mat-spinner diameter="50"></mat-spinner>
