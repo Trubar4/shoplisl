@@ -129,7 +129,7 @@ export class UserSupportService {
       const eventsSnapshot = await getDocs(eventsQuery);
       const lastActive = eventsSnapshot.empty
         ? null
-        : eventsSnapshot.docs[0].data().timestamp?.toDate();
+        : eventsSnapshot.docs[0].data()['timestamp']?.toDate();
 
       this.quotaMonitor.trackRead('User Support: Quick Stats',
         listsSnapshot.size + articlesSnapshot.size + eventsSnapshot.size);
@@ -185,9 +185,9 @@ export class UserSupportService {
 
       return {
         id: userId,
-        name: userData.name || 'Unknown',
-        email: userData.email || '',
-        createdAt: userData.createdAt?.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt),
+        name: userData['name'] || 'Unknown',
+        email: userData['email'] || '',
+        createdAt: userData['createdAt']?.toDate ? userData['createdAt'].toDate() : new Date(userData['createdAt']),
         listsCount: lists.length,
         articlesCount: articles.length,
         sharedListsCount,
@@ -216,8 +216,8 @@ export class UserSupportService {
       const lists = listsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
+        createdAt: doc.data()['createdAt']?.toDate(),
+        updatedAt: doc.data()['updatedAt']?.toDate(),
       })) as ShoppingList[];
 
       return lists;
@@ -239,8 +239,8 @@ export class UserSupportService {
       const articles = articlesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
+        createdAt: doc.data()['createdAt']?.toDate(),
+        updatedAt: doc.data()['updatedAt']?.toDate(),
       })) as Article[];
 
       return articles;
@@ -269,9 +269,9 @@ export class UserSupportService {
       const events = eventsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate
-          ? doc.data().timestamp.toDate()
-          : new Date(doc.data().timestamp),
+        timestamp: doc.data()['timestamp']?.toDate
+          ? doc.data()['timestamp'].toDate()
+          : new Date(doc.data()['timestamp']),
       })) as AnalyticsEvent[];
 
       return events;
