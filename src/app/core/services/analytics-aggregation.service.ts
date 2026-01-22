@@ -60,6 +60,30 @@ export class AnalyticsAggregationService {
   }
 
   /**
+   * Get empty metrics (used when queries fail due to permission errors)
+   */
+  private getEmptyMetrics(): OverviewMetrics {
+    return {
+      totalUsers: 0,
+      totalLists: 0,
+      totalArticles: 0,
+      activeUsersLast14Days: 0,
+      totalAIInputs: 0,
+      aiSuccessRate: 0,
+      aiSuccessful: 0,
+      aiFailed: 0,
+      avgResponseTime: 0,
+      cacheHitRate: 0,
+      listsCreatedToday: 0,
+      listsDeletedToday: 0,
+      articlesCreatedToday: 0,
+      articlesDeletedToday: 0,
+      failedCommands: [],
+      lastUpdated: new Date(),
+    };
+  }
+
+  /**
    * Compute overview metrics from raw events
    * OPTIMIZED: Only queries last 30 days + limits results to prevent quota issues
    * QUOTA OPTIMIZED: Reduced from 10k to 500 limit (sufficient for 50 users)
@@ -79,9 +103,17 @@ export class AnalyticsAggregationService {
     );
 
     console.log('📊 Analytics: Querying events (last 30 days, max 500)...');
-    const eventsSnapshot = await getDocs(eventsQuery);
-    this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
-    console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
+
+    let eventsSnapshot;
+    try {
+      eventsSnapshot = await getDocs(eventsQuery);
+      this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
+      console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
+    } catch (error) {
+      console.error('❌ Analytics: Failed to query events:', error);
+      // Return empty metrics if we can't query events
+      return this.getEmptyMetrics();
+    }
 
     const events = eventsSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -219,8 +251,13 @@ export class AnalyticsAggregationService {
       }
 
       return articlesSnapshot.size;
-    } catch (error) {
-      console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
+        console.error('💡 Please login with admin account to view analytics');
+      } else {
+        console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+      }
       return 0;
     }
   }
@@ -260,8 +297,13 @@ export class AnalyticsAggregationService {
       this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
       console.log(`📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
-    } catch (error) {
-      console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
+        console.error('💡 Please login with admin account to view analytics');
+      } else {
+        console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
+      }
       return 0;
     }
   }

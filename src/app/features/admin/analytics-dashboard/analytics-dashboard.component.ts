@@ -108,6 +108,18 @@ export class AnalyticsDashboardComponent implements OnInit {
   }
 
   /**
+   * Check if we should show login warning
+   * (if lists and articles are 0 but users is not, likely permission issue)
+   */
+  showLoginWarning(): boolean {
+    const m = this.metrics();
+    if (!m) return false;
+
+    // If we have users but no lists/articles, it's likely a permission issue
+    return m.totalUsers > 0 && m.totalLists === 0 && m.totalArticles === 0;
+  }
+
+  /**
    * Export failed commands to CSV
    */
   exportFailedCommands(): void {

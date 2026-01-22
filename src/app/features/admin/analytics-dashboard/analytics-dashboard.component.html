@@ -26,6 +26,14 @@
     <button mat-button color="primary" (click)="refresh()">Retry</button>
   </div>
 
+  <!-- Warning: Not logged in as admin -->
+  <div *ngIf="!loading() && !error() && metrics() && showLoginWarning()" class="warning-container">
+    <mat-icon color="warn">warning</mat-icon>
+    <p><strong>⚠️ Not logged in as admin!</strong></p>
+    <p>Some metrics show 0 because you need to login with your admin account first.</p>
+    <p>Please login with: <strong>philipp.thurnher@gmail.com</strong></p>
+  </div>
+
   <!-- Dashboard Content -->
   <div *ngIf="!loading() && !error() && metrics()" class="dashboard-content">
     <!-- Last Updated -->
