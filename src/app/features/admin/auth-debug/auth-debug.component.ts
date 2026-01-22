@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { Auth, user } from '@angular/fire/auth';
+import { Firestore, collection, getDocs, query, limit, collectionGroup } from '@angular/fire/firestore';
 import { inject } from '@angular/core';
 
 /**
@@ -53,6 +54,31 @@ import { inject } from '@angular/core';
 
           <hr/>
 
+          <h3>Firestore Permission Tests:</h3>
+
+          <div class="info-row">
+            <strong>Users Query:</strong>
+            <span [class.success]="usersTest() === 'success'" [class.error]="usersTest() === 'error'">
+              {{ usersTestMessage() }}
+            </span>
+          </div>
+
+          <div class="info-row">
+            <strong>Lists CollectionGroup:</strong>
+            <span [class.success]="listsTest() === 'success'" [class.error]="listsTest() === 'error'">
+              {{ listsTestMessage() }}
+            </span>
+          </div>
+
+          <div class="info-row">
+            <strong>Articles CollectionGroup:</strong>
+            <span [class.success]="articlesTest() === 'success'" [class.error]="articlesTest() === 'error'">
+              {{ articlesTestMessage() }}
+            </span>
+          </div>
+
+          <hr/>
+
           <div class="diagnosis">
             <h4>Diagnosis:</h4>
             <p *ngIf="!isAuthenticated()" class="error">
@@ -63,9 +89,13 @@ import { inject } from '@angular/core';
               <br/>Current: {{ currentEmail() }}
               <br/>Expected: philipp.thurnher@gmail.com
             </p>
-            <p *ngIf="isAuthenticated() && uidsMatch()" class="success">
-              ✅ You are logged in as admin! Analytics should work.
-              <br/>If you still see permission errors, the Firestore rules may not be deployed.
+            <p *ngIf="isAuthenticated() && uidsMatch() && listsTest() === 'error'" class="error">
+              ❌ You are logged in as admin, but collectionGroup queries are failing.
+              <br/>This suggests the Firestore rules aren't deployed correctly.
+              <br/><strong>Try: firebase deploy --only firestore:rules</strong>
+            </p>
+            <p *ngIf="isAuthenticated() && uidsMatch() && listsTest() === 'success'" class="success">
+              ✅ You are logged in as admin! All permissions working correctly.
             </p>
           </div>
 
@@ -75,6 +105,9 @@ import { inject } from '@angular/core';
             </button>
             <button mat-raised-button (click)="refresh()">
               Refresh
+            </button>
+            <button mat-raised-button color="accent" (click)="testPermissions()">
+              Test Permissions
             </button>
           </div>
         </div>
@@ -155,10 +188,19 @@ import { inject } from '@angular/core';
 })
 export class AuthDebugComponent implements OnInit {
   private auth = inject(Auth);
+  private firestore = inject(Firestore);
 
   isAuthenticated = signal(false);
   currentUid = signal<string | null>(null);
   currentEmail = signal<string | null>(null);
+
+  // Permission test results
+  usersTest = signal<'pending' | 'success' | 'error'>('pending');
+  usersTestMessage = signal('Click "Test Permissions"');
+  listsTest = signal<'pending' | 'success' | 'error'>('pending');
+  listsTestMessage = signal('Click "Test Permissions"');
+  articlesTest = signal<'pending' | 'success' | 'error'>('pending');
+  articlesTestMessage = signal('Click "Test Permissions"');
 
   private readonly ADMIN_UID = 'HYqET9vr40eDju4nQCTnJTV0qJo2';
 
@@ -178,6 +220,11 @@ export class AuthDebugComponent implements OnInit {
         email: user?.email,
         isAdmin: user?.uid === this.ADMIN_UID
       });
+
+      // Auto-run permission tests when authenticated
+      if (user) {
+        setTimeout(() => this.testPermissions(), 1000);
+      }
     });
   }
 
@@ -195,5 +242,48 @@ export class AuthDebugComponent implements OnInit {
 
   refresh() {
     this.checkAuth();
+  }
+
+  async testPermissions() {
+    console.log('🧪 Testing Firestore permissions...');
+
+    // Test 1: Users (top-level collection)
+    try {
+      const usersQuery = query(collection(this.firestore, 'users-v2'), limit(1));
+      const usersSnapshot = await getDocs(usersQuery);
+      this.usersTest.set('success');
+      this.usersTestMessage.set(`✅ ${usersSnapshot.size} user(s)`);
+      console.log('✅ Users query succeeded:', usersSnapshot.size);
+    } catch (error: any) {
+      this.usersTest.set('error');
+      this.usersTestMessage.set(`❌ ${error.code || 'Error'}`);
+      console.error('❌ Users query failed:', error);
+    }
+
+    // Test 2: Lists (collectionGroup)
+    try {
+      const listsQuery = query(collectionGroup(this.firestore, 'lists'), limit(1));
+      const listsSnapshot = await getDocs(listsQuery);
+      this.listsTest.set('success');
+      this.listsTestMessage.set(`✅ ${listsSnapshot.size} list(s)`);
+      console.log('✅ Lists collectionGroup query succeeded:', listsSnapshot.size);
+    } catch (error: any) {
+      this.listsTest.set('error');
+      this.listsTestMessage.set(`❌ ${error.code || 'Error'}`);
+      console.error('❌ Lists collectionGroup query failed:', error);
+    }
+
+    // Test 3: Articles (collectionGroup)
+    try {
+      const articlesQuery = query(collectionGroup(this.firestore, 'articles'), limit(1));
+      const articlesSnapshot = await getDocs(articlesQuery);
+      this.articlesTest.set('success');
+      this.articlesTestMessage.set(`✅ ${articlesSnapshot.size} article(s)`);
+      console.log('✅ Articles collectionGroup query succeeded:', articlesSnapshot.size);
+    } catch (error: any) {
+      this.articlesTest.set('error');
+      this.articlesTestMessage.set(`❌ ${error.code || 'Error'}`);
+      console.error('❌ Articles collectionGroup query failed:', error);
+    }
   }
 }
