@@ -96,6 +96,45 @@
       </mat-card>
     </div>
 
+    <!-- Daily Activity Card -->
+    <mat-card class="daily-activity-card">
+      <mat-card-header>
+        <mat-card-title>📅 Today's Activity</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="activity-grid">
+          <div class="activity-item">
+            <div class="activity-label">Lists Created</div>
+            <div class="activity-value created">{{ metrics()!.listsCreatedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Lists Deleted</div>
+            <div class="activity-value deleted">{{ metrics()!.listsDeletedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Articles Added</div>
+            <div class="activity-value created">{{ metrics()!.articlesCreatedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Articles Removed</div>
+            <div class="activity-value deleted">{{ metrics()!.articlesDeletedToday }}</div>
+          </div>
+          <div class="activity-item summary">
+            <div class="activity-label">Net Lists Change</div>
+            <div class="activity-value" [class.positive]="metrics()!.listsCreatedToday > metrics()!.listsDeletedToday" [class.negative]="metrics()!.listsCreatedToday < metrics()!.listsDeletedToday">
+              {{ metrics()!.listsCreatedToday - metrics()!.listsDeletedToday >= 0 ? '+' : '' }}{{ metrics()!.listsCreatedToday - metrics()!.listsDeletedToday }}
+            </div>
+          </div>
+          <div class="activity-item summary">
+            <div class="activity-label">Net Articles Change</div>
+            <div class="activity-value" [class.positive]="metrics()!.articlesCreatedToday > metrics()!.articlesDeletedToday" [class.negative]="metrics()!.articlesCreatedToday < metrics()!.articlesDeletedToday">
+              {{ metrics()!.articlesCreatedToday - metrics()!.articlesDeletedToday >= 0 ? '+' : '' }}{{ metrics()!.articlesCreatedToday - metrics()!.articlesDeletedToday }}
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     <!-- AI Assistant Details -->
     <mat-card class="ai-details-card">
       <mat-card-header>
@@ -197,5 +236,8 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Raw Events Viewer -->
+    <app-raw-events-viewer></app-raw-events-viewer>
   </div>
 </div>

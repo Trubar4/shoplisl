@@ -115,6 +115,56 @@
   }
 }
 
+// Daily Activity Card
+.daily-activity-card {
+  margin-bottom: 24px;
+
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 16px 0;
+
+    .activity-item {
+      text-align: center;
+
+      &.summary {
+        background-color: #f5f5f5;
+        padding: 16px;
+        border-radius: 8px;
+      }
+
+      .activity-label {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+        margin-bottom: 8px;
+      }
+
+      .activity-value {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+
+        &.created {
+          color: #4caf50;
+        }
+
+        &.deleted {
+          color: #f44336;
+        }
+
+        &.positive {
+          color: #4caf50;
+        }
+
+        &.negative {
+          color: #f44336;
+        }
+      }
+    }
+  }
+}
+
 // AI Details Card
 .ai-details-card {
   margin-bottom: 24px;
@@ -239,5 +289,9 @@
 
   .ai-stats {
     flex-direction: column;
+  }
+
+  .activity-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }

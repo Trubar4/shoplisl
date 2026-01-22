@@ -61,7 +61,8 @@ service cloud.firestore {
       // Phase 8: Temporarily allow reading articles if authenticated
       // This allows viewing articles on shared lists
       // TODO: Implement proper privacy - only show articles that are on shared lists
-      allow read: if isAuthenticated();
+      // ADMIN: Allow admin to read all articles for analytics (collection group queries)
+      allow read: if isAuthenticated() || isAdmin();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
       // Fixed: delete checks resource.data (existing), not request.resource.data (null)
@@ -79,8 +80,10 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/lists/{listId} {
-      // Read: User's own lists OR lists shared with them
+      // Read: User's own lists OR lists shared with them OR admin for analytics
       allow read: if isAuthenticated() && (
+        // Admin can read all lists for analytics
+        isAdmin() ||
         // Own lists in own path
         userId == request.auth.uid ||
         // Owner can read their lists anywhere (collection group queries)

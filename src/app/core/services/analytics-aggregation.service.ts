@@ -148,6 +148,27 @@ export class AnalyticsAggregationService {
     const cacheStats = this.aiCachingService.getStats();
     const cacheHitRate = cacheStats.hitRate;
 
+    // Daily activity metrics (today only)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEvents = events.filter((e: any) => {
+      const eventTime = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
+      return eventTime >= todayStart;
+    });
+
+    const listsCreatedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.LIST_CREATED
+    ).length;
+    const listsDeletedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.LIST_DELETED
+    ).length;
+    const articlesCreatedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST
+    ).length;
+    const articlesDeletedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
+    ).length;
+
     const metrics: OverviewMetrics = {
       totalUsers,
       totalLists,
@@ -159,6 +180,10 @@ export class AnalyticsAggregationService {
       aiFailed,
       avgResponseTime,
       cacheHitRate,
+      listsCreatedToday,
+      listsDeletedToday,
+      articlesCreatedToday,
+      articlesDeletedToday,
       failedCommands,
       lastUpdated: new Date(),
     };
@@ -314,6 +339,11 @@ export interface OverviewMetrics {
   aiFailed: number;
   avgResponseTime: number; // Average AI response time in ms
   cacheHitRate: number; // Cache hit rate as percentage (0-100)
+  // Daily activity metrics
+  listsCreatedToday: number;
+  listsDeletedToday: number;
+  articlesCreatedToday: number;
+  articlesDeletedToday: number;
   failedCommands: Array<{
     inputText: string;
     commandType: string;
