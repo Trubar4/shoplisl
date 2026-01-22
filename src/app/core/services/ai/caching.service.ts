@@ -15,13 +15,20 @@ interface CacheConfig {
   cleanupInterval: number; // Cleanup interval in milliseconds
 }
 
+export interface CacheResult<T> {
+  data: T;
+  fromCache: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AICachingService {
   private cache = new Map<string, CacheEntry<any>>();
   private cleanupTimer: any;
-  
+  private cacheHits = 0;
+  private cacheMisses = 0;
+
   private readonly config: CacheConfig = {
     defaultTTL: 5 * 60 * 1000, // 5 minutes
     maxSize: 1000,
@@ -34,35 +41,39 @@ export class AICachingService {
 
   /**
    * Get cached data or execute provider function
+   * Returns data with fromCache flag for analytics tracking
    */
   getOrSet<T>(
-    key: string, 
-    provider: () => Observable<T> | Promise<T>, 
+    key: string,
+    provider: () => Observable<T> | Promise<T>,
     ttl?: number
-  ): Observable<T> {
+  ): Observable<CacheResult<T>> {
     const cached = this.get<T>(key);
-    
+
     if (cached !== null) {
-      console.log('🎯 Cache HIT:', key);
-      return of(cached);
+      this.cacheHits++;
+      console.log('🎯 Cache HIT:', key, `(${this.getCacheHitRate()}% hit rate)`);
+      return of({ data: cached, fromCache: true });
     }
 
-    console.log('🎯 Cache MISS:', key);
+    this.cacheMisses++;
+    console.log('🎯 Cache MISS:', key, `(${this.getCacheHitRate()}% hit rate)`);
     const result = provider();
-    
+
     if (result instanceof Promise) {
-      return new Observable<T>(subscriber => {
+      return new Observable<CacheResult<T>>(subscriber => {
         result
           .then(data => {
             this.set(key, data, ttl);
-            subscriber.next(data);
+            subscriber.next({ data, fromCache: false });
             subscriber.complete();
           })
           .catch(error => subscriber.error(error));
       });
     } else {
       return result.pipe(
-        tap(data => this.set(key, data, ttl))
+        tap(data => this.set(key, data, ttl)),
+        map(data => ({ data, fromCache: false }))
       );
     }
   }
@@ -134,15 +145,26 @@ export class AICachingService {
   }
 
   /**
+   * Get cache hit rate as percentage
+   */
+  getCacheHitRate(): number {
+    const total = this.cacheHits + this.cacheMisses;
+    if (total === 0) return 0;
+    return Math.round((this.cacheHits / total) * 100);
+  }
+
+  /**
    * Get cache statistics
    */
-  getStats(): {size: number, hitRate: number, memoryUsage: string} {
+  getStats(): {size: number, hitRate: number, hits: number, misses: number, memoryUsage: string} {
     const size = this.cache.size;
     const memoryUsage = this.estimateMemoryUsage();
-    
+
     return {
       size,
-      hitRate: 0, // Would need to track hits/misses for real hit rate
+      hitRate: this.getCacheHitRate(),
+      hits: this.cacheHits,
+      misses: this.cacheMisses,
       memoryUsage: `~${Math.round(memoryUsage / 1024)}KB`
     };
   }

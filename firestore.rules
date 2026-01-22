@@ -58,9 +58,10 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/articles/{articleId} {
-      // Phase 8: Temporarily allow reading articles if authenticated
-      // This allows viewing articles on shared lists
-      // TODO: Implement proper privacy - only show articles that are on shared lists
+      // ADMIN: Allow admin to read all articles (for analytics collectionGroup queries)
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+
+      // Regular users: All authenticated users can read (articles are private to owner only for writes)
       allow read: if isAuthenticated();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
@@ -79,7 +80,10 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/lists/{listId} {
-      // Read: User's own lists OR lists shared with them
+      // ADMIN: Admin can read all lists (for analytics collectionGroup queries)
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+
+      // Regular users: Own lists OR lists shared with them
       allow read: if isAuthenticated() && (
         // Own lists in own path
         userId == request.auth.uid ||
@@ -161,6 +165,16 @@ service cloud.firestore {
 
     match /users/{userId}/{document=**} {
       allow read, write: if userId == 'shared-shoplisl-user';
+    }
+
+    // Legacy lists - allow admin to read for collectionGroup queries
+    match /users/{userId}/lists/{listId} {
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+    }
+
+    // Legacy articles - allow admin to read for collectionGroup queries
+    match /users/{userId}/articles/{articleId} {
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
     }
 
     // ==========================================

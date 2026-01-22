@@ -30,6 +30,7 @@ export class AnalyticsService {
   private eventBuffer: AnalyticsEvent[] = [];
   private readonly BATCH_SIZE = 50; // Write after 50 events (was 10)
   private readonly FLUSH_INTERVAL = 300000; // Flush every 5 minutes (was 30 seconds)
+  private readonly STORAGE_KEY = 'shoplisl_analytics_buffer';
   private flushTimer: any;
   private sessionId: string;
   private sessionStartTime: Date;
@@ -40,13 +41,18 @@ export class AnalyticsService {
     this.sessionId = this.generateSessionId();
     this.sessionStartTime = new Date();
 
+    // Load buffered events from localStorage (from previous session)
+    this.loadBufferedEvents();
+
     // Start periodic flush timer
     this.startFlushTimer();
 
     // Flush on page unload
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
-        this.flushSync();
+        // Save to localStorage instead of trying async flush
+        // This is synchronous and guaranteed to complete
+        this.saveBufferedEvents();
       });
 
       // Flush when visibility changes (tab switching)
@@ -247,12 +253,66 @@ export class AnalyticsService {
   }
 
   /**
+   * Load buffered events from localStorage (from previous session)
+   * This recovers events that weren't flushed before browser closed
+   */
+  private loadBufferedEvents(): void {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Convert timestamp strings back to Date objects
+        this.eventBuffer = parsed.map((event: any) => ({
+          ...event,
+          timestamp: new Date(event.timestamp),
+        }));
+        console.log(`📦 Analytics: Loaded ${this.eventBuffer.length} buffered events from localStorage`);
+
+        // Clear localStorage after loading
+        localStorage.removeItem(this.STORAGE_KEY);
+
+        // Try to flush them immediately
+        if (this.eventBuffer.length > 0) {
+          console.log('🚀 Analytics: Attempting to flush recovered events');
+          this.flush();
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Analytics: Failed to load buffered events from localStorage:', error);
+      this.eventBuffer = [];
+    }
+  }
+
+  /**
+   * Save buffered events to localStorage (for page unload)
+   * This ensures events aren't lost if browser closes before flush completes
+   */
+  private saveBufferedEvents(): void {
+    if (this.eventBuffer.length === 0) {
+      return;
+    }
+
+    try {
+      // Convert Date objects to ISO strings for JSON serialization
+      const serializable = this.eventBuffer.map(event => ({
+        ...event,
+        timestamp: event.timestamp.toISOString(),
+      }));
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(serializable));
+      console.log(`💾 Analytics: Saved ${this.eventBuffer.length} events to localStorage`);
+    } catch (error) {
+      console.warn('⚠️ Analytics: Failed to save events to localStorage:', error);
+    }
+  }
+
+  /**
    * Clean up on service destruction
    */
   ngOnDestroy(): void {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
     }
+    this.saveBufferedEvents(); // Save before destroying
     this.flush();
   }
 }

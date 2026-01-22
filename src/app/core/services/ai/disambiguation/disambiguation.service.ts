@@ -20,7 +20,7 @@ import { SmartSuggestionsService } from '../smart-suggestions.service';
 import { suggestDepartment, suggestIcon } from '../../../utils/department-mapping.utils';
 import { LoggerService } from '../../logger.service';
 import { PerformanceMonitorService } from '../performance-monitor.service';
-import { AICachingService } from '../caching.service';
+import { AICachingService, CacheResult } from '../caching.service';
 import { AIMessagingService, ErrorContext, ValidationRules } from '../ai-messaging.service';
 import { CircuitBreakerService } from '../circuit-breaker.service';
 import { ArticleMatcherService } from './article-matcher.service';
@@ -127,14 +127,14 @@ export class DisambiguationService {
 
       const cacheKey = this.cachingService.createDisambiguationKey(itemName, excludeId);
 
-      const result = await this.cachingService.getOrSet(
+      const cacheResult = await this.cachingService.getOrSet(
         cacheKey,
         () => this.getDisambiguationOptionsFromSource(itemName, excludeId),
         2 * 60 * 1000
       ).toPromise();
 
-      const finalResult = result || [];
-      this.performanceMonitor.endOperation('getDisambiguationOptions', true, !!result);
+      const finalResult = cacheResult?.data || [];
+      this.performanceMonitor.endOperation('getDisambiguationOptions', true, !!cacheResult?.data);
       return finalResult;
 
     } catch (error) {
@@ -398,7 +398,7 @@ export class DisambiguationService {
   private async getEnhancedSuggestions(itemName: string): Promise<{departmentId: string, icon: string}> {
     const cacheKey = this.cachingService.createSuggestionsKey(itemName);
 
-    const result = await this.cachingService.getOrSet(
+    const cacheResult = await this.cachingService.getOrSet(
       cacheKey,
       async () => {
         try {
@@ -423,7 +423,7 @@ export class DisambiguationService {
     ).toPromise();
 
     // Ensure we always return a valid object, never undefined
-    return result || {
+    return cacheResult?.data || {
       departmentId: suggestDepartment(itemName),
       icon: suggestIcon(itemName)
     };

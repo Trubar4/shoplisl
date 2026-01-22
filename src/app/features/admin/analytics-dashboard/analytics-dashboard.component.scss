@@ -46,6 +46,36 @@
   }
 }
 
+.warning-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  margin-bottom: 24px;
+  background-color: #fff3e0;
+  border: 2px solid #ff9800;
+  border-radius: 8px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    color: #ff9800;
+  }
+
+  p {
+    font-size: 16px;
+    margin: 8px 0;
+
+    strong {
+      color: #e65100;
+    }
+  }
+}
+
 .dashboard-content {
   .last-updated {
     text-align: right;
@@ -115,6 +145,56 @@
   }
 }
 
+// Daily Activity Card
+.daily-activity-card {
+  margin-bottom: 24px;
+
+  .activity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 16px 0;
+
+    .activity-item {
+      text-align: center;
+
+      &.summary {
+        background-color: #f5f5f5;
+        padding: 16px;
+        border-radius: 8px;
+      }
+
+      .activity-label {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+        margin-bottom: 8px;
+      }
+
+      .activity-value {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+
+        &.created {
+          color: #4caf50;
+        }
+
+        &.deleted {
+          color: #f44336;
+        }
+
+        &.positive {
+          color: #4caf50;
+        }
+
+        &.negative {
+          color: #f44336;
+        }
+      }
+    }
+  }
+}
+
 // AI Details Card
 .ai-details-card {
   margin-bottom: 24px;
@@ -165,6 +245,12 @@
 // Failed Commands Table
 .failed-commands-card {
   margin-bottom: 24px;
+
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
   .failed-commands-table {
     width: 100%;
@@ -233,5 +319,9 @@
 
   .ai-stats {
     flex-direction: column;
+  }
+
+  .activity-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }

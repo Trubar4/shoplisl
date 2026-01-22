@@ -26,6 +26,17 @@
     <button mat-button color="primary" (click)="refresh()">Retry</button>
   </div>
 
+  <!-- Warning: Not logged in as admin -->
+  <div *ngIf="!loading() && !error() && metrics() && showLoginWarning()" class="warning-container">
+    <mat-icon color="warn">warning</mat-icon>
+    <p><strong>⚠️ Not logged in as admin!</strong></p>
+    <p>Some metrics show 0 because you need to login with your admin account first.</p>
+    <p>Please login with: <strong>philipp.thurnher@gmail.com</strong></p>
+  </div>
+
+  <!-- Auth Debug (shows if warning is displayed) -->
+  <app-auth-debug *ngIf="!loading() && !error() && showLoginWarning()"></app-auth-debug>
+
   <!-- Dashboard Content -->
   <div *ngIf="!loading() && !error() && metrics()" class="dashboard-content">
     <!-- Last Updated -->
@@ -96,6 +107,45 @@
       </mat-card>
     </div>
 
+    <!-- Daily Activity Card -->
+    <mat-card class="daily-activity-card">
+      <mat-card-header>
+        <mat-card-title>📅 Today's Activity</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="activity-grid">
+          <div class="activity-item">
+            <div class="activity-label">Lists Created</div>
+            <div class="activity-value created">{{ metrics()!.listsCreatedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Lists Deleted</div>
+            <div class="activity-value deleted">{{ metrics()!.listsDeletedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Articles Added</div>
+            <div class="activity-value created">{{ metrics()!.articlesCreatedToday }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Articles Removed</div>
+            <div class="activity-value deleted">{{ metrics()!.articlesDeletedToday }}</div>
+          </div>
+          <div class="activity-item summary">
+            <div class="activity-label">Net Lists Change</div>
+            <div class="activity-value" [class.positive]="metrics()!.listsCreatedToday > metrics()!.listsDeletedToday" [class.negative]="metrics()!.listsCreatedToday < metrics()!.listsDeletedToday">
+              {{ metrics()!.listsCreatedToday - metrics()!.listsDeletedToday >= 0 ? '+' : '' }}{{ metrics()!.listsCreatedToday - metrics()!.listsDeletedToday }}
+            </div>
+          </div>
+          <div class="activity-item summary">
+            <div class="activity-label">Net Articles Change</div>
+            <div class="activity-value" [class.positive]="metrics()!.articlesCreatedToday > metrics()!.articlesDeletedToday" [class.negative]="metrics()!.articlesCreatedToday < metrics()!.articlesDeletedToday">
+              {{ metrics()!.articlesCreatedToday - metrics()!.articlesDeletedToday >= 0 ? '+' : '' }}{{ metrics()!.articlesCreatedToday - metrics()!.articlesDeletedToday }}
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     <!-- AI Assistant Details -->
     <mat-card class="ai-details-card">
       <mat-card-header>
@@ -119,6 +169,18 @@
             <div class="ai-stat-label">Failed</div>
             <div class="ai-stat-value failed">{{ metrics()!.aiFailed }}</div>
           </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Avg Response Time</div>
+            <div class="ai-stat-value">{{ metrics()!.avgResponseTime }}ms</div>
+          </div>
+          <div class="ai-stat">
+            <div class="ai-stat-label">Cache Hit Rate</div>
+            <mat-chip-set>
+              <mat-chip color="accent">
+                {{ metrics()!.cacheHitRate }}%
+              </mat-chip>
+            </mat-chip-set>
+          </div>
         </div>
       </mat-card-content>
     </mat-card>
@@ -127,6 +189,14 @@
     <mat-card *ngIf="metrics()!.failedCommands.length > 0" class="failed-commands-card">
       <mat-card-header>
         <mat-card-title>Recent Failed Commands (Last 10)</mat-card-title>
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="exportFailedCommands()"
+          matTooltip="Export to CSV"
+        >
+          <mat-icon>download</mat-icon>
+        </button>
       </mat-card-header>
       <mat-card-content>
         <table mat-table [dataSource]="metrics()!.failedCommands" class="failed-commands-table">
@@ -177,5 +247,8 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Raw Events Viewer -->
+    <app-raw-events-viewer></app-raw-events-viewer>
   </div>
 </div>

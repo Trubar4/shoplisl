@@ -13,6 +13,7 @@ import {
 import { AnalyticsEventType } from '../models/analytics.model';
 import { Observable, from, map, of } from 'rxjs';
 import { QuotaMonitorService } from './quota-monitor.service';
+import { AICachingService } from './ai/caching.service';
 
 /**
  * Analytics Aggregation Service
@@ -28,6 +29,7 @@ import { QuotaMonitorService } from './quota-monitor.service';
 export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
   private quotaMonitor = inject(QuotaMonitorService);
+  private aiCachingService = inject(AICachingService);
   private cache: OverviewMetrics | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
@@ -58,6 +60,30 @@ export class AnalyticsAggregationService {
   }
 
   /**
+   * Get empty metrics (used when queries fail due to permission errors)
+   */
+  private getEmptyMetrics(): OverviewMetrics {
+    return {
+      totalUsers: 0,
+      totalLists: 0,
+      totalArticles: 0,
+      activeUsersLast14Days: 0,
+      totalAIInputs: 0,
+      aiSuccessRate: 0,
+      aiSuccessful: 0,
+      aiFailed: 0,
+      avgResponseTime: 0,
+      cacheHitRate: 0,
+      listsCreatedToday: 0,
+      listsDeletedToday: 0,
+      articlesCreatedToday: 0,
+      articlesDeletedToday: 0,
+      failedCommands: [],
+      lastUpdated: new Date(),
+    };
+  }
+
+  /**
    * Compute overview metrics from raw events
    * OPTIMIZED: Only queries last 30 days + limits results to prevent quota issues
    * QUOTA OPTIMIZED: Reduced from 10k to 500 limit (sufficient for 50 users)
@@ -77,9 +103,17 @@ export class AnalyticsAggregationService {
     );
 
     console.log('📊 Analytics: Querying events (last 30 days, max 500)...');
-    const eventsSnapshot = await getDocs(eventsQuery);
-    this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
-    console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
+
+    let eventsSnapshot;
+    try {
+      eventsSnapshot = await getDocs(eventsQuery);
+      this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
+      console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
+    } catch (error) {
+      console.error('❌ Analytics: Failed to query events:', error);
+      // Return empty metrics if we can't query events
+      return this.getEmptyMetrics();
+    }
 
     const events = eventsSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -133,6 +167,40 @@ export class AnalyticsAggregationService {
           : new Date(e.timestamp),
       }));
 
+    // Phase 3 metrics: Response time and cache hit rate
+    // Calculate average response time from AI commands
+    const responseTimes = aiEvents
+      .filter((e: any) => e.metadata?.responseTime !== undefined)
+      .map((e: any) => e.metadata.responseTime);
+    const avgResponseTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
+      : 0;
+
+    // Get real-time cache hit rate from AI caching service
+    const cacheStats = this.aiCachingService.getStats();
+    const cacheHitRate = cacheStats.hitRate;
+
+    // Daily activity metrics (today only)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEvents = events.filter((e: any) => {
+      const eventTime = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
+      return eventTime >= todayStart;
+    });
+
+    const listsCreatedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.LIST_CREATED
+    ).length;
+    const listsDeletedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.LIST_DELETED
+    ).length;
+    const articlesCreatedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST
+    ).length;
+    const articlesDeletedToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
+    ).length;
+
     const metrics: OverviewMetrics = {
       totalUsers,
       totalLists,
@@ -142,6 +210,12 @@ export class AnalyticsAggregationService {
       aiSuccessRate: Math.round(aiSuccessRate * 10) / 10, // Round to 1 decimal
       aiSuccessful,
       aiFailed,
+      avgResponseTime,
+      cacheHitRate,
+      listsCreatedToday,
+      listsDeletedToday,
+      articlesCreatedToday,
+      articlesDeletedToday,
       failedCommands,
       lastUpdated: new Date(),
     };
@@ -177,8 +251,13 @@ export class AnalyticsAggregationService {
       }
 
       return articlesSnapshot.size;
-    } catch (error) {
-      console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
+        console.error('💡 Please login with admin account to view analytics');
+      } else {
+        console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+      }
       return 0;
     }
   }
@@ -218,8 +297,13 @@ export class AnalyticsAggregationService {
       this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
       console.log(`📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
-    } catch (error) {
-      console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
+        console.error('💡 Please login with admin account to view analytics');
+      } else {
+        console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
+      }
       return 0;
     }
   }
@@ -295,6 +379,13 @@ export interface OverviewMetrics {
   aiSuccessRate: number;
   aiSuccessful: number;
   aiFailed: number;
+  avgResponseTime: number; // Average AI response time in ms
+  cacheHitRate: number; // Cache hit rate as percentage (0-100)
+  // Daily activity metrics
+  listsCreatedToday: number;
+  listsDeletedToday: number;
+  articlesCreatedToday: number;
+  articlesDeletedToday: number;
   failedCommands: Array<{
     inputText: string;
     commandType: string;
