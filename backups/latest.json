@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-21T20:12:59.638Z",
+  "timestamp": "2026-01-22T08:34:46.696Z",
   "users": {
     "2RZNjeKK20hXdoy2vbZ61lnk0D62": {
       "lists": [],
@@ -302,6 +302,10 @@
           ],
           "recoveredFrom": "users/shared-shoplisl-user/lists/62PhcxI5ivkgfhdlNbaR",
           "recoveredCount": 104,
+          "recoveredAt": {
+            "_nanoseconds": 514000000,
+            "_seconds": 1767940072
+          },
           "articleIds": [
             "wCetP5SbOTZnh6wZu2Ja",
             "ChNIDTz4SuSEyMtIcQDS",
@@ -400,7 +404,6 @@
             "kYwgkzv7uab8n3zX7OhE",
             "WXij8wir1fCFt9omHyd6",
             "CoDc0dJmk2sy07JEdq8I",
-            "pn46C4xjh5S49ec3bmZS",
             "2tXzxdNb5dIf4qBNrtNw",
             "D86COL4bziRQizVjdLD8",
             "6LvHzJa6SBPdHaBSn1a9",
@@ -409,844 +412,1542 @@
             "5ZL1J8LPi6rLRxdoLfRg"
           ],
           "itemStates": {
-            "ekbG5da4fmgQy8k6lV14": {
+            "DWWJbhWFB7TAmIgNBroq": {
+              "articleId": "DWWJbhWFB7TAmIgNBroq",
+              "isChecked": true,
+              "amount": "",
               "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
+                "_seconds": 1756113296,
+                "_nanoseconds": 718000000
               },
-              "articleId": "ekbG5da4fmgQy8k6lV14",
-              "isChecked": true
-            },
-            "O5UoZheZPmEU5x59vqAp": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "O5UoZheZPmEU5x59vqAp",
-              "isChecked": true
-            },
-            "NotDMNmuHlhB1WdxD6Ri": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NotDMNmuHlhB1WdxD6Ri",
-              "isChecked": true
-            },
-            "TciscLP4DfkOZZc9Nyma": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TciscLP4DfkOZZc9Nyma",
-              "isChecked": true
-            },
-            "g9OykTEQ5ODQDAZQHOec": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "g9OykTEQ5ODQDAZQHOec",
-              "isChecked": true
-            },
-            "gXt48vMZFgxBU4Yo6U4m": {
-              "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "gXt48vMZFgxBU4Yo6U4m",
-              "isChecked": true
-            },
-            "vGfeoATlZdgY1Tuu3zFu": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "vGfeoATlZdgY1Tuu3zFu",
-              "isChecked": true
-            },
-            "PWlpRrK2kc8fTLPXTHTm": {
-              "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "PWlpRrK2kc8fTLPXTHTm",
-              "isChecked": true
-            },
-            "pn46C4xjh5S49ec3bmZS": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "pn46C4xjh5S49ec3bmZS",
-              "isChecked": true
-            },
-            "RkwTsXfHXoJu28VhUgxJ": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "RkwTsXfHXoJu28VhUgxJ",
-              "isChecked": true
-            },
-            "3Aqc964XVD3avcmAFOsC": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "3Aqc964XVD3avcmAFOsC",
-              "isChecked": true
-            },
-            "KhZ8GcX8LYReF3WkjlUg": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "KhZ8GcX8LYReF3WkjlUg",
-              "isChecked": true
-            },
-            "hR5MIhwbANZfIsrlffSk": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "hR5MIhwbANZfIsrlffSk",
-              "isChecked": true
-            },
-            "lsKdq63pFLXjij50tb6k": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "lsKdq63pFLXjij50tb6k",
-              "isChecked": true
-            },
-            "yoZMhoH5iqN9VtC51dbY": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "yoZMhoH5iqN9VtC51dbY",
-              "isChecked": true
-            },
-            "affSyQhnuJZQB9pJGMLV": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "affSyQhnuJZQB9pJGMLV",
-              "isChecked": true
-            },
-            "NSnKONT0lVoFv3ewL5oM": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NSnKONT0lVoFv3ewL5oM",
-              "isChecked": true
-            },
-            "N1JdWRDo5cAihC2Ahy16": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "N1JdWRDo5cAihC2Ahy16",
-              "isChecked": true
-            },
-            "qJqL8Gflso4oIlsxwbV1": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qJqL8Gflso4oIlsxwbV1",
-              "isChecked": true
-            },
-            "hhGOInicyhPVYD9Gr3kD": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "hhGOInicyhPVYD9Gr3kD",
-              "isChecked": true
-            },
-            "CoDc0dJmk2sy07JEdq8I": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "CoDc0dJmk2sy07JEdq8I",
-              "isChecked": true
-            },
-            "9bbCdKaRwGkim2KffPW8": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "9bbCdKaRwGkim2KffPW8",
-              "isChecked": true
-            },
-            "LZLxpitPwvvh68yKD0Rm": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "LZLxpitPwvvh68yKD0Rm",
-              "isChecked": true
-            },
-            "4tvHVq9nSg39pqku5gvA": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4tvHVq9nSg39pqku5gvA",
-              "isChecked": true
-            },
-            "nwMTg2k3Zt6hHYnctu1R": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "nwMTg2k3Zt6hHYnctu1R",
-              "isChecked": true
-            },
-            "lyauW40NEf6iBhI9tYGe": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "lyauW40NEf6iBhI9tYGe",
-              "isChecked": true
-            },
-            "cTQGlGqtGX8kdOQxOEEL": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "cTQGlGqtGX8kdOQxOEEL",
-              "isChecked": true
-            },
-            "bhZbHRn0SU6KOsZ166YW": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "bhZbHRn0SU6KOsZ166YW",
-              "isChecked": true
-            },
-            "ukqoLqpHu4MhRCGsTVoH": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ukqoLqpHu4MhRCGsTVoH",
-              "isChecked": true
-            },
-            "WXij8wir1fCFt9omHyd6": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "WXij8wir1fCFt9omHyd6",
-              "isChecked": true
-            },
-            "edm8sdvTmem59nZhdq6z": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "edm8sdvTmem59nZhdq6z",
-              "isChecked": true
-            },
-            "oO5jfyaj7MIJ8GMoe3G7": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "oO5jfyaj7MIJ8GMoe3G7",
-              "isChecked": true
-            },
-            "2hpqvzf1oEkSTzi1bx92": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2hpqvzf1oEkSTzi1bx92",
-              "isChecked": true
-            },
-            "SlphgS7ITXDflzU7j6Qv": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "SlphgS7ITXDflzU7j6Qv",
-              "isChecked": true
-            },
-            "h9ZTj3WTvt75rzBZnzsP": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "h9ZTj3WTvt75rzBZnzsP",
-              "isChecked": true
-            },
-            "8kL6xBKNOev7IQXEpMhe": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "8kL6xBKNOev7IQXEpMhe",
-              "isChecked": true
-            },
-            "d5gKXrkMs4ZB23xLdxSG": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "d5gKXrkMs4ZB23xLdxSG",
-              "isChecked": true
-            },
-            "o1z79153eWzrfPYEyhDm": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "o1z79153eWzrfPYEyhDm",
-              "isChecked": true
-            },
-            "z4Xqv5JfGDjpBUwwGFGa": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "z4Xqv5JfGDjpBUwwGFGa",
-              "isChecked": true
-            },
-            "6LvHzJa6SBPdHaBSn1a9": {
-              "checkedAt": {
-                "_nanoseconds": 635000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "6LvHzJa6SBPdHaBSn1a9",
-              "isChecked": true
+              "history": []
             },
             "sTQY2oINEMhpckoVV2K7": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
               "articleId": "sTQY2oINEMhpckoVV2K7",
-              "isChecked": true
-            },
-            "PNTijOZ5TXWuTcxq01HN": {
+              "isChecked": true,
+              "amount": "",
               "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
+                "_seconds": 1762944375,
+                "_nanoseconds": 544000000
               },
-              "articleId": "PNTijOZ5TXWuTcxq01HN",
-              "isChecked": true
+              "history": []
             },
-            "5ZL1J8LPi6rLRxdoLfRg": {
+            "N1JdWRDo5cAihC2Ahy16": {
+              "articleId": "N1JdWRDo5cAihC2Ahy16",
+              "isChecked": true,
+              "amount": "",
               "checkedAt": {
-                "_nanoseconds": 635000000,
-                "_seconds": 1768665205
+                "_seconds": 1763373345,
+                "_nanoseconds": 532000000
               },
-              "articleId": "5ZL1J8LPi6rLRxdoLfRg",
-              "isChecked": true
-            },
-            "XY1UzqbfbGPXPXdrOH7U": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "XY1UzqbfbGPXPXdrOH7U",
-              "isChecked": true
-            },
-            "pgmKv0It5CICHRJlWRpS": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "pgmKv0It5CICHRJlWRpS",
-              "isChecked": true
-            },
-            "kYwgkzv7uab8n3zX7OhE": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "kYwgkzv7uab8n3zX7OhE",
-              "isChecked": true
-            },
-            "aHnyTp7J7BubtBnneXIH": {
-              "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "aHnyTp7J7BubtBnneXIH",
-              "isChecked": true
-            },
-            "Qu3EBlw1EfdGbwyqi8DK": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
-              "isChecked": true
-            },
-            "qvWWKUHz7WRfxtwUPvIA": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qvWWKUHz7WRfxtwUPvIA",
-              "isChecked": true
-            },
-            "SCp02EPqGov40pYr4m4g": {
-              "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "SCp02EPqGov40pYr4m4g",
-              "isChecked": true
-            },
-            "D86COL4bziRQizVjdLD8": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "D86COL4bziRQizVjdLD8",
-              "isChecked": true
-            },
-            "kqnekYdiII55WmmzUi5Y": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "kqnekYdiII55WmmzUi5Y",
-              "isChecked": true
-            },
-            "Ue4tu1SrF1vhhXGzOAbn": {
-              "checkedAt": {
-                "_nanoseconds": 628000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Ue4tu1SrF1vhhXGzOAbn",
-              "isChecked": true
-            },
-            "UOVEJWAKtW1pg9LvG8Cm": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UOVEJWAKtW1pg9LvG8Cm",
-              "isChecked": true
-            },
-            "6LTUePVLhjyxkjmvZdK0": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "6LTUePVLhjyxkjmvZdK0",
-              "isChecked": true
-            },
-            "8TpGAEASvjQfrmB01efd": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "8TpGAEASvjQfrmB01efd",
-              "isChecked": true
-            },
-            "h6KMjlYR0UFyeqil9sRy": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "h6KMjlYR0UFyeqil9sRy",
-              "isChecked": true
-            },
-            "uxor2bd1nKfqyzPtkviN": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "uxor2bd1nKfqyzPtkviN",
-              "isChecked": true
-            },
-            "j45z5oaKFq6s1mYSxAMB": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "j45z5oaKFq6s1mYSxAMB",
-              "isChecked": true
-            },
-            "MBRIr6gG3BtKLY9Mk2Sy": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "MBRIr6gG3BtKLY9Mk2Sy",
-              "isChecked": true
-            },
-            "bGCe5sTnTDsS8AWb1LLL": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "bGCe5sTnTDsS8AWb1LLL",
-              "isChecked": true
-            },
-            "kV3N12sfZrIeUvuqKYKe": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "kV3N12sfZrIeUvuqKYKe",
-              "isChecked": true
+              "history": []
             },
             "wCetP5SbOTZnh6wZu2Ja": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
               "articleId": "wCetP5SbOTZnh6wZu2Ja",
-              "isChecked": true
-            },
-            "BdHQRb8mEcVvOGCXsFfI": {
+              "isChecked": true,
+              "amount": "2 Pack",
               "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
+                "_seconds": 1761845384,
+                "_nanoseconds": 512000000
               },
-              "articleId": "BdHQRb8mEcVvOGCXsFfI",
-              "isChecked": true
+              "history": []
             },
-            "Rz9V1nE1sqnEwaMh02OI": {
+            "SCp02EPqGov40pYr4m4g": {
+              "articleId": "SCp02EPqGov40pYr4m4g",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
               "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
+                "_seconds": 1765363534,
+                "_nanoseconds": 566000000
               },
-              "articleId": "Rz9V1nE1sqnEwaMh02OI",
-              "isChecked": true
+              "history": [
+                {
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765363534,
+                    "_nanoseconds": 566000000
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du"
+                }
+              ]
             },
-            "G9KrTXJcSqLjOr2foGgy": {
+            "WXij8wir1fCFt9omHyd6": {
+              "articleId": "WXij8wir1fCFt9omHyd6",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
               "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
+                "_seconds": 1765363547,
+                "_nanoseconds": 219000000
               },
-              "articleId": "G9KrTXJcSqLjOr2foGgy",
-              "isChecked": true
-            },
-            "Vx7D9sfH5trj23cAFd7d": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Vx7D9sfH5trj23cAFd7d",
-              "isChecked": true
-            },
-            "Cbxl5msAbvwgp13NClfs": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Cbxl5msAbvwgp13NClfs",
-              "isChecked": true
-            },
-            "2tXzxdNb5dIf4qBNrtNw": {
-              "checkedAt": {
-                "_nanoseconds": 634000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2tXzxdNb5dIf4qBNrtNw",
-              "isChecked": true
-            },
-            "ChNIDTz4SuSEyMtIcQDS": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ChNIDTz4SuSEyMtIcQDS",
-              "isChecked": true
-            },
-            "NUVs59MbzHym1cz0P4Ds": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NUVs59MbzHym1cz0P4Ds",
-              "isChecked": true
-            },
-            "awIlxJL7UsnxJ2D2z9kC": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "awIlxJL7UsnxJ2D2z9kC",
-              "isChecked": true
-            },
-            "qSb0ZK7FD8MnYYeGMnfJ": {
-              "checkedAt": {
-                "_nanoseconds": 635000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qSb0ZK7FD8MnYYeGMnfJ",
-              "isChecked": true
-            },
-            "x5cD2G5fqSwkbMQ3QN5u": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "x5cD2G5fqSwkbMQ3QN5u",
-              "isChecked": true
-            },
-            "KBTelEijI4eIht9zxEL0": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "KBTelEijI4eIht9zxEL0",
-              "isChecked": true
-            },
-            "MJWQ1cOMGZEyY7Uf8KCx": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "MJWQ1cOMGZEyY7Uf8KCx",
-              "isChecked": true
-            },
-            "92xtuWXpwHkzMSW7xo7l": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "92xtuWXpwHkzMSW7xo7l",
-              "isChecked": true
-            },
-            "Q8goM1Tocj9BJVYoIGNV": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Q8goM1Tocj9BJVYoIGNV",
-              "isChecked": true
-            },
-            "NGEfd68pDBTqhKpvDg3r": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NGEfd68pDBTqhKpvDg3r",
-              "isChecked": true
-            },
-            "QWaEklcDyRdP6gg1CkyN": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "QWaEklcDyRdP6gg1CkyN",
-              "isChecked": true
-            },
-            "ODRrQC4QSClQuFTyS73d": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ODRrQC4QSClQuFTyS73d",
-              "isChecked": true
-            },
-            "sqXwBZwSp3GGbgZAgLRZ": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "sqXwBZwSp3GGbgZAgLRZ",
-              "isChecked": true
-            },
-            "TamC6dhmoET40NqZ8CvA": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TamC6dhmoET40NqZ8CvA",
-              "isChecked": true
-            },
-            "Bhyx9uV9Ct4k5v3F4HlT": {
-              "checkedAt": {
-                "_nanoseconds": 635000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Bhyx9uV9Ct4k5v3F4HlT",
-              "isChecked": true
-            },
-            "TGJyDQiiaC8EeAD4ZOqG": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TGJyDQiiaC8EeAD4ZOqG",
-              "isChecked": true
-            },
-            "zmqvjTVIyHArgPSjANXZ": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "zmqvjTVIyHArgPSjANXZ",
-              "isChecked": true
+              "history": [
+                {
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765363547,
+                    "_nanoseconds": 219000000
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked"
+                }
+              ]
             },
             "jfokcucAacNPQSia8WuA": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
               "articleId": "jfokcucAacNPQSia8WuA",
-              "isChecked": true
-            },
-            "i1lL3F0vZTL4FfaQ4ZRg": {
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
+                "_seconds": 1750671772,
+                "_nanoseconds": 581000000
               },
-              "articleId": "i1lL3F0vZTL4FfaQ4ZRg",
-              "isChecked": true
+              "history": []
             },
-            "ImPPzMDH1cEwTwqXqu9s": {
+            "h9ZTj3WTvt75rzBZnzsP": {
+              "articleId": "h9ZTj3WTvt75rzBZnzsP",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
+                "_seconds": 1751642781,
+                "_nanoseconds": 656000000
               },
-              "articleId": "ImPPzMDH1cEwTwqXqu9s",
-              "isChecked": true
-            },
-            "3u55MDCwcnw1boXbEqqY": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "3u55MDCwcnw1boXbEqqY",
-              "isChecked": true
-            },
-            "4wOKbxOaL1OBIuJU1f0x": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4wOKbxOaL1OBIuJU1f0x",
-              "isChecked": true
-            },
-            "h12lIpDzsUI1BrUVsOVg": {
-              "checkedAt": {
-                "_nanoseconds": 624000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "h12lIpDzsUI1BrUVsOVg",
-              "isChecked": true
-            },
-            "4oPqIqXVvgz7ncVcJuKU": {
-              "checkedAt": {
-                "_nanoseconds": 629000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4oPqIqXVvgz7ncVcJuKU",
-              "isChecked": true
-            },
-            "vLOQ5iBg4nQJNSAft1wW": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "vLOQ5iBg4nQJNSAft1wW",
-              "isChecked": true
-            },
-            "2XXRfyzX2cdajZyLXyYV": {
-              "checkedAt": {
-                "_nanoseconds": 631000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2XXRfyzX2cdajZyLXyYV",
-              "isChecked": true
-            },
-            "DWWJbhWFB7TAmIgNBroq": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "DWWJbhWFB7TAmIgNBroq",
-              "isChecked": true
-            },
-            "JwbimqCbsJR0TOclStyS": {
-              "checkedAt": {
-                "_nanoseconds": 627000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "JwbimqCbsJR0TOclStyS",
-              "isChecked": true
-            },
-            "VJO8nMFWOP0FzIT0G8hT": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "VJO8nMFWOP0FzIT0G8hT",
-              "isChecked": true
-            },
-            "DJPW8fPkkPZgz2u36r8l": {
-              "checkedAt": {
-                "_nanoseconds": 633000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "DJPW8fPkkPZgz2u36r8l",
-              "isChecked": true
-            },
-            "Qv74gTO8acX8NncqWLjP": {
-              "checkedAt": {
-                "_nanoseconds": 623000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Qv74gTO8acX8NncqWLjP",
-              "isChecked": true
-            },
-            "Iu01OZ5UmAn3DIcAxaYZ": {
-              "checkedAt": {
-                "_nanoseconds": 626000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Iu01OZ5UmAn3DIcAxaYZ",
-              "isChecked": true
-            },
-            "2OINHSD0rXjKlS2CgC6N": {
-              "checkedAt": {
-                "_nanoseconds": 625000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2OINHSD0rXjKlS2CgC6N",
-              "isChecked": true
-            },
-            "BWAIAgUJE6qyUhTc9B6s": {
-              "checkedAt": {
-                "_nanoseconds": 630000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "BWAIAgUJE6qyUhTc9B6s",
-              "isChecked": true
+              "history": []
             },
             "IJuRfpiJLyRDpmV8q3uA": {
-              "checkedAt": {
-                "_nanoseconds": 632000000,
-                "_seconds": 1768665205
-              },
               "articleId": "IJuRfpiJLyRDpmV8q3uA",
-              "isChecked": true
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763967134,
+                "_nanoseconds": 568000000
+              },
+              "history": []
+            },
+            "aHnyTp7J7BubtBnneXIH": {
+              "articleId": "aHnyTp7J7BubtBnneXIH",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1752918311,
+                "_nanoseconds": 709000000
+              },
+              "history": []
+            },
+            "4tvHVq9nSg39pqku5gvA": {
+              "articleId": "4tvHVq9nSg39pqku5gvA",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762944464,
+                "_nanoseconds": 847000000
+              },
+              "history": []
+            },
+            "NSnKONT0lVoFv3ewL5oM": {
+              "articleId": "NSnKONT0lVoFv3ewL5oM",
+              "isChecked": true,
+              "amount": "2 l",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968421,
+                "_nanoseconds": 845000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "amount": "2 l",
+                  "timestamp": {
+                    "_seconds": 1765968421,
+                    "_nanoseconds": 844000000
+                  },
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "action": "unchecked",
+                  "amount": "2 l",
+                  "timestamp": {
+                    "_seconds": 1765962845,
+                    "_nanoseconds": 626000000
+                  },
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "amount": "2 l",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765791972,
+                    "_nanoseconds": 282000000
+                  },
+                  "userName": "Du"
+                },
+                {
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765783443,
+                    "_nanoseconds": 547000000
+                  },
+                  "amount": "2 l",
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked"
+                },
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1764955075,
+                    "_nanoseconds": 484000000
+                  },
+                  "amount": "2 l",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "o1z79153eWzrfPYEyhDm": {
+              "articleId": "o1z79153eWzrfPYEyhDm",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759138175,
+                "_nanoseconds": 634000000
+              },
+              "history": []
+            },
+            "Rz9V1nE1sqnEwaMh02OI": {
+              "articleId": "Rz9V1nE1sqnEwaMh02OI",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763976637,
+                "_nanoseconds": 350000000
+              },
+              "history": []
+            },
+            "KhZ8GcX8LYReF3WkjlUg": {
+              "articleId": "KhZ8GcX8LYReF3WkjlUg",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1752485318,
+                "_nanoseconds": 141000000
+              },
+              "history": []
+            },
+            "ChNIDTz4SuSEyMtIcQDS": {
+              "articleId": "ChNIDTz4SuSEyMtIcQDS",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761384741,
+                "_nanoseconds": 728000000
+              },
+              "history": []
+            },
+            "uxor2bd1nKfqyzPtkviN": {
+              "articleId": "uxor2bd1nKfqyzPtkviN",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764657367,
+                "_nanoseconds": 915000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1764657367,
+                    "_nanoseconds": 914000000
+                  },
+                  "userName": "Du",
+                  "amount": "",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "lyauW40NEf6iBhI9tYGe": {
+              "articleId": "lyauW40NEf6iBhI9tYGe",
+              "isChecked": true,
+              "amount": "2 kg",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765791991,
+                "_nanoseconds": 581000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765791991,
+                    "_nanoseconds": 581000000
+                  },
+                  "amount": "2 kg",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked"
+                }
+              ]
+            },
+            "Iu01OZ5UmAn3DIcAxaYZ": {
+              "articleId": "Iu01OZ5UmAn3DIcAxaYZ",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1751097522,
+                "_nanoseconds": 11000000
+              },
+              "history": []
+            },
+            "8TpGAEASvjQfrmB01efd": {
+              "articleId": "8TpGAEASvjQfrmB01efd",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1757497842,
+                "_nanoseconds": 270000000
+              },
+              "history": []
+            },
+            "lsKdq63pFLXjij50tb6k": {
+              "articleId": "lsKdq63pFLXjij50tb6k",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750671738,
+                "_nanoseconds": 993000000
+              },
+              "history": []
+            },
+            "qvWWKUHz7WRfxtwUPvIA": {
+              "articleId": "qvWWKUHz7WRfxtwUPvIA",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1757411462,
+                "_nanoseconds": 125000000
+              },
+              "history": []
+            },
+            "Vx7D9sfH5trj23cAFd7d": {
+              "articleId": "Vx7D9sfH5trj23cAFd7d",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1752312960,
+                "_nanoseconds": 553000000
+              },
+              "history": []
+            },
+            "BdHQRb8mEcVvOGCXsFfI": {
+              "articleId": "BdHQRb8mEcVvOGCXsFfI",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755673660,
+                "_nanoseconds": 526000000
+              },
+              "history": []
+            },
+            "TamC6dhmoET40NqZ8CvA": {
+              "articleId": "TamC6dhmoET40NqZ8CvA",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755673652,
+                "_nanoseconds": 540000000
+              },
+              "history": []
+            },
+            "h6KMjlYR0UFyeqil9sRy": {
+              "articleId": "h6KMjlYR0UFyeqil9sRy",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765557909,
+                "_nanoseconds": 56000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "action": "checked",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765557909,
+                    "_nanoseconds": 56000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "2XXRfyzX2cdajZyLXyYV": {
+              "articleId": "2XXRfyzX2cdajZyLXyYV",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1758092301,
+                "_nanoseconds": 283000000
+              },
+              "history": []
+            },
+            "i1lL3F0vZTL4FfaQ4ZRg": {
+              "articleId": "i1lL3F0vZTL4FfaQ4ZRg",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759138207,
+                "_nanoseconds": 645000000
+              },
+              "history": []
+            },
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750671639,
+                "_nanoseconds": 803000000
+              },
+              "history": []
+            },
+            "Qu3EBlw1EfdGbwyqi8DK": {
+              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
+              "isChecked": true,
+              "amount": "3 Stück",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765791981,
+                "_nanoseconds": 324000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "userName": "Du",
+                  "amount": "3 Stück",
+                  "timestamp": {
+                    "_seconds": 1765791981,
+                    "_nanoseconds": 324000000
+                  }
+                }
+              ]
+            },
+            "j45z5oaKFq6s1mYSxAMB": {
+              "articleId": "j45z5oaKFq6s1mYSxAMB",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762944351,
+                "_nanoseconds": 391000000
+              },
+              "history": []
+            },
+            "6LvHzJa6SBPdHaBSn1a9": {
+              "articleId": "6LvHzJa6SBPdHaBSn1a9",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968450,
+                "_nanoseconds": 481000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Du",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765968450,
+                    "_nanoseconds": 480000000
+                  }
+                }
+              ]
+            },
+            "cTQGlGqtGX8kdOQxOEEL": {
+              "articleId": "cTQGlGqtGX8kdOQxOEEL",
+              "isChecked": true,
+              "amount": "2",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765363574,
+                "_nanoseconds": 353000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765363574,
+                    "_nanoseconds": 353000000
+                  },
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "amount": "2",
+                  "action": "checked"
+                },
+                {
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1765286266,
+                    "_nanoseconds": 347000000
+                  }
+                }
+              ]
+            },
+            "x5cD2G5fqSwkbMQ3QN5u": {
+              "articleId": "x5cD2G5fqSwkbMQ3QN5u",
+              "articleName": "Mozzarella gerieben",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1766222232,
+                "_nanoseconds": 466000000
+              },
+              "checkedAt": {
+                "_seconds": 1766222454,
+                "_nanoseconds": 296000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1766222454,
+                    "_nanoseconds": 296000000
+                  },
+                  "amount": "",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked"
+                }
+              ]
+            },
+            "vGfeoATlZdgY1Tuu3zFu": {
+              "articleId": "vGfeoATlZdgY1Tuu3zFu",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1756113339,
+                "_nanoseconds": 241000000
+              },
+              "history": []
+            },
+            "kV3N12sfZrIeUvuqKYKe": {
+              "articleId": "kV3N12sfZrIeUvuqKYKe",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762161610,
+                "_nanoseconds": 748000000
+              },
+              "history": []
+            },
+            "Ue4tu1SrF1vhhXGzOAbn": {
+              "articleId": "Ue4tu1SrF1vhhXGzOAbn",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765363608,
+                "_nanoseconds": 317000000
+              },
+              "history": [
+                {
+                  "amount": "1 Pack",
+                  "timestamp": {
+                    "_seconds": 1765363608,
+                    "_nanoseconds": 316000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "action": "checked"
+                },
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765286295,
+                    "_nanoseconds": 864000000
+                  },
+                  "amount": "1 Pack"
+                }
+              ]
+            },
+            "KBTelEijI4eIht9zxEL0": {
+              "articleId": "KBTelEijI4eIht9zxEL0",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755673675,
+                "_nanoseconds": 140000000
+              },
+              "history": []
+            },
+            "G9KrTXJcSqLjOr2foGgy": {
+              "articleId": "G9KrTXJcSqLjOr2foGgy",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762161633,
+                "_nanoseconds": 568000000
+              },
+              "history": []
+            },
+            "NGEfd68pDBTqhKpvDg3r": {
+              "articleId": "NGEfd68pDBTqhKpvDg3r",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1756218792,
+                "_nanoseconds": 488000000
+              },
+              "history": []
+            },
+            "g9OykTEQ5ODQDAZQHOec": {
+              "articleId": "g9OykTEQ5ODQDAZQHOec",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1751642810,
+                "_nanoseconds": 739000000
+              },
+              "history": []
+            },
+            "awIlxJL7UsnxJ2D2z9kC": {
+              "articleId": "awIlxJL7UsnxJ2D2z9kC",
+              "isChecked": true,
+              "amount": "1 Dose",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765557899,
+                "_nanoseconds": 488000000
+              },
+              "history": [
+                {
+                  "amount": "1 Dose",
+                  "action": "checked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765557899,
+                    "_nanoseconds": 487000000
+                  }
+                }
+              ]
+            },
+            "oO5jfyaj7MIJ8GMoe3G7": {
+              "articleId": "oO5jfyaj7MIJ8GMoe3G7",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765557947,
+                "_nanoseconds": 570000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "action": "checked",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765557947,
+                    "_nanoseconds": 570000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "QWaEklcDyRdP6gg1CkyN": {
+              "articleId": "QWaEklcDyRdP6gg1CkyN",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750671628,
+                "_nanoseconds": 914000000
+              },
+              "history": []
+            },
+            "ukqoLqpHu4MhRCGsTVoH": {
+              "articleId": "ukqoLqpHu4MhRCGsTVoH",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedAt": {
+                "_seconds": 1750845197,
+                "_nanoseconds": 359000000
+              },
+              "history": []
+            },
+            "affSyQhnuJZQB9pJGMLV": {
+              "articleId": "affSyQhnuJZQB9pJGMLV",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750844861,
+                "_nanoseconds": 358000000
+              },
+              "history": []
+            },
+            "3u55MDCwcnw1boXbEqqY": {
+              "articleId": "3u55MDCwcnw1boXbEqqY",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762348484,
+                "_nanoseconds": 75000000
+              },
+              "history": []
+            },
+            "Qv74gTO8acX8NncqWLjP": {
+              "articleId": "Qv74gTO8acX8NncqWLjP",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1756274188,
+                "_nanoseconds": 947000000
+              },
+              "history": []
+            },
+            "ImPPzMDH1cEwTwqXqu9s": {
+              "articleId": "ImPPzMDH1cEwTwqXqu9s",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763976708,
+                "_nanoseconds": 30000000
+              },
+              "history": []
+            },
+            "NUVs59MbzHym1cz0P4Ds": {
+              "articleId": "NUVs59MbzHym1cz0P4Ds",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765557948,
+                "_nanoseconds": 615000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765557948,
+                    "_nanoseconds": 615000000
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "SlphgS7ITXDflzU7j6Qv": {
+              "articleId": "SlphgS7ITXDflzU7j6Qv",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1757929226,
+                "_nanoseconds": 559000000
+              },
+              "history": []
+            },
+            "edm8sdvTmem59nZhdq6z": {
+              "articleId": "edm8sdvTmem59nZhdq6z",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759917546,
+                "_nanoseconds": 98000000
+              },
+              "history": []
+            },
+            "hR5MIhwbANZfIsrlffSk": {
+              "articleId": "hR5MIhwbANZfIsrlffSk",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1752682244,
+                "_nanoseconds": 980000000
+              },
+              "history": []
+            },
+            "4oPqIqXVvgz7ncVcJuKU": {
+              "articleId": "4oPqIqXVvgz7ncVcJuKU",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1756889116,
+                "_nanoseconds": 102000000
+              },
+              "history": []
+            },
+            "Q8goM1Tocj9BJVYoIGNV": {
+              "articleId": "Q8goM1Tocj9BJVYoIGNV",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759138235,
+                "_nanoseconds": 266000000
+              },
+              "history": []
+            },
+            "PWlpRrK2kc8fTLPXTHTm": {
+              "articleId": "PWlpRrK2kc8fTLPXTHTm",
+              "isChecked": true,
+              "amount": "3er",
+              "checkedAt": {
+                "_seconds": 1753344147,
+                "_nanoseconds": 460000000
+              },
+              "history": []
+            },
+            "Cbxl5msAbvwgp13NClfs": {
+              "articleId": "Cbxl5msAbvwgp13NClfs",
+              "articleName": "Parmesan",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1766222230,
+                "_nanoseconds": 725000000
+              },
+              "checkedAt": {
+                "_seconds": 1766222472,
+                "_nanoseconds": 891000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1766222472,
+                    "_nanoseconds": 891000000
+                  },
+                  "amount": ""
+                }
+              ]
+            },
+            "JwbimqCbsJR0TOclStyS": {
+              "articleId": "JwbimqCbsJR0TOclStyS",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1751888616,
+                "_nanoseconds": 868000000
+              },
+              "history": []
+            },
+            "nwMTg2k3Zt6hHYnctu1R": {
+              "articleId": "nwMTg2k3Zt6hHYnctu1R",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1751099286,
+                "_nanoseconds": 959000000
+              },
+              "history": []
+            },
+            "8kL6xBKNOev7IQXEpMhe": {
+              "articleId": "8kL6xBKNOev7IQXEpMhe",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1757411442,
+                "_nanoseconds": 275000000
+              },
+              "history": []
+            },
+            "kYwgkzv7uab8n3zX7OhE": {
+              "articleId": "kYwgkzv7uab8n3zX7OhE",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764743407,
+                "_nanoseconds": 628000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1764743407,
+                    "_nanoseconds": 627000000
+                  }
+                }
+              ]
+            },
+            "BWAIAgUJE6qyUhTc9B6s": {
+              "articleId": "BWAIAgUJE6qyUhTc9B6s",
+              "isChecked": true,
+              "amount": "Sonst normal",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968502,
+                "_nanoseconds": 660000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765968502,
+                    "_nanoseconds": 660000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": "Sonst normal",
+                  "action": "checked",
+                  "userName": "Du"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765962908,
+                    "_nanoseconds": 894000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "amount": "Sonst normal"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765778537,
+                    "_nanoseconds": 312000000
+                  },
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "amount": "Sonst normal",
+                  "userName": "Du"
+                },
+                {
+                  "action": "unchecked",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "amount": "Sonst normal",
+                  "timestamp": {
+                    "_seconds": 1765548116,
+                    "_nanoseconds": 307000000
+                  }
+                }
+              ]
+            },
+            "yoZMhoH5iqN9VtC51dbY": {
+              "articleId": "yoZMhoH5iqN9VtC51dbY",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759743508,
+                "_nanoseconds": 119000000
+              },
+              "history": []
+            },
+            "VJO8nMFWOP0FzIT0G8hT": {
+              "articleId": "VJO8nMFWOP0FzIT0G8hT",
+              "isChecked": true,
+              "amount": "200 g",
+              "checkedAt": {
+                "_seconds": 1761384866,
+                "_nanoseconds": 867000000
+              },
+              "history": []
+            },
+            "UOVEJWAKtW1pg9LvG8Cm": {
+              "articleId": "UOVEJWAKtW1pg9LvG8Cm",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762161469,
+                "_nanoseconds": 343000000
+              },
+              "history": []
+            },
+            "TciscLP4DfkOZZc9Nyma": {
+              "articleId": "TciscLP4DfkOZZc9Nyma",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1760346464,
+                "_nanoseconds": 127000000
+              },
+              "history": []
+            },
+            "vLOQ5iBg4nQJNSAft1wW": {
+              "articleId": "vLOQ5iBg4nQJNSAft1wW",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1753863448,
+                "_nanoseconds": 308000000
+              },
+              "history": []
+            },
+            "DJPW8fPkkPZgz2u36r8l": {
+              "articleId": "DJPW8fPkkPZgz2u36r8l",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763202832,
+                "_nanoseconds": 786000000
+              },
+              "history": []
+            },
+            "2tXzxdNb5dIf4qBNrtNw": {
+              "articleId": "2tXzxdNb5dIf4qBNrtNw",
+              "articleName": "Salz",
+              "isChecked": true,
+              "amount": "1",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1765733302,
+                "_nanoseconds": 266000000
+              },
+              "checkedAt": {
+                "_seconds": 1765792015,
+                "_nanoseconds": 240000000
+              },
+              "history": [
+                {
+                  "amount": "1",
+                  "timestamp": {
+                    "_seconds": 1765792015,
+                    "_nanoseconds": 240000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "qJqL8Gflso4oIlsxwbV1": {
+              "articleId": "qJqL8Gflso4oIlsxwbV1",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765363511,
+                "_nanoseconds": 827000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765363511,
+                    "_nanoseconds": 827000000
+                  },
+                  "userName": "Du",
+                  "amount": "",
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "userName": "Du",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765286287,
+                    "_nanoseconds": 314000000
+                  },
+                  "action": "unchecked",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "9bbCdKaRwGkim2KffPW8": {
+              "articleId": "9bbCdKaRwGkim2KffPW8",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764946449,
+                "_nanoseconds": 844000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1764946449,
+                    "_nanoseconds": 838000000
+                  },
+                  "amount": "",
+                  "action": "checked"
+                }
+              ]
+            },
+            "NotDMNmuHlhB1WdxD6Ri": {
+              "articleId": "NotDMNmuHlhB1WdxD6Ri",
+              "isChecked": true,
+              "amount": "2 Stück",
+              "checkedAt": {
+                "_seconds": 1755509896,
+                "_nanoseconds": 549000000
+              },
+              "history": []
+            },
+            "XY1UzqbfbGPXPXdrOH7U": {
+              "articleId": "XY1UzqbfbGPXPXdrOH7U",
+              "articleName": "Butter",
+              "isChecked": true,
+              "amount": "2x 250 g",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1766222228,
+                "_nanoseconds": 749000000
+              },
+              "checkedAt": {
+                "_seconds": 1766222443,
+                "_nanoseconds": 170000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "amount": "2x 250 g",
+                  "timestamp": {
+                    "_seconds": 1766222443,
+                    "_nanoseconds": 168000000
+                  },
+                  "action": "checked"
+                }
+              ]
+            },
+            "MBRIr6gG3BtKLY9Mk2Sy": {
+              "articleId": "MBRIr6gG3BtKLY9Mk2Sy",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1751642846,
+                "_nanoseconds": 295000000
+              },
+              "history": []
+            },
+            "qSb0ZK7FD8MnYYeGMnfJ": {
+              "articleId": "qSb0ZK7FD8MnYYeGMnfJ",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968730,
+                "_nanoseconds": 312000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "userName": "Du",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765968730,
+                    "_nanoseconds": 312000000
+                  }
+                }
+              ]
+            },
+            "2hpqvzf1oEkSTzi1bx92": {
+              "articleId": "2hpqvzf1oEkSTzi1bx92",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968395,
+                "_nanoseconds": 512000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765968395,
+                    "_nanoseconds": 512000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": "1 Pack",
+                  "action": "checked"
+                }
+              ]
+            },
+            "PNTijOZ5TXWuTcxq01HN": {
+              "articleId": "PNTijOZ5TXWuTcxq01HN",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761845414,
+                "_nanoseconds": 49000000
+              },
+              "history": []
+            },
+            "sqXwBZwSp3GGbgZAgLRZ": {
+              "articleId": "sqXwBZwSp3GGbgZAgLRZ",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762772120,
+                "_nanoseconds": 751000000
+              },
+              "history": []
+            },
+            "O5UoZheZPmEU5x59vqAp": {
+              "articleId": "O5UoZheZPmEU5x59vqAp",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762772179,
+                "_nanoseconds": 688000000
+              },
+              "history": []
+            },
+            "LZLxpitPwvvh68yKD0Rm": {
+              "articleId": "LZLxpitPwvvh68yKD0Rm",
+              "isChecked": true,
+              "amount": "1",
+              "checkedAt": {
+                "_seconds": 1752682142,
+                "_nanoseconds": 590000000
+              },
+              "history": []
+            },
+            "kqnekYdiII55WmmzUi5Y": {
+              "articleId": "kqnekYdiII55WmmzUi5Y",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1756055480,
+                "_nanoseconds": 82000000
+              },
+              "history": []
+            },
+            "6LTUePVLhjyxkjmvZdK0": {
+              "articleId": "6LTUePVLhjyxkjmvZdK0",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750845196,
+                "_nanoseconds": 329000000
+              },
+              "history": []
+            },
+            "3Aqc964XVD3avcmAFOsC": {
+              "articleId": "3Aqc964XVD3avcmAFOsC",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763807271,
+                "_nanoseconds": 543000000
+              },
+              "history": []
+            },
+            "gXt48vMZFgxBU4Yo6U4m": {
+              "articleId": "gXt48vMZFgxBU4Yo6U4m",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764955073,
+                "_nanoseconds": 957000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1764955073,
+                    "_nanoseconds": 955000000
+                  },
+                  "action": "checked"
+                }
+              ]
+            },
+            "92xtuWXpwHkzMSW7xo7l": {
+              "articleId": "92xtuWXpwHkzMSW7xo7l",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1761384811,
+                "_nanoseconds": 707000000
+              },
+              "history": []
+            },
+            "ODRrQC4QSClQuFTyS73d": {
+              "articleId": "ODRrQC4QSClQuFTyS73d",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762161673,
+                "_nanoseconds": 384000000
+              },
+              "history": []
+            },
+            "z4Xqv5JfGDjpBUwwGFGa": {
+              "articleId": "z4Xqv5JfGDjpBUwwGFGa",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761384837,
+                "_nanoseconds": 668000000
+              },
+              "history": []
+            },
+            "D86COL4bziRQizVjdLD8": {
+              "articleId": "D86COL4bziRQizVjdLD8",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765968434,
+                "_nanoseconds": 694000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765968434,
+                    "_nanoseconds": 694000000
+                  },
+                  "action": "checked"
+                }
+              ]
+            },
+            "5ZL1J8LPi6rLRxdoLfRg": {
+              "articleId": "5ZL1J8LPi6rLRxdoLfRg",
+              "articleName": "Knoblauch",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1766222233,
+                "_nanoseconds": 617000000
+              },
+              "checkedAt": {
+                "_seconds": 1766222503,
+                "_nanoseconds": 815000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1766222503,
+                    "_nanoseconds": 815000000
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "Bhyx9uV9Ct4k5v3F4HlT": {
+              "articleId": "Bhyx9uV9Ct4k5v3F4HlT",
+              "articleName": "Wirsing",
+              "isChecked": false,
+              "amount": "",
+              "addedAt": {
+                "_seconds": 1766222229,
+                "_nanoseconds": 898000000
+              },
+              "history": []
+            },
+            "d5gKXrkMs4ZB23xLdxSG": {
+              "articleId": "d5gKXrkMs4ZB23xLdxSG",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763967135,
+                "_nanoseconds": 473000000
+              },
+              "history": []
+            },
+            "RkwTsXfHXoJu28VhUgxJ": {
+              "articleId": "RkwTsXfHXoJu28VhUgxJ",
+              "isChecked": true,
+              "amount": "1/2",
+              "checkedAt": {
+                "_seconds": 1757753075,
+                "_nanoseconds": 744000000
+              },
+              "history": []
+            },
+            "2OINHSD0rXjKlS2CgC6N": {
+              "articleId": "2OINHSD0rXjKlS2CgC6N",
+              "isChecked": true,
+              "amount": "1 Stk.",
+              "checkedAt": {
+                "_seconds": 1750845195,
+                "_nanoseconds": 647000000
+              },
+              "history": []
+            },
+            "h12lIpDzsUI1BrUVsOVg": {
+              "articleId": "h12lIpDzsUI1BrUVsOVg",
+              "isChecked": true,
+              "amount": "1",
+              "checkedAt": {
+                "_seconds": 1758972986,
+                "_nanoseconds": 659000000
+              },
+              "history": []
+            },
+            "bhZbHRn0SU6KOsZ166YW": {
+              "articleId": "bhZbHRn0SU6KOsZ166YW",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762944403,
+                "_nanoseconds": 735000000
+              },
+              "history": []
+            },
+            "MJWQ1cOMGZEyY7Uf8KCx": {
+              "articleId": "MJWQ1cOMGZEyY7Uf8KCx",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedAt": {
+                "_seconds": 1763739166,
+                "_nanoseconds": 524000000
+              },
+              "history": []
+            },
+            "pgmKv0It5CICHRJlWRpS": {
+              "articleId": "pgmKv0It5CICHRJlWRpS",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765363510,
+                "_nanoseconds": 425000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765363510,
+                    "_nanoseconds": 423000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765286281,
+                    "_nanoseconds": 793000000
+                  },
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "4wOKbxOaL1OBIuJU1f0x": {
+              "articleId": "4wOKbxOaL1OBIuJU1f0x",
+              "isChecked": true,
+              "amount": "2 Stück",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765792738,
+                "_nanoseconds": 453000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765792738,
+                    "_nanoseconds": 452000000
+                  },
+                  "amount": "2 Stück",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "zmqvjTVIyHArgPSjANXZ": {
+              "articleId": "zmqvjTVIyHArgPSjANXZ",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765363523,
+                "_nanoseconds": 711000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765363523,
+                    "_nanoseconds": 711000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du"
+                },
+                {
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765362074,
+                    "_nanoseconds": 224000000
+                  },
+                  "action": "unchecked",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "ekbG5da4fmgQy8k6lV14": {
+              "articleId": "ekbG5da4fmgQy8k6lV14",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1762772128,
+                "_nanoseconds": 217000000
+              },
+              "history": []
+            },
+            "CoDc0dJmk2sy07JEdq8I": {
+              "articleId": "CoDc0dJmk2sy07JEdq8I",
+              "articleName": "Salami",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "addedAt": {
+                "_seconds": 1765361869,
+                "_nanoseconds": 752000000
+              },
+              "checkedAt": {
+                "_seconds": 1765361944,
+                "_nanoseconds": 326000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765361944,
+                    "_nanoseconds": 326000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": ""
+                }
+              ]
+            },
+            "TGJyDQiiaC8EeAD4ZOqG": {
+              "articleId": "TGJyDQiiaC8EeAD4ZOqG",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1756055479,
+                "_nanoseconds": 436000000
+              },
+              "history": []
+            },
+            "bGCe5sTnTDsS8AWb1LLL": {
+              "articleId": "bGCe5sTnTDsS8AWb1LLL",
+              "isChecked": true,
+              "amount": "1 Becher",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765557954,
+                "_nanoseconds": 533000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "userName": "Du",
+                  "amount": "1 Becher",
+                  "timestamp": {
+                    "_seconds": 1765557954,
+                    "_nanoseconds": 533000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
             }
           },
-          "recoveredAt": {
-            "_nanoseconds": 514000000,
-            "_seconds": 1767940072
-          },
-          "updatedAt": "2026-01-21T20:05:59.937Z"
+          "updatedAt": "2026-01-22T08:27:07.497Z"
         },
         {
           "id": "8BzY3ShahwhhphO79p7Q",
@@ -1837,6 +2538,10 @@
           ],
           "recoveredFrom": "users/shared-shoplisl-user/lists/CemqHIYJ868O89362x9V",
           "recoveredCount": 186,
+          "recoveredAt": {
+            "_nanoseconds": 497000000,
+            "_seconds": 1767940073
+          },
           "articleIds": [
             "UWx3yFI6kp6dJIwcK4w7",
             "QwVLMyfzUKZg2lVKYPmo",
@@ -1855,6 +2560,8 @@
             "NGEfd68pDBTqhKpvDg3r",
             "qvWWKUHz7WRfxtwUPvIA",
             "XY1UzqbfbGPXPXdrOH7U",
+            "XY1UzqbfbGPXPXdrOH7U",
+            "XY1UzqbfbGPXPXdrOH7U",
             "tT4XOTMq2d2RRc9i52jg",
             "vBXtsVB9e2DldzVe0x2q",
             "h6sXYh8hfnRPcoGyeOPS",
@@ -1864,33 +2571,45 @@
             "3Aqc964XVD3avcmAFOsC",
             "L6SH8Qk4xTwG3QnupQ7T",
             "gpEl40ERYgLWmGFOGbjx",
+            "gpEl40ERYgLWmGFOGbjx",
+            "XY1UzqbfbGPXPXdrOH7U",
             "kYwgkzv7uab8n3zX7OhE",
             "sqXwBZwSp3GGbgZAgLRZ",
             "LQ4XrG6R3QlYVaABEoNi",
             "xkOzes2gRqRnwqrkBAel",
             "Y1FizMg76FXPzksgGeXV",
+            "QwVLMyfzUKZg2lVKYPmo",
+            "TO6OofK4fiOPKuR7iU2d",
             "TO6OofK4fiOPKuR7iU2d",
             "UJGg8RKOXtZ2EkOUsMFh",
+            "Qu3EBlw1EfdGbwyqi8DK",
             "Qu3EBlw1EfdGbwyqi8DK",
             "YxaYK3XTNzhCk5sOTmeS",
             "UD8qMJwlrFIAE0EBiYJS",
             "GDaMhPxhJBmiT2gMI3f3",
+            "hbq8BvhhWPwwRyqERB0i",
             "S8RAAVsjHb4mxg5D99d5",
             "yg6iOdFbQ2KNp1JkOBUu",
             "vf4xrL59Wab9fUgrBrEn",
             "KmnJDrQt0tB8jc3msrBB",
             "3u55MDCwcnw1boXbEqqY",
             "u9bwGFtoEJsC2KSzA3gb",
+            "u9bwGFtoEJsC2KSzA3gb",
+            "aHnyTp7J7BubtBnneXIH",
             "5HpTiZYp4h6m2bqcKUgY",
+            "TO6OofK4fiOPKuR7iU2d",
             "lyauW40NEf6iBhI9tYGe",
             "2XXRfyzX2cdajZyLXyYV",
             "4tupQTd0xkFQDYFuk3vo",
             "NSnKONT0lVoFv3ewL5oM",
             "ExxiM6Lyqluoy2zGgdFD",
+            "awIlxJL7UsnxJ2D2z9kC",
+            "awIlxJL7UsnxJ2D2z9kC",
             "ImPPzMDH1cEwTwqXqu9s",
             "GqZQ97fG3LO2ELUz2GGs",
             "hR5MIhwbANZfIsrlffSk",
             "MTSlfxQNtf5UvTnApTiQ",
+            "RLCTPcA2fxU7o8vyBd8d",
             "RLCTPcA2fxU7o8vyBd8d",
             "YmY2O7WAAiHUOA7vTZc1",
             "2im66wjALXMcXMWseMf6",
@@ -1900,12 +2619,14 @@
             "RYiMNfs6YEoaP95eRiMI",
             "95SMaRpQ4MVez180w9Gh",
             "72CR7dKRyEM3I1bAzW2e",
+            "72CR7dKRyEM3I1bAzW2e",
             "fkQzSYkJVphwWIuXKIFo",
             "TciscLP4DfkOZZc9Nyma",
             "2SVzzCNEfa3auNA0Wnt1",
             "OyUmfHK2TN3UrIHJdIma",
             "Cbxl5msAbvwgp13NClfs",
             "2a0s262kUsoUBgJOJycj",
+            "hbq8BvhhWPwwRyqERB0i",
             "r7dYm8wxUyoIVIL7APaF",
             "qSb0ZK7FD8MnYYeGMnfJ",
             "EPc78SN1YCFDOgXkNXhn",
@@ -1915,23 +2636,32 @@
             "oO5jfyaj7MIJ8GMoe3G7",
             "g9OykTEQ5ODQDAZQHOec",
             "pXqWYYPwIM23sbK3NVbW",
+            "2im66wjALXMcXMWseMf6",
             "2OINHSD0rXjKlS2CgC6N",
             "UBG2GiZSbXYtvKGVTltj",
             "gRsbwlD9ATmqTsOn2g3H",
+            "2im66wjALXMcXMWseMf6",
             "tnjWsu3wBR4PGEITTHGg",
             "CoDc0dJmk2sy07JEdq8I",
             "rMqKgQwTlEJItuLp2gK2",
             "ChNIDTz4SuSEyMtIcQDS",
+            "2OINHSD0rXjKlS2CgC6N",
+            "2OINHSD0rXjKlS2CgC6N",
             "m6M9Fxn4PHOL2L9kT99X",
+            "m6M9Fxn4PHOL2L9kT99X",
+            "8x1AwscPIqiNSHsHwFum",
             "8x1AwscPIqiNSHsHwFum",
             "RAiS1zMteopRlT8xgvkV",
             "pJqWeoJ5v10J954Yt6Rl",
             "MJWQ1cOMGZEyY7Uf8KCx",
             "mmOjfwJOaeywRccCUM5k",
+            "7FzGanvfAT7UCbpXNIkp",
             "QGd7n5ijDOj33eaboJkv",
             "4tvHVq9nSg39pqku5gvA",
             "djsl53riE6emSHvDtuQm",
+            "hbq8BvhhWPwwRyqERB0i",
             "hhGOInicyhPVYD9Gr3kD",
+            "1LRp0ISkF5qr9SeJDy1V",
             "wKWyMgPshG2xDvKUIYm1",
             "3R2a6rzFqEwET6SnBjtQ",
             "SCp02EPqGov40pYr4m4g",
@@ -1996,1305 +2726,1923 @@
             "ZJ2WOCcbaobgmoiyImSQ",
             "G0S0xJTl0DlhDPdfsCuL",
             "9bbCdKaRwGkim2KffPW8",
-            "rZWLL49fsFqYeqs5Zjfr",
-            "XS2e5eyiGig4FES9SMfH",
-            "4AaSN7ovu0zTJjuLjgVv"
+            "rZWLL49fsFqYeqs5Zjfr"
           ],
           "itemStates": {
-            "4AaSN7ovu0zTJjuLjgVv": {
-              "checkedAt": {
-                "_nanoseconds": 234000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4AaSN7ovu0zTJjuLjgVv",
-              "isChecked": true
-            },
-            "YmY2O7WAAiHUOA7vTZc1": {
-              "checkedAt": {
-                "_nanoseconds": 217000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "YmY2O7WAAiHUOA7vTZc1",
-              "isChecked": true
-            },
-            "RYiMNfs6YEoaP95eRiMI": {
-              "checkedAt": {
-                "_nanoseconds": 218000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "RYiMNfs6YEoaP95eRiMI",
-              "isChecked": true
-            },
-            "ekbG5da4fmgQy8k6lV14": {
-              "checkedAt": {
-                "_nanoseconds": 218000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ekbG5da4fmgQy8k6lV14",
-              "isChecked": true
-            },
-            "O5UoZheZPmEU5x59vqAp": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "O5UoZheZPmEU5x59vqAp",
-              "isChecked": true
-            },
-            "E3fZw5MjCDvL0k1K5c7A": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "E3fZw5MjCDvL0k1K5c7A",
-              "isChecked": true
-            },
-            "NotDMNmuHlhB1WdxD6Ri": {
-              "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NotDMNmuHlhB1WdxD6Ri",
-              "isChecked": true
-            },
-            "TciscLP4DfkOZZc9Nyma": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TciscLP4DfkOZZc9Nyma",
-              "isChecked": true
-            },
-            "XCbrQDjo1JekzeJtPt9Q": {
-              "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "XCbrQDjo1JekzeJtPt9Q",
-              "isChecked": true
-            },
-            "G0S0xJTl0DlhDPdfsCuL": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "G0S0xJTl0DlhDPdfsCuL",
-              "isChecked": true
-            },
-            "60Tkcx9OjTcyRlh25zx5": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "60Tkcx9OjTcyRlh25zx5",
-              "isChecked": true
-            },
-            "9uCjSYeHA9BVwxJw4PON": {
-              "checkedAt": {
-                "_nanoseconds": 208000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "9uCjSYeHA9BVwxJw4PON",
-              "isChecked": true
-            },
-            "vBXtsVB9e2DldzVe0x2q": {
-              "checkedAt": {
-                "_nanoseconds": 208000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "vBXtsVB9e2DldzVe0x2q",
-              "isChecked": true
-            },
-            "dlcpg3Uxxfc77mnZRA6R": {
-              "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "dlcpg3Uxxfc77mnZRA6R",
-              "isChecked": true
-            },
-            "g9OykTEQ5ODQDAZQHOec": {
-              "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "g9OykTEQ5ODQDAZQHOec",
-              "isChecked": true
-            },
-            "Psy6zDpsx4eZSVAd04Tl": {
-              "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Psy6zDpsx4eZSVAd04Tl",
-              "isChecked": true
-            },
-            "gXt48vMZFgxBU4Yo6U4m": {
-              "checkedAt": {
-                "_nanoseconds": 224000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "gXt48vMZFgxBU4Yo6U4m",
-              "isChecked": true
-            },
-            "JJFhjMTWqiSO4Cvc4jKr": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "JJFhjMTWqiSO4Cvc4jKr",
-              "isChecked": true
-            },
-            "QwVLMyfzUKZg2lVKYPmo": {
-              "checkedAt": {
-                "_nanoseconds": 211000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "QwVLMyfzUKZg2lVKYPmo",
-              "isChecked": true
-            },
-            "8x1AwscPIqiNSHsHwFum": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "8x1AwscPIqiNSHsHwFum",
-              "isChecked": true
-            },
-            "TO6OofK4fiOPKuR7iU2d": {
-              "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TO6OofK4fiOPKuR7iU2d",
-              "isChecked": true
-            },
-            "3Aqc964XVD3avcmAFOsC": {
-              "checkedAt": {
-                "_nanoseconds": 209000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "3Aqc964XVD3avcmAFOsC",
-              "isChecked": true
-            },
-            "h29BZcmgpePY0kJoLzHI": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "h29BZcmgpePY0kJoLzHI",
-              "isChecked": true
-            },
-            "rMqKgQwTlEJItuLp2gK2": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "rMqKgQwTlEJItuLp2gK2",
-              "isChecked": true
-            },
-            "hR5MIhwbANZfIsrlffSk": {
-              "checkedAt": {
-                "_nanoseconds": 216000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "hR5MIhwbANZfIsrlffSk",
-              "isChecked": true
-            },
-            "lsKdq63pFLXjij50tb6k": {
-              "checkedAt": {
-                "_nanoseconds": 205000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "lsKdq63pFLXjij50tb6k",
-              "isChecked": true
-            },
-            "NSnKONT0lVoFv3ewL5oM": {
-              "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NSnKONT0lVoFv3ewL5oM",
-              "isChecked": true
-            },
-            "SkwCKfOYVBtUudsZ6vSZ": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "SkwCKfOYVBtUudsZ6vSZ",
-              "isChecked": true
-            },
-            "UBG2GiZSbXYtvKGVTltj": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UBG2GiZSbXYtvKGVTltj",
-              "isChecked": true
-            },
-            "N1JdWRDo5cAihC2Ahy16": {
-              "checkedAt": {
-                "_nanoseconds": 204000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "N1JdWRDo5cAihC2Ahy16",
-              "isChecked": true
-            },
-            "qJqL8Gflso4oIlsxwbV1": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qJqL8Gflso4oIlsxwbV1",
-              "isChecked": true
-            },
-            "hhGOInicyhPVYD9Gr3kD": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "hhGOInicyhPVYD9Gr3kD",
-              "isChecked": true
-            },
-            "wlN9SxkmbOosTJOQuPAx": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "wlN9SxkmbOosTJOQuPAx",
-              "isChecked": true
-            },
-            "95SMaRpQ4MVez180w9Gh": {
-              "checkedAt": {
-                "_nanoseconds": 219000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "95SMaRpQ4MVez180w9Gh",
-              "isChecked": true
-            },
-            "pXqWYYPwIM23sbK3NVbW": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "pXqWYYPwIM23sbK3NVbW",
-              "isChecked": true
-            },
-            "XS2e5eyiGig4FES9SMfH": {
-              "checkedAt": {
-                "_nanoseconds": 234000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "XS2e5eyiGig4FES9SMfH",
-              "isChecked": true
-            },
-            "OyUmfHK2TN3UrIHJdIma": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "OyUmfHK2TN3UrIHJdIma",
-              "isChecked": true
-            },
-            "WZIBFG1VSGbaJfzhrtxR": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "WZIBFG1VSGbaJfzhrtxR",
-              "isChecked": true
-            },
-            "GDaMhPxhJBmiT2gMI3f3": {
-              "checkedAt": {
-                "_nanoseconds": 213000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "GDaMhPxhJBmiT2gMI3f3",
-              "isChecked": true
-            },
-            "jaclIlzHXURt2M5Xglw1": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "jaclIlzHXURt2M5Xglw1",
-              "isChecked": true
-            },
-            "CoDc0dJmk2sy07JEdq8I": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "CoDc0dJmk2sy07JEdq8I",
-              "isChecked": true
-            },
-            "XNxDoOV86maFZRhJ53Go": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "XNxDoOV86maFZRhJ53Go",
-              "isChecked": true
-            },
-            "5HpTiZYp4h6m2bqcKUgY": {
-              "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "5HpTiZYp4h6m2bqcKUgY",
-              "isChecked": true
-            },
-            "bmXhr09vvgpTrVKoCCS8": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "bmXhr09vvgpTrVKoCCS8",
-              "isChecked": true
-            },
-            "9fVZqVIUtJsniUBjHfYV": {
-              "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "9fVZqVIUtJsniUBjHfYV",
-              "isChecked": true
-            },
-            "9bbCdKaRwGkim2KffPW8": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "9bbCdKaRwGkim2KffPW8",
-              "isChecked": true
-            },
-            "LZLxpitPwvvh68yKD0Rm": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "LZLxpitPwvvh68yKD0Rm",
-              "isChecked": true
-            },
-            "xkOzes2gRqRnwqrkBAel": {
-              "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "xkOzes2gRqRnwqrkBAel",
-              "isChecked": true
-            },
-            "4tvHVq9nSg39pqku5gvA": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4tvHVq9nSg39pqku5gvA",
-              "isChecked": true
-            },
-            "Xibx6lU2Wekoit9SPoSl": {
-              "checkedAt": {
-                "_nanoseconds": 205000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Xibx6lU2Wekoit9SPoSl",
-              "isChecked": true
-            },
-            "lyauW40NEf6iBhI9tYGe": {
-              "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "lyauW40NEf6iBhI9tYGe",
-              "isChecked": true
-            },
-            "yg6iOdFbQ2KNp1JkOBUu": {
-              "checkedAt": {
-                "_nanoseconds": 213000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "yg6iOdFbQ2KNp1JkOBUu",
-              "isChecked": true
-            },
-            "8cj5181VZ4tzTvwoMPa3": {
-              "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "8cj5181VZ4tzTvwoMPa3",
-              "isChecked": true
-            },
-            "Tvshm5in9rONcnWgseQ5": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Tvshm5in9rONcnWgseQ5",
-              "isChecked": true
-            },
-            "h6sXYh8hfnRPcoGyeOPS": {
-              "checkedAt": {
-                "_nanoseconds": 208000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "h6sXYh8hfnRPcoGyeOPS",
-              "isChecked": true
-            },
-            "ukqoLqpHu4MhRCGsTVoH": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ukqoLqpHu4MhRCGsTVoH",
-              "isChecked": true
-            },
             "RAiS1zMteopRlT8xgvkV": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
               "articleId": "RAiS1zMteopRlT8xgvkV",
-              "isChecked": true
-            },
-            "Me7RobGzWjJuCB4ZiPS5": {
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 206000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
               },
-              "articleId": "Me7RobGzWjJuCB4ZiPS5",
-              "isChecked": true
-            },
-            "rZWLL49fsFqYeqs5Zjfr": {
-              "checkedAt": {
-                "_nanoseconds": 234000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "rZWLL49fsFqYeqs5Zjfr",
-              "isChecked": true
-            },
-            "2im66wjALXMcXMWseMf6": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2im66wjALXMcXMWseMf6",
-              "isChecked": true
-            },
-            "oO5jfyaj7MIJ8GMoe3G7": {
-              "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "oO5jfyaj7MIJ8GMoe3G7",
-              "isChecked": true
-            },
-            "2hpqvzf1oEkSTzi1bx92": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2hpqvzf1oEkSTzi1bx92",
-              "isChecked": true
-            },
-            "1DR5wA4ijNq3vW6e9zu4": {
-              "checkedAt": {
-                "_nanoseconds": 204000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "1DR5wA4ijNq3vW6e9zu4",
-              "isChecked": true
-            },
-            "4tupQTd0xkFQDYFuk3vo": {
-              "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4tupQTd0xkFQDYFuk3vo",
-              "isChecked": true
-            },
-            "Emj1d4QpaTQtAYo5N2cA": {
-              "checkedAt": {
-                "_nanoseconds": 209000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Emj1d4QpaTQtAYo5N2cA",
-              "isChecked": true
-            },
-            "QGd7n5ijDOj33eaboJkv": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "QGd7n5ijDOj33eaboJkv",
-              "isChecked": true
-            },
-            "JtOLa69VbsRVXNIDbi8a": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "JtOLa69VbsRVXNIDbi8a",
-              "isChecked": true
-            },
-            "72CR7dKRyEM3I1bAzW2e": {
-              "checkedAt": {
-                "_nanoseconds": 219000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "72CR7dKRyEM3I1bAzW2e",
-              "isChecked": true
-            },
-            "djsl53riE6emSHvDtuQm": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "djsl53riE6emSHvDtuQm",
-              "isChecked": true
-            },
-            "uuka0uvLFZCHBgWiWpKf": {
-              "checkedAt": {
-                "_nanoseconds": 225000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "uuka0uvLFZCHBgWiWpKf",
-              "isChecked": true
-            },
-            "1LRp0ISkF5qr9SeJDy1V": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "1LRp0ISkF5qr9SeJDy1V",
-              "isChecked": true
-            },
-            "6BxQoZtn3xPQ5fbmho8A": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "6BxQoZtn3xPQ5fbmho8A",
-              "isChecked": true
-            },
-            "S8RAAVsjHb4mxg5D99d5": {
-              "checkedAt": {
-                "_nanoseconds": 213000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "S8RAAVsjHb4mxg5D99d5",
-              "isChecked": true
-            },
-            "d5gKXrkMs4ZB23xLdxSG": {
-              "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "d5gKXrkMs4ZB23xLdxSG",
-              "isChecked": true
-            },
-            "wvKmSAJa8CIYiXFISmTa": {
-              "checkedAt": {
-                "_nanoseconds": 206000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "wvKmSAJa8CIYiXFISmTa",
-              "isChecked": true
-            },
-            "LQ4XrG6R3QlYVaABEoNi": {
-              "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "LQ4XrG6R3QlYVaABEoNi",
-              "isChecked": true
-            },
-            "wks582xOPgfftBhKaCJj": {
-              "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "wks582xOPgfftBhKaCJj",
-              "isChecked": true
-            },
-            "Y4hrSl9vgbbnvD1lVjoj": {
-              "checkedAt": {
-                "_nanoseconds": 218000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Y4hrSl9vgbbnvD1lVjoj",
-              "isChecked": true
-            },
-            "406n8zSd3pOOKO84DAeW": {
-              "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "406n8zSd3pOOKO84DAeW",
-              "isChecked": true
-            },
-            "wKWyMgPshG2xDvKUIYm1": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "wKWyMgPshG2xDvKUIYm1",
-              "isChecked": true
-            },
-            "wfEoadyLfKSnWfc2tz0F": {
-              "checkedAt": {
-                "_nanoseconds": 225000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "wfEoadyLfKSnWfc2tz0F",
-              "isChecked": true
+              "history": []
             },
             "RLCTPcA2fxU7o8vyBd8d": {
-              "checkedAt": {
-                "_nanoseconds": 217000000,
-                "_seconds": 1768665205
-              },
               "articleId": "RLCTPcA2fxU7o8vyBd8d",
-              "isChecked": true
-            },
-            "XY1UzqbfbGPXPXdrOH7U": {
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
+                "_seconds": 1760531146,
+                "_nanoseconds": 713000000
               },
-              "articleId": "XY1UzqbfbGPXPXdrOH7U",
-              "isChecked": true
-            },
-            "L6SH8Qk4xTwG3QnupQ7T": {
-              "checkedAt": {
-                "_nanoseconds": 209000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "L6SH8Qk4xTwG3QnupQ7T",
-              "isChecked": true
-            },
-            "kwMq8ZOGXhinD8BnHxDV": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "kwMq8ZOGXhinD8BnHxDV",
-              "isChecked": true
-            },
-            "UWx3yFI6kp6dJIwcK4w7": {
-              "checkedAt": {
-                "_nanoseconds": 202000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UWx3yFI6kp6dJIwcK4w7",
-              "isChecked": true
-            },
-            "mmOjfwJOaeywRccCUM5k": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "mmOjfwJOaeywRccCUM5k",
-              "isChecked": true
-            },
-            "kYwgkzv7uab8n3zX7OhE": {
-              "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "kYwgkzv7uab8n3zX7OhE",
-              "isChecked": true
-            },
-            "aHnyTp7J7BubtBnneXIH": {
-              "checkedAt": {
-                "_nanoseconds": 214000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "aHnyTp7J7BubtBnneXIH",
-              "isChecked": true
-            },
-            "Qu3EBlw1EfdGbwyqi8DK": {
-              "checkedAt": {
-                "_nanoseconds": 212000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
-              "isChecked": true
-            },
-            "qvWWKUHz7WRfxtwUPvIA": {
-              "checkedAt": {
-                "_nanoseconds": 207000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qvWWKUHz7WRfxtwUPvIA",
-              "isChecked": true
-            },
-            "SCp02EPqGov40pYr4m4g": {
-              "checkedAt": {
-                "_nanoseconds": 224000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "SCp02EPqGov40pYr4m4g",
-              "isChecked": true
+              "history": []
             },
             "9hI3F69k3bFMGxun0oYe": {
-              "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
-              },
               "articleId": "9hI3F69k3bFMGxun0oYe",
-              "isChecked": true
-            },
-            "D86COL4bziRQizVjdLD8": {
+              "isChecked": true,
+              "amount": "",
               "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
+                "_seconds": 1761143462,
+                "_nanoseconds": 447000000
               },
-              "articleId": "D86COL4bziRQizVjdLD8",
-              "isChecked": true
+              "history": []
             },
-            "HTUjm3h19ezG29u6FGMb": {
+            "NotDMNmuHlhB1WdxD6Ri": {
+              "articleId": "NotDMNmuHlhB1WdxD6Ri",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
+                "_seconds": 1750853820,
+                "_nanoseconds": 265000000
               },
-              "articleId": "HTUjm3h19ezG29u6FGMb",
-              "isChecked": true
-            },
-            "pJqWeoJ5v10J954Yt6Rl": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "pJqWeoJ5v10J954Yt6Rl",
-              "isChecked": true
-            },
-            "gRsbwlD9ATmqTsOn2g3H": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "gRsbwlD9ATmqTsOn2g3H",
-              "isChecked": true
-            },
-            "7FzGanvfAT7UCbpXNIkp": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "7FzGanvfAT7UCbpXNIkp",
-              "isChecked": true
-            },
-            "MRvzquWqnj6igKyVU6lB": {
-              "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "MRvzquWqnj6igKyVU6lB",
-              "isChecked": true
-            },
-            "2SVzzCNEfa3auNA0Wnt1": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2SVzzCNEfa3auNA0Wnt1",
-              "isChecked": true
-            },
-            "UlFo13zUJhtgfOkDtHnI": {
-              "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UlFo13zUJhtgfOkDtHnI",
-              "isChecked": true
-            },
-            "dSY9AWSwzDwt5ufr5cC6": {
-              "checkedAt": {
-                "_nanoseconds": 225000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "dSY9AWSwzDwt5ufr5cC6",
-              "isChecked": true
-            },
-            "BCIJeD0NfDsqt3sF8SDG": {
-              "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "BCIJeD0NfDsqt3sF8SDG",
-              "isChecked": true
-            },
-            "ZJ2WOCcbaobgmoiyImSQ": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ZJ2WOCcbaobgmoiyImSQ",
-              "isChecked": true
-            },
-            "Cbxl5msAbvwgp13NClfs": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Cbxl5msAbvwgp13NClfs",
-              "isChecked": true
-            },
-            "UJGg8RKOXtZ2EkOUsMFh": {
-              "checkedAt": {
-                "_nanoseconds": 211000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UJGg8RKOXtZ2EkOUsMFh",
-              "isChecked": true
-            },
-            "cWVshN5SGVIagWuKHdM6": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "cWVshN5SGVIagWuKHdM6",
-              "isChecked": true
-            },
-            "ChNIDTz4SuSEyMtIcQDS": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ChNIDTz4SuSEyMtIcQDS",
-              "isChecked": true
-            },
-            "r63uHYjfOozr0IRkKFF5": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "r63uHYjfOozr0IRkKFF5",
-              "isChecked": true
-            },
-            "awIlxJL7UsnxJ2D2z9kC": {
-              "checkedAt": {
-                "_nanoseconds": 216000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "awIlxJL7UsnxJ2D2z9kC",
-              "isChecked": true
-            },
-            "m6M9Fxn4PHOL2L9kT99X": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "m6M9Fxn4PHOL2L9kT99X",
-              "isChecked": true
-            },
-            "qSb0ZK7FD8MnYYeGMnfJ": {
-              "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "qSb0ZK7FD8MnYYeGMnfJ",
-              "isChecked": true
-            },
-            "x5cD2G5fqSwkbMQ3QN5u": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "x5cD2G5fqSwkbMQ3QN5u",
-              "isChecked": true
-            },
-            "MJWQ1cOMGZEyY7Uf8KCx": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "MJWQ1cOMGZEyY7Uf8KCx",
-              "isChecked": true
-            },
-            "u9bwGFtoEJsC2KSzA3gb": {
-              "checkedAt": {
-                "_nanoseconds": 214000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "u9bwGFtoEJsC2KSzA3gb",
-              "isChecked": true
-            },
-            "ExxiM6Lyqluoy2zGgdFD": {
-              "checkedAt": {
-                "_nanoseconds": 216000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ExxiM6Lyqluoy2zGgdFD",
-              "isChecked": true
-            },
-            "gpEl40ERYgLWmGFOGbjx": {
-              "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "gpEl40ERYgLWmGFOGbjx",
-              "isChecked": true
-            },
-            "ela8Va1ymQchrrwixIDm": {
-              "checkedAt": {
-                "_nanoseconds": 218000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ela8Va1ymQchrrwixIDm",
-              "isChecked": true
-            },
-            "92xtuWXpwHkzMSW7xo7l": {
-              "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "92xtuWXpwHkzMSW7xo7l",
-              "isChecked": true
-            },
-            "Q8goM1Tocj9BJVYoIGNV": {
-              "checkedAt": {
-                "_nanoseconds": 232000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "Q8goM1Tocj9BJVYoIGNV",
-              "isChecked": true
-            },
-            "NGEfd68pDBTqhKpvDg3r": {
-              "checkedAt": {
-                "_nanoseconds": 207000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "NGEfd68pDBTqhKpvDg3r",
-              "isChecked": true
-            },
-            "n8WtvUmvwZbxTGB38DvN": {
-              "checkedAt": {
-                "_nanoseconds": 225000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "n8WtvUmvwZbxTGB38DvN",
-              "isChecked": true
-            },
-            "hbq8BvhhWPwwRyqERB0i": {
-              "checkedAt": {
-                "_nanoseconds": 223000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "hbq8BvhhWPwwRyqERB0i",
-              "isChecked": true
-            },
-            "sqXwBZwSp3GGbgZAgLRZ": {
-              "checkedAt": {
-                "_nanoseconds": 210000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "sqXwBZwSp3GGbgZAgLRZ",
-              "isChecked": true
-            },
-            "1E29TxG6DxjF9MfxMzJE": {
-              "checkedAt": {
-                "_nanoseconds": 230000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "1E29TxG6DxjF9MfxMzJE",
-              "isChecked": true
-            },
-            "TGJyDQiiaC8EeAD4ZOqG": {
-              "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "TGJyDQiiaC8EeAD4ZOqG",
-              "isChecked": true
-            },
-            "tT4XOTMq2d2RRc9i52jg": {
-              "checkedAt": {
-                "_nanoseconds": 207000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "tT4XOTMq2d2RRc9i52jg",
-              "isChecked": true
-            },
-            "UD8qMJwlrFIAE0EBiYJS": {
-              "checkedAt": {
-                "_nanoseconds": 212000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "UD8qMJwlrFIAE0EBiYJS",
-              "isChecked": true
-            },
-            "jfokcucAacNPQSia8WuA": {
-              "checkedAt": {
-                "_nanoseconds": 225000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "jfokcucAacNPQSia8WuA",
-              "isChecked": true
-            },
-            "2a0s262kUsoUBgJOJycj": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2a0s262kUsoUBgJOJycj",
-              "isChecked": true
-            },
-            "LCfLY3Oudwli6mTFvCy1": {
-              "checkedAt": {
-                "_nanoseconds": 203000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "LCfLY3Oudwli6mTFvCy1",
-              "isChecked": true
-            },
-            "fkQzSYkJVphwWIuXKIFo": {
-              "checkedAt": {
-                "_nanoseconds": 219000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "fkQzSYkJVphwWIuXKIFo",
-              "isChecked": true
-            },
-            "ImPPzMDH1cEwTwqXqu9s": {
-              "checkedAt": {
-                "_nanoseconds": 216000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ImPPzMDH1cEwTwqXqu9s",
-              "isChecked": true
-            },
-            "bduJY8qlH1XmaaFcSCih": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "bduJY8qlH1XmaaFcSCih",
-              "isChecked": true
-            },
-            "ilAcde6D07NbvUtDit1G": {
-              "checkedAt": {
-                "_nanoseconds": 224000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ilAcde6D07NbvUtDit1G",
-              "isChecked": true
-            },
-            "tnjWsu3wBR4PGEITTHGg": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "tnjWsu3wBR4PGEITTHGg",
-              "isChecked": true
-            },
-            "3u55MDCwcnw1boXbEqqY": {
-              "checkedAt": {
-                "_nanoseconds": 214000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "3u55MDCwcnw1boXbEqqY",
-              "isChecked": true
-            },
-            "GqZQ97fG3LO2ELUz2GGs": {
-              "checkedAt": {
-                "_nanoseconds": 216000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "GqZQ97fG3LO2ELUz2GGs",
-              "isChecked": true
-            },
-            "GBOCCaCZOUOavPIX2Y88": {
-              "checkedAt": {
-                "_nanoseconds": 233000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "GBOCCaCZOUOavPIX2Y88",
-              "isChecked": true
-            },
-            "4wOKbxOaL1OBIuJU1f0x": {
-              "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "4wOKbxOaL1OBIuJU1f0x",
-              "isChecked": true
-            },
-            "KmnJDrQt0tB8jc3msrBB": {
-              "checkedAt": {
-                "_nanoseconds": 214000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "KmnJDrQt0tB8jc3msrBB",
-              "isChecked": true
-            },
-            "MTSlfxQNtf5UvTnApTiQ": {
-              "checkedAt": {
-                "_nanoseconds": 217000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "MTSlfxQNtf5UvTnApTiQ",
-              "isChecked": true
+              "history": []
             },
             "h12lIpDzsUI1BrUVsOVg": {
-              "checkedAt": {
-                "_nanoseconds": 224000000,
-                "_seconds": 1768665205
-              },
               "articleId": "h12lIpDzsUI1BrUVsOVg",
-              "isChecked": true
-            },
-            "h73hsxpI7a5fNueStkmy": {
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
               },
-              "articleId": "h73hsxpI7a5fNueStkmy",
-              "isChecked": true
+              "history": []
             },
-            "vf4xrL59Wab9fUgrBrEn": {
+            "G0S0xJTl0DlhDPdfsCuL": {
+              "articleId": "G0S0xJTl0DlhDPdfsCuL",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
               "checkedAt": {
-                "_nanoseconds": 214000000,
-                "_seconds": 1768665205
+                "_seconds": 1764767972,
+                "_nanoseconds": 179000000
               },
-              "articleId": "vf4xrL59Wab9fUgrBrEn",
-              "isChecked": true
+              "history": [
+                {
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1764767972,
+                    "_nanoseconds": 179000000
+                  },
+                  "userName": "Du",
+                  "amount": "",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
             },
-            "0ryN0QhwKadZD2MILLuL": {
+            "3Aqc964XVD3avcmAFOsC": {
+              "articleId": "3Aqc964XVD3avcmAFOsC",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
               "checkedAt": {
-                "_nanoseconds": 228000000,
-                "_seconds": 1768665205
+                "_seconds": 1765373537,
+                "_nanoseconds": 267000000
               },
-              "articleId": "0ryN0QhwKadZD2MILLuL",
-              "isChecked": true
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373537,
+                    "_nanoseconds": 267000000
+                  },
+                  "action": "checked",
+                  "amount": "",
+                  "userName": "Du"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765362137,
+                    "_nanoseconds": 98000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "action": "unchecked",
+                  "userName": "Du"
+                }
+              ]
             },
-            "3R2a6rzFqEwET6SnBjtQ": {
+            "L6SH8Qk4xTwG3QnupQ7T": {
+              "articleId": "L6SH8Qk4xTwG3QnupQ7T",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 224000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
               },
-              "articleId": "3R2a6rzFqEwET6SnBjtQ",
-              "isChecked": true
+              "history": []
             },
-            "YxaYK3XTNzhCk5sOTmeS": {
+            "pJqWeoJ5v10J954Yt6Rl": {
+              "articleId": "pJqWeoJ5v10J954Yt6Rl",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 212000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
               },
-              "articleId": "YxaYK3XTNzhCk5sOTmeS",
-              "isChecked": true
+              "history": []
             },
-            "A3m94NIn5x2yQR8n3WzM": {
+            "YmY2O7WAAiHUOA7vTZc1": {
+              "articleId": "YmY2O7WAAiHUOA7vTZc1",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 204000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
               },
-              "articleId": "A3m94NIn5x2yQR8n3WzM",
-              "isChecked": true
+              "history": []
             },
-            "Y1FizMg76FXPzksgGeXV": {
+            "9uCjSYeHA9BVwxJw4PON": {
+              "articleId": "9uCjSYeHA9BVwxJw4PON",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 211000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
               },
-              "articleId": "Y1FizMg76FXPzksgGeXV",
-              "isChecked": true
+              "history": []
             },
-            "EPc78SN1YCFDOgXkNXhn": {
+            "h6sXYh8hfnRPcoGyeOPS": {
+              "articleId": "h6sXYh8hfnRPcoGyeOPS",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 221000000,
-                "_seconds": 1768665205
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
               },
-              "articleId": "EPc78SN1YCFDOgXkNXhn",
-              "isChecked": true
+              "history": []
             },
-            "gOqEz5MjBsFwqLMu5Lfb": {
+            "qJqL8Gflso4oIlsxwbV1": {
+              "articleId": "qJqL8Gflso4oIlsxwbV1",
+              "isChecked": true,
+              "amount": "",
               "checkedAt": {
-                "_nanoseconds": 226000000,
-                "_seconds": 1768665205
+                "_seconds": 1761578609,
+                "_nanoseconds": 754000000
               },
-              "articleId": "gOqEz5MjBsFwqLMu5Lfb",
-              "isChecked": true
+              "history": []
             },
-            "2XXRfyzX2cdajZyLXyYV": {
+            "dSY9AWSwzDwt5ufr5cC6": {
+              "articleId": "dSY9AWSwzDwt5ufr5cC6",
+              "isChecked": true,
               "checkedAt": {
-                "_nanoseconds": 215000000,
-                "_seconds": 1768665205
+                "_seconds": 1762953083,
+                "_nanoseconds": 515000000
               },
-              "articleId": "2XXRfyzX2cdajZyLXyYV",
-              "isChecked": true
+              "history": []
             },
-            "VJO8nMFWOP0FzIT0G8hT": {
+            "XY1UzqbfbGPXPXdrOH7U": {
+              "articleId": "XY1UzqbfbGPXPXdrOH7U",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
               "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
+                "_seconds": 1765373600,
+                "_nanoseconds": 809000000
               },
-              "articleId": "VJO8nMFWOP0FzIT0G8hT",
-              "isChecked": true
-            },
-            "51DbGWwLKz4mEOIXQGSY": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "51DbGWwLKz4mEOIXQGSY",
-              "isChecked": true
-            },
-            "OdofRVuUV3CwPsMDGPOl": {
-              "checkedAt": {
-                "_nanoseconds": 203000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "OdofRVuUV3CwPsMDGPOl",
-              "isChecked": true
-            },
-            "r7dYm8wxUyoIVIL7APaF": {
-              "checkedAt": {
-                "_nanoseconds": 220000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "r7dYm8wxUyoIVIL7APaF",
-              "isChecked": true
-            },
-            "ebOelFtqtPAlIg971qJC": {
-              "checkedAt": {
-                "_nanoseconds": 231000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "ebOelFtqtPAlIg971qJC",
-              "isChecked": true
-            },
-            "2OINHSD0rXjKlS2CgC6N": {
-              "checkedAt": {
-                "_nanoseconds": 222000000,
-                "_seconds": 1768665205
-              },
-              "articleId": "2OINHSD0rXjKlS2CgC6N",
-              "isChecked": true
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765373600,
+                    "_nanoseconds": 809000000
+                  },
+                  "action": "checked"
+                },
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765362145,
+                    "_nanoseconds": 901000000
+                  },
+                  "amount": ""
+                }
+              ]
             },
             "DDHCJBnYAd5oJ6Iz7aCs": {
-              "checkedAt": {
-                "_nanoseconds": 227000000,
-                "_seconds": 1768665205
-              },
               "articleId": "DDHCJBnYAd5oJ6Iz7aCs",
-              "isChecked": true
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373622,
+                "_nanoseconds": 288000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "userName": "Du",
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373622,
+                    "_nanoseconds": 288000000
+                  }
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765362173,
+                    "_nanoseconds": 512000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "action": "unchecked",
+                  "amount": ""
+                }
+              ]
+            },
+            "awIlxJL7UsnxJ2D2z9kC": {
+              "articleId": "awIlxJL7UsnxJ2D2z9kC",
+              "isChecked": true,
+              "amount": "1 Dose",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764768325,
+                "_nanoseconds": 907000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "amount": "1 Dose",
+                  "timestamp": {
+                    "_seconds": 1764768325,
+                    "_nanoseconds": 906000000
+                  },
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "rZWLL49fsFqYeqs5Zjfr": {
+              "articleId": "rZWLL49fsFqYeqs5Zjfr",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373641,
+                "_nanoseconds": 475000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "action": "checked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373641,
+                    "_nanoseconds": 475000000
+                  }
+                }
+              ]
+            },
+            "51DbGWwLKz4mEOIXQGSY": {
+              "articleId": "51DbGWwLKz4mEOIXQGSY",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1758895167,
+                "_nanoseconds": 308000000
+              },
+              "history": []
+            },
+            "wks582xOPgfftBhKaCJj": {
+              "articleId": "wks582xOPgfftBhKaCJj",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "O5UoZheZPmEU5x59vqAp": {
+              "articleId": "O5UoZheZPmEU5x59vqAp",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1764162552,
+                "_nanoseconds": 606000000
+              },
+              "history": []
+            },
+            "sqXwBZwSp3GGbgZAgLRZ": {
+              "articleId": "sqXwBZwSp3GGbgZAgLRZ",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "XNxDoOV86maFZRhJ53Go": {
+              "articleId": "XNxDoOV86maFZRhJ53Go",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761578552,
+                "_nanoseconds": 171000000
+              },
+              "history": []
+            },
+            "3u55MDCwcnw1boXbEqqY": {
+              "articleId": "3u55MDCwcnw1boXbEqqY",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1762349127,
+                "_nanoseconds": 352000000
+              },
+              "history": []
+            },
+            "4wOKbxOaL1OBIuJU1f0x": {
+              "articleId": "4wOKbxOaL1OBIuJU1f0x",
+              "isChecked": true,
+              "amount": "2 Stück",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373335,
+                "_nanoseconds": 456000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765373335,
+                    "_nanoseconds": 456000000
+                  },
+                  "amount": "2 Stück",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked"
+                }
+              ]
+            },
+            "4tupQTd0xkFQDYFuk3vo": {
+              "articleId": "4tupQTd0xkFQDYFuk3vo",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "gXt48vMZFgxBU4Yo6U4m": {
+              "articleId": "gXt48vMZFgxBU4Yo6U4m",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763373407,
+                "_nanoseconds": 267000000
+              },
+              "history": []
+            },
+            "GqZQ97fG3LO2ELUz2GGs": {
+              "articleId": "GqZQ97fG3LO2ELUz2GGs",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "2im66wjALXMcXMWseMf6": {
+              "articleId": "2im66wjALXMcXMWseMf6",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "bduJY8qlH1XmaaFcSCih": {
+              "articleId": "bduJY8qlH1XmaaFcSCih",
+              "isChecked": true,
+              "amount": "300 g",
+              "checkedAt": {
+                "_seconds": 1763473247,
+                "_nanoseconds": 273000000
+              },
+              "history": []
+            },
+            "UD8qMJwlrFIAE0EBiYJS": {
+              "articleId": "UD8qMJwlrFIAE0EBiYJS",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "VJO8nMFWOP0FzIT0G8hT": {
+              "articleId": "VJO8nMFWOP0FzIT0G8hT",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762953228,
+                "_nanoseconds": 49000000
+              },
+              "history": []
+            },
+            "Tvshm5in9rONcnWgseQ5": {
+              "articleId": "Tvshm5in9rONcnWgseQ5",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854389,
+                "_nanoseconds": 586000000
+              },
+              "history": []
+            },
+            "OdofRVuUV3CwPsMDGPOl": {
+              "articleId": "OdofRVuUV3CwPsMDGPOl",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084299,
+                "_nanoseconds": 653000000
+              },
+              "history": []
+            },
+            "QGd7n5ijDOj33eaboJkv": {
+              "articleId": "QGd7n5ijDOj33eaboJkv",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1762953666,
+                "_nanoseconds": 671000000
+              },
+              "history": []
+            },
+            "LQ4XrG6R3QlYVaABEoNi": {
+              "articleId": "LQ4XrG6R3QlYVaABEoNi",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "OyUmfHK2TN3UrIHJdIma": {
+              "articleId": "OyUmfHK2TN3UrIHJdIma",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "2XXRfyzX2cdajZyLXyYV": {
+              "articleId": "2XXRfyzX2cdajZyLXyYV",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "1DR5wA4ijNq3vW6e9zu4": {
+              "articleId": "1DR5wA4ijNq3vW6e9zu4",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763373429,
+                "_nanoseconds": 118000000
+              },
+              "history": []
+            },
+            "ChNIDTz4SuSEyMtIcQDS": {
+              "articleId": "ChNIDTz4SuSEyMtIcQDS",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763558283,
+                "_nanoseconds": 644000000
+              },
+              "history": []
+            },
+            "hR5MIhwbANZfIsrlffSk": {
+              "articleId": "hR5MIhwbANZfIsrlffSk",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "bmXhr09vvgpTrVKoCCS8": {
+              "articleId": "bmXhr09vvgpTrVKoCCS8",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750853862,
+                "_nanoseconds": 124000000
+              },
+              "history": []
+            },
+            "r63uHYjfOozr0IRkKFF5": {
+              "articleId": "r63uHYjfOozr0IRkKFF5",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750853930,
+                "_nanoseconds": 102000000
+              },
+              "history": []
+            },
+            "1E29TxG6DxjF9MfxMzJE": {
+              "articleId": "1E29TxG6DxjF9MfxMzJE",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759926645,
+                "_nanoseconds": 683000000
+              },
+              "history": []
+            },
+            "GDaMhPxhJBmiT2gMI3f3": {
+              "articleId": "GDaMhPxhJBmiT2gMI3f3",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1761143268,
+                "_nanoseconds": 28000000
+              },
+              "history": []
+            },
+            "N1JdWRDo5cAihC2Ahy16": {
+              "articleId": "N1JdWRDo5cAihC2Ahy16",
+              "isChecked": true,
+              "amount": "2",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373256,
+                "_nanoseconds": 422000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765373256,
+                    "_nanoseconds": 422000000
+                  },
+                  "amount": "2",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked"
+                }
+              ]
+            },
+            "Qu3EBlw1EfdGbwyqi8DK": {
+              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
+              "isChecked": true,
+              "amount": "3 Stück",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373229,
+                "_nanoseconds": 572000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "amount": "3 Stück",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373229,
+                    "_nanoseconds": 572000000
+                  },
+                  "action": "checked"
+                }
+              ]
+            },
+            "LZLxpitPwvvh68yKD0Rm": {
+              "articleId": "LZLxpitPwvvh68yKD0Rm",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761143128,
+                "_nanoseconds": 469000000
+              },
+              "history": []
+            },
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755083809,
+                "_nanoseconds": 893000000
+              },
+              "history": []
+            },
+            "QwVLMyfzUKZg2lVKYPmo": {
+              "articleId": "QwVLMyfzUKZg2lVKYPmo",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763370050,
+                "_nanoseconds": 314000000
+              },
+              "history": []
+            },
+            "TciscLP4DfkOZZc9Nyma": {
+              "articleId": "TciscLP4DfkOZZc9Nyma",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "tT4XOTMq2d2RRc9i52jg": {
+              "articleId": "tT4XOTMq2d2RRc9i52jg",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
+              },
+              "history": []
+            },
+            "2OINHSD0rXjKlS2CgC6N": {
+              "articleId": "2OINHSD0rXjKlS2CgC6N",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "g9OykTEQ5ODQDAZQHOec": {
+              "articleId": "g9OykTEQ5ODQDAZQHOec",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763558312,
+                "_nanoseconds": 479000000
+              },
+              "history": []
+            },
+            "ukqoLqpHu4MhRCGsTVoH": {
+              "articleId": "ukqoLqpHu4MhRCGsTVoH",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedAt": {
+                "_seconds": 1764162867,
+                "_nanoseconds": 14000000
+              },
+              "history": []
+            },
+            "jaclIlzHXURt2M5Xglw1": {
+              "articleId": "jaclIlzHXURt2M5Xglw1",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762953267,
+                "_nanoseconds": 669000000
+              },
+              "history": []
+            },
+            "XCbrQDjo1JekzeJtPt9Q": {
+              "articleId": "XCbrQDjo1JekzeJtPt9Q",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854398,
+                "_nanoseconds": 562000000
+              },
+              "history": []
+            },
+            "2SVzzCNEfa3auNA0Wnt1": {
+              "articleId": "2SVzzCNEfa3auNA0Wnt1",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "CoDc0dJmk2sy07JEdq8I": {
+              "articleId": "CoDc0dJmk2sy07JEdq8I",
+              "articleName": "Salami",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373491,
+                "_nanoseconds": 944000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765373491,
+                    "_nanoseconds": 944000000
+                  },
+                  "userName": "Du",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "MTSlfxQNtf5UvTnApTiQ": {
+              "articleId": "MTSlfxQNtf5UvTnApTiQ",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "h73hsxpI7a5fNueStkmy": {
+              "articleId": "h73hsxpI7a5fNueStkmy",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759926749,
+                "_nanoseconds": 281000000
+              },
+              "history": []
+            },
+            "95SMaRpQ4MVez180w9Gh": {
+              "articleId": "95SMaRpQ4MVez180w9Gh",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "n8WtvUmvwZbxTGB38DvN": {
+              "articleId": "n8WtvUmvwZbxTGB38DvN",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854307,
+                "_nanoseconds": 744000000
+              },
+              "history": []
+            },
+            "92xtuWXpwHkzMSW7xo7l": {
+              "articleId": "92xtuWXpwHkzMSW7xo7l",
+              "isChecked": true,
+              "amount": "Kranz",
+              "checkedAt": {
+                "_seconds": 1761578288,
+                "_nanoseconds": 20000000
+              },
+              "history": []
+            },
+            "d5gKXrkMs4ZB23xLdxSG": {
+              "articleId": "d5gKXrkMs4ZB23xLdxSG",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084536,
+                "_nanoseconds": 976000000
+              },
+              "history": []
+            },
+            "1LRp0ISkF5qr9SeJDy1V": {
+              "articleId": "1LRp0ISkF5qr9SeJDy1V",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "JJFhjMTWqiSO4Cvc4jKr": {
+              "articleId": "JJFhjMTWqiSO4Cvc4jKr",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759926081,
+                "_nanoseconds": 951000000
+              },
+              "history": []
+            },
+            "fkQzSYkJVphwWIuXKIFo": {
+              "articleId": "fkQzSYkJVphwWIuXKIFo",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "Me7RobGzWjJuCB4ZiPS5": {
+              "articleId": "Me7RobGzWjJuCB4ZiPS5",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1761578413,
+                "_nanoseconds": 439000000
+              },
+              "history": []
+            },
+            "60Tkcx9OjTcyRlh25zx5": {
+              "articleId": "60Tkcx9OjTcyRlh25zx5",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1759926663,
+                "_nanoseconds": 854000000
+              },
+              "history": []
+            },
+            "8cj5181VZ4tzTvwoMPa3": {
+              "articleId": "8cj5181VZ4tzTvwoMPa3",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761143094,
+                "_nanoseconds": 33000000
+              },
+              "history": []
+            },
+            "uuka0uvLFZCHBgWiWpKf": {
+              "articleId": "uuka0uvLFZCHBgWiWpKf",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373206,
+                "_nanoseconds": 49000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765373206,
+                    "_nanoseconds": 48000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "action": "checked",
+                  "userName": "Du"
+                },
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765362096,
+                    "_nanoseconds": 549000000
+                  }
+                },
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1764767985,
+                    "_nanoseconds": 26000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1764743358,
+                    "_nanoseconds": 283000000
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "D86COL4bziRQizVjdLD8": {
+              "articleId": "D86COL4bziRQizVjdLD8",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854290,
+                "_nanoseconds": 342000000
+              },
+              "history": []
+            },
+            "ela8Va1ymQchrrwixIDm": {
+              "articleId": "ela8Va1ymQchrrwixIDm",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "Xibx6lU2Wekoit9SPoSl": {
+              "articleId": "Xibx6lU2Wekoit9SPoSl",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1762953447,
+                "_nanoseconds": 7000000
+              },
+              "history": []
+            },
+            "u9bwGFtoEJsC2KSzA3gb": {
+              "articleId": "u9bwGFtoEJsC2KSzA3gb",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "r7dYm8wxUyoIVIL7APaF": {
+              "articleId": "r7dYm8wxUyoIVIL7APaF",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084152,
+                "_nanoseconds": 247000000
+              },
+              "history": []
+            },
+            "MJWQ1cOMGZEyY7Uf8KCx": {
+              "articleId": "MJWQ1cOMGZEyY7Uf8KCx",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1761143008,
+                "_nanoseconds": 601000000
+              },
+              "history": []
+            },
+            "UWx3yFI6kp6dJIwcK4w7": {
+              "articleId": "UWx3yFI6kp6dJIwcK4w7",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
+              },
+              "history": []
+            },
+            "ekbG5da4fmgQy8k6lV14": {
+              "articleId": "ekbG5da4fmgQy8k6lV14",
+              "isChecked": true,
+              "amount": "10",
+              "checkedAt": {
+                "_seconds": 1759926337,
+                "_nanoseconds": 910000000
+              },
+              "history": []
+            },
+            "EPc78SN1YCFDOgXkNXhn": {
+              "articleId": "EPc78SN1YCFDOgXkNXhn",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "72CR7dKRyEM3I1bAzW2e": {
+              "articleId": "72CR7dKRyEM3I1bAzW2e",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "Cbxl5msAbvwgp13NClfs": {
+              "articleId": "Cbxl5msAbvwgp13NClfs",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084178,
+                "_nanoseconds": 13000000
+              },
+              "history": []
+            },
+            "wlN9SxkmbOosTJOQuPAx": {
+              "articleId": "wlN9SxkmbOosTJOQuPAx",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761143349,
+                "_nanoseconds": 469000000
+              },
+              "history": []
+            },
+            "KmnJDrQt0tB8jc3msrBB": {
+              "articleId": "KmnJDrQt0tB8jc3msrBB",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1760531167,
+                "_nanoseconds": 87000000
+              },
+              "history": []
+            },
+            "mmOjfwJOaeywRccCUM5k": {
+              "articleId": "mmOjfwJOaeywRccCUM5k",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1760880430,
+                "_nanoseconds": 964000000
+              },
+              "history": []
+            },
+            "TO6OofK4fiOPKuR7iU2d": {
+              "articleId": "TO6OofK4fiOPKuR7iU2d",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "kwMq8ZOGXhinD8BnHxDV": {
+              "articleId": "kwMq8ZOGXhinD8BnHxDV",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763558302,
+                "_nanoseconds": 745000000
+              },
+              "history": []
+            },
+            "JtOLa69VbsRVXNIDbi8a": {
+              "articleId": "JtOLa69VbsRVXNIDbi8a",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1758517997,
+                "_nanoseconds": 435000000
+              },
+              "history": []
+            },
+            "LCfLY3Oudwli6mTFvCy1": {
+              "articleId": "LCfLY3Oudwli6mTFvCy1",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
+              },
+              "history": []
+            },
+            "xkOzes2gRqRnwqrkBAel": {
+              "articleId": "xkOzes2gRqRnwqrkBAel",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "UlFo13zUJhtgfOkDtHnI": {
+              "articleId": "UlFo13zUJhtgfOkDtHnI",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755083925,
+                "_nanoseconds": 50000000
+              },
+              "history": []
+            },
+            "x5cD2G5fqSwkbMQ3QN5u": {
+              "articleId": "x5cD2G5fqSwkbMQ3QN5u",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084092,
+                "_nanoseconds": 845000000
+              },
+              "history": []
+            },
+            "7FzGanvfAT7UCbpXNIkp": {
+              "articleId": "7FzGanvfAT7UCbpXNIkp",
+              "isChecked": true,
+              "amount": "Normal und süß",
+              "checkedAt": {
+                "_seconds": 1759926724,
+                "_nanoseconds": 437000000
+              },
+              "history": []
+            },
+            "wvKmSAJa8CIYiXFISmTa": {
+              "articleId": "wvKmSAJa8CIYiXFISmTa",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 430000000
+              },
+              "history": []
+            },
+            "RYiMNfs6YEoaP95eRiMI": {
+              "articleId": "RYiMNfs6YEoaP95eRiMI",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373666,
+                "_nanoseconds": 892000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373666,
+                    "_nanoseconds": 892000000
+                  },
+                  "amount": "",
+                  "userName": "Du",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765362198,
+                    "_nanoseconds": 247000000
+                  },
+                  "action": "unchecked",
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "aHnyTp7J7BubtBnneXIH": {
+              "articleId": "aHnyTp7J7BubtBnneXIH",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "kYwgkzv7uab8n3zX7OhE": {
+              "articleId": "kYwgkzv7uab8n3zX7OhE",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "E3fZw5MjCDvL0k1K5c7A": {
+              "articleId": "E3fZw5MjCDvL0k1K5c7A",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763559465,
+                "_nanoseconds": 102000000
+              },
+              "history": []
+            },
+            "ebOelFtqtPAlIg971qJC": {
+              "articleId": "ebOelFtqtPAlIg971qJC",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762953067,
+                "_nanoseconds": 614000000
+              },
+              "history": []
+            },
+            "MRvzquWqnj6igKyVU6lB": {
+              "articleId": "MRvzquWqnj6igKyVU6lB",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750853970,
+                "_nanoseconds": 220000000
+              },
+              "history": []
+            },
+            "0ryN0QhwKadZD2MILLuL": {
+              "articleId": "0ryN0QhwKadZD2MILLuL",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763558060,
+                "_nanoseconds": 934000000
+              },
+              "history": []
+            },
+            "WZIBFG1VSGbaJfzhrtxR": {
+              "articleId": "WZIBFG1VSGbaJfzhrtxR",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764768324,
+                "_nanoseconds": 860000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1764768324,
+                    "_nanoseconds": 858000000
+                  },
+                  "userName": "Du",
+                  "amount": "",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "2hpqvzf1oEkSTzi1bx92": {
+              "articleId": "2hpqvzf1oEkSTzi1bx92",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedAt": {
+                "_seconds": 1761578029,
+                "_nanoseconds": 802000000
+              },
+              "history": []
+            },
+            "Psy6zDpsx4eZSVAd04Tl": {
+              "articleId": "Psy6zDpsx4eZSVAd04Tl",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1755076552,
+                "_nanoseconds": 730000000
+              },
+              "history": []
+            },
+            "UBG2GiZSbXYtvKGVTltj": {
+              "articleId": "UBG2GiZSbXYtvKGVTltj",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1763373683,
+                "_nanoseconds": 705000000
+              },
+              "history": []
+            },
+            "qvWWKUHz7WRfxtwUPvIA": {
+              "articleId": "qvWWKUHz7WRfxtwUPvIA",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1758055426,
+                "_nanoseconds": 516000000
+              },
+              "history": []
+            },
+            "dlcpg3Uxxfc77mnZRA6R": {
+              "articleId": "dlcpg3Uxxfc77mnZRA6R",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1760530873,
+                "_nanoseconds": 151000000
+              },
+              "history": []
+            },
+            "vBXtsVB9e2DldzVe0x2q": {
+              "articleId": "vBXtsVB9e2DldzVe0x2q",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1757616416,
+                "_nanoseconds": 482000000
+              },
+              "history": []
+            },
+            "m6M9Fxn4PHOL2L9kT99X": {
+              "articleId": "m6M9Fxn4PHOL2L9kT99X",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "5HpTiZYp4h6m2bqcKUgY": {
+              "articleId": "5HpTiZYp4h6m2bqcKUgY",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "vf4xrL59Wab9fUgrBrEn": {
+              "articleId": "vf4xrL59Wab9fUgrBrEn",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
             },
             "LGmXkC4IlpPqW0dFSFUr": {
-              "checkedAt": {
-                "_nanoseconds": 229000000,
-                "_seconds": 1768665205
-              },
               "articleId": "LGmXkC4IlpPqW0dFSFUr",
-              "isChecked": true
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755083729,
+                "_nanoseconds": 747000000
+              },
+              "history": []
+            },
+            "A3m94NIn5x2yQR8n3WzM": {
+              "articleId": "A3m94NIn5x2yQR8n3WzM",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1759861539,
+                "_nanoseconds": 0
+              },
+              "history": []
+            },
+            "8x1AwscPIqiNSHsHwFum": {
+              "articleId": "8x1AwscPIqiNSHsHwFum",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763558748,
+                "_nanoseconds": 990000000
+              },
+              "history": []
+            },
+            "Y1FizMg76FXPzksgGeXV": {
+              "articleId": "Y1FizMg76FXPzksgGeXV",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "djsl53riE6emSHvDtuQm": {
+              "articleId": "djsl53riE6emSHvDtuQm",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "NSnKONT0lVoFv3ewL5oM": {
+              "articleId": "NSnKONT0lVoFv3ewL5oM",
+              "isChecked": true,
+              "amount": "250 ml",
+              "checkedAt": {
+                "_seconds": 1763558285,
+                "_nanoseconds": 480000000
+              },
+              "history": []
+            },
+            "Y4hrSl9vgbbnvD1lVjoj": {
+              "articleId": "Y4hrSl9vgbbnvD1lVjoj",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "SkwCKfOYVBtUudsZ6vSZ": {
+              "articleId": "SkwCKfOYVBtUudsZ6vSZ",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761143268,
+                "_nanoseconds": 323000000
+              },
+              "history": []
+            },
+            "lsKdq63pFLXjij50tb6k": {
+              "articleId": "lsKdq63pFLXjij50tb6k",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1759926102,
+                "_nanoseconds": 411000000
+              },
+              "history": []
+            },
+            "ExxiM6Lyqluoy2zGgdFD": {
+              "articleId": "ExxiM6Lyqluoy2zGgdFD",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "9bbCdKaRwGkim2KffPW8": {
+              "articleId": "9bbCdKaRwGkim2KffPW8",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764767967,
+                "_nanoseconds": 804000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1764767967,
+                    "_nanoseconds": 803000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "amount": "",
+                  "action": "checked"
+                }
+              ]
+            },
+            "HTUjm3h19ezG29u6FGMb": {
+              "articleId": "HTUjm3h19ezG29u6FGMb",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1755084449,
+                "_nanoseconds": 407000000
+              },
+              "history": []
+            },
+            "Emj1d4QpaTQtAYo5N2cA": {
+              "articleId": "Emj1d4QpaTQtAYo5N2cA",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1759917564,
+                "_nanoseconds": 585000000
+              },
+              "history": []
+            },
+            "4tvHVq9nSg39pqku5gvA": {
+              "articleId": "4tvHVq9nSg39pqku5gvA",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373336,
+                "_nanoseconds": 414000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1765373336,
+                    "_nanoseconds": 414000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "amount": ""
+                },
+                {
+                  "action": "unchecked",
+                  "amount": "",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765361972,
+                    "_nanoseconds": 555000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "UJGg8RKOXtZ2EkOUsMFh": {
+              "articleId": "UJGg8RKOXtZ2EkOUsMFh",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "tnjWsu3wBR4PGEITTHGg": {
+              "articleId": "tnjWsu3wBR4PGEITTHGg",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "qSb0ZK7FD8MnYYeGMnfJ": {
+              "articleId": "qSb0ZK7FD8MnYYeGMnfJ",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1760530378,
+                "_nanoseconds": 590000000
+              },
+              "history": []
+            },
+            "BCIJeD0NfDsqt3sF8SDG": {
+              "articleId": "BCIJeD0NfDsqt3sF8SDG",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854334,
+                "_nanoseconds": 359000000
+              },
+              "history": []
+            },
+            "3R2a6rzFqEwET6SnBjtQ": {
+              "articleId": "3R2a6rzFqEwET6SnBjtQ",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373565,
+                "_nanoseconds": 483000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765373565,
+                    "_nanoseconds": 483000000
+                  }
+                },
+                {
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "timestamp": {
+                    "_seconds": 1765362160,
+                    "_nanoseconds": 550000000
+                  },
+                  "amount": ""
+                }
+              ]
+            },
+            "lyauW40NEf6iBhI9tYGe": {
+              "articleId": "lyauW40NEf6iBhI9tYGe",
+              "isChecked": true,
+              "amount": "2 kg",
+              "checkedAt": {
+                "_seconds": 1764162531,
+                "_nanoseconds": 120000000
+              },
+              "history": []
+            },
+            "wfEoadyLfKSnWfc2tz0F": {
+              "articleId": "wfEoadyLfKSnWfc2tz0F",
+              "isChecked": true,
+              "amount": "1 Pack",
+              "checkedAt": {
+                "_seconds": 1759919121,
+                "_nanoseconds": 527000000
+              },
+              "history": []
+            },
+            "pXqWYYPwIM23sbK3NVbW": {
+              "articleId": "pXqWYYPwIM23sbK3NVbW",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "gRsbwlD9ATmqTsOn2g3H": {
+              "articleId": "gRsbwlD9ATmqTsOn2g3H",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "2a0s262kUsoUBgJOJycj": {
+              "articleId": "2a0s262kUsoUBgJOJycj",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "Q8goM1Tocj9BJVYoIGNV": {
+              "articleId": "Q8goM1Tocj9BJVYoIGNV",
+              "isChecked": true,
+              "amount": "Ein Strauß",
+              "checkedAt": {
+                "_seconds": 1761142697,
+                "_nanoseconds": 798000000
+              },
+              "history": []
+            },
+            "S8RAAVsjHb4mxg5D99d5": {
+              "articleId": "S8RAAVsjHb4mxg5D99d5",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373676,
+                "_nanoseconds": 793000000
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765373676,
+                    "_nanoseconds": 793000000
+                  },
+                  "amount": ""
+                },
+                {
+                  "amount": "",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765362190,
+                    "_nanoseconds": 980000000
+                  },
+                  "action": "unchecked"
+                }
+              ]
+            },
+            "NGEfd68pDBTqhKpvDg3r": {
+              "articleId": "NGEfd68pDBTqhKpvDg3r",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1760530557,
+                "_nanoseconds": 315000000
+              },
+              "history": []
+            },
+            "6BxQoZtn3xPQ5fbmho8A": {
+              "articleId": "6BxQoZtn3xPQ5fbmho8A",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1762329208,
+                "_nanoseconds": 430000000
+              },
+              "history": []
+            },
+            "gpEl40ERYgLWmGFOGbjx": {
+              "articleId": "gpEl40ERYgLWmGFOGbjx",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "cWVshN5SGVIagWuKHdM6": {
+              "articleId": "cWVshN5SGVIagWuKHdM6",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1764162670,
+                "_nanoseconds": 289000000
+              },
+              "history": []
+            },
+            "YxaYK3XTNzhCk5sOTmeS": {
+              "articleId": "YxaYK3XTNzhCk5sOTmeS",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765977683,
+                "_nanoseconds": 386000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1765977683,
+                    "_nanoseconds": 385000000
+                  },
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "userName": "Du"
+                },
+                {
+                  "userName": "Du",
+                  "amount": "",
+                  "action": "unchecked",
+                  "timestamp": {
+                    "_seconds": 1765974912,
+                    "_nanoseconds": 103000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "action": "checked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "timestamp": {
+                    "_seconds": 1765373526,
+                    "_nanoseconds": 485000000
+                  },
+                  "amount": ""
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765362151,
+                    "_nanoseconds": 215000000
+                  },
+                  "amount": "",
+                  "action": "unchecked",
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "GBOCCaCZOUOavPIX2Y88": {
+              "articleId": "GBOCCaCZOUOavPIX2Y88",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761578630,
+                "_nanoseconds": 300000000
+              },
+              "history": []
+            },
+            "406n8zSd3pOOKO84DAeW": {
+              "articleId": "406n8zSd3pOOKO84DAeW",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "wKWyMgPshG2xDvKUIYm1": {
+              "articleId": "wKWyMgPshG2xDvKUIYm1",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "rMqKgQwTlEJItuLp2gK2": {
+              "articleId": "rMqKgQwTlEJItuLp2gK2",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "9fVZqVIUtJsniUBjHfYV": {
+              "articleId": "9fVZqVIUtJsniUBjHfYV",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761578032,
+                "_nanoseconds": 966000000
+              },
+              "history": []
+            },
+            "h29BZcmgpePY0kJoLzHI": {
+              "articleId": "h29BZcmgpePY0kJoLzHI",
+              "isChecked": true,
+              "amount": "",
+              "checkedAt": {
+                "_seconds": 1761578429,
+                "_nanoseconds": 779000000
+              },
+              "history": []
+            },
+            "oO5jfyaj7MIJ8GMoe3G7": {
+              "articleId": "oO5jfyaj7MIJ8GMoe3G7",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1763558287,
+                "_nanoseconds": 511000000
+              },
+              "history": []
+            },
+            "hbq8BvhhWPwwRyqERB0i": {
+              "articleId": "hbq8BvhhWPwwRyqERB0i",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "SCp02EPqGov40pYr4m4g": {
+              "articleId": "SCp02EPqGov40pYr4m4g",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "TGJyDQiiaC8EeAD4ZOqG": {
+              "articleId": "TGJyDQiiaC8EeAD4ZOqG",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854015,
+                "_nanoseconds": 318000000
+              },
+              "history": []
+            },
+            "gOqEz5MjBsFwqLMu5Lfb": {
+              "articleId": "gOqEz5MjBsFwqLMu5Lfb",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854239,
+                "_nanoseconds": 668000000
+              },
+              "history": []
+            },
+            "yg6iOdFbQ2KNp1JkOBUu": {
+              "articleId": "yg6iOdFbQ2KNp1JkOBUu",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1749797067,
+                "_nanoseconds": 431000000
+              },
+              "history": []
+            },
+            "jfokcucAacNPQSia8WuA": {
+              "articleId": "jfokcucAacNPQSia8WuA",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765977329,
+                "_nanoseconds": 0
+              },
+              "history": [
+                {
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765977328,
+                    "_nanoseconds": 999000000
+                  },
+                  "userName": "Du",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765974902,
+                    "_nanoseconds": 99000000
+                  },
+                  "userName": "Du",
+                  "amount": "",
+                  "action": "unchecked",
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "timestamp": {
+                    "_seconds": 1765373241,
+                    "_nanoseconds": 791000000
+                  },
+                  "amount": "",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765362088,
+                    "_nanoseconds": 202000000
+                  },
+                  "userId": "shared-shoplisl-user",
+                  "action": "unchecked",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "ZJ2WOCcbaobgmoiyImSQ": {
+              "articleId": "ZJ2WOCcbaobgmoiyImSQ",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1764768082,
+                "_nanoseconds": 557000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1764768082,
+                    "_nanoseconds": 557000000
+                  },
+                  "userId": "shared-shoplisl-user"
+                }
+              ]
+            },
+            "ilAcde6D07NbvUtDit1G": {
+              "articleId": "ilAcde6D07NbvUtDit1G",
+              "isChecked": true,
+              "checkedAt": {
+                "_seconds": 1750854546,
+                "_nanoseconds": 330000000
+              },
+              "history": []
+            },
+            "ImPPzMDH1cEwTwqXqu9s": {
+              "articleId": "ImPPzMDH1cEwTwqXqu9s",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "shared-shoplisl-user",
+              "checkedAt": {
+                "_seconds": 1765373174,
+                "_nanoseconds": 921000000
+              },
+              "history": [
+                {
+                  "userName": "Du",
+                  "userId": "shared-shoplisl-user",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1765373174,
+                    "_nanoseconds": 920000000
+                  },
+                  "action": "checked"
+                }
+              ]
             }
           },
-          "recoveredAt": {
-            "_nanoseconds": 497000000,
-            "_seconds": 1767940073
-          },
-          "updatedAt": "2026-01-21T20:06:03.006Z"
+          "updatedAt": "2026-01-22T08:27:08.040Z"
         },
         {
           "id": "FoIhdc4QqfgUx57JeRLD",
@@ -4600,6 +5948,186 @@
             "_seconds": 1767940076
           },
           "updatedAt": "2026-01-21T20:06:04.065Z"
+        },
+        {
+          "id": "hNLrzvdc2lHcJHxFVXQa",
+          "name": "TestA",
+          "color": "#f44336",
+          "icon": "🎵",
+          "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+          "createdAt": "2026-01-22T08:27:37.655Z",
+          "sharedWith": [],
+          "departmentOrder": [
+            "bread",
+            "fruit-vegetables",
+            "sausage-cheese-counter",
+            "fridge-meat",
+            "fish",
+            "dairy-products",
+            "spices-oils",
+            "noodles-rice",
+            "tins-jars",
+            "pastries",
+            "beverages-alcohol",
+            "frozen-goods",
+            "sweet-salty",
+            "international",
+            "body-care",
+            "cleaning-agents",
+            "household-goods",
+            "stationery",
+            "breakfast",
+            "baby",
+            "pet-supplies",
+            "miscellaneous",
+            "season",
+            "medicine",
+            "drugstore"
+          ],
+          "articleIds": [
+            "LGmXkC4IlpPqW0dFSFUr",
+            "sTQY2oINEMhpckoVV2K7",
+            "cTQGlGqtGX8kdOQxOEEL",
+            "NSnKONT0lVoFv3ewL5oM",
+            "hhGOInicyhPVYD9Gr3kD",
+            "LQ6LobnUZ56vSq9uzwV8",
+            "XY1UzqbfbGPXPXdrOH7U",
+            "Qu3EBlw1EfdGbwyqi8DK"
+          ],
+          "itemStates": {
+            "cTQGlGqtGX8kdOQxOEEL": {
+              "articleId": "cTQGlGqtGX8kdOQxOEEL",
+              "articleName": "Eier",
+              "isChecked": false,
+              "amount": "2 Stück",
+              "addedAt": {
+                "_seconds": 1769070667,
+                "_nanoseconds": 11000000
+              },
+              "history": []
+            },
+            "LQ6LobnUZ56vSq9uzwV8": {
+              "articleId": "LQ6LobnUZ56vSq9uzwV8",
+              "articleName": "Zwiebel",
+              "isChecked": false,
+              "amount": "1",
+              "addedAt": {
+                "_seconds": 1769070682,
+                "_nanoseconds": 341000000
+              },
+              "history": []
+            },
+            "LGmXkC4IlpPqW0dFSFUr": {
+              "articleId": "LGmXkC4IlpPqW0dFSFUr",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+              "checkedAt": {
+                "_seconds": 1769070707,
+                "_nanoseconds": 592000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "timestamp": {
+                    "_seconds": 1769070707,
+                    "_nanoseconds": 592000000
+                  }
+                }
+              ]
+            },
+            "XY1UzqbfbGPXPXdrOH7U": {
+              "articleId": "XY1UzqbfbGPXPXdrOH7U",
+              "articleName": "Butter",
+              "isChecked": true,
+              "amount": "75 g",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769070688,
+                "_nanoseconds": 977000000
+              },
+              "checkedAt": {
+                "_seconds": 1769070715,
+                "_nanoseconds": 2000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1769070715,
+                    "_nanoseconds": 2000000
+                  },
+                  "amount": "75 g",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "action": "checked"
+                }
+              ]
+            },
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
+              "articleName": "Tomaten",
+              "isChecked": false,
+              "amount": "200 g",
+              "addedAt": {
+                "_seconds": 1769070680,
+                "_nanoseconds": 150000000
+              },
+              "history": []
+            },
+            "Qu3EBlw1EfdGbwyqi8DK": {
+              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
+              "articleName": "Gurken",
+              "isChecked": false,
+              "amount": "3 Stück",
+              "addedAt": {
+                "_seconds": 1769070698,
+                "_nanoseconds": 333000000
+              },
+              "history": []
+            },
+            "sTQY2oINEMhpckoVV2K7": {
+              "articleId": "sTQY2oINEMhpckoVV2K7",
+              "articleName": "Kuchenmehl",
+              "isChecked": false,
+              "amount": "500 g",
+              "addedAt": {
+                "_seconds": 1769070664,
+                "_nanoseconds": 588000000
+              },
+              "history": []
+            },
+            "NSnKONT0lVoFv3ewL5oM": {
+              "articleId": "NSnKONT0lVoFv3ewL5oM",
+              "articleName": "Milch",
+              "isChecked": true,
+              "amount": "400 ml",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769070672,
+                "_nanoseconds": 6000000
+              },
+              "checkedAt": {
+                "_seconds": 1769070715,
+                "_nanoseconds": 887000000
+              },
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1769070715,
+                    "_nanoseconds": 887000000
+                  },
+                  "amount": "400 ml",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                }
+              ]
+            }
+          },
+          "updatedAt": "2026-01-22T08:32:56.666Z"
         },
         {
           "id": "jdizW0mfBPSPzf4ae0TN",
@@ -8981,7 +10509,7 @@
               "history": []
             }
           },
-          "updatedAt": "2026-01-21T10:00:42.279Z"
+          "updatedAt": "2026-01-22T08:27:08.294Z"
         }
       ],
       "articles": [
@@ -15930,6 +17458,20 @@
           "updatedAt": "2025-12-18T13:46:20.024Z"
         },
         {
+          "id": "qhoQTuCT1KA3JpdI6kGq",
+          "name": "Banane",
+          "amount": "",
+          "notes": "",
+          "icon": "🍎",
+          "categoryId": "",
+          "departmentId": "fruit-vegetables",
+          "availableInShops": [],
+          "usageCount": 0,
+          "ownerId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+          "createdAt": "2026-01-22T08:29:15.749Z",
+          "updatedAt": "2026-01-22T08:29:15.749Z"
+        },
+        {
           "id": "qxQnh5AHtDNpaB7Gr0X3",
           "name": "Kuchen",
           "amount": "",
@@ -16033,7 +17575,7 @@
   },
   "stats": {
     "totalUsers": 5,
-    "totalLists": 15,
-    "totalArticles": 522
+    "totalLists": 16,
+    "totalArticles": 523
   }
 }
