@@ -107,37 +107,52 @@ export class UserSupportService {
     articlesCount: number;
     lastActive: Date | null;
   }> {
+    let listsCount = 0;
+    let articlesCount = 0;
+    let lastActive: Date | null = null;
+
     try {
       // Count user's lists
       const listsRef = collection(this.firestore, `users-v2/${userId}/lists`);
       const listsSnapshot = await getDocs(listsRef);
-      const listsCount = listsSnapshot.size;
+      listsCount = listsSnapshot.size;
+      console.log(`📊 User ${userId}: ${listsCount} lists`);
 
       // Count user's articles
       const articlesRef = collection(this.firestore, `users-v2/${userId}/articles`);
       const articlesSnapshot = await getDocs(articlesRef);
-      const articlesCount = articlesSnapshot.size;
+      articlesCount = articlesSnapshot.size;
+      console.log(`📊 User ${userId}: ${articlesCount} articles`);
+
+      this.quotaMonitor.trackRead('User Support: Quick Stats (lists+articles)',
+        listsSnapshot.size + articlesSnapshot.size);
 
       // Get last active from analytics events
-      const eventsRef = collection(this.firestore, 'analytics/events/items');
-      const eventsQuery = query(
-        eventsRef,
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
-      const eventsSnapshot = await getDocs(eventsQuery);
-      const lastActive = eventsSnapshot.empty
-        ? null
-        : eventsSnapshot.docs[0].data()['timestamp']?.toDate();
+      try {
+        const eventsRef = collection(this.firestore, 'analytics/events/items');
+        const eventsQuery = query(
+          eventsRef,
+          where('userId', '==', userId),
+          orderBy('timestamp', 'desc'),
+          limit(1)
+        );
+        const eventsSnapshot = await getDocs(eventsQuery);
+        lastActive = eventsSnapshot.empty
+          ? null
+          : eventsSnapshot.docs[0].data()['timestamp']?.toDate();
 
-      this.quotaMonitor.trackRead('User Support: Quick Stats',
-        listsSnapshot.size + articlesSnapshot.size + eventsSnapshot.size);
+        this.quotaMonitor.trackRead('User Support: Quick Stats (events)', eventsSnapshot.size);
+      } catch (eventError) {
+        // Analytics events query might fail if index doesn't exist
+        // This is not critical, so just log and continue
+        console.warn(`⚠️ User Support: Failed to get last active for user ${userId}:`, eventError);
+      }
 
       return { listsCount, articlesCount, lastActive };
     } catch (error) {
-      console.warn(`⚠️ User Support: Failed to get stats for user ${userId}:`, error);
-      return { listsCount: 0, articlesCount: 0, lastActive: null };
+      console.error(`❌ User Support: Failed to get stats for user ${userId}:`, error);
+      // Return partial results if we got them before the error
+      return { listsCount, articlesCount, lastActive };
     }
   }
 
