@@ -58,11 +58,10 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/articles/{articleId} {
-      // Phase 8: Temporarily allow reading articles if authenticated
-      // This allows viewing articles on shared lists
-      // TODO: Implement proper privacy - only show articles that are on shared lists
-      // ADMIN: Allow admin to read all articles for analytics (collection group queries)
-      allow read: if isAuthenticated() || isAdmin();
+      // ADMIN: Allow admin to read all articles (for analytics collectionGroup queries)
+      // IMPORTANT: Admin check must be FIRST, outside authentication wrapper
+      // This ensures collectionGroup queries work for admin
+      allow read: if isAdmin() || isAuthenticated();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
       // Fixed: delete checks resource.data (existing), not request.resource.data (null)
@@ -80,17 +79,17 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/lists/{listId} {
-      // Read: User's own lists OR lists shared with them OR admin for analytics
-      allow read: if isAuthenticated() && (
-        // Admin can read all lists for analytics
-        isAdmin() ||
+      // ADMIN: Admin can read all lists (for analytics collectionGroup queries)
+      // IMPORTANT: Admin check must be FIRST, outside authentication wrapper
+      // Regular users: Own lists OR lists shared with them
+      allow read: if isAdmin() || (isAuthenticated() && (
         // Own lists in own path
         userId == request.auth.uid ||
         // Owner can read their lists anywhere (collection group queries)
         resource.data.ownerId == request.auth.uid ||
         // Shared lists (user is in sharedWith array - works for collection group queries)
         (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith)
-      );
+      ));
 
       // Update: Owner OR collaborator (with safety checks)
       allow update: if isAuthenticated() && (
