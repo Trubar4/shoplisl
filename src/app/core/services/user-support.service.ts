@@ -52,14 +52,19 @@ export class UserSupportService {
       this.quotaMonitor.trackRead('User Support: Search Users', usersSnapshot.size);
 
       const users = usersSnapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((user: any) => {
+        .map((doc) => {
+          const data = doc.data() as any;
+          return {
+            id: doc.id,
+            name: data.name || '',
+            email: data.email || '',
+            createdAt: data.createdAt,
+          };
+        })
+        .filter((user) => {
           // Client-side filtering for partial match
-          const email = (user.email || '').toLowerCase();
-          const name = (user.name || '').toLowerCase();
+          const email = user.email.toLowerCase();
+          const name = user.name.toLowerCase();
           const id = user.id.toLowerCase();
 
           return (
