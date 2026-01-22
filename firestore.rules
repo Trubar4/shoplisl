@@ -59,9 +59,10 @@ service cloud.firestore {
 
     match /users-v2/{userId}/articles/{articleId} {
       // ADMIN: Allow admin to read all articles (for analytics collectionGroup queries)
+      // CRITICAL: Inline admin check (don't use function) for collectionGroup compatibility
       // IMPORTANT: Admin check must be FIRST, outside authentication wrapper
-      // This ensures collectionGroup queries work for admin
-      allow read: if isAdmin() || isAuthenticated();
+      allow read: if (request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2') ||
+                     isAuthenticated();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
       // Fixed: delete checks resource.data (existing), not request.resource.data (null)
@@ -80,9 +81,10 @@ service cloud.firestore {
 
     match /users-v2/{userId}/lists/{listId} {
       // ADMIN: Admin can read all lists (for analytics collectionGroup queries)
-      // IMPORTANT: Admin check must be FIRST, outside authentication wrapper
+      // CRITICAL: Inline admin check (don't use function) for collectionGroup compatibility
       // Regular users: Own lists OR lists shared with them
-      allow read: if isAdmin() || (isAuthenticated() && (
+      allow read: if (request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2') ||
+                     (isAuthenticated() && (
         // Own lists in own path
         userId == request.auth.uid ||
         // Owner can read their lists anywhere (collection group queries)
