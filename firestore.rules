@@ -58,8 +58,11 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/articles/{articleId} {
-      // TEMPORARY DEBUG: Allow all authenticated reads to test collectionGroup
-      allow read: if request.auth != null;
+      // ADMIN: Allow admin to read all articles (for analytics collectionGroup queries)
+      allow read: if request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+
+      // Regular users: All authenticated users can read (articles are private to owner only for writes)
+      allow read: if isAuthenticated();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
       // Fixed: delete checks resource.data (existing), not request.resource.data (null)
@@ -77,9 +80,18 @@ service cloud.firestore {
     // ==========================================
 
     match /users-v2/{userId}/lists/{listId} {
-      // TEMPORARY DEBUG: Allow all authenticated reads to test collectionGroup
-      allow read: if request.auth != null;
+      // ADMIN: Admin can read all lists (for analytics collectionGroup queries)
+      allow read: if request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
 
+      // Regular users: Own lists OR lists shared with them
+      allow read: if isAuthenticated() && (
+        // Own lists in own path
+        userId == request.auth.uid ||
+        // Owner can read their lists anywhere (collection group queries)
+        resource.data.ownerId == request.auth.uid ||
+        // Shared lists (user is in sharedWith array - works for collection group queries)
+        (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith)
+      );
 
       // Update: Owner OR collaborator (with safety checks)
       allow update: if isAuthenticated() && (
