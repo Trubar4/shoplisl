@@ -59,10 +59,11 @@ service cloud.firestore {
 
     match /users-v2/{userId}/articles/{articleId} {
       // ADMIN: Allow admin to read all articles (for analytics collectionGroup queries)
-      // CRITICAL: Inline admin check (don't use function) for collectionGroup compatibility
-      // IMPORTANT: Admin check must be FIRST, outside authentication wrapper
-      allow read: if (request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2') ||
-                     isAuthenticated();
+      // Separate rule for admin (multiple allow statements are OR'd together)
+      allow read: if request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+
+      // Regular users: All authenticated users can read (articles are private to owner only for writes)
+      allow read: if isAuthenticated();
 
       // Phase 8.2: Only owner can create/update/delete their own articles
       // Fixed: delete checks resource.data (existing), not request.resource.data (null)
@@ -81,17 +82,18 @@ service cloud.firestore {
 
     match /users-v2/{userId}/lists/{listId} {
       // ADMIN: Admin can read all lists (for analytics collectionGroup queries)
-      // CRITICAL: Inline admin check (don't use function) for collectionGroup compatibility
+      // Separate rule for admin (multiple allow statements are OR'd together)
+      allow read: if request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+
       // Regular users: Own lists OR lists shared with them
-      allow read: if (request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2') ||
-                     (isAuthenticated() && (
+      allow read: if isAuthenticated() && (
         // Own lists in own path
         userId == request.auth.uid ||
         // Owner can read their lists anywhere (collection group queries)
         resource.data.ownerId == request.auth.uid ||
         // Shared lists (user is in sharedWith array - works for collection group queries)
         (resource.data.sharedWith != null && request.auth.uid in resource.data.sharedWith)
-      ));
+      );
 
       // Update: Owner OR collaborator (with safety checks)
       allow update: if isAuthenticated() && (
