@@ -2,15 +2,28 @@
   <!-- Header -->
   <div class="dashboard-header">
     <h1>📊 Analytics Dashboard</h1>
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="refresh()"
-      [disabled]="loading()"
-    >
-      <mat-icon>refresh</mat-icon>
-      Refresh
-    </button>
+    <div class="header-controls">
+      <!-- Date Range Selector -->
+      <mat-form-field appearance="outline" class="date-range-selector">
+        <mat-label>Date Range</mat-label>
+        <mat-select [(value)]="selectedDateRange" (selectionChange)="onDateRangeChange()">
+          <mat-option [value]="7">Last 7 days</mat-option>
+          <mat-option [value]="14">Last 14 days</mat-option>
+          <mat-option [value]="30">Last 30 days</mat-option>
+          <mat-option [value]="90">Last 90 days</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="refresh()"
+        [disabled]="loading()"
+      >
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -247,6 +260,86 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Extended Metrics -->
+    <mat-card class="extended-metrics-card">
+      <mat-card-header>
+        <mat-card-title>📈 Extended Metrics</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="extended-metrics-grid">
+          <div class="extended-metric">
+            <div class="metric-label">Avg Lists per User</div>
+            <div class="metric-value">{{ metrics()!.avgListsPerUser }}</div>
+          </div>
+          <div class="extended-metric">
+            <div class="metric-label">Avg Articles per List</div>
+            <div class="metric-value">{{ metrics()!.avgArticlesPerList }}</div>
+          </div>
+          <div class="extended-metric">
+            <div class="metric-label">Share Acceptance Rate</div>
+            <div class="metric-value">{{ metrics()!.shareAcceptanceRate }}%</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Top Active Users -->
+    <mat-card *ngIf="metrics()!.topUsers.length > 0" class="top-users-card">
+      <mat-card-header>
+        <mat-card-title>🏆 Top Active Users</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="top-users-list">
+          <div *ngFor="let user of metrics()!.topUsers; let i = index" class="top-user-item">
+            <div class="user-rank">{{ i + 1 }}</div>
+            <div class="user-id">{{ user.userId }}</div>
+            <div class="user-score">{{ user.activityScore }} events</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <h2>📊 Visualizations</h2>
+
+      <!-- User Growth Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>User Growth Over Time</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas #userGrowthChart></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- AI Command Type Breakdown Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>AI Command Type Breakdown</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container pie-chart-container">
+            <canvas #aiCommandChart></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Daily Activity Chart -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Daily Activity</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="chart-container">
+            <canvas #dailyActivityChart></canvas>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
 
     <!-- Raw Events Viewer -->
     <app-raw-events-viewer></app-raw-events-viewer>
