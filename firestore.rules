@@ -37,6 +37,22 @@ service cloud.firestore {
     }
 
     // ==========================================
+    // ADMIN WILDCARD RULES (Evaluated First)
+    // ==========================================
+    // These rules catch lists/articles at ANY path in the database
+    // Required for collectionGroup queries to work properly
+
+    // Admin can read ANY lists anywhere in database
+    match /{path=**}/lists/{listId} {
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+    }
+
+    // Admin can read ANY articles anywhere in database
+    match /{path=**}/articles/{articleId} {
+      allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+    }
+
+    // ==========================================
     // User Profile
     // ==========================================
 

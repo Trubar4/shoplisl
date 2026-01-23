@@ -16,9 +16,39 @@
     font-weight: 500;
   }
 
+  .header-controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+
+    .date-range-selector {
+      min-width: 200px;
+    }
+
+    button {
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+.dashboard-navigation {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+
   button {
     mat-icon {
       margin-right: 8px;
+    }
+
+    &.active-nav {
+      background-color: #3f51b5;
+      color: white;
     }
   }
 }
@@ -297,6 +327,121 @@
   }
 }
 
+// Extended Metrics Card
+.extended-metrics-card {
+  margin-bottom: 24px;
+
+  .extended-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    padding: 16px 0;
+
+    .extended-metric {
+      text-align: center;
+      padding: 16px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+
+      .metric-label {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+        margin-bottom: 8px;
+      }
+
+      .metric-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #3f51b5;
+      }
+    }
+  }
+}
+
+// Top Users Card
+.top-users-card {
+  margin-bottom: 24px;
+
+  .top-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 8px 0;
+
+    .top-user-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+
+      .user-rank {
+        font-size: 24px;
+        font-weight: 700;
+        color: #3f51b5;
+        min-width: 40px;
+        text-align: center;
+      }
+
+      .user-email {
+        flex: 1;
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .user-score {
+        font-size: 16px;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.6);
+      }
+
+      &:nth-child(1) .user-rank {
+        color: #ffd700;
+      }
+
+      &:nth-child(2) .user-rank {
+        color: #c0c0c0;
+      }
+
+      &:nth-child(3) .user-rank {
+        color: #cd7f32;
+      }
+    }
+  }
+}
+
+// Charts Section
+.charts-section {
+  margin-top: 32px;
+
+  h2 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    margin-bottom: 24px;
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      padding: 16px;
+
+      &.pie-chart-container {
+        height: 300px;
+      }
+
+      canvas {
+        max-height: 100%;
+      }
+    }
+  }
+}
+
 // Responsive adjustments
 @media (max-width: 768px) {
   .analytics-dashboard {
@@ -311,6 +456,19 @@
     h1 {
       font-size: 24px;
     }
+
+    .header-controls {
+      width: 100%;
+      flex-direction: column;
+
+      .date-range-selector {
+        width: 100%;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
   }
 
   .metrics-grid {
@@ -323,5 +481,17 @@
 
   .activity-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .charts-section {
+    .chart-card {
+      .chart-container {
+        height: 300px;
+
+        &.pie-chart-container {
+          height: 250px;
+        }
+      }
+    }
   }
 }

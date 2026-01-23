@@ -30,24 +30,28 @@ export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
   private quotaMonitor = inject(QuotaMonitorService);
   private aiCachingService = inject(AICachingService);
-  private cache: OverviewMetrics | null = null;
-  private cacheTimestamp: number = 0;
+  private cache: Map<string, { metrics: OverviewMetrics; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
   /**
    * Get overview metrics (Top 5 priority metrics)
    * WITH AGGRESSIVE CACHING to prevent quota issues
+   * @param forceRefresh - Bypass cache and fetch fresh data
+   * @param dateRange - Filter data by date range (7, 14, 30, 90 days)
    */
-  getOverviewMetrics(forceRefresh = false): Observable<OverviewMetrics> {
+  getOverviewMetrics(forceRefresh = false, dateRange: number = 30): Observable<OverviewMetrics> {
+    const cacheKey = `metrics_${dateRange}`;
+    const cached = this.cache.get(cacheKey);
+
     // Return cached data if still valid (unless forced refresh)
-    if (!forceRefresh && this.cache && Date.now() - this.cacheTimestamp < this.CACHE_DURATION) {
-      console.log('📊 Analytics: Returning cached metrics (age: ' +
-        Math.round((Date.now() - this.cacheTimestamp) / 1000) + 's)');
-      return of(this.cache);
+    if (!forceRefresh && cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      console.log(`📊 Analytics: Returning cached metrics for ${dateRange} days (age: ` +
+        Math.round((Date.now() - cached.timestamp) / 1000) + 's)');
+      return of(cached.metrics);
     }
 
-    console.log('📊 Analytics: Fetching fresh metrics from Firestore');
-    return from(this.computeOverviewMetrics());
+    console.log(`📊 Analytics: Fetching fresh metrics from Firestore (${dateRange} days)`);
+    return from(this.computeOverviewMetrics(dateRange));
   }
 
   /**
@@ -55,8 +59,7 @@ export class AnalyticsAggregationService {
    */
   clearCache(): void {
     console.log('🗑️ Analytics: Cache cleared');
-    this.cache = null;
-    this.cacheTimestamp = 0;
+    this.cache.clear();
   }
 
   /**
@@ -80,29 +83,35 @@ export class AnalyticsAggregationService {
       articlesDeletedToday: 0,
       failedCommands: [],
       lastUpdated: new Date(),
+      // Phase 5 extended metrics
+      avgListsPerUser: 0,
+      avgArticlesPerList: 0,
+      shareAcceptanceRate: 0,
+      topUsers: [],
     };
   }
 
   /**
    * Compute overview metrics from raw events
-   * OPTIMIZED: Only queries last 30 days + limits results to prevent quota issues
+   * OPTIMIZED: Only queries specified date range + limits results to prevent quota issues
    * QUOTA OPTIMIZED: Reduced from 10k to 500 limit (sufficient for 50 users)
+   * @param dateRange - Number of days to include (7, 14, 30, 90)
    */
-  private async computeOverviewMetrics(): Promise<OverviewMetrics> {
+  private async computeOverviewMetrics(dateRange: number = 30): Promise<OverviewMetrics> {
     const now = new Date();
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const rangeStartDate = new Date(now.getTime() - dateRange * 24 * 60 * 60 * 1000);
 
-    // CRITICAL: Limit query to last 30 days and max 500 events to prevent quota issues
+    // CRITICAL: Limit query to specified date range and max 500 events to prevent quota issues
     // For 50 users, 500 events is plenty for accurate statistics
     const eventsRef = collection(this.firestore, 'analytics/events/items');
     const eventsQuery = query(
       eventsRef,
-      where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
       limit(500) // Reduced from 10k - sufficient for small user base
     );
 
-    console.log('📊 Analytics: Querying events (last 30 days, max 500)...');
+    console.log(`📊 Analytics: Querying events (last ${dateRange} days, max 500)...`);
 
     let eventsSnapshot;
     try {
@@ -201,6 +210,41 @@ export class AnalyticsAggregationService {
       (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
     ).length;
 
+    // Calculate extended metrics
+    const avgListsPerUser = totalUsers > 0 ? Math.round((totalLists / totalUsers) * 10) / 10 : 0;
+    const avgArticlesPerList = totalLists > 0 ? Math.round((totalArticles / totalLists) * 10) / 10 : 0;
+
+    // Get top active users (users with most events)
+    const userEventCounts = new Map<string, number>();
+    events.forEach((e: any) => {
+      const count = userEventCounts.get(e.userId) || 0;
+      userEventCounts.set(e.userId, count + 1);
+    });
+
+    // Get top 5 user IDs
+    const topUserIds = Array.from(userEventCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    // Look up user emails for top users
+    const topUsers = await Promise.all(
+      topUserIds.map(async ([userId, activityScore]) => {
+        try {
+          const userDoc = await getDocs(
+            query(collection(this.firestore, 'users-v2'), where('__name__', '==', userId), limit(1))
+          );
+          const email = userDoc.docs[0]?.data()['email'] || userId;
+          return { userId: email, activityScore };
+        } catch (error) {
+          console.warn(`Failed to fetch email for user ${userId}:`, error);
+          return { userId, activityScore };
+        }
+      })
+    );
+
+    // Calculate share acceptance rate (placeholder - would need share events)
+    const shareAcceptanceRate = 0; // TODO: Implement when share tracking is available
+
     const metrics: OverviewMetrics = {
       totalUsers,
       totalLists,
@@ -218,12 +262,17 @@ export class AnalyticsAggregationService {
       articlesDeletedToday,
       failedCommands,
       lastUpdated: new Date(),
+      // Phase 5 extended metrics
+      avgListsPerUser,
+      avgArticlesPerList,
+      shareAcceptanceRate,
+      topUsers,
     };
 
-    // Cache the results
-    this.cache = metrics;
-    this.cacheTimestamp = Date.now();
-    console.log('📊 Analytics: Metrics cached for 5 minutes');
+    // Cache the results with date range key
+    const cacheKey = `metrics_${dateRange}`;
+    this.cache.set(cacheKey, { metrics, timestamp: Date.now() });
+    console.log(`📊 Analytics: Metrics cached for 5 minutes (${dateRange} days)`);
 
     return metrics;
   }
@@ -315,6 +364,22 @@ export class AnalyticsAggregationService {
     return from(this.computeAICommandBreakdown());
   }
 
+  /**
+   * Get user growth time series for charts
+   * Returns daily user signup counts
+   */
+  getUserGrowthTimeSeries(dateRange: number = 30): Observable<TimeSeriesData[]> {
+    return from(this.computeUserGrowthTimeSeries(dateRange));
+  }
+
+  /**
+   * Get daily activity time series for charts
+   * Returns daily counts of lists/articles created
+   */
+  getDailyActivityTimeSeries(dateRange: number = 30): Observable<DailyActivityData[]> {
+    return from(this.computeDailyActivityTimeSeries(dateRange));
+  }
+
   private async computeAICommandBreakdown(): Promise<AICommandBreakdown> {
     // QUOTA OPTIMIZATION: Add limit and time range to prevent reading ALL events
     // Before: getDocs(eventsRef) = ALL analytics events (unlimited!)
@@ -364,6 +429,138 @@ export class AnalyticsAggregationService {
       totalCommands: aiEvents.length,
     };
   }
+
+  /**
+   * Compute user growth time series
+   * Counts unique active users per day (any event type)
+   */
+  private async computeUserGrowthTimeSeries(dateRange: number): Promise<TimeSeriesData[]> {
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - dateRange);
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      limit(500)
+    );
+
+    try {
+      const eventsSnapshot = await getDocs(q);
+      this.quotaMonitor.trackRead('Analytics User Growth Query', eventsSnapshot.size);
+
+      console.log(`📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
+
+      // Group by date - count unique users per day
+      const dailyCounts = new Map<string, Set<string>>();
+      eventsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const timestamp = data['timestamp']?.toDate ? data['timestamp'].toDate() : new Date(data['timestamp']);
+        const dateKey = timestamp.toISOString().split('T')[0];
+
+        if (!dailyCounts.has(dateKey)) {
+          dailyCounts.set(dateKey, new Set());
+        }
+        dailyCounts.get(dateKey)!.add(data['userId']);
+      });
+
+      console.log(`📊 User Growth: Found ${dailyCounts.size} days with activity`);
+
+      // Fill in all dates in range
+      const result: TimeSeriesData[] = [];
+      const currentDate = new Date(rangeStartDate);
+      while (currentDate <= new Date()) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        const count = dailyCounts.get(dateKey)?.size || 0;
+        result.push({
+          date: dateKey,
+          value: count,
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      console.log(`📊 User Growth: Returning ${result.length} data points`);
+      return result;
+    } catch (error) {
+      console.error('Failed to compute user growth time series:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Compute daily activity time series
+   */
+  private async computeDailyActivityTimeSeries(dateRange: number): Promise<DailyActivityData[]> {
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - dateRange);
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      limit(500)
+    );
+
+    try {
+      const eventsSnapshot = await getDocs(q);
+      this.quotaMonitor.trackRead('Analytics Daily Activity Query', eventsSnapshot.size);
+
+      console.log(`📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
+
+      // Group by date and event type
+      const dailyActivity = new Map<string, DailyActivityData>();
+      let listEventCount = 0;
+      let articleEventCount = 0;
+
+      eventsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const timestamp = data['timestamp']?.toDate ? data['timestamp'].toDate() : new Date(data['timestamp']);
+        const dateKey = timestamp.toISOString().split('T')[0];
+        const eventType = data['eventType'];
+
+        if (!dailyActivity.has(dateKey)) {
+          dailyActivity.set(dateKey, {
+            date: dateKey,
+            listsCreated: 0,
+            articlesCreated: 0,
+          });
+        }
+
+        const dayData = dailyActivity.get(dateKey)!;
+        if (eventType === AnalyticsEventType.LIST_CREATED) {
+          dayData.listsCreated++;
+          listEventCount++;
+        } else if (eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST) {
+          dayData.articlesCreated++;
+          articleEventCount++;
+        }
+      });
+
+      console.log(`📊 Daily Activity: Found ${listEventCount} list events, ${articleEventCount} article events`);
+      console.log(`📊 Daily Activity: Activity on ${dailyActivity.size} days`);
+
+      // Fill in all dates in range
+      const result: DailyActivityData[] = [];
+      const currentDate = new Date(rangeStartDate);
+      while (currentDate <= new Date()) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        result.push(
+          dailyActivity.get(dateKey) || {
+            date: dateKey,
+            listsCreated: 0,
+            articlesCreated: 0,
+          }
+        );
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      console.log(`📊 Daily Activity: Returning ${result.length} data points`);
+      return result;
+    } catch (error) {
+      console.error('Failed to compute daily activity time series:', error);
+      return [];
+    }
+  }
 }
 
 // ==========================================
@@ -393,10 +590,29 @@ export interface OverviewMetrics {
     timestamp: Date;
   }>;
   lastUpdated: Date;
+  // Phase 5 extended metrics
+  avgListsPerUser: number;
+  avgArticlesPerList: number;
+  shareAcceptanceRate: number;
+  topUsers: Array<{
+    userId: string; // Actually contains user email for display purposes
+    activityScore: number;
+  }>;
 }
 
 export interface AICommandBreakdown {
   commandTypeCounts: Record<string, number>;
   failedCommandTypeCounts: Record<string, number>;
   totalCommands: number;
+}
+
+export interface TimeSeriesData {
+  date: string;
+  value: number;
+}
+
+export interface DailyActivityData {
+  date: string;
+  listsCreated: number;
+  articlesCreated: number;
 }

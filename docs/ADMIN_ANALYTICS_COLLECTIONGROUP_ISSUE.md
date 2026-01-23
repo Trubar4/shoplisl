@@ -1,12 +1,52 @@
 # Admin Analytics CollectionGroup Permission Issue
 
-## Status: UNRESOLVED ❌
+## Status: RESOLVED ✅
 
-CollectionGroup queries for `lists` and `articles` are failing with `permission-denied` errors despite multiple attempts to fix Firestore security rules.
+**Date Resolved:** 2026-01-22
+**Branch:** `claude/admin-analytics-phase-3-9ahuD`
+**Commit:** `7d41ac6`
+
+CollectionGroup queries for `lists` and `articles` are now working using wildcard path rules in firestore.rules.
 
 ---
 
-## Summary
+## Resolution
+
+**The wildcard path rules approach worked!** ✅
+
+**Solution implemented:**
+```javascript
+// Added at top of firestore.rules (after helper functions)
+match /{path=**}/lists/{listId} {
+  allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+}
+
+match /{path=**}/articles/{articleId} {
+  allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+}
+```
+
+**Results:**
+- ✅ Lists CollectionGroup query: **WORKING**
+- ✅ Articles CollectionGroup query: **WORKING**
+- ✅ Total lists count: **DISPLAYING**
+- ✅ Total articles count: **DISPLAYING**
+
+**Why this works:**
+- CollectionGroup queries search ALL collections with a given name across the entire database
+- Path-specific rules (e.g., `/users-v2/{userId}/lists/{listId}`) weren't being evaluated for collectionGroup
+- Wildcard path `{path=**}` matches collections at ANY location in the database
+- This catches both modern path (`/users-v2/`) and legacy path (`/users/`)
+
+**Deployment:**
+- Committed to branch: `claude/admin-analytics-phase-3-9ahuD`
+- Commit hash: `7d41ac6`
+- Deployed to Firebase: ✅ Confirmed
+- Dashboard verified: ✅ Working
+
+---
+
+## Original Problem Summary (For Reference)
 
 Admin user (`philipp.thurnher@gmail.com`, UID: `HYqET9vr40eDju4nQCTnJTV0qJo2`) is authenticated correctly but cannot execute collectionGroup queries:
 
