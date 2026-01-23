@@ -7,6 +7,7 @@ import { PerformanceDashboardComponent } from './performance-dashboard/performan
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
 import { DebugUserComponent } from './debug-user/debug-user.component';
 import { QuotaMonitorComponent } from './quota-monitor/quota-monitor.component';
+import { UserSupportComponent } from './user-support/user-support.component';
 import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
@@ -38,6 +39,10 @@ const routes: Routes = [
   {
     path: 'quota-monitor',
     component: QuotaMonitorComponent
+  },
+  {
+    path: 'user-support',
+    component: UserSupportComponent
   }
 ];
 
@@ -51,7 +56,8 @@ const routes: Routes = [
     PerformanceDashboardComponent,
     AnalyticsDashboardComponent,
     DebugUserComponent,
-    QuotaMonitorComponent
+    QuotaMonitorComponent,
+    UserSupportComponent
   ]
 })
 export class AdminModule { }

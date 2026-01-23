@@ -2,13 +2,28 @@
 
 **Last Updated:** 2026-01-22
 **Current Branch:** `claude/admin-analytics-phase-3-9ahuD-RZTKT`
-**Status:** Phase 5 Complete ✅ - Enhanced Dashboard with Charts
+**Status:** Phase 4 & Phase 5 Complete ✅ - Full-Featured Admin Dashboard
 
 ---
 
 ## Executive Summary
 
-The admin analytics dashboard has made significant progress with localStorage persistence, daily activity metrics, cache tracking, and raw events viewer. However, **collectionGroup queries for lists/articles are failing with permission-denied errors**, blocking the ability to show total counts. See `ADMIN_ANALYTICS_COLLECTIONGROUP_ISSUE.md` for detailed troubleshooting.
+✅ **Phase 4 & Phase 5 are now complete!** The admin dashboard now includes comprehensive analytics, visualizations, and user support features.
+
+**Completed Features:**
+- ✅ Phase 3: AI Analytics with collectionGroup queries working
+- ✅ Phase 4: User Support Dashboard with search, profiles, and data export
+- ✅ Phase 5: Enhanced Dashboard with Chart.js visualizations and date filtering
+- Total users, lists, and articles displaying correctly
+- AI analytics with response times and cache hit rates
+- User search and profile management
+- GDPR-compliant data export
+
+**Known limitations:**
+- Active users and today's activity show zeros (no recent activity or events not tracked yet)
+- Article add/remove events not tracked (documented in `TODO_ARTICLE_TRACKING.md`)
+
+**Next Phase:** Phase 5 - Enhanced Dashboard (charts, date range filters, more metrics)
 
 ---
 
@@ -46,62 +61,109 @@ The admin analytics dashboard has made significant progress with localStorage pe
 - `src/app/features/admin/analytics-dashboard/analytics-dashboard.component.ts`
 - `src/app/features/admin/auth-debug/auth-debug.component.ts` - **NEW**
 
-### ⚠️ Phase 3: AI Assistant Analytics (MOSTLY COMPLETE - BLOCKED)
+### ✅ Phase 3: AI Assistant Analytics (COMPLETE)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | AI event tracking | ✅ Done | Command type, success/failure |
 | Failed commands logging | ✅ Done | Input text, error message |
 | AI Assistant tab | ✅ Done | Success rate, failed commands table |
-| Cache hit rate | ✅ Done | **NEW**: AICachingService tracks hits/misses |
-| Response time tracking | ✅ Done | **NEW**: AI service tracks response times |
-| CSV export | ✅ Done | **NEW**: Export failed commands to CSV |
-| Daily activity metrics | ✅ Done | **NEW**: Lists/articles created/deleted today |
-| Raw events viewer | ✅ Done | **NEW**: View raw analytics events with configurable limit |
-| **Total counts** | ❌ **BLOCKED** | **CollectionGroup queries fail with permission-denied** |
+| Cache hit rate | ✅ Done | AICachingService tracks hits/misses |
+| Response time tracking | ✅ Done | AI service tracks response times |
+| CSV export | ✅ Done | Export failed commands to CSV |
+| Daily activity metrics | ✅ Done | Lists/articles created/deleted today |
+| Raw events viewer | ✅ Done | View raw analytics events with configurable limit |
+| **Total counts** | ✅ **FIXED** | **CollectionGroup queries now work with wildcard rules!** |
 
 **Key Files:**
 - `src/app/core/services/ai/caching.service.ts` - Cache statistics
 - `src/app/core/services/analytics-aggregation.service.ts` - Daily metrics & counts
-- `src/app/features/admin/raw-events-viewer/raw-events-viewer.component.ts` - **NEW**
+- `src/app/features/admin/raw-events-viewer/raw-events-viewer.component.ts`
+- `firestore.rules` - Wildcard path rules for admin collectionGroup queries
 
-**Blocker:** See `docs/ADMIN_ANALYTICS_COLLECTIONGROUP_ISSUE.md` for details on permission issue.
+**Resolution:** Added wildcard path rules `match /{path=**}/lists/{listId}` and `match /{path=**}/articles/{articleId}` to firestore.rules to enable admin collectionGroup queries.
 
 ---
 
 ## Critical Issues to Fix
 
-### ❌ Issue 1: CollectionGroup Permission Denied (Priority: CRITICAL - BLOCKING)
+### ✅ Issue 1: CollectionGroup Permission Denied (RESOLVED)
 
-**Status:** UNRESOLVED - Active troubleshooting in progress
+**Status:** ✅ RESOLVED on 2026-01-22
 
-**Problem:**
-- `collectionGroup(firestore, 'lists')` fails with `permission-denied`
-- `collectionGroup(firestore, 'articles')` fails with `permission-denied`
-- Admin user is authenticated correctly (UID verified)
-- Top-level collection queries work fine
-- Even simplest rule `allow read: if request.auth != null` fails for collectionGroup
+**Solution:** Added wildcard path rules to firestore.rules
 
-**Evidence:**
-- ✅ Users Query: SUCCESS (1 user)
-- ❌ Lists CollectionGroup: permission-denied
-- ❌ Articles CollectionGroup: permission-denied
-- Quota monitor shows reads happening before failure
+**Fix applied:**
+```javascript
+// At top of firestore.rules (after helper functions)
+match /{path=**}/lists/{listId} {
+  allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+}
+match /{path=**}/articles/{articleId} {
+  allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
+}
+```
 
-**Impact:**
-- Cannot display total lists count
-- Cannot display total articles count
-- Cannot display active users count
-- Daily activity metrics UI ready but no data
+**Results:**
+- ✅ Lists CollectionGroup: **NOW WORKING**
+- ✅ Articles CollectionGroup: **NOW WORKING**
+- ✅ Total lists count displaying
+- ✅ Total articles count displaying
+
+**Why it works:**
+- The `{path=**}` wildcard matches lists/articles at ANY path in the database
+- This catches collections in both `/users-v2/{userId}/lists` and `/users/{userId}/lists` paths
+- Admin UID explicitly checked for security
 
 **Documentation:**
-See `docs/ADMIN_ANALYTICS_COLLECTIONGROUP_ISSUE.md` for:
-- All debugging attempts (5 different approaches tried)
-- Current secure rules
-- Possible root causes
-- Recommended next steps (wildcard path rules most promising)
+See commit `7d41ac6` in branch `claude/admin-analytics-phase-3-9ahuD`
 
-### ⚠️ Issue 2: High Batch Threshold (Priority: MEDIUM)
+### ℹ️ Issue 2: Active Users and Today's Activity Showing Zeros (Priority: LOW)
+
+**Status:** This is EXPECTED BEHAVIOR - not a bug
+
+**Why Active Users shows 0:**
+- Active users = unique users with events in last 14 days
+- If no one has used the app in the last 14 days, this will be 0
+- This is working correctly - just means no recent activity
+
+**Why Today's Activity shows zeros:**
+- Lists created today: Counts `LIST_CREATED` events from today ✅ (tracked)
+- Lists deleted today: Counts `LIST_DELETED` events from today ✅ (tracked)
+- Articles created today: Counts `ARTICLE_ADDED_TO_LIST` events from today ❌ (NOT tracked)
+- Articles deleted today: Counts `ARTICLE_REMOVED_FROM_LIST` events from today ❌ (NOT tracked)
+
+**Issue:** Article add/remove events are not being tracked in the codebase
+
+**Where to add tracking:**
+```typescript
+// In articles-repository.service.ts
+async addArticleToList(listId: string, article: Article) {
+  // ... existing code ...
+
+  // Add this:
+  this.analyticsService.trackEvent(
+    currentUserId,
+    AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+    { listId, articleId: article.id }
+  );
+}
+
+async removeArticleFromList(listId: string, articleId: string) {
+  // ... existing code ...
+
+  // Add this:
+  this.analyticsService.trackEvent(
+    currentUserId,
+    AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST,
+    { listId, articleId }
+  );
+}
+```
+
+**Priority:** LOW - This is a nice-to-have metric, not critical for Phase 4
+
+### ⚠️ Issue 3: High Batch Threshold (Priority: MEDIUM)
 
 **Status:** Working as designed, but could be improved for development
 
@@ -168,17 +230,16 @@ export class AnalyticsService {
 
 ## Remaining Work
 
-### ⚠️ IMMEDIATE: Fix CollectionGroup Permission Issue
+### ✅ CollectionGroup Issue: RESOLVED
 
-**Before continuing with new features, this must be resolved.**
+The wildcard path rules approach worked! Lists and articles now display correctly in the admin dashboard.
 
-See `docs/ADMIN_ANALYTICS_COLLECTIONGROUP_ISSUE.md` for detailed investigation.
+**What was the issue?**
+Firestore collectionGroup queries search ALL collections with a given name across the entire database. Our path-specific rules (e.g., `/users-v2/{userId}/lists/{listId}`) weren't being evaluated for collectionGroup queries.
 
-**Most promising next step:**
-Try wildcard path rules in `firestore.rules`:
-
+**What was the fix?**
+Added wildcard path rules that match lists/articles at ANY path in the database:
 ```javascript
-// Add at TOP of rules (after helper functions)
 match /{path=**}/lists/{listId} {
   allow read: if request.auth != null && request.auth.uid == 'HYqET9vr40eDju4nQCTnJTV0qJo2';
 }
@@ -187,12 +248,10 @@ match /{path=**}/articles/{articleId} {
 }
 ```
 
-**Alternative approaches:**
-1. Check Firebase Console for orphaned collections
-2. Enable Firestore debug mode in Firebase Console
-3. Use Firebase Rules Playground to simulate query
-4. Check for documents missing `ownerId` field
-5. Update Firebase SDK to latest version
+**Deployment:**
+- Committed: `7d41ac6` on branch `claude/admin-analytics-phase-3-9ahuD`
+- Deployed to Firebase: ✅ Confirmed working
+- Dashboard displaying counts: ✅ Working
 
 ---
 
@@ -273,38 +332,67 @@ private async getCachedResult(input: string): Promise<CachedResult | null> {
 | Phase 1: Analytics Foundation | ✅ Complete | 0 hours | N/A |
 | Phase 2: Core Metrics Dashboard | ✅ Complete | 0 hours | N/A |
 | Phase 3: AI Analytics | ✅ Complete | 0 hours | N/A |
-| Phase 4: User Support Dashboard | ❌ Not Started | 4-6 hours | HIGH |
+| Phase 4: User Support Dashboard | ✅ Complete | 0 hours | N/A |
 | Phase 5: Enhanced Dashboard | ✅ Complete | 0 hours | N/A |
 | Phase 6: Feature Flags System | ❌ Not Started | 4-5 hours | MEDIUM |
 | Phase 7: User Feedback | ❌ Not Started | 2-3 hours | LOW |
 
-**Total Estimated Remaining Effort:** 10-14 hours
+**Total Estimated Remaining Effort:** 6-8 hours
 
-**Latest Achievement:** Phase 5 complete with Chart.js visualizations, date filtering, and extended metrics!
+**Latest Achievements:**
+- Phase 4 complete with User Support Dashboard (search, profiles, GDPR export)
+- Phase 5 complete with Chart.js visualizations, date filtering, and extended metrics!
 
 ---
 
 ## Future Development Phases
 
-### Phase 3.5: Complete CollectionGroup Fix (Effort: 1-2 hours) ⚠️ BLOCKING
+### ✅ Phase 4: User Support Dashboard (COMPLETE)
 
-**Status:** IN PROGRESS - BLOCKING
+**Status:** ✅ COMPLETED and TESTED on 2026-01-22
 
-**Tasks:**
-1. ❌ Fix collectionGroup permission issues
-2. ❌ Verify total counts display correctly
-3. ❌ Verify daily activity metrics populate with data
-4. ❌ Test with production data
+| Feature | Status | Notes |
+|---------|--------|-------|
+| User search | ✅ Done | Search by email, name, or ID |
+| Search results table | ✅ Done | Shows lists, articles, last active |
+| User profile viewer | ✅ Done | Detailed stats and information |
+| Recent activity timeline | ✅ Done | Last 30 events with icons |
+| User's lists display | ✅ Done | Grid view with article counts |
+| Export user data | ✅ Done | JSON export for GDPR compliance |
+| Navigation integration | ✅ Done | Added to admin dashboard |
+| Error handling | ✅ Done | Graceful degradation for missing indexes |
+| TypeScript strict mode | ✅ Done | All build errors resolved |
 
-**Reference:**
-- See `docs/ADMIN_ANALYTICS_COLLECTIONGROUP_ISSUE.md`
+**Key Files:**
+- `src/app/core/services/user-support.service.ts` - Search and profile service
+- `src/app/features/admin/user-support/user-support.component.*` - Dashboard UI
+- `src/app/features/admin/admin.module.ts` - Route configuration
 
-**Expected outcome:**
-- Dashboard shows accurate total counts
-- Daily activity metrics display real data
-- Analytics aggregation works end-to-end
+**Access:** Navigate to `/admin/user-support` or click "User Support" in admin dashboard
 
-### Phase 4: User Support Dashboard (Effort: 4-6 hours)
+**Features Delivered:**
+- 🔍 **User Search**: Find users by email, name, or ID with real-time results
+- 📊 **Profile Viewer**: View detailed user info, statistics, lists, and articles
+- 📋 **Activity Timeline**: See last 30 events with event type, time, and metadata
+- 📦 **Data Export**: Download complete user data as JSON for GDPR compliance
+- 🎨 **Material Design**: Clean, responsive UI with tabs and cards
+- 🛡️ **Error Resilience**: Works even if analytics indexes are missing
+
+**Testing Results:**
+- ✅ User search working correctly
+- ✅ List and article counts displaying accurately
+- ✅ Profile viewer loading full details
+- ✅ Data export functioning properly
+- ✅ Error handling graceful (analytics failures don't break counts)
+- ✅ TypeScript strict mode compliance
+
+**Commits:**
+- `db40028` - feat(admin): implement Phase 4 User Support Dashboard
+- `de84292` - fix(admin): resolve TypeScript errors in user-support service
+- `5186895` - fix(admin): use bracket notation for Firestore index signatures
+- `8dcbf37` - fix(admin): improve error handling in user search stats
+
+### Phase 5: Enhanced Dashboard (Effort: 3-4 hours) 🚀 READY TO START
 
 **Goal:** Enable admin to search users and view their activity
 

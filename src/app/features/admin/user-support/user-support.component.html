@@ -1,0 +1,342 @@
+<div class="user-support-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>support_agent</mat-icon>
+        User Support Dashboard
+      </mat-card-title>
+      <mat-card-subtitle>
+        Search users, view profiles, and export data
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <!-- Search Section -->
+  <mat-card class="search-card">
+    <mat-card-content>
+      <div class="search-bar">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Search by email, name, or ID</mat-label>
+          <input
+            matInput
+            [(ngModel)]="searchQuery"
+            (keyup.enter)="search()"
+            placeholder="Enter at least 2 characters"
+            [disabled]="isSearching()"
+          />
+          <mat-icon matPrefix>search</mat-icon>
+          @if (searchQuery()) {
+            <button matSuffix mat-icon-button (click)="clearSearch()">
+              <mat-icon>clear</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="search()"
+          [disabled]="isSearching() || searchQuery().length < 2"
+        >
+          @if (isSearching()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon>search</mat-icon>
+          }
+          Search
+        </button>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Search Results -->
+  @if (searchResults().length > 0) {
+    <mat-card class="results-card">
+      <mat-card-header>
+        <mat-card-title>
+          Search Results ({{ searchResults().length }})
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="searchResults()" class="results-table">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let user">
+              <div class="user-name">
+                <mat-icon>person</mat-icon>
+                <span>{{ user.name }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Email Column -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+          </ng-container>
+
+          <!-- Lists Column -->
+          <ng-container matColumnDef="lists">
+            <th mat-header-cell *matHeaderCellDef>Lists</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip>{{ user.listsCount }}</mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Articles Column -->
+          <ng-container matColumnDef="articles">
+            <th mat-header-cell *matHeaderCellDef>Articles</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip>{{ user.articlesCount }}</mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Last Active Column -->
+          <ng-container matColumnDef="lastActive">
+            <th mat-header-cell *matHeaderCellDef>Last Active</th>
+            <td mat-cell *matCellDef="let user">
+              {{ formatDate(user.lastActive) }}
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let user">
+              <button
+                mat-button
+                color="primary"
+                (click)="viewProfile(user.id)"
+                [disabled]="isLoadingProfile()"
+              >
+                <mat-icon>visibility</mat-icon>
+                View Profile
+              </button>
+              <button
+                mat-icon-button
+                [matTooltip]="'Export user data'"
+                (click)="exportUserData(user.id, user.name)"
+              >
+                <mat-icon>download</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <!-- User Profile Section -->
+  @if (selectedUser()) {
+    <mat-card class="profile-card" id="user-profile">
+      <mat-card-header>
+        <mat-card-title>
+          <div class="profile-header">
+            <div>
+              <mat-icon>person</mat-icon>
+              User Profile: {{ selectedUser()!.name }}
+            </div>
+            <button mat-icon-button (click)="closeProfile()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (isLoadingProfile()) {
+          <div class="loading-spinner">
+            <mat-spinner></mat-spinner>
+            <p>Loading profile...</p>
+          </div>
+        } @else {
+          <mat-tab-group>
+            <!-- Overview Tab -->
+            <mat-tab label="Overview">
+              <div class="tab-content">
+                <!-- Basic Info -->
+                <div class="info-section">
+                  <h3>
+                    <mat-icon>info</mat-icon>
+                    Basic Information
+                  </h3>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="label">User ID:</span>
+                      <span class="value">{{ selectedUser()!.id }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Name:</span>
+                      <span class="value">{{ selectedUser()!.name }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Email:</span>
+                      <span class="value">{{ selectedUser()!.email }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Signup Date:</span>
+                      <span class="value">{{
+                        selectedUser()!.createdAt | date: 'medium'
+                      }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Last Active:</span>
+                      <span class="value">{{
+                        formatDate(selectedUser()!.lastActive)
+                      }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <!-- Statistics -->
+                <div class="info-section">
+                  <h3>
+                    <mat-icon>bar_chart</mat-icon>
+                    Statistics
+                  </h3>
+                  <div class="stats-grid">
+                    <div class="stat-card">
+                      <mat-icon>list</mat-icon>
+                      <div class="stat-value">{{ selectedUser()!.listsCount }}</div>
+                      <div class="stat-label">Total Lists</div>
+                    </div>
+                    <div class="stat-card">
+                      <mat-icon>shopping_cart</mat-icon>
+                      <div class="stat-value">{{ selectedUser()!.articlesCount }}</div>
+                      <div class="stat-label">Total Articles</div>
+                    </div>
+                    <div class="stat-card">
+                      <mat-icon>share</mat-icon>
+                      <div class="stat-value">{{ selectedUser()!.sharedListsCount }}</div>
+                      <div class="stat-label">Shared Lists</div>
+                    </div>
+                    <div class="stat-card">
+                      <mat-icon>people</mat-icon>
+                      <div class="stat-value">{{ selectedUser()!.collaboratingListsCount }}</div>
+                      <div class="stat-label">Collaborating</div>
+                    </div>
+                  </div>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <!-- Actions -->
+                <div class="info-section">
+                  <h3>
+                    <mat-icon>settings</mat-icon>
+                    Actions
+                  </h3>
+                  <div class="actions-buttons">
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      (click)="exportUserData(selectedUser()!.id, selectedUser()!.name)"
+                    >
+                      <mat-icon>download</mat-icon>
+                      Export All Data
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+
+            <!-- Lists Tab -->
+            <mat-tab label="Lists ({{ selectedUser()!.listsCount }})">
+              <div class="tab-content">
+                @if (selectedUser()!.lists.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>list</mat-icon>
+                    <p>No lists found</p>
+                  </div>
+                } @else {
+                  <div class="lists-grid">
+                    @for (list of selectedUser()!.lists; track list.id) {
+                      <mat-card class="list-item-card">
+                        <mat-card-header>
+                          <mat-card-title>
+                            <mat-icon>list</mat-icon>
+                            {{ list.name }}
+                          </mat-card-title>
+                        </mat-card-header>
+                        <mat-card-content>
+                          <div class="list-details">
+                            <div class="detail">
+                              <mat-icon>shopping_cart</mat-icon>
+                              <span>{{ list.articleIds.length || 0 }} articles</span>
+                            </div>
+                            <div class="detail">
+                              <mat-icon>calendar_today</mat-icon>
+                              <span>{{ list.createdAt | date: 'short' }}</span>
+                            </div>
+                            @if (list.sharedWith && list.sharedWith.length > 0) {
+                              <div class="detail">
+                                <mat-icon>share</mat-icon>
+                                <span>Shared with {{ list.sharedWith.length }} user(s)</span>
+                              </div>
+                            }
+                          </div>
+                        </mat-card-content>
+                      </mat-card>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-tab>
+
+            <!-- Activity Tab -->
+            <mat-tab label="Recent Activity ({{ selectedUser()!.recentActivity.length }})">
+              <div class="tab-content">
+                @if (selectedUser()!.recentActivity.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>event</mat-icon>
+                    <p>No recent activity</p>
+                  </div>
+                } @else {
+                  <div class="activity-list">
+                    @for (event of selectedUser()!.recentActivity; track event.id) {
+                      <div class="activity-item">
+                        <mat-icon [color]="getEventColor(event.eventType)">
+                          {{ getEventIcon(event.eventType) }}
+                        </mat-icon>
+                        <div class="activity-details">
+                          <div class="activity-type">
+                            {{ formatEventType(event.eventType) }}
+                          </div>
+                          <div class="activity-time">
+                            {{ formatDate(event.timestamp) }}
+                          </div>
+                          @if (event.metadata) {
+                            <div class="activity-metadata">
+                              @for (item of event.metadata | keyvalue; track item.key) {
+                                <span class="metadata-item">
+                                  <strong>{{ item.key }}:</strong> {{ item.value }}
+                                </span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

@@ -33,6 +33,26 @@
   }
 }
 
+.dashboard-navigation {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+
+  button {
+    mat-icon {
+      margin-right: 8px;
+    }
+
+    &.active-nav {
+      background-color: #3f51b5;
+      color: white;
+    }
+  }
+}
+
 .loading-container,
 .error-container {
   display: flex;
