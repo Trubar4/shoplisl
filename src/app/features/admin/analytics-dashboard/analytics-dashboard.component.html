@@ -309,7 +309,7 @@
         <div class="top-users-list">
           <div *ngFor="let user of metrics()!.topUsers; let i = index" class="top-user-item">
             <div class="user-rank">{{ i + 1 }}</div>
-            <div class="user-id">{{ user.userId }}</div>
+            <div class="user-email">{{ user.userId }}</div>
             <div class="user-score">{{ user.activityScore }} events</div>
           </div>
         </div>

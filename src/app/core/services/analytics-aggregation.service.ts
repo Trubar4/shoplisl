@@ -220,10 +220,27 @@ export class AnalyticsAggregationService {
       const count = userEventCounts.get(e.userId) || 0;
       userEventCounts.set(e.userId, count + 1);
     });
-    const topUsers = Array.from(userEventCounts.entries())
+
+    // Get top 5 user IDs
+    const topUserIds = Array.from(userEventCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([userId, activityScore]) => ({ userId, activityScore }));
+      .slice(0, 5);
+
+    // Look up user emails for top users
+    const topUsers = await Promise.all(
+      topUserIds.map(async ([userId, activityScore]) => {
+        try {
+          const userDoc = await getDocs(
+            query(collection(this.firestore, 'users-v2'), where('__name__', '==', userId), limit(1))
+          );
+          const email = userDoc.docs[0]?.data()['email'] || userId;
+          return { userId: email, activityScore };
+        } catch (error) {
+          console.warn(`Failed to fetch email for user ${userId}:`, error);
+          return { userId, activityScore };
+        }
+      })
+    );
 
     // Calculate share acceptance rate (placeholder - would need share events)
     const shareAcceptanceRate = 0; // TODO: Implement when share tracking is available
@@ -415,6 +432,7 @@ export class AnalyticsAggregationService {
 
   /**
    * Compute user growth time series
+   * Counts unique active users per day (any event type)
    */
   private async computeUserGrowthTimeSeries(dateRange: number): Promise<TimeSeriesData[]> {
     const rangeStartDate = new Date();
@@ -423,7 +441,6 @@ export class AnalyticsAggregationService {
     const eventsRef = collection(this.firestore, 'analytics/events/items');
     const q = query(
       eventsRef,
-      where('eventType', '==', AnalyticsEventType.USER_LOGIN),
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
       limit(500)
     );
@@ -432,7 +449,9 @@ export class AnalyticsAggregationService {
       const eventsSnapshot = await getDocs(q);
       this.quotaMonitor.trackRead('Analytics User Growth Query', eventsSnapshot.size);
 
-      // Group by date
+      console.log(`📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
+
+      // Group by date - count unique users per day
       const dailyCounts = new Map<string, Set<string>>();
       eventsSnapshot.docs.forEach((doc) => {
         const data = doc.data();
@@ -445,18 +464,22 @@ export class AnalyticsAggregationService {
         dailyCounts.get(dateKey)!.add(data['userId']);
       });
 
+      console.log(`📊 User Growth: Found ${dailyCounts.size} days with activity`);
+
       // Fill in all dates in range
       const result: TimeSeriesData[] = [];
       const currentDate = new Date(rangeStartDate);
       while (currentDate <= new Date()) {
         const dateKey = currentDate.toISOString().split('T')[0];
+        const count = dailyCounts.get(dateKey)?.size || 0;
         result.push({
           date: dateKey,
-          value: dailyCounts.get(dateKey)?.size || 0,
+          value: count,
         });
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
+      console.log(`📊 User Growth: Returning ${result.length} data points`);
       return result;
     } catch (error) {
       console.error('Failed to compute user growth time series:', error);
@@ -482,8 +505,12 @@ export class AnalyticsAggregationService {
       const eventsSnapshot = await getDocs(q);
       this.quotaMonitor.trackRead('Analytics Daily Activity Query', eventsSnapshot.size);
 
+      console.log(`📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
+
       // Group by date and event type
       const dailyActivity = new Map<string, DailyActivityData>();
+      let listEventCount = 0;
+      let articleEventCount = 0;
 
       eventsSnapshot.docs.forEach((doc) => {
         const data = doc.data();
@@ -502,10 +529,15 @@ export class AnalyticsAggregationService {
         const dayData = dailyActivity.get(dateKey)!;
         if (eventType === AnalyticsEventType.LIST_CREATED) {
           dayData.listsCreated++;
+          listEventCount++;
         } else if (eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST) {
           dayData.articlesCreated++;
+          articleEventCount++;
         }
       });
+
+      console.log(`📊 Daily Activity: Found ${listEventCount} list events, ${articleEventCount} article events`);
+      console.log(`📊 Daily Activity: Activity on ${dailyActivity.size} days`);
 
       // Fill in all dates in range
       const result: DailyActivityData[] = [];
@@ -522,6 +554,7 @@ export class AnalyticsAggregationService {
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
+      console.log(`📊 Daily Activity: Returning ${result.length} data points`);
       return result;
     } catch (error) {
       console.error('Failed to compute daily activity time series:', error);
@@ -562,7 +595,7 @@ export interface OverviewMetrics {
   avgArticlesPerList: number;
   shareAcceptanceRate: number;
   topUsers: Array<{
-    userId: string;
+    userId: string; // Actually contains user email for display purposes
     activityScore: number;
   }>;
 }
