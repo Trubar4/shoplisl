@@ -1456,6 +1456,13 @@ export class FirebaseDataService {
         // Step 1: Read latest server state
         const listDoc = await transaction.get(listRef);
 
+        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
+        this.quotaMonitor.trackRead('Transaction Read (Toggle Item)', 1, {
+          listId,
+          articleId,
+          action
+        });
+
         if (!listDoc.exists()) {
           throw new Error(`List ${listId} not found in Firestore`);
         }
@@ -1537,6 +1544,12 @@ export class FirebaseDataService {
       await runTransaction(this.firestore, async (transaction) => {
         // Step 1: Read latest server state
         const listDoc = await transaction.get(listRef);
+
+        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
+        this.quotaMonitor.trackRead('Transaction Read (Batch Update)', 1, {
+          listId,
+          updateCount: Object.keys(itemStateUpdates).length
+        });
 
         if (!listDoc.exists()) {
           throw new Error(`List ${listId} not found in Firestore`);
