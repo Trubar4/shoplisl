@@ -36,6 +36,38 @@ export class QuotaMonitorService {
   constructor() {
     this.loadSessionData();
     this.startDailyReset();
+    this.startAutomaticReporting();
+  }
+
+  /**
+   * AUTOMATIC REPORTING: Log quota status every 10 seconds
+   * Eliminates need for manual testing
+   */
+  private startAutomaticReporting(): void {
+    let lastReportedReads = 0;
+
+    setInterval(() => {
+      const newReads = this.sessionReads - lastReportedReads;
+
+      if (newReads > 0) {
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`📊 AUTOMATIC QUOTA REPORT (every 10 seconds)`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`New reads in last 10 sec: ${newReads}`);
+        console.log(`Total session reads: ${this.sessionReads}`);
+        console.log(`Status: ${this.getQuotaStatus().status}`);
+
+        // If significant reads occurred, show breakdown
+        if (newReads > 5) {
+          console.log(`\n⚠️ Significant activity detected! Breakdown:`);
+          this.logDetailedBreakdown();
+        }
+
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      }
+
+      lastReportedReads = this.sessionReads;
+    }, 10000); // Every 10 seconds
   }
 
   /**

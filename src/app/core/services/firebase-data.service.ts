@@ -2555,6 +2555,25 @@ export class FirebaseDataService {
   }
 
   async getAllArticlesFromFirebase(): Promise<Article[]> {
+    // 🚨 CRITICAL FIX: This method loads ALL articles (485 reads) and should NEVER run in normal usage
+    // It's being called from loadDataEmergency() which shouldn't be needed with realtime listeners
+    console.error('🚨🚨🚨 getAllArticlesFromFirebase() CALLED - THIS IS EXPENSIVE! 🚨🚨🚨');
+    console.error('📍 Stack trace:');
+    console.trace();
+    console.error('🚨 This method loads ALL 485 articles and wastes quota!');
+    console.error('🚨 Returning empty array to prevent reads.');
+    console.error('🚨 If something breaks, check the stack trace above to see what needs fixing.');
+
+    // Track that this was called (for debugging)
+    this.quotaMonitor.trackRead('getAllArticlesFromFirebase (BLOCKED)', 0, {
+      blocked: true,
+      message: 'This expensive method was blocked to prevent quota waste'
+    });
+
+    // Return empty array instead of reading from Firestore
+    return [];
+
+    /* ORIGINAL CODE DISABLED TO PREVENT QUOTA WASTE:
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
@@ -2579,6 +2598,7 @@ export class FirebaseDataService {
       });
     });
     return articles;
+    */
   }
 
   /**
@@ -2612,6 +2632,21 @@ export class FirebaseDataService {
   }
 
   async getAllListsFromFirebase(): Promise<ShoppingList[]> {
+    // 🚨 CRITICAL FIX: This method loads ALL lists and should NEVER run in normal usage
+    console.error('🚨🚨🚨 getAllListsFromFirebase() CALLED - THIS IS EXPENSIVE! 🚨🚨🚨');
+    console.error('📍 Stack trace:');
+    console.trace();
+    console.error('🚨 This method loads ALL lists and wastes quota!');
+    console.error('🚨 Returning empty array to prevent reads.');
+
+    this.quotaMonitor.trackRead('getAllListsFromFirebase (BLOCKED)', 0, {
+      blocked: true,
+      message: 'This expensive method was blocked to prevent quota waste'
+    });
+
+    return [];
+
+    /* ORIGINAL CODE DISABLED:
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
@@ -2650,6 +2685,7 @@ export class FirebaseDataService {
       });
     });
     return lists;
+    */
   }
 
   // === EMERGENCY & UTILITY ===
