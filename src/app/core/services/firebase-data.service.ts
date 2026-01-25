@@ -486,13 +486,16 @@ export class FirebaseDataService {
       // Saves ~441 reads per session (loading only needed articles, not all 463)
       this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
 
-      // FIX: Use flag to prevent multiple loads instead of unsubscribing inside callback
+      // FIX: Use flag to prevent multiple loads AND unsubscribe after first load
       let hasLoadedOwnedArticles = false;
+      let subscription: any;
 
       // Wait for lists to load first, then load only articles on those lists
-      this.listsSubject.subscribe(lists => {
+      subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0 && !hasLoadedOwnedArticles) {
           hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
+
+          this.logger.info('data', '🔧 Lists loaded, now loading articles...');
 
           // Lists have loaded - now load only articles that are on these lists
           const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
@@ -509,6 +512,12 @@ export class FirebaseDataService {
             this.logger.info('data', '📦 No articles on current lists, skipping article load');
             this.ownedArticles = [];
             this.mergeArticles();
+          }
+
+          // CRITICAL FIX: Unsubscribe after first load to prevent repeated triggering
+          if (subscription) {
+            subscription.unsubscribe();
+            this.logger.info('data', '✅ Unsubscribed from listsSubject after loading articles (prevents re-triggering)');
           }
         }
       });

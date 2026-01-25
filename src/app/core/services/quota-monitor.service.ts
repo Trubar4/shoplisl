@@ -86,9 +86,9 @@ export class QuotaMonitorService {
       sessionTotal: this.sessionReads
     });
 
-    // Keep last 100 operations only
-    if (this.operationLog.length > 100) {
-      this.operationLog = this.operationLog.slice(-100);
+    // Keep last 500 operations (increased from 100 to catch all operations)
+    if (this.operationLog.length > 500) {
+      this.operationLog = this.operationLog.slice(-500);
     }
 
     // Update metrics based on operation type
@@ -376,7 +376,7 @@ export class QuotaMonitorService {
     const sorted = Array.from(breakdown.entries())
       .sort((a, b) => b[1].totalReads - a[1].totalReads);
 
-    console.log('\n📊 ===== QUOTA BREAKDOWN (Last 100 Operations) =====');
+    console.log('\n📊 ===== QUOTA BREAKDOWN (Last 500 Operations) =====');
     console.log(`Total Session Reads: ${this.sessionReads}`);
     console.log(`Estimated Daily Reads: ${this.estimatedDailyReads}`);
     console.log('\nReads by Operation Type:');
