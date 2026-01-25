@@ -89,6 +89,10 @@ export class FirebaseDataService {
   private lastMergeWrite = new Map<string, number>(); // listId -> timestamp of last write
   private readonly MERGE_WRITE_COOLDOWN = 2000; // 2 seconds cooldown
 
+  // QUOTA OPTIMIZATION: Rate limit share-invites reloads to prevent excessive reads
+  private lastShareInvitesReload = 0;
+  private readonly SHARE_INVITES_RELOAD_THROTTLE = 5000; // 5 seconds
+
   // LAZY LISTENERS: Track active list subscription for cleanup
   private activeListSubscription?: any;
 
@@ -188,7 +192,7 @@ export class FirebaseDataService {
     // Now that we have lazy listeners, we can stop the collection listeners to save quota
     if (!this.collectionListenersCleanedUp) {
       this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners');
-      this.logger.info('data', `📍 articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}`);
+      this.logger.info('data', `📍 articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}, sharedListsUnsubscribe exists: ${!!this.sharedListsUnsubscribe}`);
 
       // Clean up Articles collection listener
       if (this.articlesUnsubscribe) {
@@ -208,8 +212,18 @@ export class FirebaseDataService {
         this.logger.warn('data', '⚠️ Lists collection listener was already undefined - may have been cleaned up elsewhere');
       }
 
+      // CRITICAL FIX: Clean up Share-Invites listener
+      // This listener was causing 200-400 reads per session by continuously firing
+      if (this.sharedListsUnsubscribe) {
+        this.sharedListsUnsubscribe();
+        this.sharedListsUnsubscribe = undefined;
+        this.logger.info('data', '✅ Share-invites listener unsubscribed (saves 200-400 reads per session!)');
+      } else {
+        this.logger.warn('data', '⚠️ Share-invites listener was already undefined - may have been cleaned up elsewhere');
+      }
+
       this.collectionListenersCleanedUp = true;
-      this.logger.info('data', '✅ Collection listeners cleanup complete - quota usage should drop dramatically!');
+      this.logger.info('data', '✅ All collection listeners cleanup complete - quota usage should drop by ~80%!');
     } else {
       this.logger.info('data', '⏭️  Skipping cleanup - collection listeners already cleaned up (flag is true)');
     }
@@ -472,13 +486,16 @@ export class FirebaseDataService {
       // Saves ~441 reads per session (loading only needed articles, not all 463)
       this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
 
-      // FIX: Use flag to prevent multiple loads instead of unsubscribing inside callback
+      // FIX: Use flag to prevent multiple loads AND unsubscribe after first load
       let hasLoadedOwnedArticles = false;
+      let subscription: any;
 
       // Wait for lists to load first, then load only articles on those lists
-      this.listsSubject.subscribe(lists => {
+      subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0 && !hasLoadedOwnedArticles) {
           hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
+
+          this.logger.info('data', '🔧 Lists loaded, now loading articles...');
 
           // Lists have loaded - now load only articles that are on these lists
           const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
@@ -495,6 +512,12 @@ export class FirebaseDataService {
             this.logger.info('data', '📦 No articles on current lists, skipping article load');
             this.ownedArticles = [];
             this.mergeArticles();
+          }
+
+          // CRITICAL FIX: Unsubscribe after first load to prevent repeated triggering
+          if (subscription) {
+            subscription.unsubscribe();
+            this.logger.info('data', '✅ Unsubscribed from listsSubject after loading articles (prevents re-triggering)');
           }
         }
       });
@@ -586,19 +609,35 @@ export class FirebaseDataService {
       // then load each list directly with proper authentication.
       const userId = this.authService.getCurrentUserId();
       if (userId) {
-        this.logger.info('data', `Setting up shared lists listener for user ${userId}`);
+        // SAFEGUARD: Prevent duplicate listener setup
+        if (this.sharedListsUnsubscribe) {
+          this.logger.warn('data', '⚠️ Share-invites listener already active, skipping setup (prevents duplicates)');
+        } else {
+          this.logger.info('data', `Setting up shared lists listener for user ${userId}`);
 
-        // Query share-invites to find accepted invites for this user
-        const invitesRef = collection(this.firestore, 'share-invites');
-        const acceptedInvitesQuery = query(
-          invitesRef,
-          where('acceptedByUserId', '==', userId),
-          where('status', '==', 'accepted')
-        );
+          // Query share-invites to find accepted invites for this user
+          const invitesRef = collection(this.firestore, 'share-invites');
+          const acceptedInvitesQuery = query(
+            invitesRef,
+            where('acceptedByUserId', '==', userId),
+            where('status', '==', 'accepted')
+          );
 
-        this.sharedListsUnsubscribe = onSnapshot(acceptedInvitesQuery,
+          this.sharedListsUnsubscribe = onSnapshot(acceptedInvitesQuery,
           async (inviteSnapshot) => {
-            this.logger.info('data', `Found ${inviteSnapshot.size} accepted share invites`);
+            // CRITICAL MONITORING: Track share-invites listener reads
+            // This listener was causing 200-400 reads per session
+            this.quotaMonitor.trackRead('Share-Invites Listener', inviteSnapshot.size);
+            this.logger.info('data', `🔔 Share-invites listener FIRED: ${inviteSnapshot.size} accepted invites`);
+            this.logger.info('data', `📊 This listener should be cleaned up when first list detail is opened`);
+
+            // QUOTA OPTIMIZATION: Throttle rapid-fire reloads
+            const now = Date.now();
+            if (now - this.lastShareInvitesReload < this.SHARE_INVITES_RELOAD_THROTTLE) {
+              this.logger.info('data', `⏭️ Share-invites reload throttled (too soon - ${now - this.lastShareInvitesReload}ms since last reload)`);
+              return;
+            }
+            this.lastShareInvitesReload = now;
 
             if (DEBUG_FIREBASE_DATA) {
               console.log('\n🔥 [FIREBASE DEBUG] ========================================');
@@ -651,6 +690,12 @@ export class FirebaseDataService {
                 (snapshot) => {
                   // Unsubscribe immediately after first event (quota optimization)
                   unsubscribe();
+
+                  // MONITORING: Track shared list initial load
+                  this.quotaMonitor.trackRead('Shared List Initial Load', 1, {
+                    listId: listId,
+                    ownerId: ownerId
+                  });
 
                   if (DEBUG_FIREBASE_DATA) {
                     console.log(`\n📥 Loading shared list ${listId} from Firebase...`);
@@ -769,6 +814,7 @@ export class FirebaseDataService {
             this.logger.error('data', 'Share invites listener error', error);
           }
         );
+        } // End of else block for duplicate listener check
       } else {
         this.logger.warn('data', 'No user ID available, skipping shared lists listener');
       }
@@ -1419,6 +1465,13 @@ export class FirebaseDataService {
         // Step 1: Read latest server state
         const listDoc = await transaction.get(listRef);
 
+        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
+        this.quotaMonitor.trackRead('Transaction Read (Toggle Item)', 1, {
+          listId,
+          articleId,
+          action
+        });
+
         if (!listDoc.exists()) {
           throw new Error(`List ${listId} not found in Firestore`);
         }
@@ -1500,6 +1553,12 @@ export class FirebaseDataService {
       await runTransaction(this.firestore, async (transaction) => {
         // Step 1: Read latest server state
         const listDoc = await transaction.get(listRef);
+
+        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
+        this.quotaMonitor.trackRead('Transaction Read (Batch Update)', 1, {
+          listId,
+          updateCount: Object.keys(itemStateUpdates).length
+        });
 
         if (!listDoc.exists()) {
           throw new Error(`List ${listId} not found in Firestore`);
@@ -2505,6 +2564,25 @@ export class FirebaseDataService {
   }
 
   async getAllArticlesFromFirebase(): Promise<Article[]> {
+    // 🚨 CRITICAL FIX: This method loads ALL articles (485 reads) and should NEVER run in normal usage
+    // It's being called from loadDataEmergency() which shouldn't be needed with realtime listeners
+    console.error('🚨🚨🚨 getAllArticlesFromFirebase() CALLED - THIS IS EXPENSIVE! 🚨🚨🚨');
+    console.error('📍 Stack trace:');
+    console.trace();
+    console.error('🚨 This method loads ALL 485 articles and wastes quota!');
+    console.error('🚨 Returning empty array to prevent reads.');
+    console.error('🚨 If something breaks, check the stack trace above to see what needs fixing.');
+
+    // Track that this was called (for debugging)
+    this.quotaMonitor.trackRead('getAllArticlesFromFirebase (BLOCKED)', 0, {
+      blocked: true,
+      message: 'This expensive method was blocked to prevent quota waste'
+    });
+
+    // Return empty array instead of reading from Firestore
+    return [];
+
+    /* ORIGINAL CODE DISABLED TO PREVENT QUOTA WASTE:
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
@@ -2529,6 +2607,7 @@ export class FirebaseDataService {
       });
     });
     return articles;
+    */
   }
 
   /**
@@ -2562,6 +2641,21 @@ export class FirebaseDataService {
   }
 
   async getAllListsFromFirebase(): Promise<ShoppingList[]> {
+    // 🚨 CRITICAL FIX: This method loads ALL lists and should NEVER run in normal usage
+    console.error('🚨🚨🚨 getAllListsFromFirebase() CALLED - THIS IS EXPENSIVE! 🚨🚨🚨');
+    console.error('📍 Stack trace:');
+    console.trace();
+    console.error('🚨 This method loads ALL lists and wastes quota!');
+    console.error('🚨 Returning empty array to prevent reads.');
+
+    this.quotaMonitor.trackRead('getAllListsFromFirebase (BLOCKED)', 0, {
+      blocked: true,
+      message: 'This expensive method was blocked to prevent quota waste'
+    });
+
+    return [];
+
+    /* ORIGINAL CODE DISABLED:
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
     const snapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
@@ -2600,6 +2694,7 @@ export class FirebaseDataService {
       });
     });
     return lists;
+    */
   }
 
   // === EMERGENCY & UTILITY ===

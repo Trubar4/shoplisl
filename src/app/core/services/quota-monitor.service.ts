@@ -36,6 +36,38 @@ export class QuotaMonitorService {
   constructor() {
     this.loadSessionData();
     this.startDailyReset();
+    this.startAutomaticReporting();
+  }
+
+  /**
+   * AUTOMATIC REPORTING: Log quota status every 10 seconds
+   * Eliminates need for manual testing
+   */
+  private startAutomaticReporting(): void {
+    let lastReportedReads = 0;
+
+    setInterval(() => {
+      const newReads = this.sessionReads - lastReportedReads;
+
+      if (newReads > 0) {
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`📊 AUTOMATIC QUOTA REPORT (every 10 seconds)`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`New reads in last 10 sec: ${newReads}`);
+        console.log(`Total session reads: ${this.sessionReads}`);
+        console.log(`Status: ${this.getQuotaStatus().status}`);
+
+        // If significant reads occurred, show breakdown
+        if (newReads > 5) {
+          console.log(`\n⚠️ Significant activity detected! Breakdown:`);
+          this.logDetailedBreakdown();
+        }
+
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      }
+
+      lastReportedReads = this.sessionReads;
+    }, 10000); // Every 10 seconds
   }
 
   /**
@@ -54,9 +86,9 @@ export class QuotaMonitorService {
       sessionTotal: this.sessionReads
     });
 
-    // Keep last 100 operations only
-    if (this.operationLog.length > 100) {
-      this.operationLog = this.operationLog.slice(-100);
+    // Keep last 500 operations (increased from 100 to catch all operations)
+    if (this.operationLog.length > 500) {
+      this.operationLog = this.operationLog.slice(-500);
     }
 
     // Update metrics based on operation type
@@ -321,6 +353,64 @@ export class QuotaMonitorService {
       report,
       operationLog: log
     }, null, 2);
+  }
+
+  /**
+   * DEBUGGING: Log detailed quota breakdown by operation type
+   * Helps identify which operations are consuming the most reads
+   */
+  logDetailedBreakdown(): void {
+    const log = this.getOperationLog();
+    const breakdown = new Map<string, { count: number; totalReads: number }>();
+
+    // Group operations by type
+    log.forEach(op => {
+      const existing = breakdown.get(op.operation) || { count: 0, totalReads: 0 };
+      breakdown.set(op.operation, {
+        count: existing.count + 1,
+        totalReads: existing.totalReads + op.count
+      });
+    });
+
+    // Sort by total reads (highest first)
+    const sorted = Array.from(breakdown.entries())
+      .sort((a, b) => b[1].totalReads - a[1].totalReads);
+
+    console.log('\n📊 ===== QUOTA BREAKDOWN (Last 500 Operations) =====');
+    console.log(`Total Session Reads: ${this.sessionReads}`);
+    console.log(`Estimated Daily Reads: ${this.estimatedDailyReads}`);
+    console.log('\nReads by Operation Type:');
+    sorted.forEach(([operation, stats]) => {
+      const percent = (stats.totalReads / this.sessionReads * 100).toFixed(1);
+      console.log(`  ${operation}: ${stats.totalReads} reads (${stats.count} times, ${percent}%)`);
+    });
+    console.log('==================================================\n');
+  }
+
+  /**
+   * DEBUGGING: Check if share-invites listener is causing excessive reads
+   */
+  checkShareInvitesListenerHealth(): { isHealthy: boolean; message: string; fireCount: number; totalReads: number } {
+    const log = this.getOperationLog();
+    const shareInvitesOps = log.filter(op => op.operation === 'Share-Invites Listener');
+
+    const fireCount = shareInvitesOps.length;
+    const totalReads = shareInvitesOps.reduce((sum, op) => sum + op.count, 0);
+
+    // Healthy: Should fire 0-2 times per session (initial + maybe one reload before cleanup)
+    // Unhealthy: Fires 3+ times (means cleanup didn't work or listener keeps reloading)
+    const isHealthy = fireCount <= 2;
+
+    let message: string;
+    if (fireCount === 0) {
+      message = '✅ Share-invites listener has not fired yet (expected at app start)';
+    } else if (fireCount <= 2) {
+      message = `✅ Share-invites listener is healthy (fired ${fireCount} times, ${totalReads} reads)`;
+    } else {
+      message = `⚠️ Share-invites listener fired ${fireCount} times! Should be cleaned up after first list detail visit. Check cleanup logs.`;
+    }
+
+    return { isHealthy, message, fireCount, totalReads };
   }
 }
 

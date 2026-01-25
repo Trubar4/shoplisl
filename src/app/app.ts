@@ -18,6 +18,7 @@ import { ArticleItemComponent } from './shared/components/article-item/article-i
 import { DataMigrationService } from './core/services/data-migration.service';
 import { AuthService } from './core/services/auth.service';
 import { FirebaseDataService } from './core/services/firebase-data.service';
+import { QuotaMonitorService } from './core/services/quota-monitor.service';
 import { AppState } from './state/app.state';
 import * as AuthActions from './state/auth/auth.actions';
 import { selectIsAuthenticated } from './state/auth/auth.selectors';
@@ -70,6 +71,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private dataMigrationService: DataMigrationService,
     private authService: AuthService,
     private firebaseDataService: FirebaseDataService,
+    private quotaMonitor: QuotaMonitorService,
     private snackBar: MatSnackBar,
     private store: Store<AppState>
   ) {
@@ -78,6 +80,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.initializeOfflineDebugging();
     this.initializeAuth();
     this.initializeRefreshIndicator();
+    this.initializeQuotaMonitorGlobal();
   }
 
   signIn(): void {
@@ -264,7 +267,7 @@ export class AppComponent implements OnInit, OnDestroy {
       console.log(`
 🔧 Logger Commands:
 - logger.showConfig() - Show current settings
-- logger.enableTopic('ai') - Enable AI logs  
+- logger.enableTopic('ai') - Enable AI logs
 - logger.disableTopic('ai') - Disable AI logs
 - logger.enableAllTopics() - Show all logs
 - logger.disableAllTopics() - Hide all logs
@@ -273,24 +276,48 @@ export class AppComponent implements OnInit, OnDestroy {
 - logger.setEnabled(false) - Disable all logging
 - logger.getOfflineStatus() - Show offline system status
       `);
-      
+
       // Add offline debugging helpers to window object
       (window as any).logger.getOfflineStatus = () => {
         const connectionStatus = this.connectionService.getCurrentStatus();
         const cacheStatus = this.cacheService.getCacheStatus();
         const dataStatus = this.dataService.getStatus();
-        
+
         console.log('📊 Offline System Status:');
         console.log('🌐 Connection:', connectionStatus);
         console.log('💾 Cache:', cacheStatus);
         console.log('🔄 Data Service:', dataStatus);
-        
+
         return {
           connection: connectionStatus,
           cache: cacheStatus,
           dataService: dataStatus
         };
       };
+    }
+  }
+
+  /**
+   * DEBUGGING: Expose quota monitor to window for easy console access
+   */
+  private initializeQuotaMonitorGlobal(): void {
+    if (typeof window !== 'undefined') {
+      (window as any).quotaMonitor = this.quotaMonitor;
+
+      console.log('📊 Quota Monitor ready! Use window.quotaMonitor for diagnostics');
+      console.log(`
+📊 Quota Monitor Commands:
+- quotaMonitor.getQuotaStatus() - Current quota usage
+- quotaMonitor.checkShareInvitesListenerHealth() - Check listener health
+- quotaMonitor.logDetailedBreakdown() - Show reads by operation
+- quotaMonitor.exportData() - Export full report
+- quotaMonitor.resetSession() - Reset session counters
+
+Quick Diagnostics:
+  const status = quotaMonitor.getQuotaStatus();
+  const health = quotaMonitor.checkShareInvitesListenerHealth();
+  quotaMonitor.logDetailedBreakdown();
+      `);
     }
   }
 
