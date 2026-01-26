@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged, takeUntil, take, tap } from 'rxjs/operators';
+import { map, debounceTime, distinctUntilChanged, takeUntil, take, tap, shareReplay } from 'rxjs/operators';
 
 // PERFORMANCE DEBUG - Set to true to enable timing logs (filter console with "⏱️ PERF:")
 const DEBUG_PERFORMANCE = true;
@@ -163,7 +163,10 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
         // Apply sorting
         return this.sortArticles(filtered, sortOption);
-      })
+      }),
+      // CRITICAL: Share the observable among all subscribers (async pipes + ngOnInit subscription)
+      // Without this, combineLatest is cold and each subscriber misses emissions meant for others
+      shareReplay(1)
     );
   }
 
