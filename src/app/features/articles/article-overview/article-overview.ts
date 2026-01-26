@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged, takeUntil, take } from 'rxjs/operators';
+import { map, debounceTime, distinctUntilChanged, takeUntil, take, shareReplay } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -135,7 +135,9 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
         // Apply sorting
         return this.sortArticles(filtered, sortOption);
-      })
+      }),
+      // Share the observable among all subscribers (async pipes in template)
+      shareReplay(1)
     );
   }
 
@@ -254,6 +256,21 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     return article.copiedFrom !== undefined && article.copiedFrom !== null;
   }
 
+  /**
+   * Safely get timestamp from a date value that might be:
+   * - A Date object (has .getTime())
+   * - A Firestore Timestamp (has .toDate())
+   * - A number (already a timestamp)
+   * - undefined/null
+   */
+  private getTimestamp(date: any): number {
+    if (!date) return 0;
+    if (typeof date === 'number') return date;
+    if (typeof date.getTime === 'function') return date.getTime();
+    if (typeof date.toDate === 'function') return date.toDate().getTime();
+    return 0;
+  }
+
   private sortArticles(articles: ArticleWithStats[], sortOption: ArticleSortOption): ArticleWithStats[] {
     const sorted = [...articles];
 
@@ -275,8 +292,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
       case 'lastChecked':
         return sorted.sort((a, b) => {
-          const dateA = a.stats?.lastCheckedDate?.getTime() ?? 0;
-          const dateB = b.stats?.lastCheckedDate?.getTime() ?? 0;
+          const dateA = this.getTimestamp(a.stats?.lastCheckedDate);
+          const dateB = this.getTimestamp(b.stats?.lastCheckedDate);
           // Sort descending (most recent first)
           if (dateA !== dateB) {
             return dateB - dateA;
@@ -287,8 +304,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
 
       case 'lastAdded':
         return sorted.sort((a, b) => {
-          const dateA = a.stats?.lastAddedToListDate?.getTime() ?? 0;
-          const dateB = b.stats?.lastAddedToListDate?.getTime() ?? 0;
+          const dateA = this.getTimestamp(a.stats?.lastAddedToListDate);
+          const dateB = this.getTimestamp(b.stats?.lastAddedToListDate);
           // Sort descending (most recent first)
           if (dateA !== dateB) {
             return dateB - dateA;
@@ -325,7 +342,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   // === SWIPE GESTURE HANDLERS (Same as lists-overview) ===
-  
+
   onTouchStart(event: TouchEvent, articleId: string): void {
     const touch = event.touches[0];
     this.swipeStates[articleId] = {
@@ -337,30 +354,30 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       currentY: touch.clientY
     };
   }
-  
+
   onTouchMove(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const touch = event.touches[0];
     const swipeState = this.swipeStates[articleId];
-    
+
     swipeState.currentX = touch.clientX;
     swipeState.currentY = touch.clientY;
-    
+
     const deltaX = swipeState.startX - swipeState.currentX;
     const deltaY = Math.abs(swipeState.startY - swipeState.currentY);
-    
+
     // Only prevent default if this is clearly a horizontal swipe
     // Allow vertical scrolling unless horizontal swipe is dominant
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
       // This is a horizontal swipe - prevent scrolling
       event.preventDefault();
-      
+
       // Only allow left swipe (positive deltaX)
       if (deltaX > 10) {
         swipeState.isSwipeActive = true;
         swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
-        
+
         // Update the visual position
         this.updateSwipePosition(articleId, swipeState.swipeDistance);
       } else if (deltaX < -10) {
@@ -375,12 +392,12 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       // Don't prevent default - allow natural scrolling
     }
   }
-  
+
   onTouchEnd(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const swipeState = this.swipeStates[articleId];
-    
+
     if (swipeState.swipeDistance > this.SWIPE_THRESHOLD) {
       // Trigger delete action
       this.onSwipeDelete(articleId);
@@ -401,7 +418,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       startY: event.clientY,    // Add this line
       currentY: event.clientY   // Add this line
     };
-    
+
     // Add mouse move and up listeners
     const onMouseMove = (e: MouseEvent) => this.onMouseMove(e, articleId);
     const onMouseUp = (e: MouseEvent) => {
@@ -409,24 +426,24 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-    
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }
-  
+
   onMouseMove(event: MouseEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const swipeState = this.swipeStates[articleId];
     swipeState.currentX = event.clientX;
     swipeState.currentY = event.clientY;  // Add this line
     const deltaX = swipeState.startX - swipeState.currentX;
-    
+
     // Only allow left swipe (positive deltaX)
     if (deltaX > 10) {
       swipeState.isSwipeActive = true;
       swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
-      
+
       // Update the visual position
       this.updateSwipePosition(articleId, swipeState.swipeDistance);
     } else if (deltaX < -10) {
@@ -444,7 +461,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     if (element) {
       element.style.transform = `translateX(-${distance}px)`;
       element.style.transition = 'none';
-      
+
       // Update delete indicator opacity
       const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
       if (deleteIndicator) {
@@ -460,14 +477,14 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     if (element) {
       element.style.transform = 'translateX(0)';
       element.style.transition = 'transform 0.3s ease';
-      
+
       // Reset delete indicator
       const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
       if (deleteIndicator) {
         deleteIndicator.style.opacity = '0';
       }
     }
-    
+
     // Reset swipe state after animation
     setTimeout(() => {
       if (this.swipeStates[articleId]) {

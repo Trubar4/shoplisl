@@ -102,6 +102,9 @@ export class FirebaseDataService {
   // QUOTA OPTIMIZATION: Track if collection listeners are currently active
   private collectionListenersActive = false;
 
+  // QUOTA OPTIMIZATION: Prevent concurrent setupRealtimeListeners() calls
+  private isSettingUpListeners = false;
+
   constructor(
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
@@ -464,6 +467,13 @@ export class FirebaseDataService {
   private setupRealtimeListeners(): void {
     this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
 
+    // QUOTA OPTIMIZATION: Prevent concurrent setup calls (race condition fix)
+    // This MUST be checked FIRST, before any other guards
+    if (this.isSettingUpListeners) {
+      this.logger.info('data', '⏭️  setupRealtimeListeners() already in progress - skipping duplicate call');
+      return;
+    }
+
     // QUOTA OPTIMIZATION: Skip if collection listeners are already active
     // This prevents duplicate listener creation on connection restore events
     if (this.collectionListenersActive) {
@@ -471,8 +481,12 @@ export class FirebaseDataService {
       return;
     }
 
+    // Set flag IMMEDIATELY to prevent concurrent calls
+    this.isSettingUpListeners = true;
+
     if (!this.firestore) {
       this.logger.error('data', 'Firestore not initialized');
+      this.isSettingUpListeners = false;
       return;
     }
 
@@ -493,10 +507,6 @@ export class FirebaseDataService {
       // Wait for lists to load first, then load only articles on those lists
       subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0 && !hasLoadedOwnedArticles) {
-          hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
-
-          this.logger.info('data', '🔧 Lists loaded, now loading articles...');
-
           // Lists have loaded - now load only articles that are on these lists
           const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
           const articleIdsOnLists = new Set<string>();
@@ -505,16 +515,21 @@ export class FirebaseDataService {
             (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
           });
 
-          if (articleIdsOnLists.size > 0) {
-            this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
-            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
-          } else {
-            this.logger.info('data', '📦 No articles on current lists, skipping article load');
-            this.ownedArticles = [];
-            this.mergeArticles();
+          // CRITICAL FIX: If articleIds are empty, this is likely CACHED data
+          // Cached lists often have empty articleIds arrays - wait for Firestore data
+          if (articleIdsOnLists.size === 0) {
+            this.logger.info('data', `⏳ Lists have empty articleIds (likely cached) - waiting for Firestore data...`);
+            // DON'T set hasLoadedOwnedArticles, DON'T unsubscribe - wait for real data
+            return;
           }
 
-          // CRITICAL FIX: Unsubscribe after first load to prevent repeated triggering
+          // We have real data with articleIds - proceed with loading
+          hasLoadedOwnedArticles = true; // Set flag to prevent re-entry
+
+          this.logger.info('data', `📦 Loading ${articleIdsOnLists.size} articles on current lists`);
+          this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
+
+          // CRITICAL FIX: Unsubscribe after loading real articles (not cached empty data)
           if (subscription) {
             subscription.unsubscribe();
             this.logger.info('data', '✅ Unsubscribed from listsSubject after loading articles (prevents re-triggering)');
@@ -822,9 +837,11 @@ export class FirebaseDataService {
       // QUOTA OPTIMIZATION: Mark collection listeners as active
       // This prevents duplicate listener creation on subsequent calls
       this.collectionListenersActive = true;
+      this.isSettingUpListeners = false; // Reset flag - setup complete
       this.logger.info('data', '✅ Collection listeners created and marked as active');
     } catch (error) {
       this.logger.error('data', 'Error setting up listeners', error);
+      this.isSettingUpListeners = false; // Reset flag on error too
       this.loadCachedData();
     }
   }
@@ -1837,7 +1854,7 @@ export class FirebaseDataService {
       articles.push(...chunkArticles);
     });
 
-    this.logger.info('data', `✅ Loaded ${articles.length} owned articles (saved ${463 - articles.length} unnecessary reads)`);
+    this.logger.info('data', `✅ Loaded ${articles.length} owned articles`);
 
     // Store in ownedArticles and merge with shared articles
     this.ownedArticles = articles;
@@ -2324,6 +2341,7 @@ export class FirebaseDataService {
     this.logger.info('data', '🔄 cleanupListeners() resetting collection listener flags to FALSE');
     this.collectionListenersCleanedUp = false;
     this.collectionListenersActive = false;
+    this.isSettingUpListeners = false;
 
     // Performance: Clear caches on cleanup
     this.loadedSharedArticleIds.clear();
@@ -2701,38 +2719,25 @@ export class FirebaseDataService {
 
   async loadDataEmergency(): Promise<void> {
     this.logger.warn('data', 'Emergency data loading triggered');
-    
+
+    // QUOTA FIX: Try cached data first - this is the primary path
     this.logger.debug('data', 'Trying cached data first');
     this.loadCachedData();
-    
+
     const cachedArticles = this.articlesSubject.value;
     const cachedLists = this.listsSubject.value;
-    
+
     if (cachedArticles.length > 0 || cachedLists.length > 0) {
       this.logger.info('data', `Loaded from cache: ${cachedArticles.length} articles, ${cachedLists.length} lists`);
       return;
     }
-    
+
+    // QUOTA FIX: If cache is empty and we're online, use setupRealtimeListeners()
+    // which will load data through the optimized quota-saving flow
+    // (Don't call getAllArticlesFromFirebase() which is expensive and now blocked)
     if (this.connectionService.isOnline() && this.firestore) {
-      this.logger.debug('data', 'Trying direct Firebase fetch');
-      
-      try {
-        const articles = await this.getAllArticlesFromFirebase();
-        const lists = await this.getAllListsFromFirebase();
-        
-        this.logger.info('data', `Direct Firebase fetch: ${articles.length} articles, ${lists.length} lists`);
-        
-        this.articlesSubject.next(articles);
-        this.listsSubject.next(lists);
-        
-        this.cacheService.cacheArticles(articles);
-        this.cacheService.cacheLists(lists);
-        
-        this.setupRealtimeListeners();
-        
-      } catch (error) {
-        this.logger.error('data', 'Direct Firebase fetch failed', error);
-      }
+      this.logger.info('data', 'Cache empty - setting up listeners to load fresh data');
+      this.setupRealtimeListeners();
     }
   }
 
@@ -2746,12 +2751,10 @@ export class FirebaseDataService {
     }
 
     try {
+      // QUOTA FIX: setupRealtimeListeners() already loads data through its listeners
+      // No need for additional getDocs() calls - that was reading articles TWICE!
       this.setupRealtimeListeners();
-
-      const basePath = this.getUserBasePath();
-      const articlesSnapshot = await getDocs(collection(this.firestore, `${basePath}/articles`));
-      const listsSnapshot = await getDocs(collection(this.firestore, `${basePath}/lists`));
-      this.logger.info('data', `Current user data: ${articlesSnapshot.size} articles, ${listsSnapshot.size} lists`);
+      this.logger.info('data', `Refresh triggered - listeners will load fresh data`);
     } catch (error) {
       this.logger.error('data', 'Error refreshing data', error);
       this.loadCachedData();
