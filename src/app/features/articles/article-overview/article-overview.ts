@@ -1,10 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged, takeUntil, take, tap, shareReplay } from 'rxjs/operators';
-
-// PERFORMANCE DEBUG - Set to true to enable timing logs (filter console with "⏱️ PERF:")
-const DEBUG_PERFORMANCE = true;
+import { map, debounceTime, distinctUntilChanged, takeUntil, take, shareReplay } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -110,20 +107,8 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     this.currentUserId = this.authService.getCurrentUserId();
     // Combine articles with stats, search query, filter, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
-      this.store.select(selectAllArticles).pipe(
-        tap(articles => {
-          if (DEBUG_PERFORMANCE && articles.length > 0) {
-            console.log(`⏱️ PERF: [UI] NgRx selectAllArticles emitted ${articles.length} articles`);
-          }
-        })
-      ),
-      this.articleStatsService.getAllArticleStats().pipe(
-        tap(statsMap => {
-          if (DEBUG_PERFORMANCE && statsMap.size > 0) {
-            console.log(`⏱️ PERF: [UI] ArticleStatsService emitted stats for ${statsMap.size} articles`);
-          }
-        })
-      ),
+      this.store.select(selectAllArticles),
+      this.articleStatsService.getAllArticleStats(),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
@@ -132,11 +117,6 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       this.sortOption$
     ]).pipe(
       map(([articles, statsMap, query, filterOption, sortOption]) => {
-        // PERFORMANCE DEBUG: Log what we received
-        if (DEBUG_PERFORMANCE) {
-          console.log(`⏱️ PERF: [UI] combineLatest MAP: ${articles.length} articles, ${statsMap.size} stats, filter="${filterOption}", sort="${sortOption}", query="${query}"`);
-        }
-
         // Merge articles with their stats
         let articlesWithStats: ArticleWithStats[] = articles.map(article => ({
           ...article,
@@ -144,11 +124,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
         }));
 
         // Apply ownership filter
-        const beforeFilter = articlesWithStats.length;
         articlesWithStats = this.applyFilter(articlesWithStats, filterOption);
-        if (DEBUG_PERFORMANCE && beforeFilter !== articlesWithStats.length) {
-          console.log(`⏱️ PERF: [UI] Filter "${filterOption}" reduced ${beforeFilter} → ${articlesWithStats.length} articles`);
-        }
 
         // Filter by search query
         const filtered = query.trim()
@@ -157,55 +133,19 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
             )
           : articlesWithStats;
 
-        if (DEBUG_PERFORMANCE) {
-          console.log(`⏱️ PERF: [UI] Final output: ${filtered.length} articles to render`);
-        }
-
         // Apply sorting
         return this.sortArticles(filtered, sortOption);
       }),
-      // CRITICAL: Share the observable among all subscribers (async pipes + ngOnInit subscription)
-      // Without this, combineLatest is cold and each subscriber misses emissions meant for others
+      // Share the observable among all subscribers (async pipes in template)
       shareReplay(1)
     );
   }
 
-  // PERFORMANCE TIMING: Track when component initializes
-  private componentInitTime = 0;
-  private firstArticlesReceived = false;
-
   ngOnInit(): void {
-    // PERFORMANCE TIMING: Mark component init
-    this.componentInitTime = performance.now();
-    if (DEBUG_PERFORMANCE) {
-      console.log(`⏱️ PERF: [UI] ArticleOverviewComponent.ngOnInit() - dispatching loadArticles + loadLists`);
-    }
-
     // Dispatch load actions to populate NgRx store with both articles and lists
     // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
     this.store.dispatch(ListsActions.loadLists());
-
-    // PERFORMANCE TIMING: Track when first articles arrive at UI
-    console.log(`⏱️ PERF: [UI] Setting up filteredArticles$ subscription...`);
-    this.filteredArticles$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe({
-      next: (articles) => {
-        console.log(`⏱️ PERF: [UI] filteredArticles$ SUBSCRIBE received ${articles.length} articles (firstArticlesReceived=${this.firstArticlesReceived})`);
-        if (!this.firstArticlesReceived && articles.length > 0) {
-          this.firstArticlesReceived = true;
-          const elapsed = Math.round(performance.now() - this.componentInitTime);
-          console.log(`⏱️ PERF: [UI] 🎉 First ${articles.length} articles rendered at T+${elapsed}ms from ngOnInit`);
-        }
-      },
-      error: (err) => {
-        console.error(`⏱️ PERF: [UI] filteredArticles$ ERROR:`, err);
-      },
-      complete: () => {
-        console.log(`⏱️ PERF: [UI] filteredArticles$ COMPLETED (this should only happen on component destroy)`);
-      }
-    });
 
     // Set theme color for article overview (iPhone header color)
     this.listUtils.updateThemeColors('#1a9edb');
@@ -402,7 +342,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
   }
 
   // === SWIPE GESTURE HANDLERS (Same as lists-overview) ===
-  
+
   onTouchStart(event: TouchEvent, articleId: string): void {
     const touch = event.touches[0];
     this.swipeStates[articleId] = {
@@ -414,30 +354,30 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       currentY: touch.clientY
     };
   }
-  
+
   onTouchMove(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const touch = event.touches[0];
     const swipeState = this.swipeStates[articleId];
-    
+
     swipeState.currentX = touch.clientX;
     swipeState.currentY = touch.clientY;
-    
+
     const deltaX = swipeState.startX - swipeState.currentX;
     const deltaY = Math.abs(swipeState.startY - swipeState.currentY);
-    
+
     // Only prevent default if this is clearly a horizontal swipe
     // Allow vertical scrolling unless horizontal swipe is dominant
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
       // This is a horizontal swipe - prevent scrolling
       event.preventDefault();
-      
+
       // Only allow left swipe (positive deltaX)
       if (deltaX > 10) {
         swipeState.isSwipeActive = true;
         swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
-        
+
         // Update the visual position
         this.updateSwipePosition(articleId, swipeState.swipeDistance);
       } else if (deltaX < -10) {
@@ -452,12 +392,12 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       // Don't prevent default - allow natural scrolling
     }
   }
-  
+
   onTouchEnd(event: TouchEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const swipeState = this.swipeStates[articleId];
-    
+
     if (swipeState.swipeDistance > this.SWIPE_THRESHOLD) {
       // Trigger delete action
       this.onSwipeDelete(articleId);
@@ -478,7 +418,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       startY: event.clientY,    // Add this line
       currentY: event.clientY   // Add this line
     };
-    
+
     // Add mouse move and up listeners
     const onMouseMove = (e: MouseEvent) => this.onMouseMove(e, articleId);
     const onMouseUp = (e: MouseEvent) => {
@@ -486,24 +426,24 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-    
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }
-  
+
   onMouseMove(event: MouseEvent, articleId: string): void {
     if (!this.swipeStates[articleId]) return;
-    
+
     const swipeState = this.swipeStates[articleId];
     swipeState.currentX = event.clientX;
     swipeState.currentY = event.clientY;  // Add this line
     const deltaX = swipeState.startX - swipeState.currentX;
-    
+
     // Only allow left swipe (positive deltaX)
     if (deltaX > 10) {
       swipeState.isSwipeActive = true;
       swipeState.swipeDistance = Math.min(deltaX, this.MAX_SWIPE_DISTANCE);
-      
+
       // Update the visual position
       this.updateSwipePosition(articleId, swipeState.swipeDistance);
     } else if (deltaX < -10) {
@@ -521,7 +461,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     if (element) {
       element.style.transform = `translateX(-${distance}px)`;
       element.style.transition = 'none';
-      
+
       // Update delete indicator opacity
       const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
       if (deleteIndicator) {
@@ -537,14 +477,14 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     if (element) {
       element.style.transform = 'translateX(0)';
       element.style.transition = 'transform 0.3s ease';
-      
+
       // Reset delete indicator
       const deleteIndicator = element.querySelector('.delete-indicator') as HTMLElement;
       if (deleteIndicator) {
         deleteIndicator.style.opacity = '0';
       }
     }
-    
+
     // Reset swipe state after animation
     setTimeout(() => {
       if (this.swipeStates[articleId]) {

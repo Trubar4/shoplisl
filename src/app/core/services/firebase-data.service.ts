@@ -33,9 +33,6 @@ import { HistoryService } from './history.service';
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = true;
 
-// PERFORMANCE DEBUG - Set to true to enable timing logs (filter console with "⏱️ PERF:")
-const DEBUG_PERFORMANCE = true;
-
 @Injectable({
   providedIn: 'root'
 })
@@ -107,15 +104,6 @@ export class FirebaseDataService {
 
   // QUOTA OPTIMIZATION: Prevent concurrent setupRealtimeListeners() calls
   private isSettingUpListeners = false;
-
-  // PERFORMANCE TIMING: Track loading steps for debugging slow article loads
-  private perfTiming = {
-    initStart: 0,
-    listsListenerFired: 0,
-    articleLoadStart: 0,
-    articleLoadEnd: 0,
-    articlesEmitted: 0
-  };
 
   constructor(
     private connectionService: ConnectionService,
@@ -483,9 +471,6 @@ export class FirebaseDataService {
     // This MUST be checked FIRST, before any other guards
     if (this.isSettingUpListeners) {
       this.logger.info('data', '⏭️  setupRealtimeListeners() already in progress - skipping duplicate call');
-      if (DEBUG_PERFORMANCE) {
-        console.log(`⏱️ PERF: [SKIPPED] setupRealtimeListeners() - already in progress`);
-      }
       return;
     }
 
@@ -493,20 +478,11 @@ export class FirebaseDataService {
     // This prevents duplicate listener creation on connection restore events
     if (this.collectionListenersActive) {
       this.logger.info('data', '⏭️  Collection listeners already active - skipping recreation to save quota');
-      if (DEBUG_PERFORMANCE) {
-        console.log(`⏱️ PERF: [SKIPPED] setupRealtimeListeners() - listeners already active`);
-      }
       return;
     }
 
     // Set flag IMMEDIATELY to prevent concurrent calls
     this.isSettingUpListeners = true;
-
-    // PERFORMANCE TIMING: Mark initialization start
-    this.perfTiming.initStart = performance.now();
-    if (DEBUG_PERFORMANCE) {
-      console.log(`⏱️ PERF: [T+0ms] setupRealtimeListeners() START - waiting for Lists to load before loading Articles`);
-    }
 
     if (!this.firestore) {
       this.logger.error('data', 'Firestore not initialized');
@@ -542,11 +518,6 @@ export class FirebaseDataService {
           // CRITICAL FIX: If articleIds are empty, this is likely CACHED data
           // Cached lists often have empty articleIds arrays - wait for Firestore data
           if (articleIdsOnLists.size === 0) {
-            // PERFORMANCE TIMING: Log that we're waiting for real data
-            const elapsedSinceInit = Math.round(performance.now() - this.perfTiming.initStart);
-            if (DEBUG_PERFORMANCE) {
-              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length}) but articleIds empty - likely CACHED data, waiting for Firestore...`);
-            }
             this.logger.info('data', `⏳ Lists have empty articleIds (likely cached) - waiting for Firestore data...`);
             // DON'T set hasLoadedOwnedArticles, DON'T unsubscribe - wait for real data
             return;
@@ -555,19 +526,7 @@ export class FirebaseDataService {
           // We have real data with articleIds - proceed with loading
           hasLoadedOwnedArticles = true; // Set flag to prevent re-entry
 
-          // PERFORMANCE TIMING: Mark article load start
-          this.perfTiming.articleLoadStart = performance.now();
-          const elapsedSinceInit = Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart);
-          if (DEBUG_PERFORMANCE) {
-            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length} lists) with ${articleIdsOnLists.size} articleIds - starting Article load`);
-          }
-
-          this.logger.info('data', '🔧 Lists loaded with articleIds, now loading articles...');
-
-          if (DEBUG_PERFORMANCE) {
-            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Loading ${articleIdsOnLists.size} articles from ${ownedLists.length} owned lists`);
-          }
-          this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
+          this.logger.info('data', `📦 Loading ${articleIdsOnLists.size} articles on current lists`);
           this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
 
           // CRITICAL FIX: Unsubscribe after loading real articles (not cached empty data)
@@ -587,15 +546,6 @@ export class FirebaseDataService {
 
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
-          // PERFORMANCE TIMING: Mark when lists listener fires
-          this.perfTiming.listsListenerFired = performance.now();
-          const elapsedSinceInit = this.perfTiming.initStart > 0
-            ? Math.round(this.perfTiming.listsListenerFired - this.perfTiming.initStart)
-            : 0;
-          if (DEBUG_PERFORMANCE) {
-            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists Collection Listener FIRED with ${snapshot.size} lists`);
-          }
-
           this.quotaMonitor.trackRead('Lists Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
 
@@ -952,20 +902,6 @@ export class FirebaseDataService {
     );
 
     this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
-
-    // PERFORMANCE TIMING: Mark when articles are emitted to subscribers
-    this.perfTiming.articlesEmitted = performance.now();
-    if (DEBUG_PERFORMANCE && this.perfTiming.initStart > 0) {
-      const totalElapsed = Math.round(this.perfTiming.articlesEmitted - this.perfTiming.initStart);
-      console.log(`⏱️ PERF: [T+${totalElapsed}ms] 🏁 ARTICLES EMITTED to UI (${uniqueArticles.length} total: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared)`);
-      console.log(`⏱️ PERF: ═══════════════════════════════════════════════════════════════`);
-      console.log(`⏱️ PERF: TIMING SUMMARY:`);
-      console.log(`⏱️ PERF:   - Lists listener fired: ${Math.round(this.perfTiming.listsListenerFired - this.perfTiming.initStart)}ms`);
-      console.log(`⏱️ PERF:   - Article load started: ${Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart)}ms`);
-      console.log(`⏱️ PERF:   - Article load duration: ${Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.articleLoadStart)}ms`);
-      console.log(`⏱️ PERF:   - Total time to articles: ${totalElapsed}ms`);
-      console.log(`⏱️ PERF: ═══════════════════════════════════════════════════════════════`);
-    }
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
@@ -1918,15 +1854,7 @@ export class FirebaseDataService {
       articles.push(...chunkArticles);
     });
 
-    // PERFORMANCE TIMING: Mark article load completion
-    this.perfTiming.articleLoadEnd = performance.now();
-    const loadDuration = Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.articleLoadStart);
-    const totalElapsed = Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.initStart);
-    if (DEBUG_PERFORMANCE) {
-      console.log(`⏱️ PERF: [T+${totalElapsed}ms] Article batch load COMPLETE (${articles.length} articles in ${loadDuration}ms)`);
-    }
-
-    this.logger.info('data', `✅ Loaded ${articles.length} owned articles (saved ${463 - articles.length} unnecessary reads)`);
+    this.logger.info('data', `✅ Loaded ${articles.length} owned articles`);
 
     // Store in ownedArticles and merge with shared articles
     this.ownedArticles = articles;
