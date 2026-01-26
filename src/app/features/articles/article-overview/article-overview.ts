@@ -187,6 +187,9 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     this.filteredArticles$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(articles => {
+      if (DEBUG_PERFORMANCE) {
+        console.log(`⏱️ PERF: [UI] filteredArticles$ SUBSCRIBE received ${articles.length} articles (firstArticlesReceived=${this.firstArticlesReceived})`);
+      }
       if (!this.firstArticlesReceived && articles.length > 0) {
         this.firstArticlesReceived = true;
         const elapsed = Math.round(performance.now() - this.componentInitTime);
