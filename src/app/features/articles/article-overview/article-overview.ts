@@ -187,18 +187,23 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     this.store.dispatch(ListsActions.loadLists());
 
     // PERFORMANCE TIMING: Track when first articles arrive at UI
+    console.log(`⏱️ PERF: [UI] Setting up filteredArticles$ subscription...`);
     this.filteredArticles$.pipe(
       takeUntil(this.destroy$)
-    ).subscribe(articles => {
-      if (DEBUG_PERFORMANCE) {
+    ).subscribe({
+      next: (articles) => {
         console.log(`⏱️ PERF: [UI] filteredArticles$ SUBSCRIBE received ${articles.length} articles (firstArticlesReceived=${this.firstArticlesReceived})`);
-      }
-      if (!this.firstArticlesReceived && articles.length > 0) {
-        this.firstArticlesReceived = true;
-        const elapsed = Math.round(performance.now() - this.componentInitTime);
-        if (DEBUG_PERFORMANCE) {
+        if (!this.firstArticlesReceived && articles.length > 0) {
+          this.firstArticlesReceived = true;
+          const elapsed = Math.round(performance.now() - this.componentInitTime);
           console.log(`⏱️ PERF: [UI] 🎉 First ${articles.length} articles rendered at T+${elapsed}ms from ngOnInit`);
         }
+      },
+      error: (err) => {
+        console.error(`⏱️ PERF: [UI] filteredArticles$ ERROR:`, err);
+      },
+      complete: () => {
+        console.log(`⏱️ PERF: [UI] filteredArticles$ COMPLETED (this should only happen on component destroy)`);
       }
     });
 
