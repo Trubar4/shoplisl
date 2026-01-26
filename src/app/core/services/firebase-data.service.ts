@@ -511,17 +511,6 @@ export class FirebaseDataService {
       // Wait for lists to load first, then load only articles on those lists
       subscription = this.listsSubject.subscribe(lists => {
         if (lists.length > 0 && !hasLoadedOwnedArticles) {
-          hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
-
-          // PERFORMANCE TIMING: Mark article load start
-          this.perfTiming.articleLoadStart = performance.now();
-          const elapsedSinceInit = Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart);
-          if (DEBUG_PERFORMANCE) {
-            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length} lists), now starting Article load`);
-          }
-
-          this.logger.info('data', '🔧 Lists loaded, now loading articles...');
-
           // Lists have loaded - now load only articles that are on these lists
           const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
           const articleIdsOnLists = new Set<string>();
@@ -530,22 +519,38 @@ export class FirebaseDataService {
             (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
           });
 
-          if (articleIdsOnLists.size > 0) {
+          // CRITICAL FIX: If articleIds are empty, this is likely CACHED data
+          // Cached lists often have empty articleIds arrays - wait for Firestore data
+          if (articleIdsOnLists.size === 0) {
+            // PERFORMANCE TIMING: Log that we're waiting for real data
+            const elapsedSinceInit = Math.round(performance.now() - this.perfTiming.initStart);
             if (DEBUG_PERFORMANCE) {
-              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Loading ${articleIdsOnLists.size} articles from ${ownedLists.length} owned lists`);
+              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length}) but articleIds empty - likely CACHED data, waiting for Firestore...`);
             }
-            this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
-            this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
-          } else {
-            if (DEBUG_PERFORMANCE) {
-              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] No articles on lists - emitting empty array immediately`);
-            }
-            this.logger.info('data', '📦 No articles on current lists, skipping article load');
-            this.ownedArticles = [];
-            this.mergeArticles();
+            this.logger.info('data', `⏳ Lists have empty articleIds (likely cached) - waiting for Firestore data...`);
+            // DON'T set hasLoadedOwnedArticles, DON'T unsubscribe - wait for real data
+            return;
           }
 
-          // CRITICAL FIX: Unsubscribe after first load to prevent repeated triggering
+          // We have real data with articleIds - proceed with loading
+          hasLoadedOwnedArticles = true; // Set flag to prevent re-entry
+
+          // PERFORMANCE TIMING: Mark article load start
+          this.perfTiming.articleLoadStart = performance.now();
+          const elapsedSinceInit = Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart);
+          if (DEBUG_PERFORMANCE) {
+            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length} lists) with ${articleIdsOnLists.size} articleIds - starting Article load`);
+          }
+
+          this.logger.info('data', '🔧 Lists loaded with articleIds, now loading articles...');
+
+          if (DEBUG_PERFORMANCE) {
+            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Loading ${articleIdsOnLists.size} articles from ${ownedLists.length} owned lists`);
+          }
+          this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
+          this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
+
+          // CRITICAL FIX: Unsubscribe after loading real articles (not cached empty data)
           if (subscription) {
             subscription.unsubscribe();
             this.logger.info('data', '✅ Unsubscribed from listsSubject after loading articles (prevents re-triggering)');

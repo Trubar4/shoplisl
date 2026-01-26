@@ -132,6 +132,11 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       this.sortOption$
     ]).pipe(
       map(([articles, statsMap, query, filterOption, sortOption]) => {
+        // PERFORMANCE DEBUG: Log what we received
+        if (DEBUG_PERFORMANCE) {
+          console.log(`⏱️ PERF: [UI] combineLatest MAP: ${articles.length} articles, ${statsMap.size} stats, filter="${filterOption}", sort="${sortOption}", query="${query}"`);
+        }
+
         // Merge articles with their stats
         let articlesWithStats: ArticleWithStats[] = articles.map(article => ({
           ...article,
@@ -139,7 +144,11 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
         }));
 
         // Apply ownership filter
+        const beforeFilter = articlesWithStats.length;
         articlesWithStats = this.applyFilter(articlesWithStats, filterOption);
+        if (DEBUG_PERFORMANCE && beforeFilter !== articlesWithStats.length) {
+          console.log(`⏱️ PERF: [UI] Filter "${filterOption}" reduced ${beforeFilter} → ${articlesWithStats.length} articles`);
+        }
 
         // Filter by search query
         const filtered = query.trim()
@@ -147,6 +156,10 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
               article.name.toLowerCase().includes(query.toLowerCase().trim())
             )
           : articlesWithStats;
+
+        if (DEBUG_PERFORMANCE) {
+          console.log(`⏱️ PERF: [UI] Final output: ${filtered.length} articles to render`);
+        }
 
         // Apply sorting
         return this.sortArticles(filtered, sortOption);
