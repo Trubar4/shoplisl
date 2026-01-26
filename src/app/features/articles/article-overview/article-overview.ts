@@ -1,7 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, combineLatest, Subject } from 'rxjs';
-import { map, debounceTime, distinctUntilChanged, takeUntil, take } from 'rxjs/operators';
+import { map, debounceTime, distinctUntilChanged, takeUntil, take, tap } from 'rxjs/operators';
+
+// PERFORMANCE DEBUG - Set to true to enable timing logs (filter console with "⏱️ PERF:")
+const DEBUG_PERFORMANCE = true;
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -107,8 +110,20 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     this.currentUserId = this.authService.getCurrentUserId();
     // Combine articles with stats, search query, filter, and sort option for filtering using NgRx store
     this.filteredArticles$ = combineLatest([
-      this.store.select(selectAllArticles),
-      this.articleStatsService.getAllArticleStats(),
+      this.store.select(selectAllArticles).pipe(
+        tap(articles => {
+          if (DEBUG_PERFORMANCE && articles.length > 0) {
+            console.log(`⏱️ PERF: [UI] NgRx selectAllArticles emitted ${articles.length} articles`);
+          }
+        })
+      ),
+      this.articleStatsService.getAllArticleStats().pipe(
+        tap(statsMap => {
+          if (DEBUG_PERFORMANCE && statsMap.size > 0) {
+            console.log(`⏱️ PERF: [UI] ArticleStatsService emitted stats for ${statsMap.size} articles`);
+          }
+        })
+      ),
       this.searchQuery$.pipe(
         debounceTime(300),
         distinctUntilChanged()
@@ -139,11 +154,34 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     );
   }
 
+  // PERFORMANCE TIMING: Track when component initializes
+  private componentInitTime = 0;
+  private firstArticlesReceived = false;
+
   ngOnInit(): void {
+    // PERFORMANCE TIMING: Mark component init
+    this.componentInitTime = performance.now();
+    if (DEBUG_PERFORMANCE) {
+      console.log(`⏱️ PERF: [UI] ArticleOverviewComponent.ngOnInit() - dispatching loadArticles + loadLists`);
+    }
+
     // Dispatch load actions to populate NgRx store with both articles and lists
     // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
     this.store.dispatch(ListsActions.loadLists());
+
+    // PERFORMANCE TIMING: Track when first articles arrive at UI
+    this.filteredArticles$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(articles => {
+      if (!this.firstArticlesReceived && articles.length > 0) {
+        this.firstArticlesReceived = true;
+        const elapsed = Math.round(performance.now() - this.componentInitTime);
+        if (DEBUG_PERFORMANCE) {
+          console.log(`⏱️ PERF: [UI] 🎉 First ${articles.length} articles rendered at T+${elapsed}ms from ngOnInit`);
+        }
+      }
+    });
 
     // Set theme color for article overview (iPhone header color)
     this.listUtils.updateThemeColors('#1a9edb');

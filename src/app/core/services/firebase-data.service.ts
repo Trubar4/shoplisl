@@ -33,6 +33,9 @@ import { HistoryService } from './history.service';
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = true;
 
+// PERFORMANCE DEBUG - Set to true to enable timing logs (filter console with "⏱️ PERF:")
+const DEBUG_PERFORMANCE = true;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -101,6 +104,15 @@ export class FirebaseDataService {
 
   // QUOTA OPTIMIZATION: Track if collection listeners are currently active
   private collectionListenersActive = false;
+
+  // PERFORMANCE TIMING: Track loading steps for debugging slow article loads
+  private perfTiming = {
+    initStart: 0,
+    listsListenerFired: 0,
+    articleLoadStart: 0,
+    articleLoadEnd: 0,
+    articlesEmitted: 0
+  };
 
   constructor(
     private connectionService: ConnectionService,
@@ -464,6 +476,12 @@ export class FirebaseDataService {
   private setupRealtimeListeners(): void {
     this.logger.info('data', '🔧 setupRealtimeListeners() called - setting up collection listeners');
 
+    // PERFORMANCE TIMING: Mark initialization start
+    this.perfTiming.initStart = performance.now();
+    if (DEBUG_PERFORMANCE) {
+      console.log(`⏱️ PERF: [T+0ms] setupRealtimeListeners() START - waiting for Lists to load before loading Articles`);
+    }
+
     // QUOTA OPTIMIZATION: Skip if collection listeners are already active
     // This prevents duplicate listener creation on connection restore events
     if (this.collectionListenersActive) {
@@ -495,6 +513,13 @@ export class FirebaseDataService {
         if (lists.length > 0 && !hasLoadedOwnedArticles) {
           hasLoadedOwnedArticles = true; // Set flag immediately to prevent re-entry
 
+          // PERFORMANCE TIMING: Mark article load start
+          this.perfTiming.articleLoadStart = performance.now();
+          const elapsedSinceInit = Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart);
+          if (DEBUG_PERFORMANCE) {
+            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists loaded (${lists.length} lists), now starting Article load`);
+          }
+
           this.logger.info('data', '🔧 Lists loaded, now loading articles...');
 
           // Lists have loaded - now load only articles that are on these lists
@@ -506,9 +531,15 @@ export class FirebaseDataService {
           });
 
           if (articleIdsOnLists.size > 0) {
+            if (DEBUG_PERFORMANCE) {
+              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Loading ${articleIdsOnLists.size} articles from ${ownedLists.length} owned lists`);
+            }
             this.logger.info('data', `📦 QUOTA OPTIMIZATION: Loading only ${articleIdsOnLists.size} articles that are on current lists (instead of all articles)`);
             this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
           } else {
+            if (DEBUG_PERFORMANCE) {
+              console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] No articles on lists - emitting empty array immediately`);
+            }
             this.logger.info('data', '📦 No articles on current lists, skipping article load');
             this.ownedArticles = [];
             this.mergeArticles();
@@ -531,6 +562,15 @@ export class FirebaseDataService {
 
       this.listsUnsubscribe = onSnapshot(listsQuery,
         (snapshot) => {
+          // PERFORMANCE TIMING: Mark when lists listener fires
+          this.perfTiming.listsListenerFired = performance.now();
+          const elapsedSinceInit = this.perfTiming.initStart > 0
+            ? Math.round(this.perfTiming.listsListenerFired - this.perfTiming.initStart)
+            : 0;
+          if (DEBUG_PERFORMANCE) {
+            console.log(`⏱️ PERF: [T+${elapsedSinceInit}ms] Lists Collection Listener FIRED with ${snapshot.size} lists`);
+          }
+
           this.quotaMonitor.trackRead('Lists Collection Listener', snapshot.size);
           this.logger.debug('data', `Fresh lists received: ${snapshot.size}`);
 
@@ -885,6 +925,20 @@ export class FirebaseDataService {
     );
 
     this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
+
+    // PERFORMANCE TIMING: Mark when articles are emitted to subscribers
+    this.perfTiming.articlesEmitted = performance.now();
+    if (DEBUG_PERFORMANCE && this.perfTiming.initStart > 0) {
+      const totalElapsed = Math.round(this.perfTiming.articlesEmitted - this.perfTiming.initStart);
+      console.log(`⏱️ PERF: [T+${totalElapsed}ms] 🏁 ARTICLES EMITTED to UI (${uniqueArticles.length} total: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared)`);
+      console.log(`⏱️ PERF: ═══════════════════════════════════════════════════════════════`);
+      console.log(`⏱️ PERF: TIMING SUMMARY:`);
+      console.log(`⏱️ PERF:   - Lists listener fired: ${Math.round(this.perfTiming.listsListenerFired - this.perfTiming.initStart)}ms`);
+      console.log(`⏱️ PERF:   - Article load started: ${Math.round(this.perfTiming.articleLoadStart - this.perfTiming.initStart)}ms`);
+      console.log(`⏱️ PERF:   - Article load duration: ${Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.articleLoadStart)}ms`);
+      console.log(`⏱️ PERF:   - Total time to articles: ${totalElapsed}ms`);
+      console.log(`⏱️ PERF: ═══════════════════════════════════════════════════════════════`);
+    }
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
@@ -1836,6 +1890,14 @@ export class FirebaseDataService {
     chunkResults.forEach(chunkArticles => {
       articles.push(...chunkArticles);
     });
+
+    // PERFORMANCE TIMING: Mark article load completion
+    this.perfTiming.articleLoadEnd = performance.now();
+    const loadDuration = Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.articleLoadStart);
+    const totalElapsed = Math.round(this.perfTiming.articleLoadEnd - this.perfTiming.initStart);
+    if (DEBUG_PERFORMANCE) {
+      console.log(`⏱️ PERF: [T+${totalElapsed}ms] Article batch load COMPLETE (${articles.length} articles in ${loadDuration}ms)`);
+    }
 
     this.logger.info('data', `✅ Loaded ${articles.length} owned articles (saved ${463 - articles.length} unnecessary reads)`);
 
