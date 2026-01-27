@@ -2368,6 +2368,16 @@ export class FirebaseDataService {
       return;
     }
 
+    // QUOTA OPTIMIZATION: If articles are already available (from cache or batch load),
+    // skip the expensive Firestore query. The cache was populated by loadCachedData()
+    // at startup, and batch loads happen when opening list details.
+    const existingArticles = this.articlesSubject.value;
+    if (existingArticles.length > 0) {
+      this.logger.info('data', `⏭️ ${existingArticles.length} articles already available (from cache/batch) - skipping Firestore load (saves ~${existingArticles.length} reads)`);
+      this.articlesLoadedFromFirestore = true;
+      return;
+    }
+
     const lists = this.listsSubject.value;
     if (lists.length === 0) {
       this.logger.info('data', '⏳ No lists available yet - deferring article load');
