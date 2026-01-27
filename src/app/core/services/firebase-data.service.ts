@@ -31,7 +31,7 @@ import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
-const DEBUG_FIREBASE_DATA = true;
+const DEBUG_FIREBASE_DATA = false;
 
 @Injectable({
   providedIn: 'root'
@@ -99,6 +99,10 @@ export class FirebaseDataService {
   // QUOTA OPTIMIZATION: Track if collection listeners have been cleaned up
   private collectionListenersCleanedUp = false;
 
+  // QUOTA FIX: Prevent double initialization from constructor + auth listener
+  private initialDataLoadDone = false;
+  private currentLoadedUserId: string | null = null;
+
   // QUOTA OPTIMIZATION: Track if collection listeners are currently active
   private collectionListenersActive = false;
 
@@ -123,10 +127,19 @@ export class FirebaseDataService {
 
   /**
    * Listen for auth state changes and reload data when user changes
+   * QUOTA FIX: Skip reload if data was already loaded for the same user
+   * (prevents double load from constructor's initializeDataLoading + auth listener)
    */
   private setupAuthListener(): void {
     this.authService.getCurrentUser().subscribe(user => {
       if (user) {
+        const userId = user.id || user.email || null;
+        // QUOTA FIX: Skip if data already loaded for this same user (initial load)
+        if (this.initialDataLoadDone && this.currentLoadedUserId === userId) {
+          this.logger.info('data', `Auth fired for same user ${user.email} - skipping duplicate load (saves ~500 reads)`);
+          return;
+        }
+
         this.logger.info('data', `User changed to ${user.email}, reloading data`);
         // CRITICAL FIX: Cleanup old user's listeners before loading new user's data
         // Without this, old listeners stay active and both users' data loads!
@@ -136,11 +149,14 @@ export class FirebaseDataService {
         // CRITICAL FIX: Re-setup active list listener after cleanup
         // cleanupListeners() destroys the subscription, so we need to recreate it
         this.setupActiveListListener();
+
+        this.currentLoadedUserId = userId;
       } else {
         this.logger.info('data', 'User logged out, clearing data');
         this.cleanupListeners();
         this.articlesSubject.next([]);
         this.listsSubject.next([]);
+        this.currentLoadedUserId = null;
       }
     });
   }
@@ -424,6 +440,10 @@ export class FirebaseDataService {
       // Then set up real-time listeners for fresh data
       this.setupRealtimeListeners();
 
+      // QUOTA FIX: Mark initial load as done and track current user
+      this.initialDataLoadDone = true;
+      this.currentLoadedUserId = this.authService.getCurrentUserId();
+
       // Performance: Notify that background refresh is complete (after a short delay to ensure data is loaded)
       setTimeout(() => {
         this.refreshStatusSubject.next({ isRefreshing: false });
@@ -495,48 +515,12 @@ export class FirebaseDataService {
     try {
       const basePath = this.getUserBasePath();
 
-      // QUOTA OPTIMIZATION: Load owned articles AFTER lists are loaded
-      // This allows us to filter and only load articles that are on current lists
-      // Saves ~441 reads per session (loading only needed articles, not all 463)
-      this.logger.info('data', '📡 Creating Articles listener with quota optimization...');
-
-      // FIX: Use flag to prevent multiple loads AND unsubscribe after first load
-      let hasLoadedOwnedArticles = false;
-      let subscription: any;
-
-      // Wait for lists to load first, then load only articles on those lists
-      subscription = this.listsSubject.subscribe(lists => {
-        if (lists.length > 0 && !hasLoadedOwnedArticles) {
-          // Lists have loaded - now load only articles that are on these lists
-          const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
-          const articleIdsOnLists = new Set<string>();
-
-          ownedLists.forEach(list => {
-            (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
-          });
-
-          // CRITICAL FIX: If articleIds are empty, this is likely CACHED data
-          // Cached lists often have empty articleIds arrays - wait for Firestore data
-          if (articleIdsOnLists.size === 0) {
-            this.logger.info('data', `⏳ Lists have empty articleIds (likely cached) - waiting for Firestore data...`);
-            // DON'T set hasLoadedOwnedArticles, DON'T unsubscribe - wait for real data
-            return;
-          }
-
-          // We have real data with articleIds - proceed with loading
-          hasLoadedOwnedArticles = true; // Set flag to prevent re-entry
-
-          this.logger.info('data', `📦 Loading ${articleIdsOnLists.size} articles on current lists`);
-          this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
-
-          // CRITICAL FIX: Unsubscribe after loading real articles (not cached empty data)
-          if (subscription) {
-            subscription.unsubscribe();
-            this.logger.info('data', '✅ Unsubscribed from listsSubject after loading articles (prevents re-triggering)');
-          }
-        }
-      });
-
+      // QUOTA OPTIMIZATION: Don't load articles at startup anymore.
+      // Articles are loaded lazily:
+      // - Article overview calls loadAllOwnedArticles() when opened
+      // - List detail view uses loadArticlesForList() for per-list loading
+      // This saves ~500-1000 reads per session when user doesn't visit article overview.
+      this.logger.info('data', '📡 Articles loading deferred (lazy) - will load when article overview is opened');
       this.articlesUnsubscribe = undefined; // No collection listener
 
       // Lists listener
@@ -2343,6 +2327,10 @@ export class FirebaseDataService {
     this.collectionListenersActive = false;
     this.isSettingUpListeners = false;
 
+    // QUOTA FIX: Reset initialization tracking (allows reload after user switch)
+    this.initialDataLoadDone = false;
+    this.articlesLoadedFromFirestore = false;
+
     // Performance: Clear caches on cleanup
     this.loadedSharedArticleIds.clear();
     this.failedArticleIds.clear();
@@ -2363,6 +2351,50 @@ export class FirebaseDataService {
 
   getLists(): Observable<ShoppingList[]> {
     return this.listsSubject.asObservable();
+  }
+
+  /**
+   * QUOTA OPTIMIZATION: Load all owned articles on demand.
+   * Called by article overview when it opens, instead of loading at startup.
+   * Uses loadOwnedArticlesByIds with IDs from current lists.
+   * Skips if articles are already loaded from a previous call this session.
+   */
+  private articlesLoadedFromFirestore = false;
+
+  loadAllOwnedArticles(): void {
+    // Skip if already loaded this session (prevents re-loading on navigation)
+    if (this.articlesLoadedFromFirestore) {
+      this.logger.info('data', '⏭️ Articles already loaded from Firestore this session - skipping');
+      return;
+    }
+
+    const lists = this.listsSubject.value;
+    if (lists.length === 0) {
+      this.logger.info('data', '⏳ No lists available yet - deferring article load');
+      // Wait for lists to load, then load articles
+      const sub = this.listsSubject.subscribe(loadedLists => {
+        if (loadedLists.length > 0) {
+          sub.unsubscribe();
+          this.loadAllOwnedArticles(); // Retry
+        }
+      });
+      return;
+    }
+
+    const ownedLists = lists.filter(l => l.ownerId === this.authService.getCurrentUserId());
+    const articleIdsOnLists = new Set<string>();
+    ownedLists.forEach(list => {
+      (list.articleIds || []).forEach(id => articleIdsOnLists.add(id));
+    });
+
+    if (articleIdsOnLists.size === 0) {
+      this.logger.info('data', '📦 No articles on owned lists');
+      return;
+    }
+
+    this.articlesLoadedFromFirestore = true;
+    this.logger.info('data', `📦 Loading ${articleIdsOnLists.size} articles on demand (article overview opened)`);
+    this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
   }
 
   getArticle(id: string): Observable<Article | undefined> {

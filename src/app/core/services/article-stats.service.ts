@@ -70,6 +70,23 @@ export class ArticleStatsService {
   }
 
   /**
+   * Safely convert any date-like value to a Date object.
+   * Handles: Date objects, Firestore Timestamps, ISO strings (from cache), numbers, null/undefined.
+   */
+  private toDate(value: any): Date | undefined {
+    if (!value) return undefined;
+    if (value instanceof Date) return value;
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+    if (typeof value === 'number') return new Date(value);
+    if (typeof value.toDate === 'function') return value.toDate();
+    if (typeof value.getTime === 'function') return value;
+    return undefined;
+  }
+
+  /**
    * Calculate statistics for an article across all lists
    */
   private calculateArticleStats(articleId: string, lists: ShoppingList[]): ArticleStats {
@@ -89,35 +106,38 @@ export class ArticleStatsService {
       }
 
       // Track initial add to list using addedAt timestamp
-      if (itemState.addedAt) {
-        if (!lastAddedToListDate || itemState.addedAt > lastAddedToListDate) {
-          lastAddedToListDate = itemState.addedAt;
+      const addedAt = this.toDate(itemState.addedAt);
+      if (addedAt) {
+        if (!lastAddedToListDate || addedAt > lastAddedToListDate) {
+          lastAddedToListDate = addedAt;
         }
       }
 
       // Process history if available
       if (itemState.history && itemState.history.length > 0) {
         itemState.history.forEach((event: CheckEvent) => {
+          const eventDate = this.toDate(event.timestamp);
           if (event.action === 'checked') {
             numberOfChecks++;
 
             // Update lastCheckedDate
-            if (!lastCheckedDate || event.timestamp > lastCheckedDate) {
-              lastCheckedDate = event.timestamp;
+            if (eventDate && (!lastCheckedDate || eventDate > lastCheckedDate)) {
+              lastCheckedDate = eventDate;
             }
           } else if (event.action === 'unchecked') {
             // Track uncheck events as "adding to list" (put back on list)
-            if (!lastAddedToListDate || event.timestamp > lastAddedToListDate) {
-              lastAddedToListDate = event.timestamp;
+            if (eventDate && (!lastAddedToListDate || eventDate > lastAddedToListDate)) {
+              lastAddedToListDate = eventDate;
             }
           }
         });
       } else {
         // Fallback: use checkedAt if no history available
         if (itemState.isChecked && itemState.checkedAt) {
+          const checkedAt = this.toDate(itemState.checkedAt);
           numberOfChecks++;
-          if (!lastCheckedDate || itemState.checkedAt > lastCheckedDate) {
-            lastCheckedDate = itemState.checkedAt;
+          if (checkedAt && (!lastCheckedDate || checkedAt > lastCheckedDate)) {
+            lastCheckedDate = checkedAt;
           }
         }
       }

@@ -27,6 +27,7 @@ import { DateChipComponent } from '../../../shared/components/date-chip/date-chi
 import { CountChipComponent } from '../../../shared/components/count-chip/count-chip.component';
 import { ArticleStatsService, ArticleStats } from '../../../core/services/article-stats.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { FirebaseDataService } from '../../../core/services/firebase-data.service';
 import { MatChipsModule } from '@angular/material/chips';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
 
@@ -102,6 +103,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private articleStatsService: ArticleStatsService,
     private authService: AuthService,
+    private firebaseData: FirebaseDataService,
     private listUtils: ListUtilsService
   ) {
     this.currentUserId = this.authService.getCurrentUserId();
@@ -146,6 +148,11 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     // Lists are needed for calculating article statistics (check counts, dates, etc.)
     this.store.dispatch(ArticlesActions.loadArticles());
     this.store.dispatch(ListsActions.loadLists());
+
+    // QUOTA OPTIMIZATION: Trigger lazy article loading from Firestore
+    // Articles are no longer loaded at startup to save reads.
+    // This loads them only when the article overview is actually opened.
+    this.firebaseData.loadAllOwnedArticles();
 
     // Set theme color for article overview (iPhone header color)
     this.listUtils.updateThemeColors('#1a9edb');
@@ -261,11 +268,16 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
    * - A Date object (has .getTime())
    * - A Firestore Timestamp (has .toDate())
    * - A number (already a timestamp)
+   * - A string (ISO date from JSON cache)
    * - undefined/null
    */
   private getTimestamp(date: any): number {
     if (!date) return 0;
     if (typeof date === 'number') return date;
+    if (typeof date === 'string') {
+      const parsed = new Date(date).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    }
     if (typeof date.getTime === 'function') return date.getTime();
     if (typeof date.toDate === 'function') return date.toDate().getTime();
     return 0;

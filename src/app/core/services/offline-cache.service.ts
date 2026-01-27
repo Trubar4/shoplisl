@@ -134,11 +134,12 @@ export class OfflineCacheService {
         lastUpdated
       };
 
-      // Convert date strings back to Date objects
+      // Convert date strings back to Date objects (including nested dates in itemStates)
       const listsWithDates = cacheEntry.data.map(list => ({
         ...list,
         createdAt: new Date(list.createdAt),
-        updatedAt: new Date(list.updatedAt)
+        updatedAt: new Date(list.updatedAt),
+        itemStates: this.convertItemStateDatesFromCache(list.itemStates)
       }));
 
       return {
@@ -276,8 +277,30 @@ export class OfflineCacheService {
   isApproachingExpiration(): boolean {
     const age = this.getOldestCacheAge();
     if (!age) return false;
-    
+
     const hours = age / (60 * 60 * 1000);
     return hours >= 24; // Warn after 24 hours
+  }
+
+  /**
+   * Convert date strings in itemStates back to Date objects after JSON deserialization.
+   * JSON.stringify converts Date objects to ISO strings; this restores them.
+   */
+  private convertItemStateDatesFromCache(itemStates: any): any {
+    if (!itemStates) return {};
+    const converted: any = {};
+    for (const [articleId, state] of Object.entries(itemStates || {})) {
+      const s = state as any;
+      converted[articleId] = {
+        ...s,
+        addedAt: s.addedAt ? new Date(s.addedAt) : undefined,
+        checkedAt: s.checkedAt ? new Date(s.checkedAt) : undefined,
+        history: (s.history || []).map((event: any) => ({
+          ...event,
+          timestamp: event.timestamp ? new Date(event.timestamp) : undefined
+        }))
+      };
+    }
+    return converted;
   }
 }
