@@ -124,8 +124,8 @@ export class ArticleStatsService {
             if (eventDate && (!lastCheckedDate || eventDate > lastCheckedDate)) {
               lastCheckedDate = eventDate;
             }
-          } else if (event.action === 'unchecked') {
-            // Track uncheck events as "adding to list" (put back on list)
+          } else if (event.action === 'unchecked' || event.action === 'added') {
+            // Track uncheck/added events as "adding to list" (put back on list)
             if (eventDate && (!lastAddedToListDate || eventDate > lastAddedToListDate)) {
               lastAddedToListDate = eventDate;
             }

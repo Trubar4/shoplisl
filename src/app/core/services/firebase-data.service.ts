@@ -1441,7 +1441,7 @@ export class FirebaseDataService {
   async updateListItemWithTransaction(
     listId: string,
     articleId: string,
-    action: 'checked' | 'unchecked',
+    action: 'checked' | 'unchecked' | 'added',
     amount: string = '',
     userId?: string,
     userName?: string

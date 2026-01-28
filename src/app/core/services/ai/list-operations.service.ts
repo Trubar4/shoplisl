@@ -6,6 +6,8 @@ import { DataService } from '../data.service';
 import { AIMessagingService } from './ai-messaging.service';
 import { CommandParserService } from './command-parser.service';
 import { ContextManagementService } from './context-management.service';
+import { HistoryService } from '../history.service';
+import { AuthService } from '../auth.service';
 import { ShoppingList } from '../../models';
 import { AIExecutionResult, QuantityExtraction, ColorExtraction } from './ai-models';
 
@@ -13,12 +15,14 @@ import { AIExecutionResult, QuantityExtraction, ColorExtraction } from './ai-mod
   providedIn: 'root'
 })
 export class ListOperationsService {
-  
+
   constructor(
     private dataService: DataService,
     private aiResponse: AIMessagingService,
     private commandParser: CommandParserService,
-    private contextManager: ContextManagementService
+    private contextManager: ContextManagementService,
+    private historyService: HistoryService,
+    private authService: AuthService
   ) {}
 
   // ========================================
@@ -56,11 +60,16 @@ export class ListOperationsService {
         
         if (newArticle) {
           listToCreate.articleIds.push(newArticle.id);
-          listToCreate.itemStates[newArticle.id] = {
-            articleId: newArticle.id,
-            isChecked: false,
-            amount: firstItem.quantity || ''
-          };
+          const currentUser = this.authService.getCurrentUserValue();
+          listToCreate.itemStates[newArticle.id] = this.historyService.createUpdatedItemState(
+            undefined,
+            newArticle.id,
+            'added',
+            firstItem.quantity || '',
+            currentUser?.id,
+            currentUser?.name,
+            newArticle.name
+          );
         }
       }
       

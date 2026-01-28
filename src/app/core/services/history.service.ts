@@ -41,7 +41,7 @@ export class HistoryService {
    * @returns CheckEvent object
    */
   createCheckEvent(
-    action: 'checked' | 'unchecked',
+    action: 'checked' | 'unchecked' | 'added',
     amount?: string,
     userId?: string,
     userName?: string
@@ -154,7 +154,7 @@ export class HistoryService {
    * @returns Number of 'unchecked' events
    */
   countUnchecks(history: CheckEvent[]): number {
-    return history.filter(event => event.action === 'unchecked').length;
+    return history.filter(event => event.action === 'unchecked' || event.action === 'added').length;
   }
 
   /**
@@ -206,20 +206,21 @@ export class HistoryService {
   createUpdatedItemState(
     currentState: ListItemState | undefined,
     articleId: string,
-    action: 'checked' | 'unchecked',
+    action: 'checked' | 'unchecked' | 'added',
     amount?: string,
     userId?: string,
-    userName?: string
+    userName?: string,
+    articleName?: string
   ): ListItemState {
     const newEvent = this.createCheckEvent(action, amount, userId, userName);
     const updatedHistory = this.addEventToHistory(currentState?.history, newEvent);
 
     return {
       articleId,
-      articleName: currentState?.articleName,  // Preserve article name
+      articleName: articleName || currentState?.articleName,  // Preserve or set article name
       isChecked: action === 'checked',
       amount: amount || currentState?.amount || '',
-      addedAt: currentState?.addedAt,  // Preserve addedAt timestamp
+      addedAt: action === 'added' ? new Date() : (currentState?.addedAt || new Date()),
       checkedAt: action === 'checked' ? new Date() : currentState?.checkedAt,
       checkedBy: userId || this.DEFAULT_USER_ID,
       history: updatedHistory
@@ -239,7 +240,7 @@ export class HistoryService {
     lastUncheckDate?: Date;
   } {
     const checkEvents = history.filter(e => e.action === 'checked');
-    const uncheckEvents = history.filter(e => e.action === 'unchecked');
+    const uncheckEvents = history.filter(e => e.action === 'unchecked' || e.action === 'added');
 
     return {
       totalChecks: checkEvents.length,

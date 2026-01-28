@@ -6,20 +6,24 @@ import { DisambiguationService } from './disambiguation';
 import { AIMessagingService } from './ai-messaging.service';
 import { ContextManagementService } from './context-management.service';
 import { DataService } from '../data.service';
+import { HistoryService } from '../history.service';
+import { AuthService } from '../auth.service';
 import { PendingAction, AIExecutionResult } from './ai-models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ActionExecutorService {
-  
+
   constructor(
     private articleOps: ArticleOperationsService,
     private listOps: ListOperationsService,
     private disambiguation: DisambiguationService,
     private aiResponse: AIMessagingService,
     private contextManager: ContextManagementService,
-    private dataService: DataService
+    private dataService: DataService,
+    private historyService: HistoryService,
+    private authService: AuthService
   ) {}
 
   // ========================================
@@ -77,17 +81,22 @@ export class ActionExecutorService {
       }
 
       // Create list with the article
+      const currentUser = this.authService.getCurrentUserValue();
       const listData = {
         name: action.listName,
         color: this.aiResponse.suggestListColor(action.listName),
         icon: '🛒',
         articleIds: [newArticle.id],
-        itemStates: { 
-          [newArticle.id]: { 
-            articleId: newArticle.id, 
-            isChecked: false,
-            amount: action.extractedQuantity || ''
-          } 
+        itemStates: {
+          [newArticle.id]: this.historyService.createUpdatedItemState(
+            undefined,
+            newArticle.id,
+            'added',
+            action.extractedQuantity || '',
+            currentUser?.id,
+            currentUser?.name,
+            newArticle.name
+          )
         }
       };
 

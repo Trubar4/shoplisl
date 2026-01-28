@@ -13,6 +13,8 @@ import { FormsModule } from '@angular/forms';
 
 import { ShoppingList, Article } from '../../../core/models';
 import { DataService } from '../../../core/services/data.service';
+import { HistoryService } from '../../../core/services/history.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface ArticleWithToggle extends Article {
   isInList: boolean;
@@ -48,7 +50,9 @@ export class AddArticlesToListComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private dataService: DataService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private historyService: HistoryService,
+    private authService: AuthService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
     this.list$ = this.dataService.getList(this.listId);
@@ -134,25 +138,33 @@ export class AddArticlesToListComponent implements OnInit {
       console.log('🎯 Final articleIds:', newArticleIds);
       console.log('🎯 Newly added articles:', addedArticleIds);
       
-      // 🎯 FIXED: Create item states preserving existing states and ensuring new articles are active
+      // Create item states preserving existing states and ensuring new articles are active
+      // Use HistoryService to create proper itemState with 'added' history event for new articles
+      const currentUser = this.authService.getCurrentUserValue();
       const newItemStates: { [articleId: string]: any } = {};
-      
+
       newArticleIds.forEach(articleId => {
         if (addedArticleIds.includes(articleId)) {
-          // 🎯 NEW ARTICLES: Explicitly set as ACTIVE (isChecked: false)
-          newItemStates[articleId] = { 
-            articleId, 
-            isChecked: false, // 🎯 FALSE = ACTIVE/NOT STRIKED OUT
-            amount: '' // Default empty amount
-          };
-          console.log(`✅ Set new article ${articleId} as ACTIVE (isChecked: false)`);
+          // NEW ARTICLES: Use HistoryService to create proper itemState with 'added' history event
+          newItemStates[articleId] = this.historyService.createUpdatedItemState(
+            undefined,
+            articleId,
+            'added',
+            '',
+            currentUser?.id,
+            currentUser?.name
+          );
+          console.log(`✅ Set new article ${articleId} as ACTIVE with 'added' history event`);
         } else {
-          // 🎯 EXISTING ARTICLES: Preserve existing state or default to active
-          newItemStates[articleId] = list.itemStates[articleId] || { 
-            articleId, 
-            isChecked: false,
-            amount: ''
-          };
+          // EXISTING ARTICLES: Preserve existing state (including history)
+          newItemStates[articleId] = list.itemStates[articleId] || this.historyService.createUpdatedItemState(
+            undefined,
+            articleId,
+            'added',
+            '',
+            currentUser?.id,
+            currentUser?.name
+          );
           console.log(`🔄 Preserved existing state for article ${articleId}:`, newItemStates[articleId]);
         }
       });

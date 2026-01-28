@@ -46,7 +46,7 @@ export interface CheckEvent {
   timestamp: Date;           // When the action occurred
   userId: string;            // User ID ('shared-shoplisl-user' for now, real ID in Phase 7)
   userName: string;          // Cached display name ('Du' for now, real name in Phase 7)
-  action: 'checked' | 'unchecked';  // What action was performed
+  action: 'checked' | 'unchecked' | 'added';  // What action was performed
   amount?: string;           // Amount at time of action
 }
 

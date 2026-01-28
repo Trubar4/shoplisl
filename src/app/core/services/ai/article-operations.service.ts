@@ -5,6 +5,8 @@ import { take, timeout } from 'rxjs/operators';
 import { DataService } from '../data.service';
 import { GroqApiService } from './groq-api.service';
 import { SmartSuggestionsService } from './smart-suggestions.service';
+import { HistoryService } from '../history.service';
+import { AuthService } from '../auth.service';
 import { Article, ShoppingList } from '../../models';
 import { QuantityExtraction, AIExecutionResult } from './ai-models';
 
@@ -12,11 +14,13 @@ import { QuantityExtraction, AIExecutionResult } from './ai-models';
   providedIn: 'root'
 })
 export class ArticleOperationsService {
-  
+
   constructor(
     private dataService: DataService,
     private groqApi: GroqApiService,
-    private smartSuggestions: SmartSuggestionsService
+    private smartSuggestions: SmartSuggestionsService,
+    private historyService: HistoryService,
+    private authService: AuthService
   ) {}
 
   // ========================================
@@ -165,12 +169,18 @@ export class ArticleOperationsService {
         updatedArticleIds.push(articleId);
       }
 
+      // Use HistoryService to create proper itemState with 'added' history event
+      const currentUser = this.authService.getCurrentUserValue();
+      const existingState = targetList.itemStates[articleId];
       const updatedItemStates = { ...targetList.itemStates };
-      updatedItemStates[articleId] = {
-        articleId: articleId,
-        isChecked: false,
-        amount: amount
-      };
+      updatedItemStates[articleId] = this.historyService.createUpdatedItemState(
+        existingState,
+        articleId,
+        'added',
+        amount || existingState?.amount || '',
+        currentUser?.id,
+        currentUser?.name
+      );
 
       const updateResult = await this.dataService.updateList(targetList.id, {
         articleIds: updatedArticleIds,
