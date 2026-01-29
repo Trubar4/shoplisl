@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, fromEvent, merge } from 'rxjs';
 import { map, startWith, distinctUntilChanged, debounceTime } from 'rxjs/operators';
+import { LoggerService } from './logger.service';
 
 export interface ConnectionStatus {
   isOnline: boolean;
@@ -17,7 +18,7 @@ export class ConnectionService {
     lastOnlineAt: navigator.onLine ? new Date() : null
   });
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     this.initializeConnectionMonitoring();
   }
 
@@ -40,7 +41,7 @@ export class ConnectionService {
       
       this.connectionStatusSubject.next(status);
       
-      console.log(`🌐 Connection ${isOnline ? 'restored' : 'lost'}`, status);
+      this.logger.debug('data', `🌐 Connection ${isOnline ? 'restored' : 'lost'}`, status);
     });
 
     // Additional check for iOS Safari (sometimes doesn't fire events properly)
@@ -50,7 +51,7 @@ export class ConnectionService {
         const lastStatus = this.connectionStatusSubject.value;
         
         if (currentOnline !== lastStatus.isOnline) {
-          console.log('📱 iOS connection status changed via polling');
+          this.logger.debug('data', '📱 iOS connection status changed via polling');
           this.connectionStatusSubject.next({
             isOnline: currentOnline,
             lastOnlineAt: currentOnline ? new Date() : lastStatus.lastOnlineAt,
@@ -111,7 +112,7 @@ export class ConnectionService {
       return true;
     } catch {
       // If fetch fails, we might be behind a captive portal
-      console.log('⚠️ Browser says online but real connection failed');
+      this.logger.debug('data', '⚠️ Browser says online but real connection failed');
       return false;
     }
   }
