@@ -9,6 +9,7 @@ import { HistoryService } from '../history.service';
 import { AuthService } from '../auth.service';
 import { Article, ShoppingList } from '../../models';
 import { QuantityExtraction, AIExecutionResult } from './ai-models';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +21,8 @@ export class ArticleOperationsService {
     private groqApi: GroqApiService,
     private smartSuggestions: SmartSuggestionsService,
     private historyService: HistoryService,
-    private authService: AuthService
+    private authService: AuthService,
+    private logger: LoggerService
   ) {}
 
   // ========================================
@@ -28,7 +30,7 @@ export class ArticleOperationsService {
   // ========================================
 
   async createArticleWithSuggestions(quantityExtraction: QuantityExtraction): Promise<Article | null> {
-    console.log('🎯 Creating article with smart suggestions:', quantityExtraction);
+    this.logger.debug('ai', Creating article with smart suggestions:', quantityExtraction);
     
     try {
       const [departmentId, icon] = await Promise.all([
@@ -49,11 +51,11 @@ export class ArticleOperationsService {
         throw new Error(`Failed to create article: ${quantityExtraction.itemName}`);
       }
       
-      console.log('✅ Created article with suggestions:', newArticle);
+      this.logger.info('ai', Created article with suggestions:', newArticle);
       return newArticle;
       
     } catch (error) {
-      console.error('❌ Error creating article:', error);
+      this.logger.error('ai', Error creating article:', error);
       return null;
     }
   }
@@ -67,7 +69,7 @@ export class ArticleOperationsService {
     listId: string, 
     amount: string = ''
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Adding article to list by ID:', { articleId, listId, amount });
+    this.logger.debug('ai', Adding article to list by ID:', { articleId, listId, amount });
     
     try {
       const targetList = await this.findListById(listId);
@@ -95,7 +97,7 @@ export class ArticleOperationsService {
       return result;
       
     } catch (error) {
-      console.error('❌ Error adding article to list:', error);
+      this.logger.error('ai', Error adding article to list:', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen des Artikels zur Liste.`
@@ -108,7 +110,7 @@ export class ArticleOperationsService {
     listName: string, 
     amount: string = ''
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Adding article to list by name:', { articleId, listName, amount });
+    this.logger.debug('ai', Adding article to list by name:', { articleId, listName, amount });
     
     try {
       const targetList = await this.findListByName(listName);
@@ -136,7 +138,7 @@ export class ArticleOperationsService {
       return result;
       
     } catch (error) {
-      console.error('❌ Error adding article to list by name:', error);
+      this.logger.error('ai', Error adding article to list by name:', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen des Artikels zur Liste "${listName}".`
@@ -162,7 +164,7 @@ export class ArticleOperationsService {
       }
       
       // Fallback to manual update
-      console.warn('🎯 Direct addArticleToList failed, using manual update');
+      this.logger.warn('ai', Direct addArticleToList failed, using manual update');
       
       const updatedArticleIds = [...targetList.articleIds];
       if (!updatedArticleIds.includes(articleId)) {
@@ -197,7 +199,7 @@ export class ArticleOperationsService {
       }
       
     } catch (error) {
-      console.error('❌ Error in addArticleToListInternal:', error);
+      this.logger.error('ai', Error in addArticleToListInternal:', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen zur Liste: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
@@ -213,7 +215,7 @@ export class ArticleOperationsService {
     quantityExtraction: QuantityExtraction,
     listId: string
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Creating and adding to list by ID:', { quantityExtraction, listId });
+    this.logger.debug('ai', Creating and adding to list by ID:', { quantityExtraction, listId });
     
     try {
       // Create article
@@ -243,7 +245,7 @@ export class ArticleOperationsService {
       return addResult;
       
     } catch (error) {
-      console.error('❌ Error creating and adding to list:', error);
+      this.logger.error('ai', Error creating and adding to list:', error);
       return {
         success: false,
         message: `❌ Fehler beim Erstellen und Hinzufügen von "${quantityExtraction.itemName}".`
@@ -255,7 +257,7 @@ export class ArticleOperationsService {
     quantityExtraction: QuantityExtraction,
     listName: string
   ): Promise<AIExecutionResult> {
-    console.log('🎯 Creating and adding to list by name:', { quantityExtraction, listName });
+    this.logger.debug('ai', Creating and adding to list by name:', { quantityExtraction, listName });
     
     try {
       // Find list first
@@ -271,7 +273,7 @@ export class ArticleOperationsService {
       return this.createAndAddToListById(quantityExtraction, targetList.id);
       
     } catch (error) {
-      console.error('❌ Error creating and adding to list by name:', error);
+      this.logger.error('ai', Error creating and adding to list by name:', error);
       return {
         success: false,
         message: `❌ Fehler beim Erstellen und Hinzufügen von "${quantityExtraction.itemName}" zu "${listName}".`
@@ -310,7 +312,7 @@ export class ArticleOperationsService {
       return match || null;
       
     } catch (error) {
-      console.error('Error finding list by name:', error);
+      this.logger.error('ai', 'Error finding list by name:', error);
       return null;
     }
   }
@@ -325,7 +327,7 @@ export class ArticleOperationsService {
       return lists?.find(list => list.id === listId) || null;
       
     } catch (error) {
-      console.error('Error finding list by ID:', error);
+      this.logger.error('ai', 'Error finding list by ID:', error);
       return null;
     }
   }
@@ -335,7 +337,7 @@ export class ArticleOperationsService {
   // ========================================
 
   async suggestDepartment(itemName: string): Promise<string> {
-    console.log('🔍 suggestDepartment called for:', itemName);
+    this.logger.debug('ai', suggestDepartment called for:', itemName);
     
     // Valid department IDs
     const validDepartments = [
@@ -349,33 +351,33 @@ export class ArticleOperationsService {
   
     try {
       // Try AI suggestions first
-      console.log('🤖 Trying AI suggestions...');
+      this.logger.debug('ai', Trying AI suggestions...');
       const suggestions = await this.smartSuggestions.getSmartSuggestions(itemName);
-      console.log('🤖 AI suggestions response:', suggestions);
+      this.logger.debug('ai', AI suggestions response:', suggestions);
       
       if (suggestions?.departmentId) {
-        console.log('🤖 AI suggested department:', suggestions.departmentId);
+        this.logger.debug('ai', AI suggested department:', suggestions.departmentId);
         if (validDepartments.includes(suggestions.departmentId)) {
-          console.log('✅🤖 Valid AI department accepted:', suggestions.departmentId);
+          this.logger.info('ai',🤖 Valid AI department accepted:', suggestions.departmentId);
           return suggestions.departmentId;
         } else {
-          console.warn('❌🤖 Invalid AI department rejected:', suggestions.departmentId);
+          this.logger.warn('ai', 'Invalid AI department rejected:', suggestions.departmentId);
         }
       }
     } catch (error) {
-      console.log('🎯❌ AI suggestions failed:', error);
+      this.logger.debug('ai',❌ AI suggestions failed:', error);
     }
     
     // Fallback to manual suggestions
-    console.log('🔧 Trying manual fallback...');
+    this.logger.debug('ai', Trying manual fallback...');
     const fallbackDepartment = await this.smartSuggestions.suggestDepartment(itemName);
-    console.log('🔧 Manual fallback result:', fallbackDepartment);
+    this.logger.debug('ai', Manual fallback result:', fallbackDepartment);
     
     const finalDepartment = (fallbackDepartment && validDepartments.includes(fallbackDepartment)) 
       ? fallbackDepartment 
       : 'miscellaneous';
       
-    console.log('🔧 Final department decision:', finalDepartment);
+    this.logger.debug('ai', Final department decision:', finalDepartment);
     return finalDepartment;
   }
   
@@ -384,11 +386,11 @@ export class ArticleOperationsService {
       // Try AI suggestions first
       const suggestions = await this.smartSuggestions.getSmartSuggestions(itemName);
       if (suggestions?.icon) {
-        console.log('✅🤖 AI icon:', suggestions.icon);
+        this.logger.info('ai',🤖 AI icon:', suggestions.icon);
         return suggestions.icon;
       }
     } catch (error) {
-      console.log('🎯❌ AI suggestions failed, using fallback');
+      this.logger.debug('ai',❌ AI suggestions failed, using fallback');
     }
     
     // Fallback to manual suggestions

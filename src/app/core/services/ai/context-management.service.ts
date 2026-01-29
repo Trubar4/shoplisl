@@ -1,6 +1,7 @@
 // src/app/core/services/ai/context-management.service.ts
 import { Injectable } from '@angular/core';
 import { ConversationContext } from '../../models';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,14 +9,14 @@ import { ConversationContext } from '../../models';
 export class ContextManagementService {
   private conversationContext: ConversationContext = {};
 
-  constructor() {}
+  constructor(private logger: LoggerService) {}
 
   // ========================================
   // CONTEXT MANAGEMENT
   // ========================================
 
   setConversationContext(context: ConversationContext): void {
-    console.log('🤖 Setting conversation context:', context);
+    this.logger.debug('context', Setting conversation context:', context);
     this.conversationContext = { ...context };
   }
   
@@ -24,7 +25,7 @@ export class ContextManagementService {
   }
   
   clearConversationContext(): void {
-    console.log('🤖 Clearing conversation context');
+    this.logger.debug('context', Clearing conversation context');
     this.conversationContext = {};
   }
 

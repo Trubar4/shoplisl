@@ -682,31 +682,13 @@ export class AIMessagingService {
       timestamp: new Date()
     };
 
-    // Use console logging with structured data
-    switch (severity) {
-      case ErrorSeverity.CRITICAL:
-      case ErrorSeverity.HIGH:
-        console.error(message, logData);
-        break;
-      case ErrorSeverity.MEDIUM:
-        console.warn(message, logData);
-        break;
-      case ErrorSeverity.LOW:
-        console.info(message, logData);
-        break;
-    }
-
-    // Use logger service with correct signature
-    try {
-      if (severity === ErrorSeverity.CRITICAL || severity === ErrorSeverity.HIGH) {
-        this.logger.error('ai', message, logData);
-      } else if (severity === ErrorSeverity.MEDIUM) {
-        this.logger.warn('ai', message, logData);
-      } else {
-        this.logger.info('ai', message, logData);
-      }
-    } catch (loggerError) {
-      console.warn('Logger service error:', loggerError);
+    // Use LoggerService for all error logging
+    if (severity === ErrorSeverity.CRITICAL || severity === ErrorSeverity.HIGH) {
+      this.logger.error('ai', message, logData);
+    } else if (severity === ErrorSeverity.MEDIUM) {
+      this.logger.warn('ai', message, logData);
+    } else {
+      this.logger.info('ai', message, logData);
     }
   }
 

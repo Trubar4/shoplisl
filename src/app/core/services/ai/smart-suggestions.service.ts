@@ -93,9 +93,9 @@ Return ONLY valid JSON:
       
       // Parse response more robustly
       const cleanResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      console.log('🤖 Raw AI response:', cleanResponse);
+      this.logger.debug('ai', Raw AI response:', cleanResponse);
       const result = JSON.parse(cleanResponse);
-      console.log('🤖 Parsed result:', result);
+      this.logger.debug('ai', Parsed result:', result);
 
       if (result.dept && result.icon) {
         const suggestions = {
@@ -104,7 +104,7 @@ Return ONLY valid JSON:
           confidence: result.conf || 0.8
         };
         
-        console.log('🤖 Final suggestions object:', suggestions); // ADD THIS LINE
+        this.logger.debug('ai', Final suggestions object:', suggestions); // ADD THIS LINE
         this.logger.info('ai', `Smart suggestions success: ${itemName} → ${result.dept}, ${result.icon}`);
         return suggestions;
       }

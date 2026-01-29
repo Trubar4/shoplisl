@@ -4,6 +4,7 @@ import { take, timeout } from 'rxjs/operators';
 import { DataService } from '../../data.service';
 import { ShoppingList } from '../../../models';
 import { DisambiguationOption, ListSelectionOption } from '../ai-models';
+import { LoggerService } from '../../logger.service';
 
 /**
  * List selection service for managing list operations and list disambiguation
@@ -26,7 +27,8 @@ import { DisambiguationOption, ListSelectionOption } from '../ai-models';
 export class ListSelectionService {
 
   constructor(
-    private dataService: DataService
+    private dataService: DataService,
+    private logger: LoggerService
   ) {}
 
   /**
@@ -61,7 +63,7 @@ export class ListSelectionService {
         itemCount: list.articleIds?.length || 0
       }));
     } catch (error) {
-      console.error('Error getting list selection options:', error);
+      this.logger.error('ai', 'Error getting list selection options:', error);
       return [];
     }
   }
@@ -146,7 +148,7 @@ export class ListSelectionService {
 
       return match || null;
     } catch (error) {
-      console.error('Error finding list by name:', error);
+      this.logger.error('ai', 'Error finding list by name:', error);
       return null;
     }
   }
@@ -170,7 +172,7 @@ export class ListSelectionService {
       const lists = await this.dataService.getLists().pipe(take(1), timeout(5000)).toPromise();
       return lists?.find(list => list.id === listId) || null;
     } catch (error) {
-      console.error('Error finding list by ID:', error);
+      this.logger.error('ai', 'Error finding list by ID:', error);
       return null;
     }
   }
