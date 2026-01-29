@@ -16,7 +16,7 @@ export class ContextManagementService {
   // ========================================
 
   setConversationContext(context: ConversationContext): void {
-    this.logger.debug('context', Setting conversation context:', context);
+    this.logger.debug('context', 'Setting conversation context:', context);
     this.conversationContext = { ...context };
   }
   
@@ -25,7 +25,7 @@ export class ContextManagementService {
   }
   
   clearConversationContext(): void {
-    this.logger.debug('context', Clearing conversation context');
+    this.logger.debug('context', 'Clearing conversation context');
     this.conversationContext = {};
   }
 

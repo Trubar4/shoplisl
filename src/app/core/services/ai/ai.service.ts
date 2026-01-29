@@ -95,8 +95,8 @@ export class AIService {
    * @see {@link AIExecutionResult} for result structure
    */
   async executeCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.info('ai', EXECUTING COMMAND:', input);
-    this.logger.info('ai', Current context:', this.getConversationContext());
+    this.logger.info('ai', 'EXECUTING COMMAND:', input);
+    this.logger.info('ai', 'Current context:', this.getConversationContext());
 
     const startTime = Date.now();
     const userId = this.authService.getCurrentUserId();
@@ -304,7 +304,7 @@ export class AIService {
   // ========================================
 
   private async handleRecipeCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Recipe command detected');
+    this.logger.debug('ai', 'Recipe command detected');
     return await this.recipeProcessing.processRecipeCommand(
       input,
       (cmd) => this.commandProcessing.processEnhancedCommandWithMultiItems(cmd)
@@ -312,7 +312,7 @@ export class AIService {
   }
 
   private async handlePlusCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Plus-prefix command detected');
+    this.logger.debug('ai', 'Plus-prefix command detected');
     const itemText = input.substring(1).trim();
     
     if (!itemText) {
@@ -327,13 +327,13 @@ export class AIService {
   }
 
   private async handleMultiItemPlusCommand(itemText: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Plus command with multiple items detected');
+    this.logger.debug('ai', 'Plus command with multiple items detected');
     const enhancedCommand = `Füge ${itemText} hinzu`;
     return await this.commandProcessing.processEnhancedCommandWithMultiItems(enhancedCommand);
   }
 
   private async handleSingleItemPlusCommand(itemText: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Plus command with single item - checking lists first');
+    this.logger.debug('ai', 'Plus command with single item - checking lists first');
     
     const listOptions: ListSelectionOption[] = await this.disambiguation.getListSelectionOptions();
     
@@ -350,7 +350,7 @@ export class AIService {
 
   private async handleSingleListPlusCommand(itemText: string, listName: string): Promise<AIExecutionResult> {
     const enhancedCommand = `Füge ${itemText} zu ${listName} hinzu`;
-    this.logger.debug('ai', Using only available list:', enhancedCommand);
+    this.logger.debug('ai', 'Using only available list:', enhancedCommand);
     
     if (this.hasApiKey()) {
       return await this.commandProcessing.processEnhancedCommand(enhancedCommand);
@@ -387,12 +387,12 @@ export class AIService {
   }
 
   private async handleMultiItemCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Multi-item detected');
+    this.logger.debug('ai', 'Multi-item detected');
     return await this.commandProcessing.processEnhancedCommandWithMultiItems(input);
   }
 
   private async handleContinuationCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.info('ai', Continuation keyword detected');
+    this.logger.info('ai', 'Continuation keyword detected');
     return await this.continuationHandling.handleContinuationCommand(
       input,
       (cmd) => this.commandProcessing.processEnhancedCommand(cmd)
@@ -452,7 +452,7 @@ export class AIService {
   }
 
   private async handleContextualCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.info('ai', Processing simple article in context');
+    this.logger.info('ai', 'Processing simple article in context');
     return await this.continuationHandling.handleContextualArticleAddition(
       input,
       (extraction, listId, listName) => 
@@ -648,9 +648,9 @@ export class AIService {
     pendingAction: PendingAction | MultiItemPendingAction,
     selectedOption: DisambiguationOption
   ): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Handling disambiguation choice with conversation context');
-    this.logger.debug('ai', Pending action:', pendingAction);
-    this.logger.debug('ai', Selected option:', selectedOption);
+    this.logger.debug('ai', 'Handling disambiguation choice with conversation context');
+    this.logger.debug('ai', 'Pending action:', pendingAction);
+    this.logger.debug('ai', 'Selected option:', selectedOption);
     
     const result = await this.disambiguation.handleDisambiguationChoice(pendingAction, selectedOption);
     
@@ -831,7 +831,7 @@ export class AIService {
     metrics: any[];
     statusReport: string;
   }> {
-    this.logger.debug('ai', Testing circuit breaker functionality...');
+    this.logger.debug('ai', 'Testing circuit breaker functionality...');
     
     try {
       // Get current metrics

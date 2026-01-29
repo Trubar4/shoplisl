@@ -36,7 +36,7 @@ export class MultiItemProcessorService {
   // ========================================
 
   async processMultiItemCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', PROCESSING MULTI-ITEM COMMAND:', input);
+    this.logger.debug('ai', 'PROCESSING MULTI-ITEM COMMAND:', input);
 
     // Step 0: Check if input is complex and should be preprocessed with Groq
     let processedInput = input;
@@ -45,25 +45,25 @@ export class MultiItemProcessorService {
     const isAlreadyProcessed = /^füge\s+.+\s+hinzu$/i.test(input.trim());
 
     if (!isAlreadyProcessed && this.groqApi.hasApiKey() && this.groqApi.isComplexInput(input)) {
-      this.logger.debug('ai', Detected complex input - preprocessing with Groq AI');
+      this.logger.debug('ai', 'Detected complex input - preprocessing with Groq AI');
 
       try {
         processedInput = await this.groqApi.standardizeComplexInput(input);
-        this.logger.debug('ai', Groq preprocessed result:', processedInput);
+        this.logger.debug('ai', 'Groq preprocessed result:', processedInput);
       } catch (groqError) {
-        this.logger.warn('ai', Groq preprocessing failed, falling back to local parsing:', groqError);
+        this.logger.warn('ai', 'Groq preprocessing failed, falling back to local parsing:', groqError);
         // Continue with original input if Groq fails
         processedInput = input;
       }
     } else if (isAlreadyProcessed) {
-      this.logger.debug('ai', Input already preprocessed (from recipe service), skipping Groq');
+      this.logger.debug('ai', 'Input already preprocessed (from recipe service), skipping Groq');
     }
 
     // Step 1: Parse multiple items from input (using preprocessed input if available)
     const multiItemResult = this.quantityExtraction.parseMultipleItems(processedInput);
 
     if (multiItemResult.command === 'unrecognized' || multiItemResult.items.length === 0) {
-      this.logger.debug('ai', No multi-items found, fallback to single item processing needed');
+      this.logger.debug('ai', 'No multi-items found, fallback to single item processing needed');
       // Return a special flag to indicate fallback is needed
       return {
         success: false,
@@ -93,12 +93,12 @@ export class MultiItemProcessorService {
     targetListName?: string;
     result?: AIExecutionResult;
   }> {
-    this.logger.debug('ai', Determining target list strategy');
+    this.logger.debug('ai', 'Determining target list strategy');
 
     // Strategy 1: Check conversation context
     const contextResult = this.checkConversationContext();
     if (contextResult.found) {
-      this.logger.debug('ai', Using target list from conversation context:', contextResult.listName);
+      this.logger.debug('ai', 'Using target list from conversation context:', contextResult.listName);
       return {
         success: true,
         targetListId: contextResult.listId,
@@ -108,7 +108,7 @@ export class MultiItemProcessorService {
 
     // Strategy 2: Check command for explicit list name
     if (multiItemResult.listName) {
-      this.logger.debug('ai', Using target list from command:', multiItemResult.listName);
+      this.logger.debug('ai', 'Using target list from command:', multiItemResult.listName);
       const targetList = await this.listOps.findListByName(multiItemResult.listName);
       
       if (targetList) {
@@ -154,7 +154,7 @@ export class MultiItemProcessorService {
     success: boolean;
     result: AIExecutionResult;
   }> {
-    this.logger.debug('ai', No target list identified - asking user to select');
+    this.logger.debug('ai', 'No target list identified - asking user to select');
     
     const listOptions = await this.listOps.getListSelectionOptions();
     
@@ -217,7 +217,7 @@ export class MultiItemProcessorService {
     targetListId: string,
     targetListName: string
   ): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Executing multi-item processing with confirmed target list:', {
+    this.logger.debug('ai', 'Executing multi-item processing with confirmed target list:', {
       targetListName,
       itemCount: multiItemResult.items.length
     });
@@ -291,7 +291,7 @@ export class MultiItemProcessorService {
     currentItemIndex?: number;
     totalItems?: number;
   }): AIExecutionResult {
-    this.logger.error('ai', Multi-item processing error:', error, context);
+    this.logger.error('ai', 'Multi-item processing error:', { error, context });
     
     let message = '❌ Fehler bei der Verarbeitung mehrerer Artikel.';
     

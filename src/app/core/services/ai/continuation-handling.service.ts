@@ -73,7 +73,7 @@ export class ContinuationHandlingService {
     input: string,
     processEnhancedCommand: (command: string) => Promise<AIExecutionResult>
   ): Promise<AIExecutionResult> {
-    this.logger.debug('context', HANDLING CONTINUATION COMMAND:', input);
+    this.logger.debug('context', 'HANDLING CONTINUATION COMMAND:', input);
     
     const aiContext = this.contextManager.getConversationContext();
     const lastAction = aiContext.lastAction;
@@ -126,7 +126,7 @@ export class ContinuationHandlingService {
           
           // Process the items with target list context
           const enhancedInput = `Füge ${itemsText} zu ${lastAction.listName} hinzu`;
-          this.logger.debug('context', Processing enhanced continuation command:', enhancedInput);
+          this.logger.debug('context', 'Processing enhanced continuation command:', enhancedInput);
           
           return await processEnhancedCommand(enhancedInput);
         }
@@ -164,12 +164,12 @@ export class ContinuationHandlingService {
   
     const { listId, listName } = context;
     
-    this.logger.debug('context', Handling contextual addition:', input);
-    this.logger.debug('context', Target list:', listName, listId);
+    this.logger.debug('context', 'Handling contextual addition:', input);
+    this.logger.debug('context', 'Target list:', { listName, listId });
     
     // Check for multiple items
     if (input.includes(',')) {
-      this.logger.debug('context', Multiple items detected in contextual mode');
+      this.logger.debug('context', 'Multiple items detected in contextual mode');
       const enhancedInput = `Füge ${input} zu ${listName} hinzu`;
       
       // Preserve context before processing
@@ -178,7 +178,7 @@ export class ContinuationHandlingService {
       
       // Restore context if it was lost
       if (result.success && !result.conversationContext) {
-        this.logger.debug('context', Preserving conversation context after disambiguation');
+        this.logger.debug('context', 'Preserving conversation context after disambiguation');
         result.conversationContext = contextToPreserve;
         result.followUpPrompt = `Möchtest du noch weitere Artikel zu "${listName}" hinzufügen?`;
       }
@@ -188,11 +188,11 @@ export class ContinuationHandlingService {
     
     // Handle single item
     const quantityExtraction = extractQuantityCallback(input);
-    this.logger.debug('context', Single item extraction:', quantityExtraction);
+    this.logger.debug('context', 'Single item extraction:', quantityExtraction);
     
     // Validate extracted item name
     if (!quantityExtraction.itemName || quantityExtraction.itemName.trim().length < 2) {
-      this.logger.error('context', Invalid item name extracted:', quantityExtraction);
+      this.logger.error('context', 'Invalid item name extracted:', quantityExtraction);
       return {
         success: false,
         message: `❌ Ungültiger Artikelname: "${input}". Bitte versuche es erneut.`
@@ -207,7 +207,7 @@ export class ContinuationHandlingService {
   // ========================================
 
   handleNegativeResponse(): AIExecutionResult {
-    this.logger.debug('context', User declined to add more articles');
+    this.logger.debug('context', 'User declined to add more articles');
     this.contextManager.clearConversationContext();
     
     return {

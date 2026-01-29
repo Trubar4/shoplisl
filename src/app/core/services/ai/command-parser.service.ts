@@ -526,7 +526,7 @@ export class CommandParserService {
             cleanInput.includes(' ' + keyword + ' ');
     });
     
-    this.logger.debug('context', 'Checking conversation end for:', input, '-> result:', isEnd);
+    this.logger.debug('context', `Checking conversation end for: ${input} -> result: ${isEnd}`);
     return isEnd;
   }
 }

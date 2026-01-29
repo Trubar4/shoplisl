@@ -53,12 +53,12 @@ export class AICachingService {
 
     if (cached !== null) {
       this.cacheHits++;
-      this.logger.debug('cache', Cache HIT:', key, `(${this.getCacheHitRate()}% hit rate)`);
+      this.logger.debug('cache', `Cache HIT: ${key} (${this.getCacheHitRate()}% hit rate)`);
       return of({ data: cached, fromCache: true });
     }
 
     this.cacheMisses++;
-    this.logger.debug('cache', Cache MISS:', key, `(${this.getCacheHitRate()}% hit rate)`);
+    this.logger.debug('cache', `Cache MISS: ${key} (${this.getCacheHitRate()}% hit rate)`);
     const result = provider();
 
     if (result instanceof Promise) {

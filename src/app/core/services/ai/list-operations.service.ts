@@ -36,7 +36,7 @@ export class ListOperationsService {
     colorExtraction: ColorExtraction,
     firstItem?: { itemName: string; quantity: string }
   ): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Creating list with color:', { listName, colorExtraction, firstItem });
+    this.logger.debug('ai', 'Creating list with color:', { listName, colorExtraction, firstItem });
     
     try {
       const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
@@ -94,7 +94,7 @@ export class ListOperationsService {
       }
       
     } catch (error) {
-      this.logger.error('ai', LIST CREATION ERROR:', error);
+      this.logger.error('ai', 'LIST CREATION ERROR:', error);
       return {
         success: false,
         message: '❌ Fehler beim Erstellen der Liste.'
@@ -112,11 +112,11 @@ export class ListOperationsService {
   // ========================================
 
   async createListFromCommand(input: string, quantityExtraction: QuantityExtraction): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Creating list from command:', input);
+    this.logger.debug('ai', 'Creating list from command:', input);
     
     // Extract color first
     const colorExtraction = this.commandParser.extractColor(input);
-    this.logger.debug('ai', COLOR EXTRACTION:', colorExtraction);
+    this.logger.debug('ai', 'COLOR EXTRACTION:', colorExtraction);
     
     const cleanInput = colorExtraction.cleanInput;
     
@@ -180,7 +180,7 @@ export class ListOperationsService {
       };
       
     } catch (error) {
-      this.logger.error('ai', SHOW LISTS ERROR:', error);
+      this.logger.error('ai', 'SHOW LISTS ERROR:', error);
       return {
         success: false,
         message: '❌ Fehler beim Laden der Listen.'
@@ -259,7 +259,7 @@ export class ListOperationsService {
       );
       
       if (match) {
-        this.logger.debug('ai', Found exact match:', match.name);
+        this.logger.debug('ai', 'Found exact match:', match.name);
         return match;
       }
       
@@ -270,9 +270,9 @@ export class ListOperationsService {
       );
       
       if (match) {
-        this.logger.debug('ai', Found partial match:', match.name);
+        this.logger.debug('ai', 'Found partial match:', match.name);
       } else {
-        this.logger.debug('ai', No match found for:', listName);
+        this.logger.debug('ai', 'No match found for:', listName);
       }
       
       return match || null;

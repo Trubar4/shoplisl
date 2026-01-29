@@ -49,20 +49,20 @@ export class CommandProcessingService {
   // ========================================
 
   async processEnhancedCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', PROCESSING ENHANCED COMMAND:', input);
+    this.logger.debug('ai', 'PROCESSING ENHANCED COMMAND:', input);
     
     // Extract quantity from input
     const quantityExtraction = this.quantityExtraction.extractQuantity(input);
-    this.logger.debug('ai', Quantity extraction result:', quantityExtraction);
+    this.logger.debug('ai', 'Quantity extraction result:', quantityExtraction);
   
     // Parse command intent
     const intent = this.commandParser.parseIntent(input, quantityExtraction.itemName);
-    this.logger.debug('ai', Parsed intent:', intent);
+    this.logger.debug('ai', 'Parsed intent:', intent);
   
     // Check for unrecognized commands
     if (intent.itemName === 'UNRECOGNIZED_COMMAND' || 
         (intent as any).confidence !== undefined && (intent as any).confidence < 0.5) {
-      this.logger.debug('ai', Unrecognized or low confidence command, providing guidance');
+      this.logger.debug('ai', 'Unrecognized or low confidence command, providing guidance');
       return {
         success: false,
         message: `❌ Unbekannter Befehl: "${input}"<br><br>💡 Sage "Hilfe" für verfügbare Befehle`
@@ -71,13 +71,13 @@ export class CommandProcessingService {
   
     // Handle create list commands
     if (intent.type === 'create_list') {
-      this.logger.debug('ai', Processing create list command');
+      this.logger.debug('ai', 'Processing create list command');
       return await this.handleListCreationWithColor(input, quantityExtraction);
     }
   
     // Handle add item commands
     if (intent.type === 'add_item') {
-      this.logger.debug('ai', Processing add item command');
+      this.logger.debug('ai', 'Processing add item command');
       
       // Check conversation context for target list
       const conversationContext = this.contextManager.getConversationContext();
@@ -88,7 +88,7 @@ export class CommandProcessingService {
       if (!targetListName && conversationContext.waitingForArticles) {
         targetListName = conversationContext.waitingForArticles.listName;
         targetListId = conversationContext.waitingForArticles.listId;
-        this.logger.debug('ai', Using target list from conversation context:', targetListName, targetListId);
+        this.logger.debug('ai', 'Using target list from conversation context:', { targetListName, targetListId });
       }
       
       const pendingAction: PendingAction = {
@@ -105,7 +105,7 @@ export class CommandProcessingService {
         (pendingAction as any).conversationListId = targetListId;
       }
   
-      this.logger.debug('ai', Created pending action with conversation context:', pendingAction);
+      this.logger.debug('ai', 'Created pending action with conversation context:', pendingAction);
   
       return await this.handleItemActionWithDisambiguation(pendingAction);
     }
@@ -125,7 +125,7 @@ export class CommandProcessingService {
     listId: string, 
     listName: string
   ): Promise<AIExecutionResult> {
-    this.logger.info('ai', Creating article in conversation context:', {
+    this.logger.info('ai', 'Creating article in conversation context:', {
       itemName: quantityExtraction.itemName,
       quantity: quantityExtraction.quantity,
       listId,
@@ -138,7 +138,7 @@ export class CommandProcessingService {
 
     
     if (existingOptions.length > 0) {
-      this.logger.info('ai', Found existing articles, showing disambiguation');
+      this.logger.info('ai', 'Found existing articles, showing disambiguation');
       
       const pendingAction: PendingAction = {
         type: 'add_item',
@@ -194,7 +194,7 @@ export class CommandProcessingService {
   // ========================================
 
   async processBasicCommand(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', PROCESSING BASIC COMMAND:', input);
+    this.logger.debug('ai', 'PROCESSING BASIC COMMAND:', input);
     
     const lowerInput = input.toLowerCase();
     const originalInput = input.trim();
@@ -224,13 +224,13 @@ export class CommandProcessingService {
   // ========================================
 
   async processEnhancedCommandWithMultiItems(input: string): Promise<AIExecutionResult> {
-    this.logger.debug('ai', PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS (LIST-FIRST):', input);
+    this.logger.debug('ai', 'PROCESSING ENHANCED COMMAND WITH MULTI-ITEMS (LIST-FIRST):', input);
     
     const result = await this.multiItemProcessor.processMultiItemCommand(input);
     
     // Handle fallback to single item processing
     if ((result as any).shouldFallbackToSingle) {
-      this.logger.debug('ai', Falling back to single item processing');
+      this.logger.debug('ai', 'Falling back to single item processing');
       return this.processEnhancedCommand(input);
     }
     
@@ -265,16 +265,16 @@ export class CommandProcessingService {
   // ========================================
 
   private async handleItemActionWithDisambiguation(action: PendingAction): Promise<AIExecutionResult> {
-    this.logger.debug('ai', Handling item action with disambiguation:', action);
+    this.logger.debug('ai', 'Handling item action with disambiguation:', action);
 
     // Get disambiguation options
     const disambiguationOptions = await this.disambiguation.getDisambiguationOptions(action.itemName);
-    this.logger.debug('ai', Disambiguation options:', disambiguationOptions.length);
+    this.logger.debug('ai', 'Disambiguation options:', disambiguationOptions.length);
 
     const existingOptions = disambiguationOptions.filter((opt: DisambiguationOption) => opt.type === 'existing');
     
     if (existingOptions.length > 0) {
-      this.logger.debug('ai', Found existing options, showing disambiguation');
+      this.logger.debug('ai', 'Found existing options, showing disambiguation');
       
       const enhancedOptions = [
         ...disambiguationOptions,
@@ -297,12 +297,12 @@ export class CommandProcessingService {
     }
 
     // No existing items found - create new article directly
-    this.logger.debug('ai', No existing options, creating new article');
+    this.logger.debug('ai', 'No existing options, creating new article');
     return await this.executeActionWithNewArticle(action);
   }
 
   private async handleItemAdditionBasic(input: string, quantityExtraction: any): Promise<AIExecutionResult> {
-    this.logger.debug('ai', HANDLING BASIC ITEM ADDITION:', input);
+    this.logger.debug('ai', 'HANDLING BASIC ITEM ADDITION:', input);
     
     const lowerInput = input.toLowerCase();
     
