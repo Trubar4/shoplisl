@@ -38,7 +38,7 @@ export class RecipeProcessingService {
       }
     });
     
-    this.logger.info('recipe', Recipe detection:', { 
+    this.logger.info('recipe', 'Recipe detection:', { 
       firstLine, 
       normalizedInput: normalizedInput.substring(0, 50), 
       detected: isRecipeDetected 
@@ -55,18 +55,18 @@ export class RecipeProcessingService {
     input: string,
     processMultiItemsCallback: (command: string) => Promise<AIExecutionResult>
   ): Promise<AIExecutionResult> {
-    this.logger.info('recipe', Processing recipe command:', input.substring(0, 50));
+    this.logger.info('recipe', 'Processing recipe command:', input.substring(0, 50));
     
     // Preserve existing conversation context
     const existingContext = this.contextManager.getConversationContext();
     const targetListName = existingContext.waitingForArticles?.listName;
     const targetListId = existingContext.waitingForArticles?.listId;
     
-    this.logger.info('recipe', Existing context:', { targetListName, targetListId });
+    this.logger.info('recipe', 'Existing context:', { targetListName, targetListId });
     
     try {
       const recipeContent = this.extractRecipeContent(input);
-      this.logger.info('recipe', Extracted recipe content:', recipeContent);
+      this.logger.info('recipe', 'Extracted recipe content:', recipeContent);
       
       if (!recipeContent || recipeContent.length < 3) {
         return {
@@ -81,7 +81,7 @@ export class RecipeProcessingService {
 
       // If no API key and user hasn't chosen yet, ask them first
       if (!this.groqApi.hasApiKey() && !forceLocalParsing) {
-        this.logger.info('recipe', No API key - asking user to choose parsing method');
+        this.logger.info('recipe', 'No API key - asking user to choose parsing method');
 
         // Store the recipe content in context so we can process it after user chooses
         this.contextManager.setConversationContext({
@@ -127,7 +127,7 @@ export class RecipeProcessingService {
         this.logger.info('recipe', `Using target list from context: ${targetListName}`);
 
         if (this.groqApi.hasApiKey()) {
-          this.logger.info('recipe', Using Groq API for advanced recipe processing');
+          this.logger.info('recipe', 'Using Groq API for advanced recipe processing');
           try {
             const standardizedCommands = await this.groqApi.standardizeRecipeIngredients(recipeContent, targetListName);
 
@@ -149,42 +149,42 @@ export class RecipeProcessingService {
             });
 
             finalCommand = this.combineCommandsToMultiItem(enhancedCommands);
-            this.logger.info('recipe', Groq processed recipe successfully:', finalCommand);
+            this.logger.info('recipe', 'Groq processed recipe successfully:', finalCommand);
 
           } catch (aiError) {
-            this.logger.error('recipe', Groq processing failed, using enhanced fallback:', aiError);
+            this.logger.error('recipe', 'Groq processing failed, using enhanced fallback:', aiError);
             finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
           }
         } else {
-          this.logger.info('recipe', No API key - using enhanced local parsing');
+          this.logger.info('recipe', 'No API key - using enhanced local parsing');
           finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} zu ${targetListName} hinzu`;
         }
       } else {
         // No target list - process normally
-        this.logger.info('recipe', No target list in context');
+        this.logger.info('recipe', 'No target list in context');
 
         if (this.groqApi.hasApiKey()) {
-          this.logger.info('recipe', Using Groq API for recipe processing');
+          this.logger.info('recipe', 'Using Groq API for recipe processing');
           try {
             const standardizedCommands = await this.groqApi.standardizeRecipeIngredients(recipeContent);
             const commands = this.parseStandardizedCommands(standardizedCommands);
             finalCommand = this.combineCommandsToMultiItem(commands);
-            this.logger.info('recipe', Groq processed recipe successfully:', finalCommand);
+            this.logger.info('recipe', 'Groq processed recipe successfully:', finalCommand);
           } catch (aiError) {
-            this.logger.error('recipe', Groq processing failed:', aiError);
+            this.logger.error('recipe', 'Groq processing failed:', aiError);
             finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
           }
         } else {
-          this.logger.info('recipe', No API key - using enhanced local parsing');
+          this.logger.info('recipe', 'No API key - using enhanced local parsing');
           finalCommand = `Füge ${this.parseAdvancedRecipe(recipeContent).join(', ')} hinzu`;
         }
       }
 
-      this.logger.info('recipe', Final recipe command:', finalCommand);
+      this.logger.info('recipe', 'Final recipe command:', finalCommand);
       return await processMultiItemsCallback(finalCommand);
       
     } catch (error) {
-      this.logger.error('recipe', Recipe processing error:', error);
+      this.logger.error('recipe', 'Recipe processing error:', error);
       return {
         success: false,
         message: `❌ Rezept-Verarbeitung fehlgeschlagen.<br><br>💡 Versuche stattdessen:<br>"Füge Milch, Gurken hinzu"`
@@ -252,7 +252,7 @@ export class RecipeProcessingService {
   }
 
   parseAdvancedRecipe(recipeContent: string): string[] {
-    this.logger.info('recipe', Advanced parsing recipe:', recipeContent.substring(0, 100));
+    this.logger.info('recipe', 'Advanced parsing recipe:', recipeContent.substring(0, 100));
 
     const trimmed = recipeContent.trim();
 
@@ -261,7 +261,7 @@ export class RecipeProcessingService {
       const singleItemMatch = trimmed.match(/^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)/);
       if (singleItemMatch) {
         const cleanSingle = singleItemMatch[1].trim();
-        this.logger.info('recipe', Detected single ingredient in fallback:', cleanSingle);
+        this.logger.info('recipe', 'Detected single ingredient in fallback:', cleanSingle);
         return [cleanSingle];
       }
     }
@@ -296,7 +296,7 @@ export class RecipeProcessingService {
       }
     }
 
-    this.logger.info('recipe', Advanced parsed ingredients:', ingredients);
+    this.logger.info('recipe', 'Advanced parsed ingredients:', ingredients);
 
     // Fallback to simple parsing if advanced fails
     if (ingredients.length === 0) {
@@ -455,7 +455,7 @@ export class RecipeProcessingService {
   }
 
   private parseSimpleIngredients(recipeContent: string): string[] {
-    this.logger.info('recipe', Parsing simple ingredients:', recipeContent);
+    this.logger.info('recipe', 'Parsing simple ingredients:', recipeContent);
 
     // Try comma/newline/semicolon separation first
     if (recipeContent.includes(',') || recipeContent.includes('\n') || recipeContent.includes(';')) {
@@ -466,7 +466,7 @@ export class RecipeProcessingService {
         .slice(0, 15);
 
       if (items.length > 1) {
-        this.logger.info('recipe', Found comma/newline/semicolon separated items:', items);
+        this.logger.info('recipe', 'Found comma/newline/semicolon separated items:', items);
         return items;
       }
     }
@@ -503,7 +503,7 @@ export class RecipeProcessingService {
       .filter(item => item.length > 0 && !item.toLowerCase().includes('zutaten'))
       .slice(0, 15);
 
-    this.logger.info('recipe', Parsed ingredients:', validIngredients);
+    this.logger.info('recipe', 'Parsed ingredients:', validIngredients);
 
     // Fallback: if parsing failed, return original as single item
     if (validIngredients.length === 0) {
@@ -562,7 +562,7 @@ export class RecipeProcessingService {
       };
     }
 
-    this.logger.info('recipe', Processing pending recipe with local parsing');
+    this.logger.info('recipe', 'Processing pending recipe with local parsing');
 
     // Set flag to skip the choice prompt
     this.contextManager.setConversationContext({
@@ -581,7 +581,7 @@ export class RecipeProcessingService {
    * Show API setup instructions
    */
   showApiSetupInstructions(): AIExecutionResult {
-    this.logger.info('recipe', Showing API setup instructions');
+    this.logger.info('recipe', 'Showing API setup instructions');
 
     // Clear pending recipe context
     this.contextManager.setConversationContext({
