@@ -475,10 +475,110 @@ Quick Diagnostics:
             
             console.log(`📊 Unchecked count: ${uncheckedCount}`);
             return { listName, total: list.articleIds.length, unchecked: uncheckedCount };
-            
+
           } catch (error) {
             console.error('❌ Debug failed:', error);
             return { error: 'Debug failed' };
+          }
+        },
+
+        // Clean up orphaned references from a specific list
+        cleanupList: async (listName: string) => {
+          try {
+            console.log(`🧹 Cleaning up orphaned references from "${listName}"...`);
+
+            const lists = await new Promise<any[]>(resolve =>
+              this.dataService.getLists().subscribe((data: any[]) => resolve(data))
+            );
+            const articles = await new Promise<any[]>(resolve =>
+              this.dataService.getArticles().subscribe((data: any[]) => resolve(data))
+            );
+
+            const list = lists.find((l: any) => l.name === listName);
+            if (!list) {
+              console.log(`❌ List "${listName}" not found`);
+              return { error: 'List not found' };
+            }
+
+            const validArticleIds = new Set(articles.map((a: any) => a.id));
+
+            // Find orphaned articleIds
+            const orphanedArticleIds = list.articleIds.filter((id: string) => !validArticleIds.has(id));
+
+            // Find orphaned itemStates
+            const orphanedItemStateIds = Object.keys(list.itemStates || {}).filter((id: string) => !validArticleIds.has(id));
+
+            console.log(`📊 Found ${orphanedArticleIds.length} orphaned articleIds`);
+            console.log(`📊 Found ${orphanedItemStateIds.length} orphaned itemStates`);
+
+            if (orphanedArticleIds.length === 0 && orphanedItemStateIds.length === 0) {
+              console.log(`✅ List "${listName}" is already clean!`);
+              return { cleaned: 0 };
+            }
+
+            // Build cleaned data
+            const cleanedArticleIds = list.articleIds.filter((id: string) => validArticleIds.has(id));
+            const cleanedItemStates: any = {};
+            for (const [id, state] of Object.entries(list.itemStates || {})) {
+              if (validArticleIds.has(id)) {
+                cleanedItemStates[id] = state;
+              }
+            }
+
+            console.log(`🔧 Updating list: ${list.articleIds.length} → ${cleanedArticleIds.length} articleIds`);
+            console.log(`🔧 Updating itemStates: ${Object.keys(list.itemStates || {}).length} → ${Object.keys(cleanedItemStates).length}`);
+
+            // Update the list via DataService
+            await new Promise<void>((resolve, reject) => {
+              this.dataService.updateList(list.id, {
+                articleIds: cleanedArticleIds,
+                itemStates: cleanedItemStates
+              }).subscribe({
+                next: () => resolve(),
+                error: (err) => reject(err)
+              });
+            });
+
+            const totalCleaned = orphanedArticleIds.length + orphanedItemStateIds.length;
+            console.log(`✅ Successfully cleaned ${totalCleaned} orphaned references from "${listName}"!`);
+            console.log(`📋 List now has ${cleanedArticleIds.length} articles`);
+
+            return {
+              cleaned: totalCleaned,
+              orphanedArticleIds: orphanedArticleIds.length,
+              orphanedItemStates: orphanedItemStateIds.length,
+              remainingArticles: cleanedArticleIds.length
+            };
+
+          } catch (error) {
+            console.error('❌ Cleanup failed:', error);
+            return { error: 'Cleanup failed' };
+          }
+        },
+
+        // Clean up all lists
+        cleanupAllLists: async () => {
+          try {
+            console.log(`🧹 Cleaning up ALL lists...`);
+
+            const lists = await new Promise<any[]>(resolve =>
+              this.dataService.getLists().subscribe((data: any[]) => resolve(data))
+            );
+
+            let totalCleaned = 0;
+            for (const list of lists) {
+              const result = await (window as any).offline.cleanupList(list.name);
+              if (result.cleaned) {
+                totalCleaned += result.cleaned;
+              }
+            }
+
+            console.log(`\n📊 TOTAL: Cleaned ${totalCleaned} orphaned references across ${lists.length} lists`);
+            return { totalCleaned, listsProcessed: lists.length };
+
+          } catch (error) {
+            console.error('❌ Cleanup all failed:', error);
+            return { error: 'Cleanup failed' };
           }
         }
       };
@@ -486,11 +586,16 @@ Quick Diagnostics:
       console.log(`
 🛠️ Offline Debug Commands:
 - offline.clearCache() - Clear all cached data
-- offline.showCacheStatus() - Show cache information  
+- offline.showCacheStatus() - Show cache information
 - offline.testConnection() - Test real connectivity
 - offline.refreshData() - Force data refresh
 - offline.showDataStatus() - Show data service status
 - logger.getOfflineStatus() - Complete system status
+
+🧹 Cleanup Commands:
+- offline.cleanupList('Baum')  - Clean orphans from specific list
+- offline.cleanupAllLists()    - Clean orphans from all lists
+- offline.debugListDetails('Baum') - Debug a specific list
       `);
     }
   }
