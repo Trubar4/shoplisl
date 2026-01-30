@@ -19,6 +19,7 @@ import { DataMigrationService } from './core/services/data-migration.service';
 import { AuthService } from './core/services/auth.service';
 import { FirebaseDataService } from './core/services/firebase-data.service';
 import { QuotaMonitorService } from './core/services/quota-monitor.service';
+import { ItemStateCleanupService } from './core/services/itemstate-cleanup.service';
 import { AppState } from './state/app.state';
 import * as AuthActions from './state/auth/auth.actions';
 import { selectIsAuthenticated } from './state/auth/auth.selectors';
@@ -72,6 +73,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private firebaseDataService: FirebaseDataService,
     private quotaMonitor: QuotaMonitorService,
+    private itemStateCleanup: ItemStateCleanupService, // Registers global window.itemStateCleanup
     private snackBar: MatSnackBar,
     private store: Store<AppState>
   ) {
@@ -317,6 +319,13 @@ Quick Diagnostics:
   const status = quotaMonitor.getQuotaStatus();
   const health = quotaMonitor.checkShareInvitesListenerHealth();
   quotaMonitor.logDetailedBreakdown();
+      `);
+
+      console.log(`
+🧹 ItemState Cleanup Commands (fixes ghost articles):
+- itemStateCleanup.analyze()       - Dry run: report issues without fixing
+- itemStateCleanup.fix()           - Fix missing articleNames from existing articles
+- itemStateCleanup.removeOrphans() - Remove itemStates for deleted articles
       `);
     }
   }

@@ -5,6 +5,7 @@ import { CheckEvent, ListItemState, Article, ShoppingList } from '../models';
 import { selectListById } from '../../state/lists/lists.selectors';
 import { selectArticleById } from '../../state/articles/articles.selectors';
 import { AppState } from '../../state/app.state';
+import { LoggerService } from './logger.service';
 
 /**
  * HistoryService
@@ -23,6 +24,7 @@ import { AppState } from '../../state/app.state';
 })
 export class HistoryService {
   private readonly store = inject(Store<AppState>);
+  private readonly logger = inject(LoggerService);
 
   // Default user ID until Phase 7 (multi-user)
   private readonly DEFAULT_USER_ID = 'shared-shoplisl-user';
@@ -215,9 +217,21 @@ export class HistoryService {
     const newEvent = this.createCheckEvent(action, amount, userId, userName);
     const updatedHistory = this.addEventToHistory(currentState?.history, newEvent);
 
+    const resolvedArticleName = articleName || currentState?.articleName;
+
+    // Log warning when articleName is missing (helps diagnose ghost itemStates)
+    if (action === 'added' && !resolvedArticleName) {
+      this.logger.warn('data', `[HistoryService] Creating itemState for article ${articleId} WITHOUT articleName!`, {
+        action,
+        hasCurrentState: !!currentState,
+        currentStateArticleName: currentState?.articleName,
+        providedArticleName: articleName
+      });
+    }
+
     return {
       articleId,
-      articleName: articleName || currentState?.articleName,  // Preserve or set article name
+      articleName: resolvedArticleName,  // Preserve or set article name
       isChecked: action === 'checked',
       amount: amount || currentState?.amount || '',
       addedAt: action === 'added' ? new Date() : (currentState?.addedAt || new Date()),

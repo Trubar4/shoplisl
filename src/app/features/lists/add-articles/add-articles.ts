@@ -114,18 +114,20 @@ export class AddArticlesToListComponent implements OnInit {
       const articleStates = this.articleStatesSubject.value;
       const newArticleIds: string[] = [];
       const addedArticleIds: string[] = []; // Track newly added articles
-      
+      const articleNamesMap: { [articleId: string]: string } = {}; // Map article IDs to names for itemState creation
+
       this.articlesWithToggle$.subscribe(articles => {
         console.log('🎯 Processing articles for save...');
-        
+
         articles.forEach(article => {
-          const isInList = articleStates[article.id] !== undefined 
-            ? articleStates[article.id] 
+          const isInList = articleStates[article.id] !== undefined
+            ? articleStates[article.id]
             : list.articleIds.includes(article.id);
-            
+
           if (isInList) {
             newArticleIds.push(article.id);
-            
+            articleNamesMap[article.id] = article.name; // Store name for itemState creation
+
             // Check if this is a newly added article
             if (!list.articleIds.includes(article.id)) {
               addedArticleIds.push(article.id);
@@ -144,6 +146,8 @@ export class AddArticlesToListComponent implements OnInit {
       const newItemStates: { [articleId: string]: any } = {};
 
       newArticleIds.forEach(articleId => {
+        const articleName = articleNamesMap[articleId]; // Get article name from map
+
         if (addedArticleIds.includes(articleId)) {
           // NEW ARTICLES: Use HistoryService to create proper itemState with 'added' history event
           newItemStates[articleId] = this.historyService.createUpdatedItemState(
@@ -152,20 +156,26 @@ export class AddArticlesToListComponent implements OnInit {
             'added',
             '',
             currentUser?.id,
-            currentUser?.name
+            currentUser?.name,
+            articleName  // Pass articleName to prevent ghost itemStates
           );
-          console.log(`✅ Set new article ${articleId} as ACTIVE with 'added' history event`);
+          console.log(`✅ Set new article ${articleId} (${articleName}) as ACTIVE with 'added' history event`);
         } else {
           // EXISTING ARTICLES: Preserve existing state (including history)
-          newItemStates[articleId] = list.itemStates[articleId] || this.historyService.createUpdatedItemState(
-            undefined,
-            articleId,
-            'added',
-            '',
-            currentUser?.id,
-            currentUser?.name
-          );
-          console.log(`🔄 Preserved existing state for article ${articleId}:`, newItemStates[articleId]);
+          // Also ensure articleName is set if missing from existing state
+          const existingState = list.itemStates[articleId];
+          newItemStates[articleId] = existingState
+            ? { ...existingState, articleName: existingState.articleName || articleName }
+            : this.historyService.createUpdatedItemState(
+                undefined,
+                articleId,
+                'added',
+                '',
+                currentUser?.id,
+                currentUser?.name,
+                articleName  // Pass articleName to prevent ghost itemStates
+              );
+          console.log(`🔄 Preserved existing state for article ${articleId} (${articleName}):`, newItemStates[articleId]);
         }
       });
 
