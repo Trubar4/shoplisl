@@ -374,7 +374,7 @@ export class ArticleFormComponent implements OnInit, OnDestroy {
     return `${hours}:${minutes}`;
   }
 
-  getHistoryPrefix(action: 'checked' | 'unchecked'): string {
+  getHistoryPrefix(action: 'checked' | 'unchecked' | 'added'): string {
     return action === 'checked' ? '−' : '+';
   }
 

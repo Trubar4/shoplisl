@@ -1,5 +1,6 @@
 // src/app/core/services/ai/performance-monitor.service.ts
 import { Injectable } from '@angular/core';
+import { LoggerService } from '../logger.service';
 
 export interface PerformanceMetric {
   operation: string;
@@ -27,6 +28,8 @@ export class PerformanceMonitorService {
   private metrics: PerformanceMetric[] = [];
   private readonly maxMetrics = 1000; // Keep last 1000 operations
   private readonly slowOperationThreshold = 2000; // 2 seconds
+
+  constructor(private logger: LoggerService) {}
 
   /**
    * Start timing an operation
@@ -62,12 +65,12 @@ export class PerformanceMonitorService {
 
       // Log slow operations
       if (metric.duration > this.slowOperationThreshold) {
-        console.warn(`🐌 Slow operation detected: ${operation} took ${metric.duration.toFixed(2)}ms`);
+        this.logger.warn('analytics', `Slow operation detected: ${operation} took ${metric.duration.toFixed(2)}ms`);
       }
 
       // Log cache hits for optimization insights
       if (cacheHit) {
-        console.log(`⚡ Cache hit for ${operation} (${metric.duration.toFixed(2)}ms)`);
+        this.logger.debug('cache', `Cache hit for ${operation} (${metric.duration.toFixed(2)}ms)`);
       }
     }
   }
@@ -186,7 +189,7 @@ export class PerformanceMonitorService {
    */
   clearMetrics(): void {
     this.metrics = [];
-    console.log('🧹 Performance metrics cleared');
+    this.logger.debug('analytics', 'Performance metrics cleared');
   }
 
   /**

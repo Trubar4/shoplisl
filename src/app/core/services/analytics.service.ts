@@ -10,6 +10,7 @@ import {
   AnalyticsEvent,
   AnalyticsEventType,
 } from '../models/analytics.model';
+import { LoggerService } from './logger.service';
 
 /**
  * AnalyticsService
@@ -26,6 +27,7 @@ import {
 })
 export class AnalyticsService {
   private firestore = inject(Firestore);
+  private logger = inject(LoggerService);
 
   private eventBuffer: AnalyticsEvent[] = [];
   private readonly BATCH_SIZE = 50; // Write after 50 events (was 10)
@@ -98,11 +100,11 @@ export class AnalyticsService {
     };
 
     this.eventBuffer.push(event);
-    console.log(`📈 Analytics: Event tracked (${eventType}) - Buffer: ${this.eventBuffer.length}/${this.BATCH_SIZE}`);
+    this.logger.debug('analytics', `📈 Analytics: Event tracked (${eventType}) - Buffer: ${this.eventBuffer.length}/${this.BATCH_SIZE}`);
 
     // Flush if buffer is full
     if (this.eventBuffer.length >= this.BATCH_SIZE) {
-      console.log(`🚀 Analytics: Buffer full, triggering flush`);
+      this.logger.debug('analytics', `🚀 Analytics: Buffer full, triggering flush`);
       this.flush();
     }
   }
@@ -165,7 +167,7 @@ export class AnalyticsService {
 
     // Prevent concurrent writes
     if (this.isWriting) {
-      console.log('⏳ Analytics write already in progress, skipping flush');
+      this.logger.debug('analytics', '⏳ Analytics write already in progress, skipping flush');
       return;
     }
 
@@ -175,16 +177,16 @@ export class AnalyticsService {
 
     try {
       this.writeCount++;
-      console.log(`📊 Analytics: Writing ${eventsToWrite.length} events (write #${this.writeCount})`);
+      this.logger.debug('analytics', `📊 Analytics: Writing ${eventsToWrite.length} events (write #${this.writeCount})`);
       await this.writeEventsBatch(eventsToWrite);
-      console.log(`✅ Analytics: Write #${this.writeCount} successful`);
+      this.logger.debug('analytics', `✅ Analytics: Write #${this.writeCount} successful`);
     } catch (error) {
-      console.error('❌ Analytics: Failed to write events:', error);
+      this.logger.error('analytics', '❌ Analytics: Failed to write events:', error);
       // Re-add events to buffer for retry (max 100 events to prevent memory issues)
       if (this.eventBuffer.length < 100) {
         this.eventBuffer.unshift(...eventsToWrite);
       } else {
-        console.warn('⚠️ Analytics: Buffer full, dropping events to prevent memory issues');
+        this.logger.warn('analytics', '⚠️ Analytics: Buffer full, dropping events to prevent memory issues');
       }
     } finally {
       this.isWriting = false;
@@ -266,19 +268,19 @@ export class AnalyticsService {
           ...event,
           timestamp: new Date(event.timestamp),
         }));
-        console.log(`📦 Analytics: Loaded ${this.eventBuffer.length} buffered events from localStorage`);
+        this.logger.debug('analytics', `📦 Analytics: Loaded ${this.eventBuffer.length} buffered events from localStorage`);
 
         // Clear localStorage after loading
         localStorage.removeItem(this.STORAGE_KEY);
 
         // Try to flush them immediately
         if (this.eventBuffer.length > 0) {
-          console.log('🚀 Analytics: Attempting to flush recovered events');
+          this.logger.debug('analytics', '🚀 Analytics: Attempting to flush recovered events');
           this.flush();
         }
       }
     } catch (error) {
-      console.warn('⚠️ Analytics: Failed to load buffered events from localStorage:', error);
+      this.logger.warn('analytics', '⚠️ Analytics: Failed to load buffered events from localStorage:', error);
       this.eventBuffer = [];
     }
   }
@@ -299,9 +301,9 @@ export class AnalyticsService {
         timestamp: event.timestamp.toISOString(),
       }));
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(serializable));
-      console.log(`💾 Analytics: Saved ${this.eventBuffer.length} events to localStorage`);
+      this.logger.debug('analytics', `💾 Analytics: Saved ${this.eventBuffer.length} events to localStorage`);
     } catch (error) {
-      console.warn('⚠️ Analytics: Failed to save events to localStorage:', error);
+      this.logger.warn('analytics', '⚠️ Analytics: Failed to save events to localStorage:', error);
     }
   }
 

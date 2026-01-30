@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { ApiKeyStatus } from './ai-models';
 import { environment } from '../../../../environments/environment';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +11,7 @@ export class GroqApiService {
   private readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
   private readonly MODEL = 'llama-3.1-8b-instant';
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     this.logApiKeyStatus();
   }
 
@@ -22,21 +23,21 @@ export class GroqApiService {
     const localStorageKey = localStorage.getItem('groq-api-key');
     const environmentKey = environment?.groqApiKey;
     const key = localStorageKey || environmentKey || '';
-    console.log('🔑 API Key source:', localStorageKey ? 'localStorage' : environmentKey ? 'environment' : 'none');
+    this.logger.debug('ai', 'API Key source:', localStorageKey ? 'localStorage' : environmentKey ? 'environment' : 'none');
     return key;
   }
 
   setApiKey(apiKey: string): void {
     if (apiKey && apiKey.trim()) {
       localStorage.setItem('groq-api-key', apiKey.trim());
-      console.log('🔑 API key saved to localStorage');
+      this.logger.info('ai', 'API key saved to localStorage');
       this.logApiKeyStatus();
     }
   }
 
   hasApiKey(): boolean {
     const key = this.getSecureApiKey();
-    console.log('🔑 Checking API key:', key ? `Found ${key.length} chars` : 'Not found');
+    this.logger.debug('ai', 'Checking API key:', key ? `Found ${key.length} chars` : 'Not found');
     return !!key && key.length > 20;
   }
 
@@ -55,7 +56,7 @@ export class GroqApiService {
 
   private logApiKeyStatus(): void {
     const status = this.getApiKeyStatus();
-    console.log('🔑 API Key Status:', status);
+    this.logger.info('ai', 'API Key Status:', status);
   }
 
   validateApiKey(apiKey: string): boolean {
@@ -102,13 +103,13 @@ export class GroqApiService {
       max_tokens: maxTokens
     };
     
-    console.log('🔑 API Request:', {
+    this.logger.debug('ai', 'API Request:', {
       model: requestBody.model,
       temperature: requestBody.temperature,
       max_tokens: requestBody.max_tokens,
       prompt_length: prompt.length
     });
-    
+
     try {
       const response = await fetch(this.GROQ_API_URL, {
         method: 'POST',
@@ -118,20 +119,20 @@ export class GroqApiService {
         },
         body: JSON.stringify(requestBody)
       });
-  
-      console.log('🔑 API Response Status:', response.status);
-      
+
+      this.logger.debug('ai', 'API Response Status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🔑 API Error Response:', errorText);
+        this.logger.error('ai', 'API Error Response:', errorText);
         throw new Error(`Groq API Fehler: ${response.status}`);
       }
 
       const data = await response.json();
       return data.choices[0]?.message?.content || '';
-      
+
     } catch (error) {
-      console.error('🔑 Groq API call failed:', error);
+      this.logger.error('ai', 'Groq API call failed:', error);
       throw error;
     }
   }
@@ -144,7 +145,7 @@ export class GroqApiService {
     rawRecipeText: string,
     targetList?: string
   ): Promise<string> {
-    console.log('🍳 Standardizing recipe ingredients with AI:', rawRecipeText.substring(0, 100));
+    this.logger.info('recipe', 'Standardizing recipe ingredients with AI:', rawRecipeText.substring(0, 100));
 
     const cleanedText = this.cleanRawRecipeText(rawRecipeText);
 
@@ -186,19 +187,19 @@ export class GroqApiService {
       const response = await this.callGroqAPI(prompt);
       let cleanResponse = this.extractIngredientsFromAIResponse(response);
 
-      console.log('🍳 AI raw response:', response.substring(0, 200));
-      console.log('🍳 Extracted ingredients:', cleanResponse);
+      this.logger.debug('recipe', 'AI raw response:', response.substring(0, 200));
+      this.logger.debug('recipe', 'Extracted ingredients:', cleanResponse);
 
       if (!cleanResponse || cleanResponse.length < 5) {
         throw new Error('Invalid AI response');
       }
 
       const finalCommand = `Füge ${cleanResponse} hinzu`;
-      console.log('🍳 Final standardized command:', finalCommand);
+      this.logger.info('recipe', 'Final standardized command:', finalCommand);
       return finalCommand;
 
     } catch (error) {
-      console.error('🍳 AI standardization failed:', error);
+      this.logger.error('recipe', 'AI standardization failed:', error);
       throw error;
     }
   }
@@ -206,7 +207,7 @@ export class GroqApiService {
   async standardizeComplexInput(
     rawInput: string
   ): Promise<string> {
-    console.log('🎯 Standardizing complex input with AI:', rawInput.substring(0, 100));
+    this.logger.info('ai', 'Standardizing complex input with AI:', rawInput.substring(0, 100));
 
     const prompt = `Konvertiere diese komplexe Einkaufsliste in ein standardisiertes Format.
 
@@ -239,19 +240,19 @@ export class GroqApiService {
       const response = await this.callGroqAPI(prompt);
       let cleanResponse = this.extractIngredientsFromAIResponse(response);
 
-      console.log('🎯 AI raw response:', response.substring(0, 200));
-      console.log('🎯 Extracted items:', cleanResponse);
+      this.logger.debug('ai', 'AI raw response:', response.substring(0, 200));
+      this.logger.debug('ai', 'Extracted items:', cleanResponse);
 
       if (!cleanResponse || cleanResponse.length < 5) {
         throw new Error('Invalid AI response');
       }
 
       const finalCommand = `Füge ${cleanResponse} hinzu`;
-      console.log('🎯 Final standardized command:', finalCommand);
+      this.logger.info('ai', 'Final standardized command:', finalCommand);
       return finalCommand;
 
     } catch (error) {
-      console.error('🎯 AI standardization failed:', error);
+      this.logger.error('ai', 'AI standardization failed:', error);
       throw error;
     }
   }
@@ -285,18 +286,18 @@ export class GroqApiService {
   User icons: ${topIcons || '🥛🍞🧀🍎🥩'}
   Format: {"dept":"beverages-alcohol","icon":"🍺"}`;
   
-      console.log('🎯🤖 Getting AI suggestions for:', itemName);
+      this.logger.debug('ai', 'Getting AI suggestions for:', itemName);
       const response = await this.callGroqAPI(prompt, 0.1, 100);
       const result = JSON.parse(response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-      
+
       if (result.dept && result.icon) {
-        console.log('✅🤖 AI suggestions:', result);
+        this.logger.debug('ai', 'AI suggestions:', result);
         return { departmentId: result.dept, icon: result.icon };
       }
-      
+
       return null;
     } catch (error) {
-      console.error('🎯❌ AI suggestions failed:', error);
+      this.logger.error('ai', 'AI suggestions failed:', error);
       return null;
     }
   }
@@ -339,7 +340,7 @@ export class GroqApiService {
       hasDecimalCommas
     ].filter(Boolean).length;
 
-    console.log('🎯 Complexity detection:', {
+    this.logger.debug('ai', 'Complexity detection:', {
       hasSpecialChars,
       hasMultipleLines,
       hasSectionHeaders,
@@ -381,8 +382,8 @@ export class GroqApiService {
   }
 
   private extractIngredientsFromAIResponse(response: string): string {
-    console.log('🍳 Extracting ingredients from AI response');
-    console.log('🍳 Raw AI response:', response);
+    this.logger.debug('recipe', 'Extracting ingredients from AI response');
+    this.logger.debug('recipe', 'Raw AI response:', response);
     
     // Handle single ingredient responses with explanations
     const singleItemPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+)(?:\s*→.*|\s*\n|\s*Da es nur|\s*ist die Ausgabe|$)/i;
@@ -390,7 +391,7 @@ export class GroqApiService {
     
     if (singleMatch) {
       const cleanSingle = singleMatch[1].trim();
-      console.log('🍳 Detected single ingredient:', cleanSingle);
+      this.logger.debug('recipe', 'Detected single ingredient:', cleanSingle);
       
       // Verify it looks like a real ingredient
       if (/\d+/.test(cleanSingle) && 
@@ -412,7 +413,7 @@ export class GroqApiService {
         .trim();
       
       if (cleanMulti.includes(';') && cleanMulti.length > 10) {
-        console.log('🍳 Found clean semicolon list:', cleanMulti);
+        this.logger.debug('recipe', 'Found clean semicolon list:', cleanMulti);
         return cleanMulti;
       }
     }
@@ -428,8 +429,8 @@ export class GroqApiService {
       .replace(/\n{2,}/g, ' ')
       .replace(/\s{2,}/g, ' ')
       .trim();
-    
-    console.log('🍳 Cleaned response:', cleaned);
+
+    this.logger.debug('recipe', 'Cleaned response:', cleaned);
     
     // Try to extract just the ingredient part again
     const finalPattern = /^([0-9.,]+\s*[a-zA-ZäöüÄÖÜß\s]+?)(?:\s|$)/;
@@ -437,18 +438,18 @@ export class GroqApiService {
     
     if (finalMatch) {
       const finalClean = finalMatch[1].trim();
-      console.log('🍳 Final extracted ingredient:', finalClean);
+      this.logger.debug('recipe', 'Final extracted ingredient:', finalClean);
       return finalClean;
     }
-    
+
     // Ultimate fallback
     const firstLine = cleaned.split('\n')[0].trim();
     if (firstLine.length > 0 && /\d+/.test(firstLine)) {
-      console.log('🍳 Fallback to first line:', firstLine);
+      this.logger.debug('recipe', 'Fallback to first line:', firstLine);
       return firstLine;
     }
-    
-    console.log('🍳 Could not extract clean ingredients, returning original');
+
+    this.logger.debug('recipe', 'Could not extract clean ingredients, returning original');
     return response.trim();
   }
 }

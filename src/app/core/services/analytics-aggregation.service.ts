@@ -14,6 +14,7 @@ import { AnalyticsEventType } from '../models/analytics.model';
 import { Observable, from, map, of } from 'rxjs';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { AICachingService } from './ai/caching.service';
+import { LoggerService } from './logger.service';
 
 /**
  * Analytics Aggregation Service
@@ -30,6 +31,7 @@ export class AnalyticsAggregationService {
   private firestore = inject(Firestore);
   private quotaMonitor = inject(QuotaMonitorService);
   private aiCachingService = inject(AICachingService);
+  private logger = inject(LoggerService);
   private cache: Map<string, { metrics: OverviewMetrics; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
@@ -45,12 +47,12 @@ export class AnalyticsAggregationService {
 
     // Return cached data if still valid (unless forced refresh)
     if (!forceRefresh && cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-      console.log(`📊 Analytics: Returning cached metrics for ${dateRange} days (age: ` +
+      this.logger.debug('analytics', `📊 Analytics: Returning cached metrics for ${dateRange} days (age: ` +
         Math.round((Date.now() - cached.timestamp) / 1000) + 's)');
       return of(cached.metrics);
     }
 
-    console.log(`📊 Analytics: Fetching fresh metrics from Firestore (${dateRange} days)`);
+    this.logger.debug('analytics', `📊 Analytics: Fetching fresh metrics from Firestore (${dateRange} days)`);
     return from(this.computeOverviewMetrics(dateRange));
   }
 
@@ -58,7 +60,7 @@ export class AnalyticsAggregationService {
    * Clear cache (force refresh on next call)
    */
   clearCache(): void {
-    console.log('🗑️ Analytics: Cache cleared');
+    this.logger.debug('analytics', '🗑️ Analytics: Cache cleared');
     this.cache.clear();
   }
 
@@ -111,15 +113,15 @@ export class AnalyticsAggregationService {
       limit(500) // Reduced from 10k - sufficient for small user base
     );
 
-    console.log(`📊 Analytics: Querying events (last ${dateRange} days, max 500)...`);
+    this.logger.debug('analytics', `📊 Analytics: Querying events (last ${dateRange} days, max 500)...`);
 
     let eventsSnapshot;
     try {
       eventsSnapshot = await getDocs(eventsQuery);
       this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
-      console.log(`📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
+      this.logger.debug('analytics', `📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
     } catch (error) {
-      console.error('❌ Analytics: Failed to query events:', error);
+      this.logger.error('analytics', '❌ Analytics: Failed to query events:', error);
       // Return empty metrics if we can't query events
       return this.getEmptyMetrics();
     }
@@ -236,7 +238,7 @@ export class AnalyticsAggregationService {
           const email = userDoc.docs[0]?.data()['email'] || userId;
           return { userId: email, activityScore };
         } catch (error) {
-          console.warn(`Failed to fetch email for user ${userId}:`, error);
+          this.logger.warn('analytics', `Failed to fetch email for user ${userId}:`, error);
           return { userId, activityScore };
         }
       })
@@ -272,7 +274,7 @@ export class AnalyticsAggregationService {
     // Cache the results with date range key
     const cacheKey = `metrics_${dateRange}`;
     this.cache.set(cacheKey, { metrics, timestamp: Date.now() });
-    console.log(`📊 Analytics: Metrics cached for 5 minutes (${dateRange} days)`);
+    this.logger.debug('analytics', `📊 Analytics: Metrics cached for 5 minutes (${dateRange} days)`);
 
     return metrics;
   }
@@ -289,23 +291,23 @@ export class AnalyticsAggregationService {
         collectionGroup(this.firestore, 'articles'),
         limit(500) // Reduced from 10k - sufficient for small user base
       );
-      console.log('📊 Analytics: Counting articles (max 500)...');
+      this.logger.debug('analytics', '📊 Analytics: Counting articles (max 500)...');
       const articlesSnapshot = await getDocs(articlesQuery);
       this.quotaMonitor.trackRead('Analytics Count Articles', articlesSnapshot.size);
-      console.log(`📊 Analytics: Found ${articlesSnapshot.size} articles`);
+      this.logger.debug('analytics', `📊 Analytics: Found ${articlesSnapshot.size} articles`);
 
       // If we hit the limit, show a warning
       if (articlesSnapshot.size >= 500) {
-        console.warn('⚠️ Analytics: Article count limited to 500. Actual count may be higher.');
+        this.logger.warn('analytics', '⚠️ Analytics: Article count limited to 500. Actual count may be higher.');
       }
 
       return articlesSnapshot.size;
     } catch (error: any) {
       if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
-        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
-        console.error('💡 Please login with admin account to view analytics');
+        this.logger.error('analytics', '❌ Analytics: Permission denied - are you logged in as admin?', error);
+        this.logger.error('analytics', '💡 Please login with admin account to view analytics');
       } else {
-        console.warn('❌ Analytics: Failed to count articles, returning 0:', error);
+        this.logger.warn('analytics', '❌ Analytics: Failed to count articles, returning 0:', error);
       }
       return 0;
     }
@@ -320,13 +322,13 @@ export class AnalyticsAggregationService {
       // users-v2 is a top-level collection, not a subcollection
       const usersRef = collection(this.firestore, 'users-v2');
       const usersQuery = query(usersRef, limit(500)); // Reduced from 10k
-      console.log('📊 Analytics: Counting users...');
+      this.logger.debug('analytics', '📊 Analytics: Counting users...');
       const usersSnapshot = await getDocs(usersQuery);
       this.quotaMonitor.trackRead('Analytics Count Users', usersSnapshot.size);
-      console.log(`📊 Analytics: Found ${usersSnapshot.size} users`);
+      this.logger.debug('analytics', `📊 Analytics: Found ${usersSnapshot.size} users`);
       return usersSnapshot.size;
     } catch (error) {
-      console.warn('❌ Analytics: Failed to count users, returning 0:', error);
+      this.logger.warn('analytics', '❌ Analytics: Failed to count users, returning 0:', error);
       return 0;
     }
   }
@@ -341,17 +343,17 @@ export class AnalyticsAggregationService {
         collectionGroup(this.firestore, 'lists'),
         limit(500) // Reduced from 10k
       );
-      console.log('📊 Analytics: Counting lists...');
+      this.logger.debug('analytics', '📊 Analytics: Counting lists...');
       const listsSnapshot = await getDocs(listsQuery);
       this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
-      console.log(`📊 Analytics: Found ${listsSnapshot.size} lists`);
+      this.logger.debug('analytics', `📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
     } catch (error: any) {
       if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
-        console.error('❌ Analytics: Permission denied - are you logged in as admin?', error);
-        console.error('💡 Please login with admin account to view analytics');
+        this.logger.error('analytics', '❌ Analytics: Permission denied - are you logged in as admin?', error);
+        this.logger.error('analytics', '💡 Please login with admin account to view analytics');
       } else {
-        console.warn('❌ Analytics: Failed to count lists, returning 0:', error);
+        this.logger.warn('analytics', '❌ Analytics: Failed to count lists, returning 0:', error);
       }
       return 0;
     }
@@ -449,7 +451,7 @@ export class AnalyticsAggregationService {
       const eventsSnapshot = await getDocs(q);
       this.quotaMonitor.trackRead('Analytics User Growth Query', eventsSnapshot.size);
 
-      console.log(`📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
+      this.logger.debug('analytics', `📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
 
       // Group by date - count unique users per day
       const dailyCounts = new Map<string, Set<string>>();
@@ -464,7 +466,7 @@ export class AnalyticsAggregationService {
         dailyCounts.get(dateKey)!.add(data['userId']);
       });
 
-      console.log(`📊 User Growth: Found ${dailyCounts.size} days with activity`);
+      this.logger.debug('analytics', `📊 User Growth: Found ${dailyCounts.size} days with activity`);
 
       // Fill in all dates in range
       const result: TimeSeriesData[] = [];
@@ -479,10 +481,10 @@ export class AnalyticsAggregationService {
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      console.log(`📊 User Growth: Returning ${result.length} data points`);
+      this.logger.debug('analytics', `📊 User Growth: Returning ${result.length} data points`);
       return result;
     } catch (error) {
-      console.error('Failed to compute user growth time series:', error);
+      this.logger.error('analytics', 'Failed to compute user growth time series:', error);
       return [];
     }
   }
@@ -505,7 +507,7 @@ export class AnalyticsAggregationService {
       const eventsSnapshot = await getDocs(q);
       this.quotaMonitor.trackRead('Analytics Daily Activity Query', eventsSnapshot.size);
 
-      console.log(`📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
+      this.logger.debug('analytics', `📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
 
       // Group by date and event type
       const dailyActivity = new Map<string, DailyActivityData>();
@@ -536,8 +538,8 @@ export class AnalyticsAggregationService {
         }
       });
 
-      console.log(`📊 Daily Activity: Found ${listEventCount} list events, ${articleEventCount} article events`);
-      console.log(`📊 Daily Activity: Activity on ${dailyActivity.size} days`);
+      this.logger.debug('analytics', `📊 Daily Activity: Found ${listEventCount} list events, ${articleEventCount} article events`);
+      this.logger.debug('analytics', `📊 Daily Activity: Activity on ${dailyActivity.size} days`);
 
       // Fill in all dates in range
       const result: DailyActivityData[] = [];
@@ -554,10 +556,10 @@ export class AnalyticsAggregationService {
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      console.log(`📊 Daily Activity: Returning ${result.length} data points`);
+      this.logger.debug('analytics', `📊 Daily Activity: Returning ${result.length} data points`);
       return result;
     } catch (error) {
-      console.error('Failed to compute daily activity time series:', error);
+      this.logger.error('analytics', 'Failed to compute daily activity time series:', error);
       return [];
     }
   }

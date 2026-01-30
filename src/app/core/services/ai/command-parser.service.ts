@@ -10,6 +10,7 @@ import {
   isMultiItemPendingAction
 } from './ai-models';
 import { QuantityExtractionService } from './quantity-extraction.service';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -50,7 +51,8 @@ export class CommandParserService {
   };
 
   constructor(
-    private quantityExtraction: QuantityExtractionService
+    private quantityExtraction: QuantityExtractionService,
+    private logger: LoggerService
   ) {}
 
   // ========================================
@@ -524,7 +526,7 @@ export class CommandParserService {
             cleanInput.includes(' ' + keyword + ' ');
     });
     
-    console.log('🔍 Checking conversation end for:', input, '-> result:', isEnd);
+    this.logger.debug('context', `Checking conversation end for: ${input} -> result: ${isEnd}`);
     return isEnd;
   }
 }

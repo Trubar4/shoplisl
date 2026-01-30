@@ -139,7 +139,7 @@ export class DisambiguationService {
 
     } catch (error) {
       this.performanceMonitor.endOperation('getDisambiguationOptions', false, false, error instanceof Error ? error.message : 'Unknown error');
-      console.error('Error in getDisambiguationOptions:', error);
+      this.logger.error('disambiguation', 'Error in getDisambiguationOptions:', error);
       return [];
     }
   }
@@ -183,7 +183,7 @@ export class DisambiguationService {
       return options;
 
     } catch (error) {
-      console.error('Error getting disambiguation options from source:', error);
+      this.logger.error('disambiguation', 'Error getting disambiguation options from source:', error);
       throw new DisambiguationError('Failed to get disambiguation options', { itemName, error });
     }
   }
@@ -279,7 +279,7 @@ export class DisambiguationService {
     this.performanceMonitor.startOperation('handleDisambiguationChoice');
 
     try {
-      console.log('🎯 Handling disambiguation choice:', { pendingAction, selectedOption });
+      this.logger.debug('disambiguation', 'Handling disambiguation choice:', { pendingAction, selectedOption });
 
       const result = await this.handleDisambiguationChoiceOriginal(pendingAction, selectedOption);
 
@@ -288,7 +288,7 @@ export class DisambiguationService {
 
     } catch (error) {
       this.performanceMonitor.endOperation('handleDisambiguationChoice', false, false, error instanceof Error ? error.message : 'Unknown error');
-      console.error('Error handling disambiguation choice:', error);
+      this.logger.error('disambiguation', 'Error handling disambiguation choice:', error);
 
       return {
         success: false,
@@ -330,7 +330,7 @@ export class DisambiguationService {
       }
 
     } catch (error) {
-      console.error('Error in handleDisambiguationChoiceOriginal:', error);
+      this.logger.error('disambiguation', 'Error in handleDisambiguationChoiceOriginal:', error);
       throw error;
     }
   }
@@ -410,7 +410,7 @@ export class DisambiguationService {
             };
           }
         } catch (error) {
-          console.warn('Smart suggestions failed, using mapping service:', error);
+          this.logger.warn('disambiguation', 'Smart suggestions failed, using mapping service:', error);
         }
 
         // Always return a valid object
@@ -613,7 +613,7 @@ export class DisambiguationService {
       return this.addSingleArticleToList(targetList, articleData, pendingAction);
 
     } catch (error) {
-      console.error('List selection error:', error);
+      this.logger.error('disambiguation', 'List selection error:', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen zur Liste: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`

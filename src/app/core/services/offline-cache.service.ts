@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Article, ShoppingList } from '../models';
+import { LoggerService } from './logger.service';
 
 export interface CacheEntry<T> {
   data: T;
@@ -23,8 +24,8 @@ export class OfflineCacheService {
   private readonly ARTICLES_KEY = 'shoplisl_articles_cache';
   private readonly LISTS_KEY = 'shoplisl_lists_cache';
 
-  constructor() {
-    console.log('💾 OfflineCacheService initialized with 30h TTL');
+  constructor(private logger: LoggerService) {
+    this.logger.debug('cache', '💾 OfflineCacheService initialized with 30h TTL');
   }
 
   // === ARTICLES CACHE ===
@@ -40,9 +41,9 @@ export class OfflineCacheService {
       const compressed = this.compressData(cacheEntry);
       localStorage.setItem(this.ARTICLES_KEY, compressed);
       
-      console.log(`💾 Cached ${articles.length} articles (${this.getStorageSize(compressed)} KB)`);
+      this.logger.debug('cache', `💾 Cached ${articles.length} articles (${this.getStorageSize(compressed)} KB)`);
     } catch (error) {
-      console.error('❌ Failed to cache articles:', error);
+      this.logger.error('cache', '❌ Failed to cache articles:', error);
       this.clearCache('articles');
     }
   }
@@ -83,7 +84,7 @@ export class OfflineCacheService {
       };
 
     } catch (error) {
-      console.error('❌ Failed to read articles cache:', error);
+      this.logger.error('cache', '❌ Failed to read articles cache:', error);
       this.clearCache('articles');
       return {
         data: null,
@@ -105,9 +106,9 @@ export class OfflineCacheService {
       const compressed = this.compressData(cacheEntry);
       localStorage.setItem(this.LISTS_KEY, compressed);
       
-      console.log(`💾 Cached ${lists.length} lists (${this.getStorageSize(compressed)} KB)`);
+      this.logger.debug('cache', `💾 Cached ${lists.length} lists (${this.getStorageSize(compressed)} KB)`);
     } catch (error) {
-      console.error('❌ Failed to cache lists:', error);
+      this.logger.error('cache', '❌ Failed to cache lists:', error);
       this.clearCache('lists');
     }
   }
@@ -148,7 +149,7 @@ export class OfflineCacheService {
       };
 
     } catch (error) {
-      console.error('❌ Failed to read lists cache:', error);
+      this.logger.error('cache', '❌ Failed to read lists cache:', error);
       this.clearCache('lists');
       return {
         data: null,
@@ -179,21 +180,21 @@ export class OfflineCacheService {
       switch (type) {
         case 'articles':
           localStorage.removeItem(this.ARTICLES_KEY);
-          console.log('🗑️ Articles cache cleared');
+          this.logger.debug('cache', '🗑️ Articles cache cleared');
           break;
         case 'lists':
           localStorage.removeItem(this.LISTS_KEY);
-          console.log('🗑️ Lists cache cleared');
+          this.logger.debug('cache', '🗑️ Lists cache cleared');
           break;
         case 'all':
         default:
           localStorage.removeItem(this.ARTICLES_KEY);
           localStorage.removeItem(this.LISTS_KEY);
-          console.log('🗑️ All cache cleared');
+          this.logger.debug('cache', '🗑️ All cache cleared');
           break;
       }
     } catch (error) {
-      console.error('❌ Failed to clear cache:', error);
+      this.logger.error('cache', '❌ Failed to clear cache:', error);
     }
   }
 
@@ -245,7 +246,7 @@ export class OfflineCacheService {
       if (lists) totalSize += this.getStorageSize(lists);
       
     } catch (error) {
-      console.error('Error calculating cache size:', error);
+      this.logger.error('cache', 'Error calculating cache size:', error);
     }
     
     return totalSize;

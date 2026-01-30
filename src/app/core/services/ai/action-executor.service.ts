@@ -6,20 +6,26 @@ import { DisambiguationService } from './disambiguation';
 import { AIMessagingService } from './ai-messaging.service';
 import { ContextManagementService } from './context-management.service';
 import { DataService } from '../data.service';
+import { HistoryService } from '../history.service';
+import { AuthService } from '../auth.service';
 import { PendingAction, AIExecutionResult } from './ai-models';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ActionExecutorService {
-  
+
   constructor(
     private articleOps: ArticleOperationsService,
     private listOps: ListOperationsService,
     private disambiguation: DisambiguationService,
     private aiResponse: AIMessagingService,
     private contextManager: ContextManagementService,
-    private dataService: DataService
+    private dataService: DataService,
+    private historyService: HistoryService,
+    private authService: AuthService,
+    private logger: LoggerService
   ) {}
 
   // ========================================
@@ -27,7 +33,7 @@ export class ActionExecutorService {
   // ========================================
 
   async executeActionWithNewArticle(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Executing action with new article:', action.itemName);
+    this.logger.debug('ai', 'Executing action with new article:', action.itemName);
     
     try {
       // Route to appropriate handler based on action type
@@ -43,7 +49,7 @@ export class ActionExecutorService {
       }
       
     } catch (error) {
-      console.error('🎯 Error executing action with new article:', error);
+      this.logger.error('ai', 'Error executing action with new article:', error);
       return {
         success: false,
         message: '❌ Fehler beim Erstellen des neuen Artikels.'
@@ -56,7 +62,7 @@ export class ActionExecutorService {
   // ========================================
 
   private async executeCreateListWithArticle(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Creating list with first article:', action.listName);
+    this.logger.debug('ai', 'Creating list with first article:', action.listName);
     
     if (!action.listName) {
       return {
@@ -77,17 +83,22 @@ export class ActionExecutorService {
       }
 
       // Create list with the article
+      const currentUser = this.authService.getCurrentUserValue();
       const listData = {
         name: action.listName,
         color: this.aiResponse.suggestListColor(action.listName),
         icon: '🛒',
         articleIds: [newArticle.id],
-        itemStates: { 
-          [newArticle.id]: { 
-            articleId: newArticle.id, 
-            isChecked: false,
-            amount: action.extractedQuantity || ''
-          } 
+        itemStates: {
+          [newArticle.id]: this.historyService.createUpdatedItemState(
+            undefined,
+            newArticle.id,
+            'added',
+            action.extractedQuantity || '',
+            currentUser?.id,
+            currentUser?.name,
+            newArticle.name
+          )
         }
       };
 
@@ -108,7 +119,7 @@ export class ActionExecutorService {
       throw new Error('Failed to create list');
 
     } catch (error) {
-      console.error('🎯 Error creating list with article:', error);
+      this.logger.error('ai', 'Error creating list with article:', error);
       return {
         success: false,
         message: `❌ Fehler beim Erstellen der Liste "${action.listName}" mit "${action.itemName}".`
@@ -121,7 +132,7 @@ export class ActionExecutorService {
   // ========================================
 
   private async executeAddItemAction(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Executing add item action');
+    this.logger.debug('ai', 'Executing add item action');
     
     // Check if we have a target list specified
     if (action.listName || (action as any).conversationListId) {
@@ -133,7 +144,7 @@ export class ActionExecutorService {
   }
 
   private async executeAddItemToSpecificList(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Adding item to specific list:', action.listName);
+    this.logger.debug('ai', 'Adding item to specific list:', action.listName);
     
     try {
       let targetListId = (action as any).conversationListId;
@@ -192,7 +203,7 @@ export class ActionExecutorService {
       return result;
       
     } catch (error) {
-      console.error('🎯 Error adding item to specific list:', error);
+      this.logger.error('ai', 'Error adding item to specific list:', error);
       return {
         success: false,
         message: `❌ Fehler beim Hinzufügen von "${action.itemName}" zur Liste.`
@@ -201,7 +212,7 @@ export class ActionExecutorService {
   }
 
   private async executeAddItemWithListSelection(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Adding item with list selection required');
+    this.logger.debug('ai', 'Adding item with list selection required');
     
     try {
       // Get available lists
@@ -248,7 +259,7 @@ export class ActionExecutorService {
       };
       
     } catch (error) {
-      console.error('🎯 Error in list selection flow:', error);
+      this.logger.error('ai', 'Error in list selection flow:', error);
       return {
         success: false,
         message: `❌ Fehler beim Auswählen der Liste für "${action.itemName}".`
@@ -261,7 +272,7 @@ export class ActionExecutorService {
   // ========================================
 
   private async executeGenericAction(action: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Executing generic action:', action.type);
+    this.logger.debug('ai', 'Executing generic action:', action.type);
     
     // Handle unknown action types by treating them as add_item
     return this.executeAddItemAction({
@@ -340,7 +351,7 @@ export class ActionExecutorService {
   }
 
   async suggestAlternativeAction(failedAction: PendingAction): Promise<AIExecutionResult> {
-    console.log('🎯 Suggesting alternative action for failed action:', failedAction);
+    this.logger.debug('ai', 'Suggesting alternative action for failed action:', failedAction);
     
     try {
       // If list creation failed, suggest adding to existing list

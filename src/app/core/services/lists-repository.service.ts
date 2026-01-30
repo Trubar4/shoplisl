@@ -477,15 +477,20 @@ export class ListsRepositoryService {
       ? list.articleIds
       : [...list.articleIds, articleId];
 
+    // Use HistoryService to create proper itemState with 'added' history event
+    const currentUser = this.authService.getCurrentUserValue();
+    const existingState = list.itemStates[articleId];
     const newItemStates = {
       ...list.itemStates,
-      [articleId]: {
+      [articleId]: this.historyService.createUpdatedItemState(
+        existingState,
         articleId,
-        articleName,  // Store name for history display after deletion
-        isChecked: false,
-        amount: list.itemStates[articleId]?.amount || '',  // PRESERVE existing amount
-        addedAt: list.itemStates[articleId]?.addedAt || new Date()  // Set addedAt only for new articles
-      }
+        'added',
+        existingState?.amount || '',
+        currentUser?.id,
+        currentUser?.name,
+        articleName
+      )
     };
 
     this.logger.info('data', `📝 ADD INTERNAL: New articleIds array length: ${newArticleIds.length}, contains ${articleId}: ${newArticleIds.includes(articleId)}`);
@@ -632,27 +637,23 @@ export class ListsRepositoryService {
             const updatedArticlesMap = new Map(updatedArticles.map(a => [a.id, a]));
 
             // Create item states for all articles (using final IDs which may be copies)
+            // Use HistoryService to create proper itemState with 'added' history event
+            const currentUser = this.authService.getCurrentUserValue();
             const newItemStates = { ...list.itemStates };
             finalArticleIds.forEach(articleId => {
               const article = updatedArticlesMap.get(articleId);
               const articleName = article?.name;
+              const existingState = newItemStates[articleId];
 
-              if (!newItemStates[articleId]) {
-                newItemStates[articleId] = {
-                  articleId,
-                  articleName,  // Store name for history display after deletion
-                  isChecked: false,
-                  amount: '',
-                  addedAt: new Date()  // Set addedAt for new articles
-                };
-              } else {
-                // If article already exists, reset to unchecked but preserve amount, name, and addedAt
-                newItemStates[articleId] = {
-                  ...newItemStates[articleId],
-                  articleName: articleName || newItemStates[articleId].articleName,  // Update name if available
-                  isChecked: false
-                };
-              }
+              newItemStates[articleId] = this.historyService.createUpdatedItemState(
+                existingState,
+                articleId,
+                'added',
+                existingState?.amount || '',
+                currentUser?.id,
+                currentUser?.name,
+                articleName
+              );
             });
 
             // Update local state immediately for optimistic UI

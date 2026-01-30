@@ -6,19 +6,25 @@ import { DataService } from '../data.service';
 import { AIMessagingService } from './ai-messaging.service';
 import { CommandParserService } from './command-parser.service';
 import { ContextManagementService } from './context-management.service';
+import { HistoryService } from '../history.service';
+import { AuthService } from '../auth.service';
 import { ShoppingList } from '../../models';
 import { AIExecutionResult, QuantityExtraction, ColorExtraction } from './ai-models';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ListOperationsService {
-  
+
   constructor(
     private dataService: DataService,
     private aiResponse: AIMessagingService,
     private commandParser: CommandParserService,
-    private contextManager: ContextManagementService
+    private contextManager: ContextManagementService,
+    private historyService: HistoryService,
+    private authService: AuthService,
+    private logger: LoggerService
   ) {}
 
   // ========================================
@@ -30,7 +36,7 @@ export class ListOperationsService {
     colorExtraction: ColorExtraction,
     firstItem?: { itemName: string; quantity: string }
   ): Promise<AIExecutionResult> {
-    console.log('🎨 Creating list with color:', { listName, colorExtraction, firstItem });
+    this.logger.debug('ai', 'Creating list with color:', { listName, colorExtraction, firstItem });
     
     try {
       const listColor = colorExtraction.colorHex || this.aiResponse.suggestListColor(listName);
@@ -56,11 +62,16 @@ export class ListOperationsService {
         
         if (newArticle) {
           listToCreate.articleIds.push(newArticle.id);
-          listToCreate.itemStates[newArticle.id] = {
-            articleId: newArticle.id,
-            isChecked: false,
-            amount: firstItem.quantity || ''
-          };
+          const currentUser = this.authService.getCurrentUserValue();
+          listToCreate.itemStates[newArticle.id] = this.historyService.createUpdatedItemState(
+            undefined,
+            newArticle.id,
+            'added',
+            firstItem.quantity || '',
+            currentUser?.id,
+            currentUser?.name,
+            newArticle.name
+          );
         }
       }
       
@@ -83,7 +94,7 @@ export class ListOperationsService {
       }
       
     } catch (error) {
-      console.error('🎨 LIST CREATION ERROR:', error);
+      this.logger.error('ai', 'LIST CREATION ERROR:', error);
       return {
         success: false,
         message: '❌ Fehler beim Erstellen der Liste.'
@@ -101,11 +112,11 @@ export class ListOperationsService {
   // ========================================
 
   async createListFromCommand(input: string, quantityExtraction: QuantityExtraction): Promise<AIExecutionResult> {
-    console.log('🎨 Creating list from command:', input);
+    this.logger.debug('ai', 'Creating list from command:', input);
     
     // Extract color first
     const colorExtraction = this.commandParser.extractColor(input);
-    console.log('🎨 COLOR EXTRACTION:', colorExtraction);
+    this.logger.debug('ai', 'COLOR EXTRACTION:', colorExtraction);
     
     const cleanInput = colorExtraction.cleanInput;
     
@@ -169,7 +180,7 @@ export class ListOperationsService {
       };
       
     } catch (error) {
-      console.error('📋 SHOW LISTS ERROR:', error);
+      this.logger.error('ai', 'SHOW LISTS ERROR:', error);
       return {
         success: false,
         message: '❌ Fehler beim Laden der Listen.'
@@ -222,7 +233,7 @@ export class ListOperationsService {
       }));
       
     } catch (error) {
-      console.error('Error getting list selection options:', error);
+      this.logger.error('ai', 'Error getting list selection options:', error);
       return [];
     }
   }
@@ -248,7 +259,7 @@ export class ListOperationsService {
       );
       
       if (match) {
-        console.log('🔍 Found exact match:', match.name);
+        this.logger.debug('ai', 'Found exact match:', match.name);
         return match;
       }
       
@@ -259,15 +270,15 @@ export class ListOperationsService {
       );
       
       if (match) {
-        console.log('🔍 Found partial match:', match.name);
+        this.logger.debug('ai', 'Found partial match:', match.name);
       } else {
-        console.log('🔍 No match found for:', listName);
+        this.logger.debug('ai', 'No match found for:', listName);
       }
       
       return match || null;
       
     } catch (error) {
-      console.error('Error finding list by name:', error);
+      this.logger.error('ai', 'Error finding list by name:', error);
       return null;
     }
   }
@@ -282,7 +293,7 @@ export class ListOperationsService {
       return lists?.find(list => list.id === listId) || null;
       
     } catch (error) {
-      console.error('Error finding list by ID:', error);
+      this.logger.error('ai', 'Error finding list by ID:', error);
       return null;
     }
   }
@@ -340,7 +351,7 @@ export class ListOperationsService {
       };
 
     } catch (error) {
-      console.error('Error getting list stats:', error);
+      this.logger.error('ai', 'Error getting list stats:', error);
       return null;
     }
   }
@@ -390,7 +401,7 @@ export class ListOperationsService {
       };
 
     } catch (error) {
-      console.error('Error duplicating list:', error);
+      this.logger.error('ai', 'Error duplicating list:', error);
       return {
         success: false,
         message: '❌ Fehler beim Duplizieren der Liste.'
@@ -415,7 +426,7 @@ export class ListOperationsService {
       };
 
     } catch (error) {
-      console.error('Error clearing list:', error);
+      this.logger.error('ai', 'Error clearing list:', error);
       return {
         success: false,
         message: '❌ Fehler beim Leeren der Liste.'

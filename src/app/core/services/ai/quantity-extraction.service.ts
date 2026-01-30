@@ -10,11 +10,14 @@ import {
   ParsingError,
   QUANTITY_UNITS
 } from './ai-models';
+import { LoggerService } from '../logger.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class QuantityExtractionService {
+
+  constructor(private logger: LoggerService) {}
 
   // ========================================
   // TEXT NUMBER MAPPINGS (NEW)
@@ -267,7 +270,7 @@ export class QuantityExtractionService {
    * 🔍 ENHANCED: Extract quantity with text number support
    */
   extractQuantity(input: string): QuantityExtraction {
-    console.log('🔍 QUANTITY EXTRACTION INPUT:', input);
+    this.logger.debug('ai', 'QUANTITY EXTRACTION INPUT:', input);
     
     // Store original input for debugging
     const originalInput = input.trim();
@@ -279,15 +282,15 @@ export class QuantityExtractionService {
       .replace(/\s+hinzu$/i, '') // Remove " hinzu" at end
       .trim();
     
-    console.log('🔍 CLEANED INPUT:', cleanedInput);
+    this.logger.debug('ai', 'CLEANED INPUT:', cleanedInput);
 
     // TEMP DEBUG: Test specific patterns
     if (cleanedInput.includes('Flaschen')) {
-      console.log('🔍 DEBUG: Input contains "Flaschen"');
-      console.log('🔍 DEBUG: Testing pattern 2 (unit_start)');
+      this.logger.debug('ai', 'DEBUG: Input contains "Flaschen"');
+      this.logger.debug('ai', 'DEBUG: Testing pattern 2 (unit_start)');
       const testPattern = /^(\d+(?:[.,]\d+)?\s*(?:kg|g|gramm|liter|l|ml|el|tl|esslöffel|teelöffel|stück|stk|pack|packung|paket|pakete|dose|dosen|becher|flasche|flaschen|tube|schachtel|kasten|bund|glas|gläser))\s+(.+)$/i;
       const testMatch = cleanedInput.match(testPattern);
-      console.log('🔍 DEBUG: Pattern 2 match result:', testMatch);
+      this.logger.debug('ai', 'DEBUG: Pattern 2 match result:', testMatch);
     }
     
     for (let i = 0; i < this.QUANTITY_PATTERNS.length; i++) {
@@ -295,7 +298,7 @@ export class QuantityExtractionService {
       const match = cleanedInput.match(pattern);
       
       if (match) {
-        console.log(`🔍 MATCHED PATTERN ${type}:`, match);
+        this.logger.debug('ai', ` MATCHED PATTERN ${type}:`, match);
         
         const itemName = match[itemGroup].trim();
         const rawQuantity = match[quantityGroup].trim();
@@ -304,7 +307,7 @@ export class QuantityExtractionService {
         // Process quantity (convert text numbers to digits)
         const processedQuantity = this.processQuantity(rawQuantity, unit);
 
-        console.log('🔍 EXTRACTED:', { itemName, quantity: processedQuantity, originalInput });
+        this.logger.debug('ai', 'EXTRACTED:', { itemName, quantity: processedQuantity, originalInput });
         
         return {
           itemName: itemName,
@@ -313,7 +316,7 @@ export class QuantityExtractionService {
       }
     }
 
-    console.log('🔍 NO QUANTITY PATTERN MATCHED, RETURNING CLEANED INPUT:', cleanedInput);
+    this.logger.debug('ai', 'NO QUANTITY PATTERN MATCHED, RETURNING CLEANED INPUT:', cleanedInput);
     
     // Return cleaned input if no pattern matches
     return { 
@@ -497,23 +500,23 @@ private isDecimalComma(before: string, after: string): boolean {
    * Handles: "Bananen, zwei kg Würste, Milch Menge drei Liter" 
    */
   private splitCommaItems(itemsText: string): string[] {
-    console.log('🔍 SPLITTING COMMA ITEMS:', itemsText);
+    this.logger.debug('ai', 'SPLITTING COMMA ITEMS:', itemsText);
     
     // Step 1: Check if we have semicolons - if so, use semicolon splitting (AI response format)
     if (itemsText.includes(';')) {
-      console.log('🔍 Found semicolons - using semicolon splitting');
+      this.logger.debug('ai', 'Found semicolons - using semicolon splitting');
       const items = itemsText
         .split(/\s*;\s*/)
         .map(item => item.trim())
         .filter(item => item.length > 0);
       
-      console.log('🔍 SEMICOLON SPLIT RESULT:', items);
+      this.logger.debug('ai', 'SEMICOLON SPLIT RESULT:', items);
       return items;
     }
     
     // Step 2: For comma-separated items, we need to be smart about decimal commas
     if (itemsText.includes(',')) {
-      console.log('🔍 Found commas - analyzing for decimal vs separator commas');
+      this.logger.debug('ai', 'Found commas - analyzing for decimal vs separator commas');
       
       const items: string[] = [];
       let currentPosition = 0;
@@ -537,7 +540,7 @@ private isDecimalComma(before: string, after: string): boolean {
         const before = itemsText.substring(Math.max(0, commaPos - 3), commaPos);
         const after = itemsText.substring(commaPos + 1, Math.min(itemsText.length, commaPos + 4));
         
-        console.log(`🔍 Comma at ${commaPos}: "${before.slice(-1)},${after.slice(0, 1)}" - ${this.isDecimalComma(before, after) ? 'DECIMAL' : 'SEPARATOR'}`);
+        this.logger.debug('ai', ` Comma at ${commaPos}: "${before.slice(-1)},${after.slice(0, 1)}" - ${this.isDecimalComma(before, after) ? 'DECIMAL' : 'SEPARATOR'}`);
         
         // Check if this is a decimal comma (digit before AND digit after)
         if (!this.isDecimalComma(before, after)) {
@@ -563,13 +566,13 @@ private isDecimalComma(before: string, after: string): boolean {
           items.push(lastItem);
         }
         
-        console.log('🔍 SMART COMMA SPLIT RESULT:', items);
+        this.logger.debug('ai', 'SMART COMMA SPLIT RESULT:', items);
         return items.filter(item => item.length > 0);
       }
     }
     
     // Step 3: No separators found - return as single item
-    console.log('🔍 No separators found - returning as single item');
+    this.logger.debug('ai', 'No separators found - returning as single item');
     return [itemsText.trim()].filter(item => item.length > 0);
   }
 
@@ -587,7 +590,7 @@ private isDecimalComma(before: string, after: string): boolean {
    * 🎯 Parse a single item token using enhanced quantity extraction logic
    */
   private parseSingleItemFromToken(token: string): ParsedItem | null {
-    console.log('🎯 PARSING SINGLE TOKEN:', token);
+    this.logger.debug('ai', 'PARSING SINGLE TOKEN:', token);
     
     if (!token.trim()) {
       return null;
@@ -596,7 +599,7 @@ private isDecimalComma(before: string, after: string): boolean {
     // Use enhanced quantity extraction logic for tokens
     const quantityResult = this.extractQuantityFromToken(token);
     
-    console.log('🎯 QUANTITY EXTRACTION RESULT:', quantityResult);
+    this.logger.debug('ai', 'QUANTITY EXTRACTION RESULT:', quantityResult);
     
     // Determine confidence based on pattern matching
     let confidence: 'high' | 'medium' | 'low' = 'high';
@@ -622,7 +625,7 @@ private isDecimalComma(before: string, after: string): boolean {
    * 🔍 Modified quantity extraction for individual tokens with text number support
    */
   private extractQuantityFromToken(token: string): QuantityExtractionResult {
-    console.log('🔍 EXTRACTING QUANTITY FROM TOKEN:', token);
+    this.logger.debug('ai', 'EXTRACTING QUANTITY FROM TOKEN:', token);
     
     const cleanToken = token.trim();
 
@@ -630,7 +633,7 @@ private isDecimalComma(before: string, after: string): boolean {
       const match = cleanToken.match(patternDef.pattern);
       
       if (match) {
-        console.log(`🔍 MATCHED PATTERN ${patternDef.type}:`, match);
+        this.logger.debug('ai', ` MATCHED PATTERN ${patternDef.type}:`, match);
         
         const itemName = match[patternDef.itemGroup].trim();
         const rawQuantity = match[patternDef.quantityGroup].trim();
@@ -650,7 +653,7 @@ private isDecimalComma(before: string, after: string): boolean {
       }
     }
 
-    console.log('🔍 NO QUANTITY PATTERN MATCHED, RETURNING TOKEN AS ITEM NAME');
+    this.logger.debug('ai', 'NO QUANTITY PATTERN MATCHED, RETURNING TOKEN AS ITEM NAME');
     
     // No pattern matched - return the token as item name
     return { 

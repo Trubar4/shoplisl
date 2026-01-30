@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
+import { LoggerService } from '../logger.service';
 
 interface CacheEntry<T> {
   data: T;
@@ -35,7 +36,7 @@ export class AICachingService {
     cleanupInterval: 60 * 1000 // 1 minute
   };
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     this.startCleanupTimer();
   }
 
@@ -52,12 +53,12 @@ export class AICachingService {
 
     if (cached !== null) {
       this.cacheHits++;
-      console.log('🎯 Cache HIT:', key, `(${this.getCacheHitRate()}% hit rate)`);
+      this.logger.debug('cache', `Cache HIT: ${key} (${this.getCacheHitRate()}% hit rate)`);
       return of({ data: cached, fromCache: true });
     }
 
     this.cacheMisses++;
-    console.log('🎯 Cache MISS:', key, `(${this.getCacheHitRate()}% hit rate)`);
+    this.logger.debug('cache', `Cache MISS: ${key} (${this.getCacheHitRate()}% hit rate)`);
     const result = provider();
 
     if (result instanceof Promise) {
@@ -253,7 +254,7 @@ export class AICachingService {
     keysToDelete.forEach(key => this.cache.delete(key));
     
     if (keysToDelete.length > 0) {
-      console.log(`🧹 Cache cleanup: removed ${keysToDelete.length} expired entries`);
+      this.logger.debug('cache', `Cache cleanup: removed ${keysToDelete.length} expired entries`);
     }
   }
 

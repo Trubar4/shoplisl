@@ -44,6 +44,7 @@ import { UserProfileService } from '../../../core/services/user-profile.service'
 import { AIService } from '../../../core/services/ai';
 import { ApiKeyTipDialogComponent } from '../../../shared/components/api-key-tip-dialog/api-key-tip-dialog.component';
 import { ActiveListService } from '../../../core/services/active-list.service';
+import { HistoryService } from '../../../core/services/history.service';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -115,7 +116,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly authService: AuthService,
     private readonly userProfileService: UserProfileService,
     private readonly aiService: AIService,
-    private readonly activeListService: ActiveListService
+    private readonly activeListService: ActiveListService,
+    private readonly historyService: HistoryService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -905,12 +907,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       updatedArticleIds.push(article.id);
     }
 
+    // Use HistoryService to create proper itemState with 'added' history event
+    const currentUser = this.authService.getCurrentUserValue();
+    const existingState = this.currentList.itemStates[article.id];
     const updatedItemStates = { ...this.currentList.itemStates };
-    updatedItemStates[article.id] = {
-      articleId: article.id,
-      isChecked: false,
-      amount: article.amount || ''
-    };
+    updatedItemStates[article.id] = this.historyService.createUpdatedItemState(
+      existingState,
+      article.id,
+      'added',
+      article.amount || existingState?.amount || '',
+      currentUser?.id,
+      currentUser?.name,
+      article.name
+    );
 
     const success = await this.dataService.updateList(this.currentList.id, {
       articleIds: updatedArticleIds,
