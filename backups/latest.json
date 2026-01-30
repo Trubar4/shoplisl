@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-30T08:39:53.795Z",
+  "timestamp": "2026-01-30T15:07:26.944Z",
   "users": {
     "2RZNjeKK20hXdoy2vbZ61lnk0D62": {
       "lists": [],
@@ -6551,144 +6551,27 @@
           "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
           "sharedWith": [],
           "recoveredFrom": "users/shared-shoplisl-user/lists/jdizW0mfBPSPzf4ae0TN",
-          "articleIds": [
-            "NSnKONT0lVoFv3ewL5oM",
-            "AKlAl1p4gJLrVSElikg0",
-            "VJO8nMFWOP0FzIT0G8hT",
-            "CoDc0dJmk2sy07JEdq8I",
-            "cTQGlGqtGX8kdOQxOEEL",
-            "sTQY2oINEMhpckoVV2K7",
-            "2tXzxdNb5dIf4qBNrtNw",
-            "95SMaRpQ4MVez180w9Gh",
-            "TGJyDQiiaC8EeAD4ZOqG",
-            "e4WaLQdszcCBsfkNIHwJ",
-            "bduJY8qlH1XmaaFcSCih",
-            "LQ6LobnUZ56vSq9uzwV8",
-            "TGixi1ioUfUv6JRRfht7",
-            "2SVzzCNEfa3auNA0Wnt1",
-            "UBJEtXDEMq7qeq4B32st",
-            "wvKmSAJa8CIYiXFISmTa",
-            "x0J57aOgBPmMvoDRtnOS",
-            "9qzCWbIlaDhL7JabFVFi",
-            "gGP0RyJuVRsh6NwaQdD4",
-            "XY1UzqbfbGPXPXdrOH7U",
-            "D1f00DBgZyr3zLELU33p",
-            "wKWyMgPshG2xDvKUIYm1",
-            "SQKShQrfBHVucwBsye10",
-            "dlcpg3Uxxfc77mnZRA6R",
-            "mtNcWkPPxTDCc4CFchsF",
-            "A3m94NIn5x2yQR8n3WzM",
-            "F779SPhgi78Of9rmXQXI",
-            "2OINHSD0rXjKlS2CgC6N",
-            "NotDMNmuHlhB1WdxD6Ri",
-            "IJuRfpiJLyRDpmV8q3uA",
-            "7Y0BA3mggXM59w8maZe4",
-            "5ZL1J8LPi6rLRxdoLfRg",
-            "7FzGanvfAT7UCbpXNIkp",
-            "hCowIBW4N1obCGl2asld",
-            "U9VlHXa86Hq7GdCqhH5x",
-            "BvWGp7Ky5tKbacyouTpo",
-            "ChNIDTz4SuSEyMtIcQDS",
-            "gOUk9QB3vbFLtZohBq2v",
-            "wks582xOPgfftBhKaCJj",
-            "3R2a6rzFqEwET6SnBjtQ",
-            "2im66wjALXMcXMWseMf6",
-            "Emj1d4QpaTQtAYo5N2cA",
-            "bGCe5sTnTDsS8AWb1LLL",
-            "QWaEklcDyRdP6gg1CkyN",
-            "3PMsEHoDkfIIsbkfB55T",
-            "znEi4ggfCWTL3lIoho5v",
-            "UJGg8RKOXtZ2EkOUsMFh",
-            "kqnekYdiII55WmmzUi5Y",
-            "ROYgd05UOlj4EMXNs7rW",
-            "affSyQhnuJZQB9pJGMLV",
-            "yrycRyaCpZDMu1SH3Gim",
-            "2hpqvzf1oEkSTzi1bx92",
-            "Kfn3kxgixT50lJFylgm1",
-            "YxaYK3XTNzhCk5sOTmeS",
-            "QWzbHfpB4tRvxY7x81wP",
-            "hhGOInicyhPVYD9Gr3kD",
-            "KBTelEijI4eIht9zxEL0",
-            "RNyifT9vGOu4cc9alAgw",
-            "3aizIpMY9Z5fTptr7p34",
-            "9zO6ohzZrBUGHrIvRhc0",
-            "oC1QIMX1xcBBJNMGZbxC",
-            "oEFehu1kkhUGG27S1FcS",
-            "Ji4DoFvL1KxD7L70p65L",
-            "hM2x5TTmluPFvwNuROLk",
-            "6LTUePVLhjyxkjmvZdK0",
-            "Xibx6lU2Wekoit9SPoSl",
-            "BP4qvHzgxvC1dqPg1QtH",
-            "fkQzSYkJVphwWIuXKIFo",
-            "Qu3EBlw1EfdGbwyqi8DK",
-            "gdT3r2mY9ILPx1kqaYYT",
-            "1LRp0ISkF5qr9SeJDy1V",
-            "DWWJbhWFB7TAmIgNBroq",
-            "7mRnnfoPFmsTiEdN0wts",
-            "6LvHzJa6SBPdHaBSn1a9",
-            "E8Mnvmw3F5znnX25iAlc",
-            "oRpwe7fmrWqLsZad9Qzp",
-            "WBqX2fNSWur0dgSwLqa3",
-            "ka3KPRsp71KYa14oF7HZ",
-            "Psy6zDpsx4eZSVAd04Tl",
-            "Qv74gTO8acX8NncqWLjP",
-            "L6SH8Qk4xTwG3QnupQ7T",
-            "fWLfU4j2CgIXGP4GvKxT",
-            "N1JdWRDo5cAihC2Ahy16",
-            "NBQtbTCtIDGkEF3JuzlE",
-            "msZ6ilHvc0DedDBpBkAm",
-            "ncJDECozReu37p5KYn4t",
-            "dSY9AWSwzDwt5ufr5cC6",
-            "4wOKbxOaL1OBIuJU1f0x",
-            "J4MoE7vARaZ1JeeIKbAI",
-            "lyauW40NEf6iBhI9tYGe",
-            "Lw2IpBTmxGcBhxJNOnsa"
-          ],
           "recoveredCount": 91,
           "recoveredAt": {
             "_seconds": 1767940078,
             "_nanoseconds": 121000000
           },
+          "articleIds": [
+            "yrycRyaCpZDMu1SH3Gim",
+            "2hpqvzf1oEkSTzi1bx92",
+            "hhGOInicyhPVYD9Gr3kD",
+            "Qv74gTO8acX8NncqWLjP",
+            "N1JdWRDo5cAihC2Ahy16",
+            "4wOKbxOaL1OBIuJU1f0x",
+            "YZ9WuiTkQtjPC6lMfgwt",
+            "VVrG7B0bnkOqEiQHxrce",
+            "XegiUKblnqhb4mhDae9y",
+            "vPKHHjDs8R9tIPAGrRFd"
+          ],
           "itemStates": {
-            "wKWyMgPshG2xDvKUIYm1": {
-              "articleId": "wKWyMgPshG2xDvKUIYm1",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "msZ6ilHvc0DedDBpBkAm": {
-              "articleId": "msZ6ilHvc0DedDBpBkAm",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "bduJY8qlH1XmaaFcSCih": {
-              "articleId": "bduJY8qlH1XmaaFcSCih",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "znEi4ggfCWTL3lIoho5v": {
-              "articleId": "znEi4ggfCWTL3lIoho5v",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "7FzGanvfAT7UCbpXNIkp": {
-              "articleId": "7FzGanvfAT7UCbpXNIkp",
-              "isChecked": true,
+            "yrycRyaCpZDMu1SH3Gim": {
+              "articleId": "yrycRyaCpZDMu1SH3Gim",
+              "isChecked": false,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": {
@@ -6696,74 +6579,39 @@
                 "_nanoseconds": 503000000
               },
               "checkedAt": {
-                "_seconds": 1769252047,
-                "_nanoseconds": 117000000
+                "_seconds": 1769358018,
+                "_nanoseconds": 10000000
               },
               "history": [
                 {
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
                   "timestamp": {
-                    "_seconds": 1769252047,
-                    "_nanoseconds": 117000000
-                  }
+                    "_seconds": 1769785450,
+                    "_nanoseconds": 619000000
+                  },
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769195593,
-                    "_nanoseconds": 194000000
-                  },
-                  "action": "unchecked",
-                  "amount": ""
-                }
-              ]
-            },
-            "2im66wjALXMcXMWseMf6": {
-              "articleId": "2im66wjALXMcXMWseMf6",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "L6SH8Qk4xTwG3QnupQ7T": {
-              "articleId": "L6SH8Qk4xTwG3QnupQ7T",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252037,
-                "_nanoseconds": 243000000
-              },
-              "history": [
-                {
                   "amount": "",
-                  "action": "checked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
                   "timestamp": {
-                    "_seconds": 1769252037,
-                    "_nanoseconds": 243000000
+                    "_seconds": 1769358018,
+                    "_nanoseconds": 9000000
                   },
                   "userName": "Philipp Thurnher"
                 },
                 {
                   "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077040,
-                    "_nanoseconds": 259000000
-                  },
                   "amount": "",
                   "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": {
+                    "_seconds": 1769077041,
+                    "_nanoseconds": 792000000
+                  }
                 }
               ]
             },
@@ -6778,214 +6626,76 @@
               },
               "history": [
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1769077049,
                     "_nanoseconds": 634000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  }
                 }
               ]
             },
-            "TGixi1ioUfUv6JRRfht7": {
-              "articleId": "TGixi1ioUfUv6JRRfht7",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "3aizIpMY9Z5fTptr7p34": {
-              "articleId": "3aizIpMY9Z5fTptr7p34",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "7mRnnfoPFmsTiEdN0wts": {
-              "articleId": "7mRnnfoPFmsTiEdN0wts",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "J4MoE7vARaZ1JeeIKbAI": {
-              "articleId": "J4MoE7vARaZ1JeeIKbAI",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "DWWJbhWFB7TAmIgNBroq": {
-              "articleId": "DWWJbhWFB7TAmIgNBroq",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "LQ6LobnUZ56vSq9uzwV8": {
-              "articleId": "LQ6LobnUZ56vSq9uzwV8",
+            "VVrG7B0bnkOqEiQHxrce": {
+              "articleId": "VVrG7B0bnkOqEiQHxrce",
+              "articleName": "Binden",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
+                "_seconds": 1769767867,
+                "_nanoseconds": 884000000
               },
               "checkedAt": {
-                "_seconds": 1769252040,
-                "_nanoseconds": 923000000
+                "_seconds": 1769785467,
+                "_nanoseconds": 828000000
               },
               "history": [
                 {
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
                   "timestamp": {
-                    "_seconds": 1769252040,
-                    "_nanoseconds": 923000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "action": "unchecked",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769077047,
-                    "_nanoseconds": 348000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "hM2x5TTmluPFvwNuROLk": {
-              "articleId": "hM2x5TTmluPFvwNuROLk",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769356457,
-                "_nanoseconds": 589000000
-              },
-              "history": [
-                {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769356457,
-                    "_nanoseconds": 589000000
-                  },
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769077044,
-                    "_nanoseconds": 176000000
+                    "_seconds": 1769785467,
+                    "_nanoseconds": 828000000
                   },
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
                   "userName": "Philipp Thurnher",
+                  "action": "checked",
                   "amount": ""
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1769767867,
+                    "_nanoseconds": 884000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "added"
                 }
               ]
             },
-            "sTQY2oINEMhpckoVV2K7": {
-              "articleId": "sTQY2oINEMhpckoVV2K7",
-              "isChecked": true,
+            "YZ9WuiTkQtjPC6lMfgwt": {
+              "articleId": "YZ9WuiTkQtjPC6lMfgwt",
+              "articleName": "Mais",
+              "isChecked": false,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
+                "_seconds": 1769767866,
+                "_nanoseconds": 961000000
               },
-              "history": []
-            },
-            "gOUk9QB3vbFLtZohBq2v": {
-              "articleId": "gOUk9QB3vbFLtZohBq2v",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "YxaYK3XTNzhCk5sOTmeS": {
-              "articleId": "YxaYK3XTNzhCk5sOTmeS",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Emj1d4QpaTQtAYo5N2cA": {
-              "articleId": "Emj1d4QpaTQtAYo5N2cA",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "2tXzxdNb5dIf4qBNrtNw": {
-              "articleId": "2tXzxdNb5dIf4qBNrtNw",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "UJGg8RKOXtZ2EkOUsMFh": {
-              "articleId": "UJGg8RKOXtZ2EkOUsMFh",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "BP4qvHzgxvC1dqPg1QtH": {
-              "articleId": "BP4qvHzgxvC1dqPg1QtH",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "AKlAl1p4gJLrVSElikg0": {
-              "articleId": "AKlAl1p4gJLrVSElikg0",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "e4WaLQdszcCBsfkNIHwJ": {
-              "articleId": "e4WaLQdszcCBsfkNIHwJ",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": {
+                    "_seconds": 1769767866,
+                    "_nanoseconds": 960000000
+                  }
+                }
+              ]
             },
             "4wOKbxOaL1OBIuJU1f0x": {
               "articleId": "4wOKbxOaL1OBIuJU1f0x",
@@ -6998,363 +6708,49 @@
               },
               "history": [
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
                   "action": "unchecked",
                   "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1769077051,
                     "_nanoseconds": 227000000
                   }
                 },
                 {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "amount": "",
-                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1769077048,
                     "_nanoseconds": 515000000
-                  }
-                }
-              ]
-            },
-            "bGCe5sTnTDsS8AWb1LLL": {
-              "articleId": "bGCe5sTnTDsS8AWb1LLL",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "D1f00DBgZyr3zLELU33p": {
-              "articleId": "D1f00DBgZyr3zLELU33p",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "3R2a6rzFqEwET6SnBjtQ": {
-              "articleId": "3R2a6rzFqEwET6SnBjtQ",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "cTQGlGqtGX8kdOQxOEEL": {
-              "articleId": "cTQGlGqtGX8kdOQxOEEL",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769346403,
-                "_nanoseconds": 91000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769346403,
-                    "_nanoseconds": 91000000
-                  }
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769252049,
-                    "_nanoseconds": 246000000
                   },
-                  "action": "unchecked"
-                },
-                {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769252045,
-                    "_nanoseconds": 77000000
-                  },
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769195593,
-                    "_nanoseconds": 935000000
-                  },
-                  "amount": "",
                   "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher"
                 }
               ]
             },
-            "wvKmSAJa8CIYiXFISmTa": {
-              "articleId": "wvKmSAJa8CIYiXFISmTa",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Xibx6lU2Wekoit9SPoSl": {
-              "articleId": "Xibx6lU2Wekoit9SPoSl",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "SQKShQrfBHVucwBsye10": {
-              "articleId": "SQKShQrfBHVucwBsye10",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "6LTUePVLhjyxkjmvZdK0": {
-              "articleId": "6LTUePVLhjyxkjmvZdK0",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "fkQzSYkJVphwWIuXKIFo": {
-              "articleId": "fkQzSYkJVphwWIuXKIFo",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "9qzCWbIlaDhL7JabFVFi": {
-              "articleId": "9qzCWbIlaDhL7JabFVFi",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "CoDc0dJmk2sy07JEdq8I": {
-              "articleId": "CoDc0dJmk2sy07JEdq8I",
-              "articleName": "Salami",
+            "XegiUKblnqhb4mhDae9y": {
+              "articleId": "XegiUKblnqhb4mhDae9y",
+              "articleName": "Lippenstift",
               "isChecked": false,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": {
-                "_seconds": 1769685502,
-                "_nanoseconds": 3000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252048,
-                "_nanoseconds": 354000000
+                "_seconds": 1769767868,
+                "_nanoseconds": 633000000
               },
               "history": [
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "added",
-                  "timestamp": {
-                    "_seconds": 1769685502,
-                    "_nanoseconds": 3000000
-                  },
                   "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": {
+                    "_seconds": 1769767868,
+                    "_nanoseconds": 633000000
+                  },
                   "amount": ""
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769252048,
-                    "_nanoseconds": 354000000
-                  }
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769077052,
-                    "_nanoseconds": 228000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "action": "unchecked"
                 }
               ]
-            },
-            "95SMaRpQ4MVez180w9Gh": {
-              "articleId": "95SMaRpQ4MVez180w9Gh",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "WBqX2fNSWur0dgSwLqa3": {
-              "articleId": "WBqX2fNSWur0dgSwLqa3",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "BvWGp7Ky5tKbacyouTpo": {
-              "articleId": "BvWGp7Ky5tKbacyouTpo",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769346398,
-                "_nanoseconds": 72000000
-              },
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769346398,
-                    "_nanoseconds": 72000000
-                  }
-                },
-                {
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077053,
-                    "_nanoseconds": 32000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "oC1QIMX1xcBBJNMGZbxC": {
-              "articleId": "oC1QIMX1xcBBJNMGZbxC",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "NSnKONT0lVoFv3ewL5oM": {
-              "articleId": "NSnKONT0lVoFv3ewL5oM",
-              "articleName": "Milch",
-              "isChecked": true,
-              "amount": "2 l",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252046,
-                "_nanoseconds": 280000000
-              },
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2 l",
-                  "timestamp": {
-                    "_seconds": 1769252046,
-                    "_nanoseconds": 280000000
-                  },
-                  "action": "checked"
-                }
-              ]
-            },
-            "ncJDECozReu37p5KYn4t": {
-              "articleId": "ncJDECozReu37p5KYn4t",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769195587,
-                "_nanoseconds": 719000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769195587,
-                    "_nanoseconds": 719000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077037,
-                    "_nanoseconds": 965000000
-                  },
-                  "amount": "",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "wks582xOPgfftBhKaCJj": {
-              "articleId": "wks582xOPgfftBhKaCJj",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "gGP0RyJuVRsh6NwaQdD4": {
-              "articleId": "gGP0RyJuVRsh6NwaQdD4",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "6LvHzJa6SBPdHaBSn1a9": {
-              "articleId": "6LvHzJa6SBPdHaBSn1a9",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
             },
             "N1JdWRDo5cAihC2Ahy16": {
               "articleId": "N1JdWRDo5cAihC2Ahy16",
@@ -7371,861 +6767,24 @@
               },
               "history": [
                 {
+                  "amount": "",
                   "userName": "Philipp Thurnher",
-                  "action": "checked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1769346394,
                     "_nanoseconds": 413000000
                   },
-                  "amount": ""
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769077037,
-                    "_nanoseconds": 252000000
-                  },
-                  "action": "unchecked"
-                }
-              ]
-            },
-            "QWaEklcDyRdP6gg1CkyN": {
-              "articleId": "QWaEklcDyRdP6gg1CkyN",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769358003,
-                "_nanoseconds": 907000000
-              },
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769358003,
-                    "_nanoseconds": 907000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769077045,
-                    "_nanoseconds": 918000000
-                  }
-                }
-              ]
-            },
-            "XY1UzqbfbGPXPXdrOH7U": {
-              "articleId": "XY1UzqbfbGPXPXdrOH7U",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "dlcpg3Uxxfc77mnZRA6R": {
-              "articleId": "dlcpg3Uxxfc77mnZRA6R",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "KBTelEijI4eIht9zxEL0": {
-              "articleId": "KBTelEijI4eIht9zxEL0",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769346401,
-                "_nanoseconds": 70000000
-              },
-              "history": [
-                {
-                  "timestamp": {
-                    "_seconds": 1769346401,
-                    "_nanoseconds": 70000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769252060,
-                    "_nanoseconds": 797000000
-                  }
-                }
-              ]
-            },
-            "ChNIDTz4SuSEyMtIcQDS": {
-              "articleId": "ChNIDTz4SuSEyMtIcQDS",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "ka3KPRsp71KYa14oF7HZ": {
-              "articleId": "ka3KPRsp71KYa14oF7HZ",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769077050,
-                    "_nanoseconds": 179000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked"
-                }
-              ]
-            },
-            "RNyifT9vGOu4cc9alAgw": {
-              "articleId": "RNyifT9vGOu4cc9alAgw",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "9zO6ohzZrBUGHrIvRhc0": {
-              "articleId": "9zO6ohzZrBUGHrIvRhc0",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769346395,
-                "_nanoseconds": 370000000
-              },
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769346395,
-                    "_nanoseconds": 370000000
-                  }
-                },
-                {
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077041,
-                    "_nanoseconds": 264000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "ROYgd05UOlj4EMXNs7rW": {
-              "articleId": "ROYgd05UOlj4EMXNs7rW",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "mtNcWkPPxTDCc4CFchsF": {
-              "articleId": "mtNcWkPPxTDCc4CFchsF",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Lw2IpBTmxGcBhxJNOnsa": {
-              "articleId": "Lw2IpBTmxGcBhxJNOnsa",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769346403,
-                "_nanoseconds": 779000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769346403,
-                    "_nanoseconds": 779000000
-                  },
                   "action": "checked"
                 },
                 {
                   "timestamp": {
-                    "_seconds": 1769252061,
-                    "_nanoseconds": 758000000
+                    "_seconds": 1769077037,
+                    "_nanoseconds": 252000000
                   },
-                  "action": "unchecked",
                   "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                }
-              ]
-            },
-            "2SVzzCNEfa3auNA0Wnt1": {
-              "articleId": "2SVzzCNEfa3auNA0Wnt1",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "U9VlHXa86Hq7GdCqhH5x": {
-              "articleId": "U9VlHXa86Hq7GdCqhH5x",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "fWLfU4j2CgIXGP4GvKxT": {
-              "articleId": "fWLfU4j2CgIXGP4GvKxT",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "yrycRyaCpZDMu1SH3Gim": {
-              "articleId": "yrycRyaCpZDMu1SH3Gim",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769358018,
-                "_nanoseconds": 10000000
-              },
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769358018,
-                    "_nanoseconds": 9000000
-                  },
-                  "action": "checked",
-                  "amount": ""
-                },
-                {
                   "amount": "",
                   "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769077041,
-                    "_nanoseconds": 792000000
-                  },
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "gdT3r2mY9ILPx1kqaYYT": {
-              "articleId": "gdT3r2mY9ILPx1kqaYYT",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "NBQtbTCtIDGkEF3JuzlE": {
-              "articleId": "NBQtbTCtIDGkEF3JuzlE",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "3PMsEHoDkfIIsbkfB55T": {
-              "articleId": "3PMsEHoDkfIIsbkfB55T",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "E8Mnvmw3F5znnX25iAlc": {
-              "articleId": "E8Mnvmw3F5znnX25iAlc",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "5ZL1J8LPi6rLRxdoLfRg": {
-              "articleId": "5ZL1J8LPi6rLRxdoLfRg",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769356453,
-                "_nanoseconds": 895000000
-              },
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769356453,
-                    "_nanoseconds": 895000000
-                  },
-                  "action": "checked",
-                  "amount": "",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077042,
-                    "_nanoseconds": 941000000
-                  }
-                }
-              ]
-            },
-            "NotDMNmuHlhB1WdxD6Ri": {
-              "articleId": "NotDMNmuHlhB1WdxD6Ri",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769358003,
-                "_nanoseconds": 153000000
-              },
-              "history": [
-                {
-                  "action": "checked",
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769358003,
-                    "_nanoseconds": 153000000
-                  },
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769077045,
-                    "_nanoseconds": 82000000
-                  },
-                  "action": "unchecked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "Ji4DoFvL1KxD7L70p65L": {
-              "articleId": "Ji4DoFvL1KxD7L70p65L",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252036,
-                "_nanoseconds": 432000000
-              },
-              "history": [
-                {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769252036,
-                    "_nanoseconds": 432000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769077039,
-                    "_nanoseconds": 614000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "action": "unchecked"
-                }
-              ]
-            },
-            "TGJyDQiiaC8EeAD4ZOqG": {
-              "articleId": "TGJyDQiiaC8EeAD4ZOqG",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252039,
-                "_nanoseconds": 228000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769252039,
-                    "_nanoseconds": 228000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769077044,
-                    "_nanoseconds": 617000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "amount": ""
-                }
-              ]
-            },
-            "hhGOInicyhPVYD9Gr3kD": {
-              "articleId": "hhGOInicyhPVYD9Gr3kD",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769762216,
-                "_nanoseconds": 197000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769762216,
-                    "_nanoseconds": 197000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769077046,
-                    "_nanoseconds": 874000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "7Y0BA3mggXM59w8maZe4": {
-              "articleId": "7Y0BA3mggXM59w8maZe4",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "2OINHSD0rXjKlS2CgC6N": {
-              "articleId": "2OINHSD0rXjKlS2CgC6N",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Psy6zDpsx4eZSVAd04Tl": {
-              "articleId": "Psy6zDpsx4eZSVAd04Tl",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769252053,
-                "_nanoseconds": 372000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769252053,
-                    "_nanoseconds": 372000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769077049,
-                    "_nanoseconds": 4000000
-                  }
-                }
-              ]
-            },
-            "IJuRfpiJLyRDpmV8q3uA": {
-              "articleId": "IJuRfpiJLyRDpmV8q3uA",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "oEFehu1kkhUGG27S1FcS": {
-              "articleId": "oEFehu1kkhUGG27S1FcS",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Kfn3kxgixT50lJFylgm1": {
-              "articleId": "Kfn3kxgixT50lJFylgm1",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "x0J57aOgBPmMvoDRtnOS": {
-              "articleId": "x0J57aOgBPmMvoDRtnOS",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "VJO8nMFWOP0FzIT0G8hT": {
-              "articleId": "VJO8nMFWOP0FzIT0G8hT",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "kqnekYdiII55WmmzUi5Y": {
-              "articleId": "kqnekYdiII55WmmzUi5Y",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": [
-                {
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077046,
-                    "_nanoseconds": 400000000
-                  },
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "lyauW40NEf6iBhI9tYGe": {
-              "articleId": "lyauW40NEf6iBhI9tYGe",
-              "articleName": "Bananen",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1769685430,
-                "_nanoseconds": 117000000
-              },
-              "checkedAt": {
-                "_seconds": 1769195590,
-                "_nanoseconds": 133000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769685430,
-                    "_nanoseconds": 117000000
-                  }
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769195590,
-                    "_nanoseconds": 132000000
-                  }
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769077039,
-                    "_nanoseconds": 119000000
-                  },
-                  "action": "unchecked",
-                  "amount": ""
-                }
-              ]
-            },
-            "F779SPhgi78Of9rmXQXI": {
-              "articleId": "F779SPhgi78Of9rmXQXI",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "affSyQhnuJZQB9pJGMLV": {
-              "articleId": "affSyQhnuJZQB9pJGMLV",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "Qu3EBlw1EfdGbwyqi8DK": {
-              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
-              "articleName": "Gurken",
-              "isChecked": false,
-              "amount": "3 Stück",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1769762339,
-                "_nanoseconds": 902000000
-              },
-              "checkedAt": {
-                "_seconds": 1769762334,
-                "_nanoseconds": 442000000
-              },
-              "history": [
-                {
-                  "timestamp": {
-                    "_seconds": 1769762339,
-                    "_nanoseconds": 902000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "3 Stück"
-                },
-                {
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769762334,
-                    "_nanoseconds": 442000000
-                  },
-                  "amount": "3 Stück"
-                },
-                {
-                  "action": "added",
-                  "timestamp": {
-                    "_seconds": 1769762312,
-                    "_nanoseconds": 584000000
-                  },
-                  "amount": "3 Stück",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769762293,
-                    "_nanoseconds": 901000000
-                  },
-                  "amount": "3 Stück",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "action": "added",
-                  "timestamp": {
-                    "_seconds": 1769762290,
-                    "_nanoseconds": 885000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "3 Stück"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769762216,
-                    "_nanoseconds": 354000000
-                  }
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769685431,
-                    "_nanoseconds": 345000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "added"
-                },
-                {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769252037,
-                    "_nanoseconds": 935000000
-                  },
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077040,
-                    "_nanoseconds": 759000000
-                  }
-                }
-              ]
-            },
-            "QWzbHfpB4tRvxY7x81wP": {
-              "articleId": "QWzbHfpB4tRvxY7x81wP",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "UBJEtXDEMq7qeq4B32st": {
-              "articleId": "UBJEtXDEMq7qeq4B32st",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "checkedAt": {
-                "_seconds": 1769356459,
-                "_nanoseconds": 892000000
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769356459,
-                    "_nanoseconds": 892000000
-                  }
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769077045,
-                    "_nanoseconds": 477000000
-                  },
-                  "amount": "",
-                  "userName": "Philipp Thurnher"
                 }
               ]
             },
@@ -8244,33 +6803,33 @@
               },
               "history": [
                 {
-                  "amount": "",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
+                  "amount": "",
                   "timestamp": {
                     "_seconds": 1769762318,
                     "_nanoseconds": 625000000
-                  }
+                  },
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "amount": "",
                   "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "",
                   "timestamp": {
                     "_seconds": 1769762222,
                     "_nanoseconds": 853000000
                   },
-                  "userName": "Philipp Thurnher"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "amount": "",
                   "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1769358018,
                     "_nanoseconds": 10000000
                   },
+                  "amount": "",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher"
                 },
                 {
@@ -8279,14 +6838,14 @@
                     "_nanoseconds": 339000000
                   },
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
+                  "action": "unchecked",
                   "userName": "Philipp Thurnher",
-                  "action": "unchecked"
+                  "amount": ""
                 }
               ]
             },
-            "oRpwe7fmrWqLsZad9Qzp": {
-              "articleId": "oRpwe7fmrWqLsZad9Qzp",
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
               "isChecked": false,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
@@ -8295,127 +6854,81 @@
                 "_nanoseconds": 503000000
               },
               "checkedAt": {
-                "_seconds": 1769252043,
-                "_nanoseconds": 959000000
+                "_seconds": 1769762216,
+                "_nanoseconds": 197000000
               },
               "history": [
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769346411,
-                    "_nanoseconds": 857000000
-                  },
                   "userName": "Philipp Thurnher",
-                  "amount": ""
+                  "timestamp": {
+                    "_seconds": 1769785452,
+                    "_nanoseconds": 45000000
+                  },
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
+                  "action": "unchecked"
                 },
                 {
+                  "amount": "",
                   "action": "checked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
                   "timestamp": {
-                    "_seconds": 1769252043,
-                    "_nanoseconds": 959000000
+                    "_seconds": 1769762216,
+                    "_nanoseconds": 197000000
                   },
                   "userName": "Philipp Thurnher"
                 },
                 {
+                  "amount": "",
                   "action": "unchecked",
-                  "amount": "",
                   "timestamp": {
-                    "_seconds": 1769252043,
-                    "_nanoseconds": 220000000
+                    "_seconds": 1769077046,
+                    "_nanoseconds": 874000000
                   },
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1769252042,
-                    "_nanoseconds": 265000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769077050,
-                    "_nanoseconds": 647000000
-                  },
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
                   "userName": "Philipp Thurnher"
                 }
               ]
             },
-            "hCowIBW4N1obCGl2asld": {
-              "articleId": "hCowIBW4N1obCGl2asld",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "dSY9AWSwzDwt5ufr5cC6": {
-              "articleId": "dSY9AWSwzDwt5ufr5cC6",
+            "vPKHHjDs8R9tIPAGrRFd": {
+              "articleId": "vPKHHjDs8R9tIPAGrRFd",
+              "articleName": "Hose",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
+                "_seconds": 1769785460,
+                "_nanoseconds": 603000000
               },
               "checkedAt": {
-                "_seconds": 1769195588,
-                "_nanoseconds": 327000000
+                "_seconds": 1769785465,
+                "_nanoseconds": 524000000
               },
               "history": [
                 {
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
-                    "_seconds": 1769195588,
-                    "_nanoseconds": 327000000
-                  }
+                    "_seconds": 1769785465,
+                    "_nanoseconds": 524000000
+                  },
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "amount": ""
                 },
                 {
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
-                    "_seconds": 1769077038,
-                    "_nanoseconds": 591000000
+                    "_seconds": 1769785460,
+                    "_nanoseconds": 603000000
                   },
-                  "amount": "",
-                  "action": "unchecked"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "action": "added",
+                  "amount": ""
                 }
               ]
-            },
-            "1LRp0ISkF5qr9SeJDy1V": {
-              "articleId": "1LRp0ISkF5qr9SeJDy1V",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
-            },
-            "A3m94NIn5x2yQR8n3WzM": {
-              "articleId": "A3m94NIn5x2yQR8n3WzM",
-              "isChecked": true,
-              "addedAt": {
-                "_seconds": 1767940078,
-                "_nanoseconds": 503000000
-              },
-              "history": []
             }
           },
-          "updatedAt": "2026-01-30T08:38:59.902Z"
+          "updatedAt": "2026-01-30T15:04:27.828Z"
         },
         {
           "id": "kiCWbfAZWROiU6IklBty",
@@ -15303,6 +13816,20 @@
           "updatedAt": "2025-12-08T15:44:25.028Z"
         },
         {
+          "id": "VVrG7B0bnkOqEiQHxrce",
+          "name": "Binden",
+          "amount": "",
+          "notes": "",
+          "icon": "🌿",
+          "categoryId": "",
+          "departmentId": "fruit-vegetables",
+          "availableInShops": [],
+          "usageCount": 0,
+          "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+          "createdAt": "2026-01-30T10:11:07.642Z",
+          "updatedAt": "2026-01-30T10:11:07.642Z"
+        },
+        {
           "id": "VqtCnGMzFP7zmD8symrA",
           "name": "salat hofer",
           "amount": "",
@@ -15505,6 +14032,20 @@
           "updatedAt": "2025-12-08T15:44:26.031Z"
         },
         {
+          "id": "XegiUKblnqhb4mhDae9y",
+          "name": "Lippenstift",
+          "amount": "",
+          "notes": "",
+          "icon": "🧴",
+          "categoryId": "",
+          "departmentId": "body-care",
+          "availableInShops": [],
+          "usageCount": 0,
+          "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+          "createdAt": "2026-01-30T10:11:08.460Z",
+          "updatedAt": "2026-01-30T10:11:08.460Z"
+        },
+        {
           "id": "Xf2mUrAEKCYs9XUJuPTY",
           "name": "Bimsstein",
           "amount": "",
@@ -15575,6 +14116,20 @@
           "createdAt": "2025-06-13T06:06:28.442Z",
           "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
           "updatedAt": "2025-12-08T15:44:26.341Z"
+        },
+        {
+          "id": "YZ9WuiTkQtjPC6lMfgwt",
+          "name": "Mais",
+          "amount": "",
+          "notes": "",
+          "icon": "🌿",
+          "categoryId": "",
+          "departmentId": "fruit-vegetables",
+          "availableInShops": [],
+          "usageCount": 0,
+          "ownerId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+          "createdAt": "2026-01-30T10:11:06.384Z",
+          "updatedAt": "2026-01-30T10:11:06.384Z"
         },
         {
           "id": "Yk3IBW8h68825yp2iKeN",
@@ -19346,6 +17901,6 @@
   "stats": {
     "totalUsers": 5,
     "totalLists": 15,
-    "totalArticles": 529
+    "totalArticles": 532
   }
 }
