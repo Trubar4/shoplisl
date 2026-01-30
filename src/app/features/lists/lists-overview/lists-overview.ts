@@ -24,6 +24,7 @@ import { selectAllArticles } from '../../../state/articles/articles.selectors';
 import { ConnectionService } from '../../../core/services/connection.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ListUtilsService } from '../../../core/services/list-utils.service';
+import { LoggerService } from '../../../core/services/logger.service';
 
 @Component({
   selector: 'app-lists-overview',
@@ -77,7 +78,8 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
     private snackBar: MatSnackBar,
     private connectionService: ConnectionService,
     private authService: AuthService,
-    private listUtils: ListUtilsService
+    private listUtils: ListUtilsService,
+    private logger: LoggerService
   ) {
     this.currentUserId = this.authService.getCurrentUserId();
     // Setup filtered and sorted lists observable WITH validation
@@ -416,16 +418,95 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
 
   /**
    * Count active (non-checked) articles in a list
+   *
+   * IMPORTANT: Only counts articles that have an itemState entry.
+   * Articles without itemState are orphaned/invalid and should not be counted.
    */
   getActiveItemCount(list: ShoppingList): number {
     if (!list || !list.articleIds || list.articleIds.length === 0) {
       return 0;
     }
 
-    return list.articleIds.filter(articleId => {
+    // Diagnostic analysis for article count bug
+    const totalArticleIds = list.articleIds.length;
+    const itemStateKeys = Object.keys(list.itemStates || {});
+    const totalItemStates = itemStateKeys.length;
+
+    // Categorize articles
+    const withItemState: string[] = [];
+    const withoutItemState: string[] = [];
+    const checkedArticles: string[] = [];
+    const uncheckedArticles: string[] = [];
+
+    list.articleIds.forEach(articleId => {
+      const itemState = list.itemStates?.[articleId];
+      if (itemState) {
+        withItemState.push(articleId);
+        if (itemState.isChecked) {
+          checkedArticles.push(articleId);
+        } else {
+          uncheckedArticles.push(articleId);
+        }
+      } else {
+        withoutItemState.push(articleId);
+      }
+    });
+
+    // Check for orphaned itemStates (in itemStates but not in articleIds)
+    const orphanedItemStates = itemStateKeys.filter(id => !list.articleIds.includes(id));
+
+    // Log detailed diagnostics
+    this.logger.debug('ui', `[ArticleCount] "${list.name}" analysis:`, {
+      totalArticleIds,
+      totalItemStates,
+      withItemState: withItemState.length,
+      withoutItemState: withoutItemState.length,
+      checkedArticles: checkedArticles.length,
+      uncheckedArticles: uncheckedArticles.length,
+      orphanedItemStates: orphanedItemStates.length
+    });
+
+    // Log warning if there's a mismatch (potential bug indicator)
+    if (withoutItemState.length > 0) {
+      this.logger.warn('ui', `[ArticleCount] "${list.name}" has ${withoutItemState.length} articleIds WITHOUT itemState (orphaned IDs):`, {
+        orphanedIds: withoutItemState.slice(0, 10), // Show first 10
+        totalOrphaned: withoutItemState.length
+      });
+    }
+
+    if (orphanedItemStates.length > 0) {
+      this.logger.warn('ui', `[ArticleCount] "${list.name}" has ${orphanedItemStates.length} itemStates NOT in articleIds:`, {
+        orphanedItemStates: orphanedItemStates.slice(0, 10)
+      });
+    }
+
+    // Log the unchecked articles with their names for cross-reference
+    if (uncheckedArticles.length > 0) {
+      const uncheckedDetails = uncheckedArticles.map(id => {
+        const state = list.itemStates?.[id];
+        return {
+          id,
+          name: state?.articleName || '(no name)',
+          addedAt: state?.addedAt || null
+        };
+      });
+      this.logger.info('ui', `[ArticleCount] "${list.name}" - ${uncheckedArticles.length} UNCHECKED articles:`, uncheckedDetails);
+    }
+
+    // Current behavior: counts articles where isChecked is falsy (including undefined)
+    // This means orphaned articleIds (no itemState) are counted as "active"
+    const currentActiveCount = list.articleIds.filter(articleId => {
       const itemState = list.itemStates?.[articleId];
       return !itemState?.isChecked;
     }).length;
+
+    // Log the final count calculation
+    this.logger.debug('ui', `[ArticleCount] "${list.name}" result: ${currentActiveCount}/${totalArticleIds}`, {
+      calculation: `unchecked(${uncheckedArticles.length}) + orphaned(${withoutItemState.length}) = ${uncheckedArticles.length + withoutItemState.length}`,
+      displayedAs: `${currentActiveCount}/${totalArticleIds} Artikel`
+    });
+
+    return currentActiveCount;
   }
 
   /**

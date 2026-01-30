@@ -164,12 +164,27 @@ export class ArticleOperationsService {
       }
       
       // Fallback to manual update
-      this.logger.warn('ai', 'Direct addArticleToList failed, using manual update');
-      
+      this.logger.warn('ai', '[AI-ArticleOps] Direct addArticleToList failed, using manual update fallback', {
+        articleId,
+        listId: targetList.id,
+        listName: targetList.name
+      });
+
       const updatedArticleIds = [...targetList.articleIds];
       if (!updatedArticleIds.includes(articleId)) {
         updatedArticleIds.push(articleId);
       }
+
+      // BUGFIX: Fetch article to get name for itemState
+      // Without this, articleName would be undefined causing "ghost" itemStates
+      const article = await this.dataService.getArticle(articleId).pipe(take(1)).toPromise();
+      const articleName = article?.name;
+
+      this.logger.info('ai', '[AI-ArticleOps] Fallback: fetched article for itemState', {
+        articleId,
+        articleName: articleName || '(NOT FOUND - WILL CREATE GHOST ITEMSTATE!)',
+        articleExists: !!article
+      });
 
       // Use HistoryService to create proper itemState with 'added' history event
       const currentUser = this.authService.getCurrentUserValue();
@@ -181,7 +196,8 @@ export class ArticleOperationsService {
         'added',
         amount || existingState?.amount || '',
         currentUser?.id,
-        currentUser?.name
+        currentUser?.name,
+        articleName  // Pass articleName to fix the bug
       );
 
       const updateResult = await this.dataService.updateList(targetList.id, {
