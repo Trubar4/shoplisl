@@ -480,6 +480,19 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
       });
     }
 
+    // Log the unchecked articles with their names for cross-reference
+    if (uncheckedArticles.length > 0) {
+      const uncheckedDetails = uncheckedArticles.map(id => {
+        const state = list.itemStates?.[id];
+        return {
+          id,
+          name: state?.articleName || '(no name)',
+          addedAt: state?.addedAt || null
+        };
+      });
+      this.logger.info('ui', `[ArticleCount] "${list.name}" - ${uncheckedArticles.length} UNCHECKED articles:`, uncheckedDetails);
+    }
+
     // Current behavior: counts articles where isChecked is falsy (including undefined)
     // This means orphaned articleIds (no itemState) are counted as "active"
     const currentActiveCount = list.articleIds.filter(articleId => {
