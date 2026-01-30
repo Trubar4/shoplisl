@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { LoggerService } from './logger.service';
 
 /**
  * Quota Monitoring Service
@@ -33,7 +34,7 @@ export class QuotaMonitorService {
   // Alert subject
   private quotaAlerts = new BehaviorSubject<QuotaAlert | null>(null);
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     this.loadSessionData();
     this.startDailyReset();
     this.startAutomaticReporting();
@@ -50,20 +51,20 @@ export class QuotaMonitorService {
       const newReads = this.sessionReads - lastReportedReads;
 
       if (newReads > 0) {
-        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`📊 AUTOMATIC QUOTA REPORT (every 10 seconds)`);
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`New reads in last 10 sec: ${newReads}`);
-        console.log(`Total session reads: ${this.sessionReads}`);
-        console.log(`Status: ${this.getQuotaStatus().status}`);
+        this.logger.debug('analytics', `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        this.logger.debug('analytics', `📊 AUTOMATIC QUOTA REPORT (every 10 seconds)`);
+        this.logger.debug('analytics', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        this.logger.debug('analytics', `New reads in last 10 sec: ${newReads}`);
+        this.logger.debug('analytics', `Total session reads: ${this.sessionReads}`);
+        this.logger.debug('analytics', `Status: ${this.getQuotaStatus().status}`);
 
         // If significant reads occurred, show breakdown
         if (newReads > 5) {
-          console.log(`\n⚠️ Significant activity detected! Breakdown:`);
+          this.logger.debug('analytics', `\n⚠️ Significant activity detected! Breakdown:`);
           this.logDetailedBreakdown();
         }
 
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        this.logger.debug('analytics', `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
       }
 
       lastReportedReads = this.sessionReads;
@@ -100,7 +101,7 @@ export class QuotaMonitorService {
     // Persist to localStorage
     this.saveSessionData();
 
-    console.log(`📊 QUOTA: ${operation} (+${count} reads) | Session: ${this.sessionReads} | Estimated Daily: ${this.estimatedDailyReads}`);
+    this.logger.debug('analytics', `📊 QUOTA: ${operation} (+${count} reads) | Session: ${this.sessionReads} | Estimated Daily: ${this.estimatedDailyReads}`);
   }
 
   /**
@@ -269,7 +270,7 @@ export class QuotaMonitorService {
       timestamp: new Date()
     });
     this.saveSessionData();
-    console.log('📊 QUOTA: Session counters reset');
+    this.logger.debug('analytics', '📊 QUOTA: Session counters reset');
   }
 
   /**
@@ -278,7 +279,7 @@ export class QuotaMonitorService {
   private resetDaily(): void {
     this.estimatedDailyReads = 0;
     this.saveSessionData();
-    console.log('📊 QUOTA: Daily counters reset');
+    this.logger.debug('analytics', '📊 QUOTA: Daily counters reset');
   }
 
   /**
@@ -329,12 +330,12 @@ export class QuotaMonitorService {
           if (data.metrics) {
             this.optimizationMetrics.next(data.metrics);
           }
-          console.log('📊 QUOTA: Restored session data', data);
+          this.logger.debug('analytics', '📊 QUOTA: Restored session data', data);
         } else {
-          console.log('📊 QUOTA: Previous session was from different day, starting fresh');
+          this.logger.debug('analytics', '📊 QUOTA: Previous session was from different day, starting fresh');
         }
       } catch (error) {
-        console.warn('Failed to load quota monitor data:', error);
+        this.logger.warn('analytics', 'Failed to load quota monitor data:', error);
       }
     }
   }
@@ -376,15 +377,15 @@ export class QuotaMonitorService {
     const sorted = Array.from(breakdown.entries())
       .sort((a, b) => b[1].totalReads - a[1].totalReads);
 
-    console.log('\n📊 ===== QUOTA BREAKDOWN (Last 500 Operations) =====');
-    console.log(`Total Session Reads: ${this.sessionReads}`);
-    console.log(`Estimated Daily Reads: ${this.estimatedDailyReads}`);
-    console.log('\nReads by Operation Type:');
+    this.logger.debug('analytics', '\n📊 ===== QUOTA BREAKDOWN (Last 500 Operations) =====');
+    this.logger.debug('analytics', `Total Session Reads: ${this.sessionReads}`);
+    this.logger.debug('analytics', `Estimated Daily Reads: ${this.estimatedDailyReads}`);
+    this.logger.debug('analytics', '\nReads by Operation Type:');
     sorted.forEach(([operation, stats]) => {
       const percent = (stats.totalReads / this.sessionReads * 100).toFixed(1);
-      console.log(`  ${operation}: ${stats.totalReads} reads (${stats.count} times, ${percent}%)`);
+      this.logger.debug('analytics', `  ${operation}: ${stats.totalReads} reads (${stats.count} times, ${percent}%)`);
     });
-    console.log('==================================================\n');
+    this.logger.debug('analytics', '==================================================\n');
   }
 
   /**
