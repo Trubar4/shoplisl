@@ -21,6 +21,7 @@ import {
   Unsubscribe
 } from '@angular/fire/firestore';
 import { QuotaMonitorService } from './quota-monitor.service';
+import { LoggerService } from './logger.service';
 
 /**
  * Firestore Interceptor Service
@@ -40,7 +41,8 @@ export class FirestoreInterceptorService {
 
   constructor(
     private firestore: Firestore,
-    private quotaMonitor: QuotaMonitorService
+    private quotaMonitor: QuotaMonitorService,
+    private logger: LoggerService
   ) {}
 
   /**
@@ -59,7 +61,7 @@ export class FirestoreInterceptorService {
   private logRead(operation: string, count: number, path: string, caller?: string): void {
     const stack = this.getStackTrace();
 
-    console.log(`
+    this.logger.debug('data', `
 🔥 FIRESTORE READ DETECTED
 Operation: ${operation}
 Path: ${path}
@@ -84,7 +86,7 @@ ${stack}
   async getDocs<T = any>(queryRef: any, caller?: string): Promise<QuerySnapshot<T>> {
     const path = this.getPathFromQuery(queryRef);
 
-    console.log(`⏳ getDocs starting: ${path}`);
+    this.logger.debug('data', `⏳ getDocs starting: ${path}`);
     const snapshot = await getDocs(queryRef);
 
     this.logRead('getDocs', snapshot.size, path, caller);
@@ -98,7 +100,7 @@ ${stack}
   async getDoc<T = any>(docRef: any, caller?: string): Promise<DocumentSnapshot<T>> {
     const path = this.getPathFromDoc(docRef);
 
-    console.log(`⏳ getDoc starting: ${path}`);
+    this.logger.debug('data', `⏳ getDoc starting: ${path}`);
     const snapshot = await getDoc(docRef);
 
     this.logRead('getDoc', snapshot.exists() ? 1 : 0, path, caller);
@@ -118,7 +120,7 @@ ${stack}
     const path = this.getPathFromQuery(ref);
     let fireCount = 0;
 
-    console.log(`🔔 onSnapshot SETUP: ${path}`);
+    this.logger.debug('data', `🔔 onSnapshot SETUP: ${path}`);
 
     return onSnapshot(
       ref,
@@ -126,13 +128,13 @@ ${stack}
         fireCount++;
         const count = snapshot.size !== undefined ? snapshot.size : (snapshot.exists() ? 1 : 0);
 
-        console.log(`🔔 onSnapshot FIRED #${fireCount}: ${path} (${count} docs)`);
+        this.logger.debug('data', `🔔 onSnapshot FIRED #${fireCount}: ${path} (${count} docs)`);
         this.logRead(`onSnapshot (fire #${fireCount})`, count, path, caller);
 
         onNext(snapshot);
       },
       (error: Error) => {
-        console.error(`❌ onSnapshot ERROR: ${path}`, error);
+        this.logger.error('data', `❌ onSnapshot ERROR: ${path}`, error);
         if (onError) onError(error);
       }
     );
@@ -145,7 +147,7 @@ ${stack}
     updateFunction: (transaction: any) => Promise<T>,
     caller?: string
   ): Promise<T> {
-    console.log(`🔒 runTransaction starting`);
+    this.logger.debug('data', `🔒 runTransaction starting`);
 
     let transactionReads = 0;
 
@@ -155,7 +157,7 @@ ${stack}
       transaction.get = (docRef: any) => {
         transactionReads++;
         const path = this.getPathFromDoc(docRef);
-        console.log(`📖 Transaction read #${transactionReads}: ${path}`);
+        this.logger.debug('data', `📖 Transaction read #${transactionReads}: ${path}`);
         return originalGet(docRef);
       };
 
@@ -220,19 +222,19 @@ ${stack}
    */
   async addDoc(collectionRef: any, data: any): Promise<any> {
     const path = this.getPathFromQuery(collectionRef);
-    console.log(`✍️ addDoc: ${path}`);
+    this.logger.debug('data', `✍️ addDoc: ${path}`);
     return addDoc(collectionRef, data);
   }
 
   async updateDoc(docRef: any, data: any): Promise<void> {
     const path = this.getPathFromDoc(docRef);
-    console.log(`✍️ updateDoc: ${path}`);
+    this.logger.debug('data', `✍️ updateDoc: ${path}`);
     return updateDoc(docRef, data);
   }
 
   async deleteDoc(docRef: any): Promise<void> {
     const path = this.getPathFromDoc(docRef);
-    console.log(`✍️ deleteDoc: ${path}`);
+    this.logger.debug('data', `✍️ deleteDoc: ${path}`);
     return deleteDoc(docRef);
   }
 }
