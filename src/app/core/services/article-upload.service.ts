@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import { Article } from '../models';
+import { LoggerService } from './logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +13,7 @@ export class ArticleUploadService {
   private firestore: any;
   private readonly SHARED_USER_ID = 'shared-shoplisl-user';
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     // Initialize Firebase directly (same as DataService)
     const firebaseConfig = {
       projectId: 'shoplisl',
@@ -26,9 +27,9 @@ export class ArticleUploadService {
     try {
       const app = initializeApp(firebaseConfig);
       this.firestore = getFirestore(app);
-      console.log('✅ ArticleUploadService: Firebase initialized successfully');
+      this.logger.debug('upload', '✅ ArticleUploadService: Firebase initialized successfully');
     } catch (error) {
-      console.error('❌ ArticleUploadService: Firebase initialization failed:', error);
+      this.logger.error('upload', '❌ ArticleUploadService: Firebase initialization failed:', error);
       throw error;
     }
   }
@@ -249,7 +250,7 @@ export class ArticleUploadService {
       { name: 'Zwiebel', amount: '', notes: '', icon: '🧅', departmentId: 'fruit-vegetables', createdAt: new Date(), updatedAt: new Date() }
     ];
 
-    console.log('Starting article upload...');
+    this.logger.debug('upload', 'Starting article upload...');
     let uploadedCount = 0;
     const batchSize = 10;
 
@@ -269,15 +270,15 @@ export class ArticleUploadService {
 
         await Promise.all(promises);
         uploadedCount += batch.length;
-        console.log(`Uploaded ${uploadedCount}/${articles.length} articles`);
+        this.logger.debug('upload', `Uploaded ${uploadedCount}/${articles.length} articles`);
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      console.log(`Successfully uploaded all ${articles.length} articles!`);
+      this.logger.debug('upload', `Successfully uploaded all ${articles.length} articles!`);
     } catch (error) {
-      console.error('Error uploading articles:', error);
+      this.logger.error('upload', 'Error uploading articles:', error);
       throw error;
     }
   }

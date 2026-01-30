@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs } from 'firebase/firestore';
 import { Article, ShoppingList } from '../models';
+import { LoggerService } from './logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,7 @@ export class ListUploadService {
   private firestore: any;
   private readonly SHARED_USER_ID = 'shared-shoplisl-user';
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     // Initialize Firebase directly (same as other services)
     const firebaseConfig = {
       projectId: 'shoplisl',
@@ -25,9 +26,9 @@ export class ListUploadService {
     try {
       const app = initializeApp(firebaseConfig);
       this.firestore = getFirestore(app);
-      console.log('✅ ListUploadService: Firebase initialized successfully');
+      this.logger.debug('upload', '✅ ListUploadService: Firebase initialized successfully');
     } catch (error) {
-      console.error('❌ ListUploadService: Firebase initialization failed:', error);
+      this.logger.error('upload', '❌ ListUploadService: Firebase initialization failed:', error);
       throw error;
     }
   }
@@ -54,12 +55,12 @@ export class ListUploadService {
     listColor: string, 
     articleNames: string[]
   ): Promise<void> {
-    console.log(`🛒 Starting ${listName} list creation...`);
-    console.log(`📋 Processing ${articleNames.length} article names`);
+    this.logger.debug('upload', `🛒 Starting ${listName} list creation...`);
+    this.logger.debug('upload', `📋 Processing ${articleNames.length} article names`);
 
     try {
       // Step 1: Get all existing articles from Firebase
-      console.log('📦 Fetching existing articles...');
+      this.logger.debug('upload', '📦 Fetching existing articles...');
       const articlesSnapshot = await getDocs(collection(this.firestore, `users/${this.SHARED_USER_ID}/articles`));
       
       const existingArticles: Article[] = [];
@@ -78,7 +79,7 @@ export class ListUploadService {
         });
       });
 
-      console.log(`✅ Found ${existingArticles.length} existing articles`);
+      this.logger.debug('upload', `✅ Found ${existingArticles.length} existing articles`);
 
       // Step 2: Match article names with existing articles
       const matchedArticles: { articleId: string; name: string; originalName: string }[] = [];
@@ -93,15 +94,15 @@ export class ListUploadService {
             name: matchedArticle.name,
             originalName: originalName
           });
-          console.log(`✅ Matched: "${originalName}" → "${matchedArticle.name}"`);
+          this.logger.debug('upload', `✅ Matched: "${originalName}" → "${matchedArticle.name}"`);
         } else {
           unmatchedArticles.push(originalName);
-          console.log(`❌ No match found for: "${originalName}"`);
+          this.logger.debug('upload', `❌ No match found for: "${originalName}"`);
         }
       }
 
       // Step 3: Create the list
-      console.log(`${listIcon} Creating ${listName} list...`);
+      this.logger.debug('upload', `${listIcon} Creating ${listName} list...`);
       const newList = {
         name: listName,
         color: listColor,
@@ -127,39 +128,39 @@ export class ListUploadService {
       const docRef = await addDoc(listsCollection, newList);
 
       // Step 6: Summary
-      console.log(`🎉 ${listName} list created successfully!`);
-      console.log(`📊 Summary:`);
-      console.log(`   📋 List ID: ${docRef.id}`);
-      console.log(`   ✅ Matched articles: ${matchedArticles.length}`);
-      console.log(`   ❌ Unmatched articles: ${unmatchedArticles.length}`);
-      console.log(`   ${listIcon} All articles marked as completed (striked through)`);
+      this.logger.debug('upload', `🎉 ${listName} list created successfully!`);
+      this.logger.debug('upload', `📊 Summary:`);
+      this.logger.debug('upload', `   📋 List ID: ${docRef.id}`);
+      this.logger.debug('upload', `   ✅ Matched articles: ${matchedArticles.length}`);
+      this.logger.debug('upload', `   ❌ Unmatched articles: ${unmatchedArticles.length}`);
+      this.logger.debug('upload', `   ${listIcon} All articles marked as completed (striked through)`);
 
       if (unmatchedArticles.length > 0) {
-        console.log('');
-        console.log('❌ UNMATCHED ARTICLES:');
+        this.logger.debug('upload', '');
+        this.logger.debug('upload', '❌ UNMATCHED ARTICLES:');
         unmatchedArticles.forEach(name => {
-          console.log(`   • ${name}`);
+          this.logger.debug('upload', `   • ${name}`);
         });
-        console.log('');
-        console.log('💡 These articles were not found in your database. You may need to:');
-        console.log('   1. Create them manually, or');
-        console.log('   2. Check if they exist under different names');
+        this.logger.debug('upload', '');
+        this.logger.debug('upload', '💡 These articles were not found in your database. You may need to:');
+        this.logger.debug('upload', '   1. Create them manually, or');
+        this.logger.debug('upload', '   2. Check if they exist under different names');
       }
 
       if (matchedArticles.length > 0) {
-        console.log('');
-        console.log('✅ MATCHED ARTICLES:');
+        this.logger.debug('upload', '');
+        this.logger.debug('upload', '✅ MATCHED ARTICLES:');
         matchedArticles.forEach(match => {
           if (match.originalName !== match.name) {
-            console.log(`   • "${match.originalName}" → "${match.name}"`);
+            this.logger.debug('upload', `   • "${match.originalName}" → "${match.name}"`);
           } else {
-            console.log(`   • ${match.name}`);
+            this.logger.debug('upload', `   • ${match.name}`);
           }
         });
       }
 
     } catch (error) {
-      console.error(`❌ Error creating ${listName} list:`, error);
+      this.logger.error('upload', `❌ Error creating ${listName} list:`, error);
       throw error;
     }
   }
