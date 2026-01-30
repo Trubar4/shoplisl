@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ConversationContext } from '../models';
+import { LoggerService } from './logger.service';
 
 interface ChatMessage {
   text: string;
@@ -49,7 +50,7 @@ export class ChatPersistenceService {
   public messages$ = this.messagesSubject.asObservable();
   public disambiguation$ = this.disambiguationSubject.asObservable();
 
-  constructor() {
+  constructor(private logger: LoggerService) {
     this.loadFromStorage();
   }
 
@@ -134,7 +135,7 @@ export class ChatPersistenceService {
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(serializedMessages));
     } catch (error) {
-      console.warn('Failed to save chat to localStorage:', error);
+      this.logger.warn('chat', 'Failed to save chat to localStorage:', error);
     }
   }
 
@@ -150,7 +151,7 @@ export class ChatPersistenceService {
         localStorage.removeItem(this.DISAMBIGUATION_KEY);
       }
     } catch (error) {
-      console.warn('Failed to save disambiguation to localStorage:', error);
+      this.logger.warn('chat', 'Failed to save disambiguation to localStorage:', error);
     }
   }
 
@@ -184,7 +185,7 @@ export class ChatPersistenceService {
         this.disambiguationSubject.next(disambiguationState);
       }
     } catch (error) {
-      console.warn('Failed to load chat from localStorage:', error);
+      this.logger.warn('chat', 'Failed to load chat from localStorage:', error);
       // Clear corrupted data
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.DISAMBIGUATION_KEY);
@@ -233,7 +234,7 @@ export class ChatPersistenceService {
       this.addMessage(`Importierte Nachrichten:\n\n${text}`, 'system');
       return true;
     } catch (error) {
-      console.error('Failed to import chat history:', error);
+      this.logger.error('chat', 'Failed to import chat history:', error);
       return false;
     }
   }
@@ -249,7 +250,7 @@ public conversationContext$ = this.conversationContextSubject.asObservable();
  * Set conversation context
  */
 setConversationContext(context: ConversationContext | null): void {
-  console.log('💾 Setting conversation context:', context);
+  this.logger.debug('chat', '💾 Setting conversation context:', context);
   
   // Validate context before setting
   if (context) {
@@ -260,7 +261,7 @@ setConversationContext(context: ConversationContext | null): void {
     
     // Validate required fields for waitingForArticles
     if (context.waitingForArticles && (!context.waitingForArticles.listId || !context.waitingForArticles.listName)) {
-      console.warn('💾 Invalid waitingForArticles context, clearing it');
+      this.logger.warn('chat', '💾 Invalid waitingForArticles context, clearing it');
       context.waitingForArticles = undefined;
     }
   }
@@ -279,13 +280,13 @@ setConversationContext(context: ConversationContext | null): void {
       };
       
       localStorage.setItem('shoplisl-conversation-context', JSON.stringify(persistableContext));
-      console.log('💾 Conversation context persisted to localStorage');
+      this.logger.debug('chat', '💾 Conversation context persisted to localStorage');
     } else {
       localStorage.removeItem('shoplisl-conversation-context');
-      console.log('💾 Conversation context cleared from localStorage');
+      this.logger.debug('chat', '💾 Conversation context cleared from localStorage');
     }
   } catch (error) {
-    console.error('💾 Error persisting conversation context:', error);
+    this.logger.error('chat', '💾 Error persisting conversation context:', error);
   }
 }
 
@@ -303,12 +304,12 @@ private loadConversationContext(): void {
   try {
     const stored = localStorage.getItem('shoplisl-conversation-context');
     if (!stored) {
-      console.log('💾 No stored conversation context found');
+      this.logger.debug('chat', '💾 No stored conversation context found');
       return;
     }
     
     const parsed = JSON.parse(stored);
-    console.log('💾 Raw loaded context:', parsed);
+    this.logger.debug('chat', '💾 Raw loaded context:', parsed);
     
     // Convert timestamp back to Date
     if (parsed.lastAction?.timestamp) {
@@ -321,7 +322,7 @@ private loadConversationContext(): void {
       Date.now() - parsed.lastAction.timestamp.getTime() > maxAge;
     
     if (isExpired) {
-      console.log('💾 Conversation context expired, clearing');
+      this.logger.debug('chat', '💾 Conversation context expired, clearing');
       localStorage.removeItem('shoplisl-conversation-context');
       return;
     }
@@ -329,23 +330,23 @@ private loadConversationContext(): void {
     // Validate and clean
     if (parsed.waitingForArticles) {
       if (!parsed.waitingForArticles.listId || !parsed.waitingForArticles.listName) {
-        console.log('💾 Invalid waitingForArticles, removing');
+        this.logger.debug('chat', '💾 Invalid waitingForArticles, removing');
         delete parsed.waitingForArticles;
       } else {
-        console.log('💾 Valid conversation context found:', parsed.waitingForArticles);
+        this.logger.debug('chat', '💾 Valid conversation context found:', parsed.waitingForArticles);
       }
     }
     
     // Set if meaningful
     if (parsed.lastAction || parsed.waitingForArticles) {
       this.conversationContextSubject.next(parsed);
-      console.log('💾 Restored conversation context');
+      this.logger.debug('chat', '💾 Restored conversation context');
     } else {
       localStorage.removeItem('shoplisl-conversation-context');
     }
     
   } catch (error) {
-    console.error('💾 Error loading conversation context:', error);
+    this.logger.error('chat', '💾 Error loading conversation context:', error);
     localStorage.removeItem('shoplisl-conversation-context');
   }
 }
@@ -354,7 +355,7 @@ private loadConversationContext(): void {
  * Clear conversation context
  */
 clearConversationContext(): void {
-  console.log('💾 Clearing conversation context');
+  this.logger.debug('chat', '💾 Clearing conversation context');
   
   // Clear the subject
   this.conversationContextSubject.next(null);
@@ -362,9 +363,9 @@ clearConversationContext(): void {
   // Clear localStorage
   try {
     localStorage.removeItem('shoplisl-conversation-context');
-    console.log('💾 Cleared conversation context from localStorage');
+    this.logger.debug('chat', '💾 Cleared conversation context from localStorage');
   } catch (error) {
-    console.error('💾 Error clearing conversation context from localStorage:', error);
+    this.logger.error('chat', '💾 Error clearing conversation context from localStorage:', error);
   }
 }
 
@@ -375,7 +376,7 @@ isWaitingForArticles(): boolean {
   const context = this.getConversationContext();
   const isWaiting = !!(context?.waitingForArticles?.listId && context?.waitingForArticles?.listName);
   
-  console.log('💾 isWaitingForArticles check:', {
+  this.logger.debug('chat', '💾 isWaitingForArticles check:', {
     hasContext: !!context,
     hasWaitingForArticles: !!context?.waitingForArticles,
     hasListId: !!context?.waitingForArticles?.listId,
@@ -416,7 +417,7 @@ addMessageWithContext(text: string, type: 'user' | 'assistant' | 'error' | 'syst
   
   // Update context if provided and valid
   if (context) {
-    console.log('💾 Adding message with new context:', context);
+    this.logger.debug('chat', '💾 Adding message with new context:', context);
     this.setConversationContext(context);
   }
 }
@@ -485,13 +486,13 @@ getConversationStats(): {
  * Enhanced initialization that loads conversation context
  */
 initializeWithContext(): void {
-  console.log('💾 Enhanced initialization with context...');
+  this.logger.debug('chat', '💾 Enhanced initialization with context...');
   
   // Load conversation context first
   this.loadConversationContext();
   
   const context = this.getConversationContext();
-  console.log('💾 Loaded context:', context);
+  this.logger.debug('chat', '💾 Loaded context:', context);
   
   // Initialize chat messages
   this.initializeIfEmpty();
@@ -500,7 +501,7 @@ initializeWithContext(): void {
   const messages = this.getMessages();
   if (messages.length <= 1) {
     if (context?.waitingForArticles) {
-      console.log('💾 Adding conversation restoration message');
+      this.logger.debug('chat', '💾 Adding conversation restoration message');
       const welcomeMessage = `👋 Willkommen zurück!\n\n🗣️ Du warst dabei, Artikel zu "${context.waitingForArticles.listName}" hinzuzufügen.\n\n💡 Du kannst weitermachen oder "Nein" sagen um zu beenden.`;
       this.addMessage(welcomeMessage, 'system');
     } else if (context?.lastAction) {
@@ -549,11 +550,11 @@ addFollowUpPrompt(prompt: string): void {
  * Handle conversation ending
  */
 handleConversationEnd(): void {
-  console.log('💾 Handling conversation end');
+  this.logger.debug('chat', '💾 Handling conversation end');
   
   const context = this.getConversationContext();
   if (context?.waitingForArticles) {
-    console.log('💾 Ending active conversation for list:', context.waitingForArticles.listName);
+    this.logger.debug('chat', '💾 Ending active conversation for list:', context.waitingForArticles.listName);
   }
   
   this.clearConversationContext();
@@ -607,7 +608,7 @@ exportConversationWithContext(): string {
         (!currentContext.lastAction || 
           aiServiceContext.lastAction.timestamp > currentContext.lastAction.timestamp))) {
       
-      console.log('💾 Synchronizing with AI service context:', aiServiceContext);
+      this.logger.debug('chat', '💾 Synchronizing with AI service context:', aiServiceContext);
       this.setConversationContext(aiServiceContext);
     }
   }

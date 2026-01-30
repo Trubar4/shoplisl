@@ -15,6 +15,7 @@ import {
 import { User, ShoppingList, Article } from '../models';
 import { AnalyticsEvent } from '../models/analytics.model';
 import { QuotaMonitorService } from './quota-monitor.service';
+import { LoggerService } from './logger.service';
 
 /**
  * User Support Service
@@ -30,6 +31,7 @@ import { QuotaMonitorService } from './quota-monitor.service';
 export class UserSupportService {
   private firestore = inject(Firestore);
   private quotaMonitor = inject(QuotaMonitorService);
+  private logger = inject(LoggerService);
 
   /**
    * Search users by email or name
@@ -41,7 +43,7 @@ export class UserSupportService {
     }
 
     const normalizedQuery = searchQuery.toLowerCase().trim();
-    console.log(`🔍 User Support: Searching for "${normalizedQuery}"`);
+    this.logger.debug('data', `🔍 User Support: Searching for "${normalizedQuery}"`);
 
     try {
       // Query users-v2 collection
@@ -74,7 +76,7 @@ export class UserSupportService {
           );
         });
 
-      console.log(`🔍 User Support: Found ${users.length} matching users`);
+      this.logger.debug('data', `🔍 User Support: Found ${users.length} matching users`);
 
       // Get quick stats for each user
       const results: UserSearchResult[] = [];
@@ -93,7 +95,7 @@ export class UserSupportService {
 
       return results;
     } catch (error) {
-      console.error('❌ User Support: Failed to search users:', error);
+      this.logger.error('data', '❌ User Support: Failed to search users:', error);
       throw error;
     }
   }
@@ -116,13 +118,13 @@ export class UserSupportService {
       const listsRef = collection(this.firestore, `users-v2/${userId}/lists`);
       const listsSnapshot = await getDocs(listsRef);
       listsCount = listsSnapshot.size;
-      console.log(`📊 User ${userId}: ${listsCount} lists`);
+      this.logger.debug('data', `📊 User ${userId}: ${listsCount} lists`);
 
       // Count user's articles
       const articlesRef = collection(this.firestore, `users-v2/${userId}/articles`);
       const articlesSnapshot = await getDocs(articlesRef);
       articlesCount = articlesSnapshot.size;
-      console.log(`📊 User ${userId}: ${articlesCount} articles`);
+      this.logger.debug('data', `📊 User ${userId}: ${articlesCount} articles`);
 
       this.quotaMonitor.trackRead('User Support: Quick Stats (lists+articles)',
         listsSnapshot.size + articlesSnapshot.size);
@@ -145,12 +147,12 @@ export class UserSupportService {
       } catch (eventError) {
         // Analytics events query might fail if index doesn't exist
         // This is not critical, so just log and continue
-        console.warn(`⚠️ User Support: Failed to get last active for user ${userId}:`, eventError);
+        this.logger.warn('data', `⚠️ User Support: Failed to get last active for user ${userId}:`, eventError);
       }
 
       return { listsCount, articlesCount, lastActive };
     } catch (error) {
-      console.error(`❌ User Support: Failed to get stats for user ${userId}:`, error);
+      this.logger.error('data', `❌ User Support: Failed to get stats for user ${userId}:`, error);
       // Return partial results if we got them before the error
       return { listsCount, articlesCount, lastActive };
     }
@@ -160,7 +162,7 @@ export class UserSupportService {
    * Get detailed user profile with full statistics
    */
   async getUserProfile(userId: string): Promise<UserProfile> {
-    console.log(`📊 User Support: Loading profile for user ${userId}`);
+    this.logger.debug('data', `📊 User Support: Loading profile for user ${userId}`);
 
     try {
       // Load user document
@@ -196,7 +198,7 @@ export class UserSupportService {
         sum + (list.articleIds?.length || 0), 0
       );
 
-      console.log(`📊 User Support: Profile loaded successfully`);
+      this.logger.debug('data', `📊 User Support: Profile loaded successfully`);
 
       return {
         id: userId,
@@ -214,7 +216,7 @@ export class UserSupportService {
         recentActivity,
       };
     } catch (error) {
-      console.error('❌ User Support: Failed to load user profile:', error);
+      this.logger.error('data', '❌ User Support: Failed to load user profile:', error);
       throw error;
     }
   }
@@ -237,7 +239,7 @@ export class UserSupportService {
 
       return lists;
     } catch (error) {
-      console.warn('⚠️ User Support: Failed to load lists:', error);
+      this.logger.warn('data', '⚠️ User Support: Failed to load lists:', error);
       return [];
     }
   }
@@ -260,7 +262,7 @@ export class UserSupportService {
 
       return articles;
     } catch (error) {
-      console.warn('⚠️ User Support: Failed to load articles:', error);
+      this.logger.warn('data', '⚠️ User Support: Failed to load articles:', error);
       return [];
     }
   }
@@ -291,7 +293,7 @@ export class UserSupportService {
 
       return events;
     } catch (error) {
-      console.warn('⚠️ User Support: Failed to load activity:', error);
+      this.logger.warn('data', '⚠️ User Support: Failed to load activity:', error);
       return [];
     }
   }
@@ -300,7 +302,7 @@ export class UserSupportService {
    * Export user data as JSON (for GDPR compliance)
    */
   async exportUserData(userId: string): Promise<Blob> {
-    console.log(`📦 User Support: Exporting data for user ${userId}`);
+    this.logger.debug('data', `📦 User Support: Exporting data for user ${userId}`);
 
     try {
       const profile = await this.getUserProfile(userId);
@@ -345,10 +347,10 @@ export class UserSupportService {
       const jsonString = JSON.stringify(exportData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
 
-      console.log(`📦 User Support: Export complete (${blob.size} bytes)`);
+      this.logger.debug('data', `📦 User Support: Export complete (${blob.size} bytes)`);
       return blob;
     } catch (error) {
-      console.error('❌ User Support: Failed to export user data:', error);
+      this.logger.error('data', '❌ User Support: Failed to export user data:', error);
       throw error;
     }
   }
