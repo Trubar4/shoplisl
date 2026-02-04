@@ -353,7 +353,44 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  // === SWIPE GESTURE HANDLERS (Same as lists-overview) ===
+  // === SWIPE GESTURE HANDLERS (Event Delegation for Performance) ===
+
+  /**
+   * Find article ID from touch event target using event delegation
+   */
+  private getArticleIdFromEvent(event: TouchEvent): string | null {
+    const target = event.target as HTMLElement;
+    const container = target.closest('[data-article-id]');
+    return container?.getAttribute('data-article-id') || null;
+  }
+
+  /**
+   * Container touch start - uses event delegation instead of per-item listeners
+   * Reduces 450+ listeners to just 1
+   */
+  onContainerTouchStart(event: TouchEvent): void {
+    const articleId = this.getArticleIdFromEvent(event);
+    if (!articleId) return;
+    this.onTouchStart(event, articleId);
+  }
+
+  /**
+   * Container touch move - uses event delegation
+   */
+  onContainerTouchMove(event: TouchEvent): void {
+    const articleId = this.getArticleIdFromEvent(event);
+    if (!articleId) return;
+    this.onTouchMove(event, articleId);
+  }
+
+  /**
+   * Container touch end - uses event delegation
+   */
+  onContainerTouchEnd(event: TouchEvent): void {
+    const articleId = this.getArticleIdFromEvent(event);
+    if (!articleId) return;
+    this.onTouchEnd(event, articleId);
+  }
 
   onTouchStart(event: TouchEvent, articleId: string): void {
     const touch = event.touches[0];
@@ -362,7 +399,7 @@ export class ArticleOverviewComponent implements OnInit, OnDestroy {
       swipeDistance: 0,
       startX: touch.clientX,
       currentX: touch.clientX,
-      startY: touch.clientY, // Add startY to track vertical movement
+      startY: touch.clientY,
       currentY: touch.clientY
     };
   }

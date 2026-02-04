@@ -457,15 +457,23 @@ export class FirebaseDataService {
 
   private loadCachedData(): void {
     this.logger.debug('cache', 'Loading data from cache');
-    
+
     const currentArticles = this.articlesSubject.value;
     const currentLists = this.listsSubject.value;
-    
+
     if (currentArticles.length === 0) {
       const articlesCache = this.cacheService.getCachedArticles();
       if (articlesCache.data) {
         this.logger.info('cache', `Loaded ${articlesCache.data.length} articles from cache (${this.cacheService.formatAge(articlesCache.status.age)})`);
         this.articlesSubject.next(articlesCache.data);
+        // Also populate ownedArticles so mergeArticles() doesn't overwrite cached data
+        // Filter to only include articles owned by current user
+        const currentUserId = this.authService.getCurrentUserId();
+        if (currentUserId) {
+          this.ownedArticles = articlesCache.data.filter(a => a.ownerId === currentUserId);
+          this.sharedArticles = articlesCache.data.filter(a => a.ownerId !== currentUserId);
+          this.logger.debug('cache', `Populated from cache: ${this.ownedArticles.length} owned, ${this.sharedArticles.length} shared`);
+        }
       } else {
         this.logger.warn('cache', 'No articles in cache');
         this.articlesSubject.next([]);
@@ -1838,10 +1846,17 @@ export class FirebaseDataService {
       articles.push(...chunkArticles);
     });
 
-    this.logger.info('data', `✅ Loaded ${articles.length} owned articles`);
+    this.logger.info('data', `✅ Loaded ${articles.length} owned articles from Firestore`);
 
-    // Store in ownedArticles and merge with shared articles
-    this.ownedArticles = articles;
+    // Merge newly loaded articles with existing ownedArticles (preserves cached articles)
+    const existingIds = new Set(this.ownedArticles.map(a => a.id));
+    const newArticles = articles.filter(a => !existingIds.has(a.id));
+
+    if (newArticles.length > 0) {
+      this.ownedArticles = [...this.ownedArticles, ...newArticles];
+      this.logger.info('data', `📦 Merged ${newArticles.length} new articles with ${existingIds.size} cached → ${this.ownedArticles.length} total owned`);
+    }
+
     this.mergeArticles();
   }
 
@@ -2368,16 +2383,6 @@ export class FirebaseDataService {
       return;
     }
 
-    // QUOTA OPTIMIZATION: If articles are already available (from cache or batch load),
-    // skip the expensive Firestore query. The cache was populated by loadCachedData()
-    // at startup, and batch loads happen when opening list details.
-    const existingArticles = this.articlesSubject.value;
-    if (existingArticles.length > 0) {
-      this.logger.info('data', `⏭️ ${existingArticles.length} articles already available (from cache/batch) - skipping Firestore load (saves ~${existingArticles.length} reads)`);
-      this.articlesLoadedFromFirestore = true;
-      return;
-    }
-
     const lists = this.listsSubject.value;
     if (lists.length === 0) {
       this.logger.info('data', '⏳ No lists available yet - deferring article load');
@@ -2399,12 +2404,58 @@ export class FirebaseDataService {
 
     if (articleIdsOnLists.size === 0) {
       this.logger.info('data', '📦 No articles on owned lists');
+      this.articlesLoadedFromFirestore = true;
+      return;
+    }
+
+    // QUOTA OPTIMIZATION: Check if cache is fresh and complete
+    // If cache has all needed articles and isn't expired, skip Firestore entirely
+    const articlesCache = this.cacheService.getCachedArticles();
+    const existingArticles = this.articlesSubject.value;
+    const existingArticleIds = new Set(existingArticles.map(a => a.id));
+    const missingArticleIds = Array.from(articleIdsOnLists).filter(id => !existingArticleIds.has(id));
+
+    // If cache is fresh (not expired) and has all articles, skip Firestore
+    if (!articlesCache.status.isExpired && missingArticleIds.length === 0) {
+      this.articlesLoadedFromFirestore = true;
+      const cacheAge = this.cacheService.formatAge(articlesCache.status.age);
+      this.logger.info('data', `⏭️ Fresh cache has all ${articleIdsOnLists.size} articles (age: ${cacheAge}) - skipping Firestore (saves ${articleIdsOnLists.size} reads)`);
+      // Ensure ownedArticles is populated from cache for mergeArticles() to work
+      this.ensureOwnedArticlesFromCache();
       return;
     }
 
     this.articlesLoadedFromFirestore = true;
-    this.logger.info('data', `📦 Loading ${articleIdsOnLists.size} articles on demand (article overview opened)`);
-    this.loadOwnedArticlesByIds(Array.from(articleIdsOnLists));
+
+    // CRITICAL: Always ensure ownedArticles/sharedArticles are populated from cache
+    // This prevents mergeArticles() from overwriting cached articles with empty arrays
+    this.ensureOwnedArticlesFromCache();
+
+    if (missingArticleIds.length === 0) {
+      this.logger.info('data', `⏭️ All ${articleIdsOnLists.size} articles already in cache - skipping Firestore load`);
+      return;
+    }
+
+    // Cache is expired or incomplete - load missing articles from Firestore
+    const reason = articlesCache.status.isExpired ? 'cache expired' : 'missing articles';
+    this.logger.info('data', `📦 Loading ${missingArticleIds.length} articles from Firestore (${reason}, ${existingArticleIds.size} cached, ${articleIdsOnLists.size} total needed)`);
+    this.loadOwnedArticlesByIds(missingArticleIds);
+  }
+
+  /**
+   * Ensure ownedArticles array is populated from articlesSubject
+   * This is needed when cache loads before auth is ready
+   */
+  private ensureOwnedArticlesFromCache(): void {
+    if (this.ownedArticles.length > 0) return; // Already populated
+
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) return;
+
+    const allArticles = this.articlesSubject.value;
+    this.ownedArticles = allArticles.filter(a => a.ownerId === currentUserId);
+    this.sharedArticles = allArticles.filter(a => a.ownerId !== currentUserId);
+    this.logger.debug('data', `📦 Populated from articlesSubject: ${this.ownedArticles.length} owned, ${this.sharedArticles.length} shared`);
   }
 
   getArticle(id: string): Observable<Article | undefined> {
