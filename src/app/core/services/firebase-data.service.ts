@@ -2408,11 +2408,22 @@ export class FirebaseDataService {
       return;
     }
 
-    // QUOTA OPTIMIZATION: Only load articles not already in cache
-    // This preserves cached articles while loading missing ones
+    // QUOTA OPTIMIZATION: Check if cache is fresh and complete
+    // If cache has all needed articles and isn't expired, skip Firestore entirely
+    const articlesCache = this.cacheService.getCachedArticles();
     const existingArticles = this.articlesSubject.value;
     const existingArticleIds = new Set(existingArticles.map(a => a.id));
     const missingArticleIds = Array.from(articleIdsOnLists).filter(id => !existingArticleIds.has(id));
+
+    // If cache is fresh (not expired) and has all articles, skip Firestore
+    if (!articlesCache.status.isExpired && missingArticleIds.length === 0) {
+      this.articlesLoadedFromFirestore = true;
+      const cacheAge = this.cacheService.formatAge(articlesCache.status.age);
+      this.logger.info('data', `⏭️ Fresh cache has all ${articleIdsOnLists.size} articles (age: ${cacheAge}) - skipping Firestore (saves ${articleIdsOnLists.size} reads)`);
+      // Ensure ownedArticles is populated from cache for mergeArticles() to work
+      this.ensureOwnedArticlesFromCache();
+      return;
+    }
 
     this.articlesLoadedFromFirestore = true;
 
@@ -2421,8 +2432,26 @@ export class FirebaseDataService {
       return;
     }
 
-    this.logger.info('data', `📦 Loading ${missingArticleIds.length} missing articles (${existingArticleIds.size} already cached, ${articleIdsOnLists.size} total needed)`);
+    // Cache is expired or incomplete - load missing articles from Firestore
+    const reason = articlesCache.status.isExpired ? 'cache expired' : 'missing articles';
+    this.logger.info('data', `📦 Loading ${missingArticleIds.length} articles from Firestore (${reason}, ${existingArticleIds.size} cached, ${articleIdsOnLists.size} total needed)`);
     this.loadOwnedArticlesByIds(missingArticleIds);
+  }
+
+  /**
+   * Ensure ownedArticles array is populated from articlesSubject
+   * This is needed when cache loads before auth is ready
+   */
+  private ensureOwnedArticlesFromCache(): void {
+    if (this.ownedArticles.length > 0) return; // Already populated
+
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) return;
+
+    const allArticles = this.articlesSubject.value;
+    this.ownedArticles = allArticles.filter(a => a.ownerId === currentUserId);
+    this.sharedArticles = allArticles.filter(a => a.ownerId !== currentUserId);
+    this.logger.debug('data', `📦 Populated from articlesSubject: ${this.ownedArticles.length} owned, ${this.sharedArticles.length} shared`);
   }
 
   getArticle(id: string): Observable<Article | undefined> {
