@@ -2427,6 +2427,10 @@ export class FirebaseDataService {
 
     this.articlesLoadedFromFirestore = true;
 
+    // CRITICAL: Always ensure ownedArticles/sharedArticles are populated from cache
+    // This prevents mergeArticles() from overwriting cached articles with empty arrays
+    this.ensureOwnedArticlesFromCache();
+
     if (missingArticleIds.length === 0) {
       this.logger.info('data', `⏭️ All ${articleIdsOnLists.size} articles already in cache - skipping Firestore load`);
       return;

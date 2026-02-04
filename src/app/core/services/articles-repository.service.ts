@@ -242,22 +242,22 @@ export class ArticlesRepositoryService {
   deleteArticle(id: string): Observable<boolean> {
     if (!this.connectionService.isOnline()) {
       this.logger.info('data', 'Offline: Article deletion will be synced when online');
-      
+
       // Remove from local state immediately
       const currentArticles = this.firebaseData.getCurrentArticles();
       const updatedArticles = currentArticles.filter(a => a.id !== id);
       this.firebaseData.updateLocalArticles(updatedArticles);
-    
+
       // Queue for sync when online (including cleanup)
       this.offlineSync.queueOperation(async () => {
         await this.removeArticleFromAllLists(id);
         await this.firebaseData.deleteArticleInFirebase(id);
         // Auto-cleanup will run when back online
       }, `Delete article: ${id}`);
-    
+
       return of(true);
     }
-  
+
     return from(this.removeArticleFromAllLists(id)).pipe(
       mergeMap(() => {
         return from(this.firebaseData.deleteArticleInFirebase(id));
@@ -266,7 +266,13 @@ export class ArticlesRepositoryService {
         // Trigger immediate cleanup after successful deletion
         return from(this.dataMigrationService.quickCleanupOrphanedReferences());
       }),
-      map(() => true),
+      map(() => {
+        // Update local state immediately for UI responsiveness
+        const currentArticles = this.firebaseData.getCurrentArticles();
+        const updatedArticles = currentArticles.filter(a => a.id !== id);
+        this.firebaseData.updateLocalArticles(updatedArticles);
+        return true;
+      }),
       catchError(error => {
         this.logger.error('data', 'Error deleting article', error);
         return of(false);
@@ -479,6 +485,10 @@ export class ArticlesRepositoryService {
         return from(this.dataMigrationService.quickCleanupOrphanedReferences());
       }),
       map(() => {
+        // Update local state immediately for UI responsiveness
+        const currentArticles = this.firebaseData.getCurrentArticles();
+        const updatedArticles = currentArticles.filter(a => a.id !== articleId);
+        this.firebaseData.updateLocalArticles(updatedArticles);
         this.logger.info('data', '✅ Article deletion completed successfully');
         return { success: true };
       }),
