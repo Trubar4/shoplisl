@@ -29,6 +29,10 @@ import { AuthService } from './auth.service';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
+// Phase 1 Refactoring: Extracted services
+import { FirebaseMergeService } from './firebase-merge.service';
+import { FirebaseArticleLoaderService } from './firebase-article-loader.service';
+import { FirebaseListenerStateService } from './firebase-listener-state.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = false;
@@ -117,7 +121,11 @@ export class FirebaseDataService {
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    // Phase 1 Refactoring: Extracted services
+    private mergeService: FirebaseMergeService,
+    private articleLoader: FirebaseArticleLoaderService,
+    private listenerState: FirebaseListenerStateService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -330,10 +338,8 @@ export class FirebaseDataService {
       return;
     }
 
-    // Filter out articles we already have loaded
-    const articlesToLoad = articleIds.filter(
-      id => !this.loadedSharedArticleIds.has(id) && !this.failedArticleIds.has(id)
-    );
+    // Filter out articles we already have loaded (using articleLoader service)
+    const articlesToLoad = this.articleLoader.filterUnloadedArticleIds(articleIds);
 
     if (articlesToLoad.length === 0) {
       this.logger.debug('data', `All ${articleIds.length} articles already cached for ${list.name}`);
@@ -364,15 +370,23 @@ export class FirebaseDataService {
     this.logger.info('data', `🔍 Searching for articles in ${ownerIds.length} user collections (owner + ${list.sharedWith?.length || 0} participants)`);
 
     try {
-      const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
+      // Use articleLoader service for batch loading
+      const newArticles = await this.articleLoader.batchLoadArticles(
+        articlesToLoad,
+        ownerIds,
+        currentUserId,
+        this.ownedArticles
+      );
 
-      // Update cache
-      newArticles.forEach(article => {
-        this.loadedSharedArticleIds.add(article.id);
-        if (article.ownerId) {
-          this.articleOwnerCache.set(article.id, article.ownerId);
-        }
-      });
+      // Mark articles as loaded in the cache
+      this.articleLoader.markArticlesAsLoaded(newArticles);
+
+      // Mark failed articles
+      const loadedIds = new Set(newArticles.map(a => a.id));
+      const failedIds = articlesToLoad.filter(id => !loadedIds.has(id));
+      if (failedIds.length > 0) {
+        this.articleLoader.markArticlesAsFailed(failedIds);
+      }
 
       // Merge with existing shared articles
       const existingArticleIds = new Set(this.sharedArticles.map(a => a.id));
@@ -930,20 +944,18 @@ export class FirebaseDataService {
             // Merge itemStates and articleIds
             const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+            const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
 
             const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
             const serverArticleIds = data['articleIds'] || [];
-            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+            const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
             // Prevent infinite loop - check if we just wrote to this list
-            const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-            const timeSinceWrite = Date.now() - lastWriteTime;
-            const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+            const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
             // Check if merge produced different result than server
-            const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-            const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+            const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+            const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
@@ -966,7 +978,7 @@ export class FirebaseDataService {
             // Only write back if merge changed AND it's not our own write
             if (mergeChanged && !isOurOwnWrite) {
               this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
-              this.lastMergeWrite.set(list.id, Date.now());
+              this.listenerState.setLastMergeWriteTime(list.id);
               this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                 this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
               });
@@ -996,8 +1008,7 @@ export class FirebaseDataService {
       }
     );
 
-    this.ownedListListeners.set(list.id, unsubscribe);
-    this.ownedListListenersActive = true;
+    this.listenerState.addOwnedListListener(list.id, unsubscribe);
   }
 
   /**
@@ -1039,9 +1050,8 @@ export class FirebaseDataService {
             const newArticleIds = serverArticleIds.filter((id: string) => !previousArticleIds.includes(id));
 
             // Check if this is OUR OWN write (collaborator's recent change)
-            const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-            const timeSinceWrite = Date.now() - lastWriteTime;
-            const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+            const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
+            const timeSinceWrite = Date.now() - this.listenerState.getLastMergeWriteTime(list.id);
 
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
@@ -1118,7 +1128,7 @@ export class FirebaseDataService {
       }
     );
 
-    this.sharedListListeners.set(list.id, unsubscribe);
+    this.listenerState.addSharedListListener(list.id, unsubscribe);
   }
 
   /**
@@ -2309,48 +2319,16 @@ export class FirebaseDataService {
   }
 
   private cleanupListeners(): void {
-    if (this.articlesUnsubscribe) {
-      this.articlesUnsubscribe();
-      this.articlesUnsubscribe = undefined;
-    }
-    if (this.listsUnsubscribe) {
-      this.listsUnsubscribe();
-      this.listsUnsubscribe = undefined;
-    }
-    // Phase 8: Cleanup shared lists listener
-    if (this.sharedListsUnsubscribe) {
-      this.sharedListsUnsubscribe();
-      this.sharedListsUnsubscribe = undefined;
-    }
-
-    // LAZY LISTENERS: Cleanup active list subscription
-    if (this.activeListSubscription) {
-      this.activeListSubscription.unsubscribe();
-      this.activeListSubscription = undefined;
-    }
-
-    // REAL-TIME SYNC: Cleanup owned list listeners
-    this.cleanupOwnedListListeners();
-
-    // REAL-TIME SYNC: Cleanup shared list listeners
-    this.cleanupSharedListListeners();
-
-    // QUOTA OPTIMIZATION: Reset collection listener flags
-    // This allows collection listeners to be set up again on next login
-    this.logger.info('data', '🔄 cleanupListeners() resetting collection listener flags to FALSE');
-    this.collectionListenersCleanedUp = false;
-    this.collectionListenersActive = false;
-    this.isSettingUpListeners = false;
+    // Use listenerState service for centralized cleanup
+    this.listenerState.cleanupAll();
 
     // QUOTA FIX: Reset initialization tracking (allows reload after user switch)
-    this.initialDataLoadDone = false;
     this.articlesLoadedFromFirestore = false;
 
-    // Performance: Clear caches on cleanup
-    this.loadedSharedArticleIds.clear();
-    this.failedArticleIds.clear();
-    this.lastSharedListUpdate.clear();
-    this.articleOwnerCache.clear();
+    // Clear article loader caches
+    this.articleLoader.clearCaches();
+
+    // Clear local state
     this.previousSharedArticleIds.clear();
     if (this.mergeListsTimer) {
       clearTimeout(this.mergeListsTimer);
