@@ -53,32 +53,32 @@
 
   <!-- Articles List -->
   <div class="articles-container">
-    <div class="articles-list">
-      <div 
-        *ngFor="let article of filteredArticles$ | async" 
+    <div class="articles-list"
+      (touchstart)="onContainerTouchStart($event)"
+      (touchmove)="onContainerTouchMove($event)"
+      (touchend)="onContainerTouchEnd($event)">
+      <div
+        *ngFor="let article of filteredArticles$ | async"
         class="article-item-container"
         [attr.data-article-id]="article.id">
-        
+
         <!-- Delete Indicator (shown during swipe) -->
         <div class="delete-indicator">
           <mat-icon>delete</mat-icon>
           <span>Löschen</span>
         </div>
-        
+
         <!-- Main Article Item -->
-        <div 
+        <div
           class="article-item"
           (click)="onArticleClick(article)"
-          (touchstart)="onTouchStart($event, article.id)"
-          (touchmove)="onTouchMove($event, article.id)"
-          (touchend)="onTouchEnd($event, article.id)"
           (mousedown)="onMouseDown($event, article.id)">
-          
+
           <!-- Article Icon -->
           <div class="article-icon">
             {{ article.icon || '📦' }}
           </div>
-          
+
           <!-- Article Content -->
           <div class="article-content">
             <div class="article-header">
@@ -101,7 +101,7 @@
               {{ article.notes }}
             </div>
           </div>
-          
+
           <!-- Navigation arrow -->
           <mat-icon class="nav-arrow">chevron_right</mat-icon>
         </div>
