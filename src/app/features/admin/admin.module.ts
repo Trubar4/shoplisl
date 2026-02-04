@@ -5,6 +5,7 @@ import { ArticleUploadComponent } from '../../core/services/article-upload.compo
 import { ListUploadComponent } from '../../core/services/list-upload.component';
 import { PerformanceDashboardComponent } from './performance-dashboard/performance-dashboard.component';
 import { AnalyticsDashboardComponent } from './analytics-dashboard/analytics-dashboard.component';
+import { AnalyticsEventsExportComponent } from './analytics-events-export/analytics-events-export.component';
 import { DebugUserComponent } from './debug-user/debug-user.component';
 import { QuotaMonitorComponent } from './quota-monitor/quota-monitor.component';
 import { UserSupportComponent } from './user-support/user-support.component';
@@ -23,6 +24,10 @@ const routes: Routes = [
   {
     path: 'analytics',
     component: AnalyticsDashboardComponent
+  },
+  {
+    path: 'events-export',
+    component: AnalyticsEventsExportComponent
   },
   {
     path: 'upload',
@@ -55,6 +60,7 @@ const routes: Routes = [
     ListUploadComponent,
     PerformanceDashboardComponent,
     AnalyticsDashboardComponent,
+    AnalyticsEventsExportComponent,
     DebugUserComponent,
     QuotaMonitorComponent,
     UserSupportComponent

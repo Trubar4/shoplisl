@@ -1,0 +1,203 @@
+<div class="export-container">
+  <mat-card class="filter-card">
+    <mat-card-header>
+      <mat-card-title>Analytics Events Export</mat-card-title>
+      <mat-card-subtitle>Query and export analytics events to Excel</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Filter Section -->
+      <div class="filters-section">
+        <h3>Filters</h3>
+        <div class="filters-grid">
+          <!-- Date From -->
+          <mat-form-field appearance="outline">
+            <mat-label>Date From</mat-label>
+            <input
+              matInput
+              [matDatepicker]="dateFromPicker"
+              [(ngModel)]="filters.dateFrom"
+              placeholder="Select start date"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker"></mat-datepicker-toggle>
+            <mat-datepicker #dateFromPicker></mat-datepicker>
+          </mat-form-field>
+
+          <!-- Date To -->
+          <mat-form-field appearance="outline">
+            <mat-label>Date To</mat-label>
+            <input
+              matInput
+              [matDatepicker]="dateToPicker"
+              [(ngModel)]="filters.dateTo"
+              placeholder="Select end date"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="dateToPicker"></mat-datepicker-toggle>
+            <mat-datepicker #dateToPicker></mat-datepicker>
+          </mat-form-field>
+
+          <!-- User ID Filter -->
+          <mat-form-field appearance="outline">
+            <mat-label>User ID (partial match)</mat-label>
+            <input
+              matInput
+              [(ngModel)]="filters.userId"
+              placeholder="e.g., abc123"
+            />
+            <mat-icon matSuffix>person</mat-icon>
+          </mat-form-field>
+
+          <!-- Event Type Filter -->
+          <mat-form-field appearance="outline">
+            <mat-label>Event Type</mat-label>
+            <mat-select [(ngModel)]="filters.eventType">
+              <mat-option value="">All Event Types</mat-option>
+              @for (eventType of eventTypes; track eventType) {
+                <mat-option [value]="eventType">{{ eventType }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="loadEvents()"
+            [disabled]="loading()"
+          >
+            <mat-icon>search</mat-icon>
+            Load Events
+          </button>
+          <button mat-stroked-button (click)="clearFilters()">
+            <mat-icon>clear_all</mat-icon>
+            Clear Filters
+          </button>
+          <button
+            mat-raised-button
+            color="accent"
+            (click)="exportToExcel()"
+            [disabled]="events().length === 0"
+          >
+            <mat-icon>download</mat-icon>
+            Export to Excel ({{ events().length }} events)
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Results Section -->
+  <mat-card class="results-card">
+    <mat-card-header>
+      <mat-card-title>Results</mat-card-title>
+      @if (totalCount() > 0) {
+        <mat-card-subtitle>
+          Found {{ totalCount() }} events
+          @if (getActiveFilterCount() > 0) {
+            <mat-chip-set class="filter-chips">
+              @if (filters.userId.trim()) {
+                <mat-chip>User: {{ truncate(filters.userId, 15) }}</mat-chip>
+              }
+              @if (filters.eventType) {
+                <mat-chip>Type: {{ filters.eventType }}</mat-chip>
+              }
+            </mat-chip-set>
+          }
+        </mat-card-subtitle>
+      }
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Loading State -->
+      @if (loading()) {
+        <div class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Loading events...</p>
+        </div>
+      }
+
+      <!-- Error State -->
+      @if (error()) {
+        <div class="error-container">
+          <mat-icon color="warn">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+
+      <!-- Events Table -->
+      @if (!loading() && !error() && filteredEvents().length > 0) {
+        <div class="table-container">
+          <table mat-table [dataSource]="filteredEvents()" class="events-table">
+            <!-- Timestamp Column -->
+            <ng-container matColumnDef="timestamp">
+              <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+              <td mat-cell *matCellDef="let event">
+                {{ formatTimestamp(event.timestamp) }}
+              </td>
+            </ng-container>
+
+            <!-- Event Type Column -->
+            <ng-container matColumnDef="eventType">
+              <th mat-header-cell *matHeaderCellDef>Event Type</th>
+              <td mat-cell *matCellDef="let event">
+                <code class="event-type-badge">{{ event.eventType }}</code>
+              </td>
+            </ng-container>
+
+            <!-- User ID Column -->
+            <ng-container matColumnDef="userId">
+              <th mat-header-cell *matHeaderCellDef>User ID</th>
+              <td mat-cell *matCellDef="let event" class="user-id-cell">
+                <span [matTooltip]="event.userId">
+                  {{ truncate(event.userId, 12) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Session ID Column -->
+            <ng-container matColumnDef="sessionId">
+              <th mat-header-cell *matHeaderCellDef>Session ID</th>
+              <td mat-cell *matCellDef="let event" class="session-id-cell">
+                <span [matTooltip]="event.sessionId">
+                  {{ truncate(event.sessionId, 12) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Metadata Column -->
+            <ng-container matColumnDef="metadata">
+              <th mat-header-cell *matHeaderCellDef>Metadata</th>
+              <td mat-cell *matCellDef="let event" class="metadata-cell">
+                <span [matTooltip]="getMetadataTooltip(event.metadata)">
+                  {{ formatMetadata(event.metadata) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+
+          <!-- Paginator -->
+          <mat-paginator
+            [length]="totalCount()"
+            [pageSize]="pageSize"
+            [pageIndex]="pageIndex"
+            [pageSizeOptions]="[25, 50, 100, 250]"
+            (page)="onPageChange($event)"
+            showFirstLastButtons
+          ></mat-paginator>
+        </div>
+      }
+
+      <!-- No Results State -->
+      @if (!loading() && !error() && events().length === 0) {
+        <div class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No events loaded yet.</p>
+          <p class="hint">Set your filters and click "Load Events" to query the database.</p>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
