@@ -1041,7 +1041,10 @@ export class FirebaseDataService {
           }
 
           // Update the list in sharedLists array
+          this.logger.info('data', `🔍 SHARED LIST LOOKUP: Looking for ${list.id} in sharedLists (count: ${this.sharedLists.length})`);
+          this.logger.debug('data', `🔍 SHARED LIST IDs: ${this.sharedLists.map(l => l.id).join(', ')}`);
           const index = this.sharedLists.findIndex(l => l.id === list.id);
+          this.logger.info('data', `🔍 SHARED LIST INDEX: ${index} for list ${list.id}`);
           if (index !== -1) {
             // Check if this is OUR OWN write (collaborator's recent change)
             const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
@@ -1111,6 +1114,45 @@ export class FirebaseDataService {
               // Load articles for the updated list (will fetch from owner and all participants)
               this.loadArticlesForList(this.sharedLists[index]).catch(error => {
                 this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
+              });
+            }
+
+            this.mergeLists();
+          } else {
+            // CRITICAL FIX: List not found in sharedLists array - add it!
+            // This happens when listener fires before sharedLists is fully populated
+            this.logger.warn('data', `📥 List ${list.id} not found in sharedLists, adding from server data`);
+
+            const serverArticleIds = data['articleIds'] || [];
+            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            this.logger.info('data', `🔍 SHARED LIST DEBUG (new list): Server returned ${serverArticleIds.length} articleIds, ${Object.keys(serverItemStates).length} itemStates for "${data['name']}"`);
+
+            // Create new list entry from server data
+            const newList: ShoppingList = {
+              id: list.id,
+              ownerId: list.ownerId,
+              name: data['name'],
+              color: data['color'] || list.color,
+              icon: data['icon'] || list.icon,
+              shopId: data['shopId'] || list.shopId,
+              itemStates: serverItemStates,
+              articleIds: serverArticleIds,
+              departmentOrder: data['departmentOrder'] || [],
+              createdAt: data['createdAt']?.toDate() || list.createdAt || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              sharedWith: data['sharedWith'] || []
+            };
+
+            // Add to sharedLists array
+            this.sharedLists.push(newList);
+            this.logger.info('data', `✅ Added shared list "${data['name']}" to sharedLists (now ${this.sharedLists.length} lists)`);
+
+            // Load articles for this new list
+            if (serverArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Loading ${serverArticleIds.length} articles for newly added shared list "${data['name']}"`);
+              this.loadArticlesForList(newList).catch(error => {
+                this.logger.error('data', `Failed to load articles for new shared list ${list.id}:`, error);
               });
             }
 
