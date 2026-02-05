@@ -395,9 +395,21 @@ export class FirebaseDataService {
       if (articlesToAdd.length > 0) {
         this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
         this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
-        this.logger.debug('data', `📊 ARTICLE DEBUG: sharedArticles now has ${this.sharedArticles.length} articles`);
-        this.logger.debug('data', `📊 ARTICLE IDS in sharedArticles: ${this.sharedArticles.map(a => a.id).slice(0, 20).join(', ')}${this.sharedArticles.length > 20 ? '...' : ''}`);
-        this.logger.debug('data', `📊 LIST ARTICLE IDS: ${list.articleIds.slice(0, 20).join(', ')}${list.articleIds.length > 20 ? '...' : ''}`);
+        this.logger.info('data', `📊 ARTICLE DEBUG: sharedArticles now has ${this.sharedArticles.length} total`);
+        this.logger.info('data', `📊 LOADED IDS: ${articlesToAdd.map(a => a.id).slice(0, 10).join(', ')}${articlesToAdd.length > 10 ? '...' : ''}`);
+        this.logger.info('data', `📊 LIST EXPECTS: ${list.articleIds.slice(0, 10).join(', ')}${list.articleIds.length > 10 ? '...' : ''}`);
+
+        // Check for mismatch
+        const loadedIds = new Set(articlesToAdd.map(a => a.id));
+        const expectedIds = new Set(list.articleIds);
+        const missingFromLoaded = list.articleIds.filter(id => !loadedIds.has(id));
+        const extraInLoaded = articlesToAdd.filter(a => !expectedIds.has(a.id));
+        if (missingFromLoaded.length > 0) {
+          this.logger.warn('data', `⚠️ MISMATCH: ${missingFromLoaded.length} expected IDs not in loaded articles: ${missingFromLoaded.slice(0, 5).join(', ')}`);
+        }
+        if (extraInLoaded.length > 0) {
+          this.logger.warn('data', `⚠️ MISMATCH: ${extraInLoaded.length} loaded articles not in list.articleIds: ${extraInLoaded.map(a => a.id).slice(0, 5).join(', ')}`);
+        }
       }
 
       // CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
@@ -888,10 +900,10 @@ export class FirebaseDataService {
     }
 
     // Log articleIds for each list
-    uniqueLists.forEach(list => {
-      this.logger.debug('data', `📊 LIST "${list.name}": ${list.articleIds?.length || 0} articleIds`);
-    });
     this.logger.info('data', `📊 MERGE LISTS: Publishing ${uniqueLists.length} lists to listsSubject`);
+    uniqueLists.forEach(list => {
+      this.logger.info('data', `📊 LIST "${list.name}": ${list.articleIds?.length || 0} articleIds → ${list.articleIds?.slice(0, 5).join(', ')}${(list.articleIds?.length || 0) > 5 ? '...' : ''}`);
+    });
 
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
@@ -916,8 +928,8 @@ export class FirebaseDataService {
       new Map(allArticles.map(article => [article.id, article])).values()
     );
 
-    this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
-    this.logger.info('data', `📊 MERGE ARTICLES: Publishing ${uniqueArticles.length} articles to articlesSubject`);
+    this.logger.info('data', `📊 MERGE ARTICLES: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} unique → articlesSubject`);
+    this.logger.info('data', `📊 ARTICLE IDS in subject: ${uniqueArticles.map(a => a.id).slice(0, 10).join(', ')}${uniqueArticles.length > 10 ? '...' : ''}`);
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
