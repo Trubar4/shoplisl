@@ -121,7 +121,18 @@ describe('HistoryModeComponent', () => {
       })
     };
 
-    component = new HistoryModeComponent(storeMock, historyServiceMock);
+    const authServiceMock = {
+      getCurrentUserId: vi.fn(() => 'shared-shoplisl-user'),
+      getCurrentUser: vi.fn(() => null),
+      isAuthenticated: vi.fn(() => true)
+    };
+
+    const userProfileServiceMock = {
+      getUserDisplayName: vi.fn(() => Promise.resolve('Test User')),
+      getUserProfile: vi.fn(() => Promise.resolve(null))
+    };
+
+    component = new HistoryModeComponent(storeMock, historyServiceMock, authServiceMock as any, userProfileServiceMock as any);
     component.list = mockList;
   });
 

@@ -1,12 +1,21 @@
-import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { QuantityExtractionService } from './quantity-extraction.service';
 
 describe('QuantityExtractionService', () => {
   let service: QuantityExtractionService;
 
+  // Mock LoggerService
+  const loggerMock = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    log: vi.fn()
+  } as any;
+
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(QuantityExtractionService);
+    // Direct instantiation instead of TestBed to avoid Angular DI issues
+    service = new QuantityExtractionService(loggerMock);
   });
 
   it('should be created', () => {

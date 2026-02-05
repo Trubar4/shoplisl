@@ -1,13 +1,22 @@
-import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { ContextManagementService } from './context-management.service';
 import { ConversationContext } from '../../models';
 
 describe('ContextManagementService', () => {
   let service: ContextManagementService;
 
+  // Mock LoggerService
+  const loggerMock = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    log: vi.fn()
+  } as any;
+
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(ContextManagementService);
+    // Direct instantiation instead of TestBed to avoid Angular DI issues
+    service = new ContextManagementService(loggerMock);
   });
 
   afterEach(() => {
