@@ -395,6 +395,9 @@ export class FirebaseDataService {
       if (articlesToAdd.length > 0) {
         this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
         this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
+        this.logger.debug('data', `📊 ARTICLE DEBUG: sharedArticles now has ${this.sharedArticles.length} articles`);
+        this.logger.debug('data', `📊 ARTICLE IDS in sharedArticles: ${this.sharedArticles.map(a => a.id).slice(0, 20).join(', ')}${this.sharedArticles.length > 20 ? '...' : ''}`);
+        this.logger.debug('data', `📊 LIST ARTICLE IDS: ${list.articleIds.slice(0, 20).join(', ')}${list.articleIds.length > 20 ? '...' : ''}`);
       }
 
       // CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
@@ -884,6 +887,12 @@ export class FirebaseDataService {
       this.logger.debug('data', `\n✅ executeMergeLists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total → publishing to store`);
     }
 
+    // Log articleIds for each list
+    uniqueLists.forEach(list => {
+      this.logger.debug('data', `📊 LIST "${list.name}": ${list.articleIds?.length || 0} articleIds`);
+    });
+    this.logger.info('data', `📊 MERGE LISTS: Publishing ${uniqueLists.length} lists to listsSubject`);
+
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
 
@@ -908,6 +917,7 @@ export class FirebaseDataService {
     );
 
     this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
+    this.logger.info('data', `📊 MERGE ARTICLES: Publishing ${uniqueArticles.length} articles to articlesSubject`);
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
