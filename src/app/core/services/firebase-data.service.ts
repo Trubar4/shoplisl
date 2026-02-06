@@ -1077,59 +1077,52 @@ export class FirebaseDataService {
           }
 
           // Update the list in sharedLists array
-          this.logger.info('data', `🔍 SHARED LIST LOOKUP: Looking for ${list.id} in sharedLists (count: ${this.sharedLists.length})`);
-          this.logger.debug('data', `🔍 SHARED LIST IDs: ${this.sharedLists.map(l => l.id).join(', ')}`);
           const index = this.sharedLists.findIndex(l => l.id === list.id);
-          this.logger.info('data', `🔍 SHARED LIST INDEX: ${index} for list ${list.id}`);
           if (index !== -1) {
+            // CRITICAL FIX: Detect new articles BEFORE optimistic update check
+            // Otherwise optimistic updates prevent detection of new articles
+            const previousArticleIds = this.sharedLists[index].articleIds || [];
+            const serverArticleIds = data['articleIds'] || [];
+            const newArticleIds = serverArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+
             // Check if this is OUR OWN write (collaborator's recent change)
             const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
-            // Get local state from listsSubject (has optimistic updates)
-            const currentLists = this.listsSubject.value;
-            const currentList = currentLists.find(l => l.id === list.id);
-
-            // Get server state
-            const serverArticleIds = data['articleIds'] || [];
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
-            // DEBUG: Log what server is returning
-            this.logger.info('data', `🔍 SHARED LIST DEBUG: Server returned ${serverArticleIds.length} articleIds, ${Object.keys(serverItemStates).length} itemStates for "${data['name']}"`);
+            let finalItemStates: { [articleId: string]: any };
+            let finalArticleIds: string[];
 
-            // Get local state
-            const localItemStates = currentList?.itemStates || this.sharedLists[index].itemStates || {};
-            const localArticleIds = currentList?.articleIds || this.sharedLists[index].articleIds || [];
+            if (isOurOwnWrite) {
+              // This is OUR write - preserve local optimistic updates
+              const currentLists = this.listsSubject.value;
+              const currentList = currentLists.find(l => l.id === list.id);
 
-            // CRITICAL FIX: Use mergeService for shared lists too!
-            // This ensures proper sync between owner and participant
-            const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
-            const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+              finalItemStates = currentList?.itemStates || serverItemStates;
+              finalArticleIds = currentList?.articleIds || serverArticleIds;
 
-            // Detect new articles for loading
-            const previousArticleIds = this.sharedLists[index].articleIds || [];
-            const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+              // Populate articleIds from itemStates if empty
+              if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
+                finalArticleIds = Object.keys(finalItemStates);
+                this.logger.debug('data', `Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+              }
 
-            // CRITICAL FIX: Also detect articles that are in server but NOT loaded in articlesSubject
-            const loadedArticleIds = new Set(this.articlesSubject.value.map(a => a.id));
-            const missingArticleIds = serverArticleIds.filter((id: string) => !loadedArticleIds.has(id));
+              this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our own write)`);
+            } else {
+              // This is OWNER's write or other participant's data - trust server completely
+              // CRITICAL: For shared lists, the server is the source of truth.
+              // Participants should NOT merge their stale local cache with server state.
+              finalItemStates = serverItemStates;
+              finalArticleIds = serverArticleIds;
 
-            // Check if merge produced different result than server
-            const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
-            const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
-            const mergeChanged = itemStatesChanged || articleIdsChanged;
+              // Populate articleIds from itemStates if empty
+              // Firebase may return empty articleIds for shared lists, but itemStates is populated
+              if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
+                finalArticleIds = Object.keys(finalItemStates);
+                this.logger.debug('data', `Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+              }
 
-            this.logger.info('data', `🔀 SHARED LIST MERGE: ${localArticleIds.length} local + ${serverArticleIds.length} server = ${mergedArticleIds.length} merged (changed: ${mergeChanged})`);
-
-            // Only write back if merge changed AND it's not our own write
-            // This propagates participant's changes to server
-            if (mergeChanged && !isOurOwnWrite) {
-              this.logger.info('data', `🔄 Shared list merge produced different state, writing back for ${data['name']}`);
-              this.listenerState.setLastMergeWriteTime(list.id);
-              this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates, mergedArticleIds).catch(error => {
-                this.logger.error('data', `Failed to write merged state for shared list ${list.id}:`, error);
-              });
-            } else if (isOurOwnWrite) {
-              this.logger.debug('data', `⏭️ Skipping write-back for shared list (our own write)`);
+              this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
             }
 
             this.sharedLists[index] = {
@@ -1138,24 +1131,19 @@ export class FirebaseDataService {
               color: data['color'],
               icon: data['icon'],
               shopId: data['shopId'],
-              itemStates: mergedItemStates,
-              articleIds: mergedArticleIds,
+              itemStates: finalItemStates,
+              articleIds: finalArticleIds,
               departmentOrder: data['departmentOrder'],
               updatedAt: data['updatedAt']?.toDate() || new Date(),
               sharedWith: sharedWith
             };
 
-            // REAL-TIME SYNC FIX: Load missing articles - either new ones or ones not yet loaded
-            // This fixes both:
-            // - Issue #1: Participant can't see owner articles in real-time
-            // - Issue #2: Stale cache causing wrong articles to be loaded initially
-            const articlesToLoadNow = missingArticleIds.length > 0 ? missingArticleIds : newArticleIds;
-            if (articlesToLoadNow.length > 0) {
-              this.logger.info('data', `🆕 SHARED LIST: ${missingArticleIds.length} missing + ${newArticleIds.length} new = loading ${articlesToLoadNow.length} articles for "${data['name']}"`);
-              this.logger.info('data', `🆕 Missing IDs: ${missingArticleIds.slice(0, 5).join(', ')}${missingArticleIds.length > 5 ? '...' : ''}`);
+            // REAL-TIME SYNC FIX: Load new articles when owner adds them
+            if (newArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
 
               // Clear the "already loaded" cache for these IDs so they can be reloaded
-              articlesToLoadNow.forEach((id: string) => {
+              newArticleIds.forEach((id: string) => {
                 this.articleLoader.clearLoadedStatus(id);
               });
 
@@ -1173,8 +1161,6 @@ export class FirebaseDataService {
 
             const serverArticleIds = data['articleIds'] || [];
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-
-            this.logger.info('data', `🔍 SHARED LIST DEBUG (new list): Server returned ${serverArticleIds.length} articleIds, ${Object.keys(serverItemStates).length} itemStates for "${data['name']}"`);
 
             // Create new list entry from server data
             const newList: ShoppingList = {
