@@ -981,8 +981,13 @@ export class FirebaseDataService {
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
+            // Compare server articleIds with what's currently loaded in articlesSubject
             const previousArticleIds = this.ownedLists[index].articleIds || [];
             const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+
+            // CRITICAL FIX: Also detect articles that are in server but NOT loaded in articlesSubject
+            const loadedArticleIds = new Set(this.articlesSubject.value.map(a => a.id));
+            const missingArticleIds = serverArticleIds.filter((id: string) => !loadedArticleIds.has(id));
 
             this.ownedLists[index] = {
               ...this.ownedLists[index],
@@ -1006,11 +1011,19 @@ export class FirebaseDataService {
               });
             }
 
-            // REAL-TIME SYNC FIX: Load new articles when participants add them
-            // This fixes Issue #1: Owner can't see participant articles in real-time
-            if (newArticleIds.length > 0) {
-              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in owned list "${data['name']}", loading them now...`);
-              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+            // REAL-TIME SYNC FIX: Load missing articles - either new ones or ones not yet loaded
+            // This fixes both:
+            // - Issue #1: Owner can't see participant articles in real-time
+            // - Issue #2: Stale cache causing wrong articles to be loaded initially
+            const articlesToLoadNow = missingArticleIds.length > 0 ? missingArticleIds : newArticleIds;
+            if (articlesToLoadNow.length > 0) {
+              this.logger.info('data', `🆕 OWNED LIST: ${missingArticleIds.length} missing + ${newArticleIds.length} new = loading ${articlesToLoadNow.length} articles for "${data['name']}"`);
+              this.logger.info('data', `🆕 Missing IDs: ${missingArticleIds.slice(0, 5).join(', ')}${missingArticleIds.length > 5 ? '...' : ''}`);
+
+              // Clear the "already loaded" cache for these IDs so they can be reloaded
+              articlesToLoadNow.forEach((id: string) => {
+                this.articleLoader.clearLoadedStatus(id);
+              });
 
               // Load articles for the updated list (will fetch from all participants)
               this.loadArticlesForList(this.ownedLists[index]).catch(error => {
@@ -1095,6 +1108,10 @@ export class FirebaseDataService {
             const previousArticleIds = this.sharedLists[index].articleIds || [];
             const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
 
+            // CRITICAL FIX: Also detect articles that are in server but NOT loaded in articlesSubject
+            const loadedArticleIds = new Set(this.articlesSubject.value.map(a => a.id));
+            const missingArticleIds = serverArticleIds.filter((id: string) => !loadedArticleIds.has(id));
+
             // Check if merge produced different result than server
             const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
             const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
@@ -1127,11 +1144,19 @@ export class FirebaseDataService {
               sharedWith: sharedWith
             };
 
-            // REAL-TIME SYNC FIX: Load new articles when owner adds them
-            // This fixes Issue #2: Participant can't see owner articles in real-time
-            if (newArticleIds.length > 0) {
-              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
-              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+            // REAL-TIME SYNC FIX: Load missing articles - either new ones or ones not yet loaded
+            // This fixes both:
+            // - Issue #1: Participant can't see owner articles in real-time
+            // - Issue #2: Stale cache causing wrong articles to be loaded initially
+            const articlesToLoadNow = missingArticleIds.length > 0 ? missingArticleIds : newArticleIds;
+            if (articlesToLoadNow.length > 0) {
+              this.logger.info('data', `🆕 SHARED LIST: ${missingArticleIds.length} missing + ${newArticleIds.length} new = loading ${articlesToLoadNow.length} articles for "${data['name']}"`);
+              this.logger.info('data', `🆕 Missing IDs: ${missingArticleIds.slice(0, 5).join(', ')}${missingArticleIds.length > 5 ? '...' : ''}`);
+
+              // Clear the "already loaded" cache for these IDs so they can be reloaded
+              articlesToLoadNow.forEach((id: string) => {
+                this.articleLoader.clearLoadedStatus(id);
+              });
 
               // Load articles for the updated list (will fetch from owner and all participants)
               this.loadArticlesForList(this.sharedLists[index]).catch(error => {

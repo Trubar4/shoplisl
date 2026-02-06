@@ -256,6 +256,15 @@ export class FirebaseArticleLoaderService {
   }
 
   /**
+   * Clear loaded status for a specific article ID
+   * Used when we need to reload an article (e.g., stale cache detected)
+   */
+  clearLoadedStatus(articleId: string): void {
+    this.loadedSharedArticleIds.delete(articleId);
+    this.failedArticleIds.delete(articleId);
+  }
+
+  /**
    * Clear caches (call on logout/user switch)
    */
   clearCaches(): void {
