@@ -274,8 +274,9 @@ export class FirebaseDataService {
         this.setupSingleSharedListListener(list);
       }
 
-      // LAZY ARTICLE LOADING: Load articles ONLY for this specific list
-      this.loadArticlesForList(list);
+      // NOTE: Articles are loaded by the listener callbacks when they fire with fresh data
+      // Do NOT load articles here with stale list from cache - it causes wrong articles to be loaded!
+      // See setupSingleOwnedListListener and setupSingleSharedListListener for article loading logic
 
       this.logger.info('data', `✅ Lazy listener active for ${isOwnedList ? 'owned' : 'shared'} list: ${list.name}`);
     };
