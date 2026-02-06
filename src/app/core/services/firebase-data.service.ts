@@ -214,45 +214,24 @@ export class FirebaseDataService {
       return;
     }
 
-    // QUOTA OPTIMIZATION: Clean up collection listeners after first lazy listener setup
-    // Collection listeners were only needed for initial data load
-    // Now that we have lazy listeners, we can stop the collection listeners to save quota
+    // QUOTA OPTIMIZATION: Clean up expensive collection listeners, but KEEP the lists
+    // collection listener and share-invites listener alive.
+    // Lists listener is needed so the owner sees updates to ALL lists (not just the open one).
+    // Share-invites listener is needed to detect new shared lists from other users.
+    // Lazy listeners only cover ONE list at a time.
     if (!this.collectionListenersCleanedUp) {
-      this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners');
-      this.logger.info('data', `📍 articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}, sharedListsUnsubscribe exists: ${!!this.sharedListsUnsubscribe}`);
-
-      // Clean up Articles collection listener
+      // Clean up Articles collection listener (if it exists)
       if (this.articlesUnsubscribe) {
         this.articlesUnsubscribe();
         this.articlesUnsubscribe = undefined;
-        this.logger.info('data', '✅ Articles collection listener unsubscribed (saves ~450 reads per change!)');
-      } else {
-        this.logger.warn('data', '⚠️ Articles collection listener was already undefined - may have been cleaned up elsewhere');
+        this.logger.info('data', '✅ Articles collection listener unsubscribed');
       }
 
-      // Clean up Lists collection listener
-      if (this.listsUnsubscribe) {
-        this.listsUnsubscribe();
-        this.listsUnsubscribe = undefined;
-        this.logger.info('data', '✅ Lists collection listener unsubscribed (saves ~13 reads per change!)');
-      } else {
-        this.logger.warn('data', '⚠️ Lists collection listener was already undefined - may have been cleaned up elsewhere');
-      }
-
-      // CRITICAL FIX: Clean up Share-Invites listener
-      // This listener was causing 200-400 reads per session by continuously firing
-      if (this.sharedListsUnsubscribe) {
-        this.sharedListsUnsubscribe();
-        this.sharedListsUnsubscribe = undefined;
-        this.logger.info('data', '✅ Share-invites listener unsubscribed (saves 200-400 reads per session!)');
-      } else {
-        this.logger.warn('data', '⚠️ Share-invites listener was already undefined - may have been cleaned up elsewhere');
-      }
+      // KEEP Lists collection listener alive - needed for all-list updates
+      // KEEP Share-invites listener alive - needed for new shared list detection
+      this.logger.info('data', '📡 Lists + Share-invites listeners kept alive (lazy listener only covers active list)');
 
       this.collectionListenersCleanedUp = true;
-      this.logger.info('data', '✅ All collection listeners cleanup complete - quota usage should drop by ~80%!');
-    } else {
-      this.logger.info('data', '⏭️  Skipping cleanup - collection listeners already cleaned up (flag is true)');
     }
 
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load

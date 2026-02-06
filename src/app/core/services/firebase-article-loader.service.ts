@@ -119,6 +119,12 @@ export class FirebaseArticleLoaderService {
                 if (!alreadyInOwned && !alreadyInResults) {
                   allArticles.push(article);
                   foundArticleIds.add(doc.id);
+
+                  // If it's owned by current user, also add to ownedArticles
+                  // This ensures mergeArticles() finds them in both arrays
+                  if (article.ownerId === currentUserId) {
+                    ownedArticles.push(article);
+                  }
                 }
               }
             });
