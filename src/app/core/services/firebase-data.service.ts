@@ -493,6 +493,11 @@ export class FirebaseDataService {
       const listsCache = this.cacheService.getCachedLists();
       if (listsCache.data) {
         this.logger.info('cache', `Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
+        // DIAG: Log shared lists from cache with checked counts
+        listsCache.data.filter((l: any) => l.sharedWith?.length > 0).forEach((l: any) => {
+          const checked = Object.values(l.itemStates || {}).filter((s: any) => s.isChecked).length;
+          this.logger.warn('data', `DIAG:CACHE "${l.name}": ${(l.articleIds?.length || 0) - checked}/${l.articleIds?.length || 0} (${checked} checked)`);
+        });
         this.listsSubject.next(listsCache.data);
       } else {
         this.logger.warn('cache', 'No lists in cache');
@@ -563,10 +568,15 @@ export class FirebaseDataService {
 
             // NOTE: No merge logic here - individual document listeners handle content updates
             // This collection listener is primarily for initial load
-            // BUG 1 FIX: Populate articleIds from itemStates if empty
-            // Firebase may return empty articleIds for shared lists, but itemStates is populated
             let articleIds = data['articleIds'] || [];
             const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            // DIAG: Log checked count for shared lists (owner side)
+            const sharedWith = data['sharedWith'] || [];
+            if (sharedWith.length > 0) {
+              const checked = Object.values(itemStates).filter((s: any) => s.isChecked).length;
+              this.logger.warn('data', `DIAG:COLLECTION "${data['name']}": ${articleIds.length - checked}/${articleIds.length} (${checked} checked, fromCache: ${snapshot.metadata.fromCache})`);
+            }
 
             if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
               articleIds = Object.keys(itemStates);
@@ -726,10 +736,9 @@ export class FirebaseDataService {
                       articleIds = Object.keys(itemStates);
                     }
 
-                    // DIAGNOSTIC: Log checked count so we can verify correct data
+                    // DIAG: What the participant gets during initial load
                     const checkedCount = Object.values(itemStates).filter((s: any) => s.isChecked).length;
-                    const uncheckedCount = articleIds.length - checkedCount;
-                    this.logger.info('data', `📥 Shared list "${data['name']}": ${uncheckedCount}/${articleIds.length} (${checkedCount} checked, fromCache: ${snapshot.metadata.fromCache})`);
+                    this.logger.warn('data', `DIAG:SHARED-INIT "${data['name']}": ${articleIds.length - checkedCount}/${articleIds.length} (${checkedCount} checked, fromCache: ${snapshot.metadata.fromCache})`);
 
                     sharedLists.push({
                       id: snapshot.id,
@@ -846,12 +855,10 @@ export class FirebaseDataService {
       this.logger.debug('data', `\n✅ executeMergeLists: ${this.ownedLists.length} owned + ${this.sharedLists.length} shared = ${uniqueLists.length} total → publishing to store`);
     }
 
-    // Log articleIds and checked count for each list
-    this.logger.info('data', `📊 MERGE LISTS: Publishing ${uniqueLists.length} lists to listsSubject`);
-    uniqueLists.forEach(list => {
+    // DIAG: Only log shared lists' checked count (reduces noise)
+    uniqueLists.filter(l => l.sharedWith?.length > 0).forEach(list => {
       const checkedCount = Object.values(list.itemStates || {}).filter((s: any) => s.isChecked).length;
-      const unchecked = (list.articleIds?.length || 0) - checkedCount;
-      this.logger.info('data', `📊 LIST "${list.name}": ${unchecked}/${list.articleIds?.length || 0} (${checkedCount} checked${list.ownerId ? ', shared' : ''})`);
+      this.logger.warn('data', `DIAG:PUBLISH "${list.name}": ${(list.articleIds?.length || 0) - checkedCount}/${list.articleIds?.length || 0} (${checkedCount} checked)`);
     });
 
     this.listsSubject.next(uniqueLists);
@@ -929,6 +936,14 @@ export class FirebaseDataService {
             const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
+            // DIAG: Log local vs server vs merged for shared owned lists
+            if ((data['sharedWith'] || []).length > 0) {
+              const localChecked = Object.values(localItemStates).filter((s: any) => s.isChecked).length;
+              const serverChecked = Object.values(serverItemStates).filter((s: any) => s.isChecked).length;
+              const mergedChecked = Object.values(mergedItemStates).filter((s: any) => s.isChecked).length;
+              this.logger.warn('data', `DIAG:OWNED-LAZY "${data['name']}": local=${localArticleIds.length - localChecked}/${localArticleIds.length}(${localChecked}chk) server=${serverArticleIds.length - serverChecked}/${serverArticleIds.length}(${serverChecked}chk) merged=${mergedArticleIds.length - mergedChecked}/${mergedArticleIds.length}(${mergedChecked}chk) fromCache:${snapshot.metadata.fromCache} changed:${mergeChanged} ownWrite:${isOurOwnWrite}`);
+            }
+
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
             // Compare server articleIds with what's currently loaded in articlesSubject
             const previousArticleIds = this.ownedLists[index].articleIds || [];
@@ -953,11 +968,14 @@ export class FirebaseDataService {
 
             // Only write back if merge changed AND it's not our own write
             if (mergeChanged && !isOurOwnWrite) {
-              this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
+              const wbChecked = Object.values(mergedItemStates).filter((s: any) => s.isChecked).length;
+              this.logger.warn('data', `DIAG:WRITEBACK "${data['name']}": writing ${mergedArticleIds.length - wbChecked}/${mergedArticleIds.length} (${wbChecked} checked) to server`);
               this.listenerState.setLastMergeWriteTime(list.id);
               this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
-                this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+                this.logger.error('data', `DIAG:WRITEBACK FAILED "${data['name']}": ${error.message}`);
               });
+            } else if ((data['sharedWith'] || []).length > 0) {
+              this.logger.warn('data', `DIAG:WRITEBACK SKIP "${data['name']}": changed=${mergeChanged} ownWrite=${isOurOwnWrite}`);
             }
 
             // REAL-TIME SYNC FIX: Load missing articles - either new ones or ones not yet loaded
@@ -1070,10 +1088,9 @@ export class FirebaseDataService {
                 this.logger.debug('data', `Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
               }
 
-              // DIAGNOSTIC: Log checked count from server
+              // DIAG: What the participant receives from server
               const checkedCount = Object.values(finalItemStates).filter((s: any) => s.isChecked).length;
-              const uncheckedCount = finalArticleIds.length - checkedCount;
-              this.logger.info('data', `📥 LISTENER shared list "${data['name']}": ${uncheckedCount}/${finalArticleIds.length} (${checkedCount} checked, fromCache: ${snapshot.metadata.fromCache})`);
+              this.logger.warn('data', `DIAG:SHARED-LAZY "${data['name']}": ${finalArticleIds.length - checkedCount}/${finalArticleIds.length} (${checkedCount} checked, fromCache: ${snapshot.metadata.fromCache})`);
             }
 
             this.sharedLists[index] = {
