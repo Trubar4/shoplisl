@@ -583,7 +583,6 @@ export class FirebaseDataService {
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
             }
 
-            const sharedWith = data['sharedWith'] || [];
             const list = {
               id: doc.id,
               name: data['name'],
@@ -856,7 +855,7 @@ export class FirebaseDataService {
     }
 
     // DIAG: Only log shared lists' checked count (reduces noise)
-    uniqueLists.filter(l => l.sharedWith?.length > 0).forEach(list => {
+    uniqueLists.filter(l => (l.sharedWith?.length || 0) > 0).forEach(list => {
       const checkedCount = Object.values(list.itemStates || {}).filter((s: any) => s.isChecked).length;
       this.logger.warn('data', `DIAG:PUBLISH "${list.name}": ${(list.articleIds?.length || 0) - checkedCount}/${list.articleIds?.length || 0} (${checkedCount} checked)`);
     });
