@@ -71,7 +71,7 @@
     "@angular/cli": "^20.0.0",
     "@angular/compiler-cli": "^20.0.0",
     "@angular/localize": "^20.0.0",
-    "@firebase/rules-unit-testing": "^5.0.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@playwright/test": "^1.57.0",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^25.0.8",
