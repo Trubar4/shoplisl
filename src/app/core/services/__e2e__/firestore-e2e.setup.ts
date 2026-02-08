@@ -21,7 +21,7 @@ import { Timestamp } from 'firebase/firestore';
 
 // Emulator config (matches firebase.json)
 export const FIRESTORE_EMULATOR_HOST = '127.0.0.1';
-export const FIRESTORE_EMULATOR_PORT = 8080;
+export const FIRESTORE_EMULATOR_PORT = 8085;
 export const AUTH_EMULATOR_HOST = '127.0.0.1';
 export const AUTH_EMULATOR_PORT = 9099;
 
