@@ -77,6 +77,137 @@ export async function clearFirestoreData(): Promise<void> {
   await testEnv.clearFirestore();
 }
 
+// ============================================================
+// REST API helpers for odd-segment paths
+// ============================================================
+// Firestore SDK doc() requires even-segment paths (collection/doc pairs).
+// Paths like admin/feature-flags/{flagId} have 3 segments and can't be
+// referenced via doc(). We use the emulator REST API directly to test
+// security rules for these paths.
+
+const EMULATOR_BASE = `http://${FIRESTORE_EMULATOR_HOST}:${FIRESTORE_EMULATOR_PORT}`;
+const PROJECT_ID = 'shoplisl-test';
+
+function restDocUrl(docPath: string): string {
+  return `${EMULATOR_BASE}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}`;
+}
+
+function authHeader(userId: string | null): Record<string, string> {
+  if (!userId) return {};
+  return { Authorization: `Bearer ${userId}` };
+}
+
+/**
+ * Write a document via REST API (works for any path depth).
+ * Returns the response status for assertion.
+ */
+export async function restSet(
+  docPath: string,
+  data: Record<string, unknown>,
+  userId: string | null
+): Promise<{ ok: boolean; status: number }> {
+  // Convert data to Firestore REST format
+  const fields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    fields[key] = toFirestoreValue(value);
+  }
+
+  const url = restDocUrl(docPath);
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader(userId),
+    },
+    body: JSON.stringify({ fields }),
+  });
+  return { ok: resp.ok, status: resp.status };
+}
+
+/**
+ * Read a document via REST API (works for any path depth).
+ */
+export async function restGet(
+  docPath: string,
+  userId: string | null
+): Promise<{ ok: boolean; status: number }> {
+  const url = restDocUrl(docPath);
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: authHeader(userId),
+  });
+  return { ok: resp.ok, status: resp.status };
+}
+
+/**
+ * Delete a document via REST API (works for any path depth).
+ */
+export async function restDelete(
+  docPath: string,
+  userId: string | null
+): Promise<{ ok: boolean; status: number }> {
+  const url = restDocUrl(docPath);
+  const resp = await fetch(url, {
+    method: 'DELETE',
+    headers: authHeader(userId),
+  });
+  return { ok: resp.ok, status: resp.status };
+}
+
+/**
+ * Update specific fields via REST API (PATCH with updateMask).
+ */
+export async function restUpdate(
+  docPath: string,
+  data: Record<string, unknown>,
+  userId: string | null
+): Promise<{ ok: boolean; status: number }> {
+  const fields: Record<string, unknown> = {};
+  const fieldPaths: string[] = [];
+  for (const [key, value] of Object.entries(data)) {
+    fields[key] = toFirestoreValue(value);
+    fieldPaths.push(key);
+  }
+
+  const mask = fieldPaths.map((f) => `updateMask.fieldPaths=${f}`).join('&');
+  const url = `${restDocUrl(docPath)}?${mask}`;
+  const resp = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader(userId),
+    },
+    body: JSON.stringify({ fields }),
+  });
+  return { ok: resp.ok, status: resp.status };
+}
+
+/** Convert a JS value to Firestore REST API value format. */
+function toFirestoreValue(value: unknown): unknown {
+  if (value === null || value === undefined) return { nullValue: null };
+  if (typeof value === 'string') return { stringValue: value };
+  if (typeof value === 'number') {
+    return Number.isInteger(value)
+      ? { integerValue: String(value) }
+      : { doubleValue: value };
+  }
+  if (typeof value === 'boolean') return { booleanValue: value };
+  if (value instanceof Timestamp) {
+    return { timestampValue: value.toDate().toISOString() };
+  }
+  if (Array.isArray(value)) {
+    return { arrayValue: { values: value.map(toFirestoreValue) } };
+  }
+  if (typeof value === 'object') {
+    const mapFields: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      mapFields[k] = toFirestoreValue(v);
+    }
+    return { mapValue: { fields: mapFields } };
+  }
+  return { stringValue: String(value) };
+}
+
 /**
  * Clean up the test environment. Call in afterAll().
  */

@@ -20,6 +20,10 @@ import {
   seedList,
   seedArticle,
   seedShareInvite,
+  restSet,
+  restGet,
+  restDelete,
+  restUpdate,
   TEST_USERS,
 } from './firestore-e2e.setup';
 
@@ -610,8 +614,12 @@ describe('Firestore Security Rules', () => {
   // ========================================
   // Analytics Collections
   // ========================================
+  // Note: Paths like analytics/daily-aggregates/{date} have 3 segments.
+  // Firestore SDK doc() requires even segments, so we use REST API
+  // to test these rules directly against the emulator.
 
   describe('Analytics Collections', () => {
+    // analytics/events/items/{eventId} = 4 segments (even) → SDK works
     it('should allow any authenticated user to write analytics events', async () => {
       const db = getAuthContext(TEST_USERS.alice).firestore();
       await assertSucceeds(
@@ -629,7 +637,6 @@ describe('Firestore Security Rules', () => {
     });
 
     it('should allow admin to read analytics events', async () => {
-      // Seed an event first
       const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
       await aliceDb.doc('analytics/events/items/event-1').set({
         type: 'page_view',
@@ -641,209 +648,154 @@ describe('Firestore Security Rules', () => {
       await assertSucceeds(db.doc('analytics/events/items/event-1').get());
     });
 
+    // 3-segment paths → REST API
     it('should deny non-admin from writing daily aggregates', async () => {
-      const db = getAuthContext(TEST_USERS.alice).firestore();
-      await assertFails(
-        db.doc('analytics/daily-aggregates/2025-01-01').set({
-          totalUsers: 10,
-        })
+      const resp = await restSet(
+        'analytics/daily-aggregates/2025-01-01',
+        { totalUsers: 10 },
+        TEST_USERS.alice
       );
+      expect(resp.ok).toBe(false);
     });
 
     it('should allow admin to write daily aggregates', async () => {
-      const db = getAuthContext(TEST_USERS.admin).firestore();
-      await assertSucceeds(
-        db.doc('analytics/daily-aggregates/2025-01-01').set({
-          totalUsers: 10,
-        })
+      const resp = await restSet(
+        'analytics/daily-aggregates/2025-01-01',
+        { totalUsers: 10 },
+        TEST_USERS.admin
       );
+      expect(resp.ok).toBe(true);
     });
 
     it('should allow any authenticated user to write their own metrics', async () => {
-      const db = getAuthContext(TEST_USERS.alice).firestore();
-      await assertSucceeds(
-        db.doc(`analytics/user-metrics/${TEST_USERS.alice}`).set({
-          listsCreated: 5,
-          lastActive: Timestamp.now(),
-        })
+      const resp = await restSet(
+        `analytics/user-metrics/${TEST_USERS.alice}`,
+        { listsCreated: 5 },
+        TEST_USERS.alice
       );
+      expect(resp.ok).toBe(true);
     });
 
     it('should allow any authenticated user to write AI insights', async () => {
-      const db = getAuthContext(TEST_USERS.alice).firestore();
-      await assertSucceeds(
-        db.doc('analytics/ai-insights/2025-01-01').set({
-          insight: 'Users prefer morning shopping',
-        })
+      const resp = await restSet(
+        'analytics/ai-insights/2025-01-01',
+        { insight: 'Users prefer morning shopping' },
+        TEST_USERS.alice
       );
+      expect(resp.ok).toBe(true);
     });
   });
 
   // ========================================
   // Admin Collections
   // ========================================
+  // All admin paths have 3 segments (admin/feature-flags/{flagId}, etc.)
+  // which the Firestore SDK rejects. Using REST API for all admin tests.
 
   describe('Admin Collections', () => {
     describe('Feature Flags (admin/feature-flags/{flagId})', () => {
       it('should allow any authenticated user to read feature flags', async () => {
-        // Seed a flag first
-        const adminDb = getAuthContext(TEST_USERS.admin).firestore();
-        await adminDb.doc('admin/feature-flags/dark-mode').set({
-          enabled: true,
-          name: 'Dark Mode',
-        });
-
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertSucceeds(db.doc('admin/feature-flags/dark-mode').get());
+        // Seed via admin REST
+        await restSet('admin/feature-flags/dark-mode', { enabled: true, name: 'Dark Mode' }, TEST_USERS.admin);
+        // Read as regular user
+        const resp = await restGet('admin/feature-flags/dark-mode', TEST_USERS.alice);
+        expect(resp.ok).toBe(true);
       });
 
       it('should deny non-admin from writing feature flags', async () => {
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertFails(
-          db.doc('admin/feature-flags/dark-mode').set({
-            enabled: true,
-            name: 'Dark Mode',
-          })
+        const resp = await restSet(
+          'admin/feature-flags/dark-mode',
+          { enabled: true, name: 'Dark Mode' },
+          TEST_USERS.alice
         );
+        expect(resp.ok).toBe(false);
       });
 
       it('should allow admin to write feature flags', async () => {
-        const db = getAuthContext(TEST_USERS.admin).firestore();
-        await assertSucceeds(
-          db.doc('admin/feature-flags/dark-mode').set({
-            enabled: true,
-            name: 'Dark Mode',
-          })
+        const resp = await restSet(
+          'admin/feature-flags/dark-mode',
+          { enabled: true, name: 'Dark Mode' },
+          TEST_USERS.admin
         );
+        expect(resp.ok).toBe(true);
       });
     });
 
     describe('User Feedback (admin/user-feedback/{feedbackId})', () => {
       it('should allow authenticated user to create feedback with their userId', async () => {
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertSucceeds(
-          db.doc('admin/user-feedback/feedback-1').set({
-            userId: TEST_USERS.alice,
-            message: 'Great app!',
-            createdAt: Timestamp.now(),
-          })
+        const resp = await restSet(
+          'admin/user-feedback/feedback-1',
+          { userId: TEST_USERS.alice, message: 'Great app!' },
+          TEST_USERS.alice
         );
+        expect(resp.ok).toBe(true);
       });
 
       it('should deny creating feedback with wrong userId', async () => {
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertFails(
-          db.doc('admin/user-feedback/feedback-1').set({
-            userId: TEST_USERS.bob, // impersonation
-            message: 'Great app!',
-            createdAt: Timestamp.now(),
-          })
+        const resp = await restSet(
+          'admin/user-feedback/feedback-1',
+          { userId: TEST_USERS.bob, message: 'Impersonated!' },
+          TEST_USERS.alice
         );
+        expect(resp.ok).toBe(false);
       });
 
       it('should allow user to read their own feedback', async () => {
-        // Seed feedback
-        const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
-        await aliceDb.doc('admin/user-feedback/feedback-1').set({
-          userId: TEST_USERS.alice,
-          message: 'Great app!',
-          createdAt: Timestamp.now(),
-        });
-
-        await assertSucceeds(
-          aliceDb.doc('admin/user-feedback/feedback-1').get()
-        );
+        await restSet('admin/user-feedback/feedback-1', { userId: TEST_USERS.alice, message: 'Great!' }, TEST_USERS.alice);
+        const resp = await restGet('admin/user-feedback/feedback-1', TEST_USERS.alice);
+        expect(resp.ok).toBe(true);
       });
 
       it('should deny user from reading another users feedback', async () => {
-        // Seed feedback for alice
-        const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
-        await aliceDb.doc('admin/user-feedback/feedback-1').set({
-          userId: TEST_USERS.alice,
-          message: 'Great app!',
-          createdAt: Timestamp.now(),
-        });
-
-        const bobDb = getAuthContext(TEST_USERS.bob).firestore();
-        await assertFails(
-          bobDb.doc('admin/user-feedback/feedback-1').get()
-        );
+        await restSet('admin/user-feedback/feedback-1', { userId: TEST_USERS.alice, message: 'Great!' }, TEST_USERS.alice);
+        const resp = await restGet('admin/user-feedback/feedback-1', TEST_USERS.bob);
+        expect(resp.ok).toBe(false);
       });
 
       it('should allow admin to update feedback status', async () => {
-        // Seed feedback
-        const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
-        await aliceDb.doc('admin/user-feedback/feedback-1').set({
-          userId: TEST_USERS.alice,
-          message: 'Great app!',
-          createdAt: Timestamp.now(),
-        });
-
-        const adminDb = getAuthContext(TEST_USERS.admin).firestore();
-        await assertSucceeds(
-          adminDb.doc('admin/user-feedback/feedback-1').update({
-            status: 'reviewed',
-          })
-        );
+        await restSet('admin/user-feedback/feedback-1', { userId: TEST_USERS.alice, message: 'Great!' }, TEST_USERS.alice);
+        const resp = await restUpdate('admin/user-feedback/feedback-1', { status: 'reviewed' }, TEST_USERS.admin);
+        expect(resp.ok).toBe(true);
       });
 
       it('should deny non-admin from updating feedback', async () => {
-        // Seed feedback
-        const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
-        await aliceDb.doc('admin/user-feedback/feedback-1').set({
-          userId: TEST_USERS.alice,
-          message: 'Great app!',
-          createdAt: Timestamp.now(),
-        });
-
-        await assertFails(
-          aliceDb.doc('admin/user-feedback/feedback-1').update({
-            status: 'reviewed',
-          })
-        );
+        await restSet('admin/user-feedback/feedback-1', { userId: TEST_USERS.alice, message: 'Great!' }, TEST_USERS.alice);
+        const resp = await restUpdate('admin/user-feedback/feedback-1', { status: 'reviewed' }, TEST_USERS.alice);
+        expect(resp.ok).toBe(false);
       });
 
       it('should allow admin to delete feedback', async () => {
-        // Seed feedback
-        const aliceDb = getAuthContext(TEST_USERS.alice).firestore();
-        await aliceDb.doc('admin/user-feedback/feedback-1').set({
-          userId: TEST_USERS.alice,
-          message: 'Great app!',
-          createdAt: Timestamp.now(),
-        });
-
-        const adminDb = getAuthContext(TEST_USERS.admin).firestore();
-        await assertSucceeds(
-          adminDb.doc('admin/user-feedback/feedback-1').delete()
-        );
+        await restSet('admin/user-feedback/feedback-1', { userId: TEST_USERS.alice, message: 'Great!' }, TEST_USERS.alice);
+        const resp = await restDelete('admin/user-feedback/feedback-1', TEST_USERS.admin);
+        expect(resp.ok).toBe(true);
       });
     });
 
     describe('System Alerts (admin/system-alerts/{alertId})', () => {
       it('should deny non-admin from reading system alerts', async () => {
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertFails(db.doc('admin/system-alerts/alert-1').get());
+        const resp = await restGet('admin/system-alerts/alert-1', TEST_USERS.alice);
+        expect(resp.ok).toBe(false);
       });
 
       it('should deny non-admin from writing system alerts', async () => {
-        const db = getAuthContext(TEST_USERS.alice).firestore();
-        await assertFails(
-          db.doc('admin/system-alerts/alert-1').set({
-            title: 'Maintenance',
-            message: 'Server update',
-          })
+        const resp = await restSet(
+          'admin/system-alerts/alert-1',
+          { title: 'Maintenance', message: 'Server update' },
+          TEST_USERS.alice
         );
+        expect(resp.ok).toBe(false);
       });
 
       it('should allow admin to read and write system alerts', async () => {
-        const db = getAuthContext(TEST_USERS.admin).firestore();
-        await assertSucceeds(
-          db.doc('admin/system-alerts/alert-1').set({
-            title: 'Maintenance',
-            message: 'Server update',
-          })
+        const writeResp = await restSet(
+          'admin/system-alerts/alert-1',
+          { title: 'Maintenance', message: 'Server update' },
+          TEST_USERS.admin
         );
-        await assertSucceeds(db.doc('admin/system-alerts/alert-1').get());
+        expect(writeResp.ok).toBe(true);
+
+        const readResp = await restGet('admin/system-alerts/alert-1', TEST_USERS.admin);
+        expect(readResp.ok).toBe(true);
       });
     });
   });
@@ -865,7 +817,12 @@ describe('Firestore Security Rules', () => {
       const db = getUnauthContext().firestore();
       await assertFails(db.doc('users-v2/any-user').get());
       await assertFails(db.doc('share-invites/any-invite').get());
-      await assertFails(db.doc('admin/feature-flags/any-flag').get());
+    });
+
+    it('should deny unauthenticated access to admin paths', async () => {
+      // 3-segment admin paths → REST API with no auth
+      const resp = await restGet('admin/feature-flags/any-flag', null);
+      expect(resp.ok).toBe(false);
     });
   });
 });

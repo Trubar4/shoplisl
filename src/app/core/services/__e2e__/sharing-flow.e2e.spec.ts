@@ -158,8 +158,9 @@ describe('Sharing Flow E2E', () => {
         bobDb.doc(`users-v2/${TEST_USERS.alice}/lists/shared-list`).get()
       );
 
-      // Step 11: Alice creates an unshare notification for Bob
-      await assertSucceeds(
+      // Step 11: Alice tries to create an unshare notification for Bob
+      // This should FAIL - rules say only userId == request.auth.uid can write
+      await assertFails(
         aliceDb
           .doc(`users-v2/${TEST_USERS.bob}/unshare-notifications/notif-party`)
           .set({
@@ -174,10 +175,21 @@ describe('Sharing Flow E2E', () => {
           })
       );
 
-      // Wait - Alice shouldn't be able to write to Bob's notifications path!
-      // This verifies the rules allow only the owner to write their own notifications.
-      // Let's check: the rule says userId == request.auth.uid for write.
-      // Alice writing to Bob's path should fail.
+      // Step 12: Bob creates his own unshare notification (this is how the app should work)
+      await assertSucceeds(
+        bobDb
+          .doc(`users-v2/${TEST_USERS.bob}/unshare-notifications/notif-party`)
+          .set({
+            id: 'notif-party',
+            listId: 'shared-list',
+            listName: 'Party Shopping',
+            ownerUserId: TEST_USERS.alice,
+            ownerEmail: 'alice@test.com',
+            removedUserId: TEST_USERS.bob,
+            createdAt: Timestamp.now(),
+            seen: false,
+          })
+      );
     });
   });
 
