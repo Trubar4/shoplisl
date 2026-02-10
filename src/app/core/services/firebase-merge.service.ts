@@ -100,15 +100,29 @@ export class FirebaseMergeService {
     serverIds: string[],
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
-    const itemStatesCount = Object.keys(mergedItemStates).length;
-    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
-
-    // Detect migration/partial state
-    // If articleIds significantly outnumber itemStates, we're in migration or partial state
-    const isMigrationState = maxArticleIdsCount > itemStatesCount;
+    // Detect migration/partial state.
+    //
+    // Migration mode is for PRE-MIGRATION Firestore documents that have articleIds but
+    // lack itemStates. These are legacy documents before itemStates was introduced.
+    //
+    // Trigger migration mode when:
+    //   A) No itemStates exist at all (pure pre-migration document)
+    //   B) Some article IDs appear in BOTH local AND server but have no itemState yet
+    //      (partial migration — user hasn't interacted with all articles yet)
+    //
+    // Do NOT trigger based on stale local cache size. The old condition
+    // (maxLocalOrServer > itemStates) incorrectly entered migration mode when:
+    //   - Local stale cache had MORE IDs than current server state
+    //   - A collaborator deleted articles (local still had the old IDs)
+    // Both caused deleted/stale IDs to be permanently re-added via union.
+    const noStatesAtAll = Object.keys(mergedItemStates).length === 0;
+    const localIdsSet = new Set(localIds);
+    const sharedIdsLackingStates = serverIds.filter(id => localIdsSet.has(id) && !mergedItemStates[id]);
+    const isMigrationState = noStatesAtAll || sharedIdsLackingStates.length > 0;
 
     if (isMigrationState) {
-      // Migration mode: Preserve all articleIds via union
+      // Migration mode: Preserve all articleIds via union.
+      // Only triggered for genuine pre-migration data, never for stale local cache.
       const serverSet = new Set(serverIds);
       const merged = [...serverIds]; // Start with server order
 
@@ -119,7 +133,9 @@ export class FirebaseMergeService {
         }
       }
 
-      this.logger.warn('data', `⚠️ Migration state: Preserving ${merged.length} articleIds (${itemStatesCount} have states, ${merged.length - itemStatesCount} pending)`);
+      const reason = noStatesAtAll ? 'no itemStates' : `${sharedIdsLackingStates.length} shared IDs without states`;
+      const itemStatesCount = Object.keys(mergedItemStates).length;
+      this.logger.warn('data', `⚠️ Migration state (${reason}): Preserving ${merged.length} articleIds (${itemStatesCount} have states)`);
       return merged;
     }
 
