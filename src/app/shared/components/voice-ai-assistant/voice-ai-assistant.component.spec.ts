@@ -44,6 +44,9 @@ describe('VoiceAIAssistantComponent', () => {
   let voiceOutputServiceMock: any;
   let chatUIServiceMock: any;
   let disambiguationUIServiceMock: any;
+  // Phase 2 Refactoring: Extracted service mocks
+  let contextServiceMock: any;
+  let resultHandlerMock: any;
 
   // Mock window objects
   let mockSpeechRecognition: any;
@@ -223,6 +226,39 @@ describe('VoiceAIAssistantComponent', () => {
       trackByOptionId: vi.fn((index, option) => option.id || index.toString())
     };
 
+    // Phase 2 Refactoring: Mocks for extracted services
+    contextServiceMock = {
+      syncContextBidirectional: vi.fn(),
+      getCurrentActiveContext: vi.fn(() => ({})),
+      isInActiveConversation: vi.fn(() => false),
+      getCurrentTargetList: vi.fn(() => null),
+      getConversationStatus: vi.fn(() => 'Keine aktive Unterhaltung'),
+      canUseContinuation: vi.fn(() => false),
+      setContext: vi.fn(),
+      clearAllContexts: vi.fn(),
+      invalidateCache: vi.fn(),
+      toggleVerboseLogging: vi.fn(),
+      checkForContinuationKeywords: vi.fn(() => false),
+      extractContinuationItem: vi.fn((input) => input),
+      createRecipeContext: vi.fn(() => ({})),
+      createListCreatedContext: vi.fn(() => ({})),
+      createArticleAddedContext: vi.fn(() => ({}))
+    };
+
+    resultHandlerMock = {
+      processResult: vi.fn((result) => result),
+      needsDisambiguation: vi.fn(() => false),
+      prepareDisambiguationData: vi.fn(() => null),
+      preserveContextAfterDisambiguation: vi.fn((result) => result),
+      getActionButtons: vi.fn(() => []),
+      isRecipeInput: vi.fn(() => false),
+      isSystemCommand: vi.fn(() => false),
+      isListCreationCommand: vi.fn(() => false),
+      isExplicitAddCommand: vi.fn(() => false),
+      isEndConversationCommand: vi.fn(() => false),
+      prepareRecipeContextPreservation: vi.fn((result) => result)
+    };
+
     // Create component instance directly (no TestBed)
     component = new VoiceAIAssistantComponent(
       aiServiceMock as AIService,
@@ -236,7 +272,9 @@ describe('VoiceAIAssistantComponent', () => {
       voiceInputServiceMock as any,
       voiceOutputServiceMock as any,
       chatUIServiceMock as any,
-      disambiguationUIServiceMock as any
+      disambiguationUIServiceMock as any,
+      contextServiceMock as any,
+      resultHandlerMock as any
     );
   });
 
@@ -308,154 +346,62 @@ describe('VoiceAIAssistantComponent', () => {
   // CONTEXT SYNCHRONIZATION TESTS
   // =========================================
 
+  // Phase 2 Refactoring: Context synchronization tests now verify delegation to contextService
   describe('Context Synchronization', () => {
     beforeEach(() => {
       component.ngOnInit();
     });
 
-    it('should sync context from chat to AI when chat has active context', () => {
-      const chatContext: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Test List',
-          prompt: 'Add more?'
-        },
-        lastAction: {
-          type: 'list_created',
-          listId: 'list1',
-          listName: 'Test List',
-          articleName: '',
-          timestamp: new Date()
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(chatContext);
-      aiServiceMock.getConversationContext.mockReturnValue({});
-
+    it('should delegate sync to contextService', () => {
       component['syncContextBidirectional']();
-
-      expect(aiServiceMock.setConversationContext).toHaveBeenCalledWith(chatContext);
+      expect(contextServiceMock.syncContextBidirectional).toHaveBeenCalled();
     });
 
-    it('should sync context from AI to chat when AI has active context', () => {
-      const aiContext: ConversationContext = {
+    it('should delegate getCurrentActiveContext to contextService', () => {
+      const mockContext: ConversationContext = {
         waitingForArticles: {
           listId: 'list1',
           listName: 'Test List',
           prompt: 'Add more?'
         }
       };
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(mockContext);
 
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
-      aiServiceMock.getConversationContext.mockReturnValue(aiContext);
+      const result = component['getCurrentActiveContext']();
 
-      component['syncContextBidirectional']();
-
-      expect(chatPersistenceMock.setConversationContext).toHaveBeenCalledWith(aiContext);
+      expect(contextServiceMock.getCurrentActiveContext).toHaveBeenCalled();
+      expect(result).toEqual(mockContext);
     });
 
-    it('should prefer more recent context based on timestamp', () => {
-      const olderDate = new Date('2024-01-01');
-      const newerDate = new Date('2024-01-02');
-
-      const chatContext: ConversationContext = {
-        lastAction: {
-          type: 'article_added',
-          listId: 'list1',
-          listName: 'Test List',
-          articleName: 'Milk',
-          timestamp: newerDate
-        }
-      };
-
-      const aiContext: ConversationContext = {
-        lastAction: {
-          type: 'article_added',
-          listId: 'list1',
-          listName: 'Test List',
-          articleName: 'Bread',
-          timestamp: olderDate
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(chatContext);
-      aiServiceMock.getConversationContext.mockReturnValue(aiContext);
-
-      component['syncContextBidirectional']();
-
-      // Should sync newer chat context to AI
-      expect(aiServiceMock.setConversationContext).toHaveBeenCalledWith(chatContext);
+    it('should delegate invalidateCache to contextService', () => {
+      component['invalidateConversationCache']();
+      expect(contextServiceMock.invalidateCache).toHaveBeenCalled();
     });
 
-    it('should invalidate cache after sync', () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({
-        waitingForArticles: { listId: 'list1', listName: 'Test', prompt: 'test' }
-      });
-      aiServiceMock.getConversationContext.mockReturnValue({});
-
-      component['syncContextBidirectional']();
-
-      expect(component['_lastContextSync']).toBe(0);
+    it('should call syncContextBidirectional on init', () => {
+      contextServiceMock.syncContextBidirectional.mockClear();
+      component.ngOnInit();
+      expect(contextServiceMock.syncContextBidirectional).toHaveBeenCalled();
     });
 
-    it('should cache active context for performance', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Test List',
-          prompt: 'test'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
-      aiServiceMock.getConversationContext.mockReturnValue({});
-
-      // Clear any calls from initialization
-      chatPersistenceMock.getConversationContext.mockClear();
-
-      // First call - should sync
-      const result1 = component['getCurrentActiveContext']();
-      const callsAfterFirst = chatPersistenceMock.getConversationContext.mock.calls.length;
-
-      // Second call - should use cache (within cache duration)
-      const result2 = component['getCurrentActiveContext']();
-      const callsAfterSecond = chatPersistenceMock.getConversationContext.mock.calls.length;
-
-      expect(result1).toEqual(context);
-      expect(result2).toEqual(context);
-
-      // Second call should NOT trigger new calls due to caching
-      expect(callsAfterSecond).toBe(callsAfterFirst);
-    });
-
-    it('should expire cache after duration', () => {
-      vi.useFakeTimers();
-
+    // Phase 2 Refactoring: Cache behavior is now internal to contextService
+    // This test verifies that multiple calls still delegate to contextService
+    it('should delegate all context calls to contextService', () => {
       const context: ConversationContext = {
         waitingForArticles: { listId: 'list1', listName: 'Test', prompt: 'test' }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
-      aiServiceMock.getConversationContext.mockReturnValue({});
-
-      // Clear initialization calls
-      chatPersistenceMock.getConversationContext.mockClear();
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
+      contextServiceMock.getCurrentActiveContext.mockClear();
 
       // First call
       component['getCurrentActiveContext']();
-      const callsAfterFirst = chatPersistenceMock.getConversationContext.mock.calls.length;
 
-      // Advance time past cache duration (1000ms)
-      vi.advanceTimersByTime(1500);
-
-      // Second call after cache expiration
+      // Second call
       component['getCurrentActiveContext']();
-      const callsAfterSecond = chatPersistenceMock.getConversationContext.mock.calls.length;
 
-      // After cache expiration, should have made new calls
-      expect(callsAfterSecond).toBeGreaterThan(callsAfterFirst);
-
-      vi.useRealTimers();
+      // Both calls should delegate to contextService
+      expect(contextServiceMock.getCurrentActiveContext).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -745,61 +691,45 @@ describe('VoiceAIAssistantComponent', () => {
       component.ngOnInit();
     });
 
+    // Phase 2 Refactoring: These methods now delegate to contextService
     it('should detect active conversation', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Test List',
-          prompt: 'Add more?'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to indicate active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(true);
 
       const isActive = component.isInActiveConversation();
 
       expect(isActive).toBe(true);
+      expect(contextServiceMock.isInActiveConversation).toHaveBeenCalled();
     });
 
     it('should return false when no active conversation', () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
+      contextServiceMock.isInActiveConversation.mockReturnValue(false);
 
       const isActive = component.isInActiveConversation();
 
       expect(isActive).toBe(false);
     });
 
-    it('should cache conversation status for performance', () => {
-      vi.useFakeTimers();
-
-      const context: ConversationContext = {
-        waitingForArticles: { listId: 'list1', listName: 'Test', prompt: 'test' }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+    // Phase 2 Refactoring: Caching is now internal to contextService
+    it('should delegate conversation status check to contextService', () => {
+      contextServiceMock.isInActiveConversation.mockClear();
 
       // First call
       component.isInActiveConversation();
 
-      // Second call (should use cache)
-      chatPersistenceMock.getConversationContext.mockClear();
+      // Second call
       component.isInActiveConversation();
 
-      expect(chatPersistenceMock.getConversationContext).not.toHaveBeenCalled();
-
-      vi.useRealTimers();
+      // Both calls delegate to contextService
+      expect(contextServiceMock.isInActiveConversation).toHaveBeenCalledTimes(2);
     });
 
     it('should get current target list from context', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Test List',
-          prompt: 'test'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return target list
+      contextServiceMock.getCurrentTargetList.mockReturnValue({
+        listId: 'list1',
+        listName: 'Test List'
+      });
 
       const target = component.getCurrentTargetList();
 
@@ -807,10 +737,11 @@ describe('VoiceAIAssistantComponent', () => {
         listId: 'list1',
         listName: 'Test List'
       });
+      expect(contextServiceMock.getCurrentTargetList).toHaveBeenCalled();
     });
 
     it('should return null when no target list', () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
+      contextServiceMock.getCurrentTargetList.mockReturnValue(null);
 
       const target = component.getCurrentTargetList();
 
@@ -818,23 +749,17 @@ describe('VoiceAIAssistantComponent', () => {
     });
 
     it('should get conversation status message', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Einkauf',
-          prompt: 'test'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return status with list name
+      contextServiceMock.getConversationStatus.mockReturnValue('Sie können direkt weitere Artikel zu "Einkauf" hinzufügen');
 
       const status = component.getConversationStatus();
 
       expect(status).toContain('Einkauf');
+      expect(contextServiceMock.getConversationStatus).toHaveBeenCalled();
     });
 
     it('should show "no active conversation" when context is empty', () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
+      contextServiceMock.getConversationStatus.mockReturnValue('Keine aktive Unterhaltung');
 
       const status = component.getConversationStatus();
 
@@ -844,8 +769,8 @@ describe('VoiceAIAssistantComponent', () => {
     it('should finish adding articles and clear context', () => {
       component.finishAddingArticles();
 
-      expect(chatPersistenceMock.clearConversationContext).toHaveBeenCalled();
-      expect(aiServiceMock.clearConversationContext).toHaveBeenCalled();
+      // Phase 2 Refactoring: Now uses contextService
+      expect(contextServiceMock.clearAllContexts).toHaveBeenCalled();
       expect(chatPersistenceMock.addMessage).toHaveBeenCalledWith(
         expect.stringContaining('Fertig'),
         'assistant'
@@ -855,8 +780,8 @@ describe('VoiceAIAssistantComponent', () => {
     it('should clear all contexts', () => {
       component['clearAllContexts']();
 
-      expect(chatPersistenceMock.clearConversationContext).toHaveBeenCalled();
-      expect(aiServiceMock.clearConversationContext).toHaveBeenCalled();
+      // Phase 2 Refactoring: Now uses contextService
+      expect(contextServiceMock.clearAllContexts).toHaveBeenCalled();
     });
   });
 
@@ -869,18 +794,19 @@ describe('VoiceAIAssistantComponent', () => {
       component.ngOnInit();
     });
 
-    it('should detect continuation keywords', () => {
+    // Phase 2 Refactoring: checkForContinuationKeywords now delegates to contextService
+    it('should delegate continuation keyword detection to contextService', () => {
+      contextServiceMock.checkForContinuationKeywords.mockReturnValueOnce(true);
       expect(component['checkForContinuationKeywords']('und Milch')).toBe(true);
-      expect(component['checkForContinuationKeywords']('weiters Brot')).toBe(true);
-      expect(component['checkForContinuationKeywords']('außerdem Käse')).toBe(true);
-      expect(component['checkForContinuationKeywords']('noch Butter')).toBe(true);
+      expect(contextServiceMock.checkForContinuationKeywords).toHaveBeenCalledWith('und Milch');
     });
 
-    it('should not detect regular messages as continuation', () => {
+    it('should return false when contextService says no continuation', () => {
+      contextServiceMock.checkForContinuationKeywords.mockReturnValueOnce(false);
       expect(component['checkForContinuationKeywords']('Füge Milch hinzu')).toBe(false);
-      expect(component['checkForContinuationKeywords']('Erstelle Liste')).toBe(false);
     });
 
+    // Phase 2 Refactoring: handleContinuationKeywords uses getCurrentActiveContext which delegates to contextService
     it('should handle continuation with recent action', async () => {
       const context: ConversationContext = {
         lastAction: {
@@ -892,8 +818,8 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
-      aiServiceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService mock to return the context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
 
       aiServiceMock.executeCommand.mockResolvedValue({
         success: true,
@@ -907,8 +833,8 @@ describe('VoiceAIAssistantComponent', () => {
     });
 
     it('should fail continuation without recent action', async () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
-      aiServiceMock.getConversationContext.mockReturnValue({});
+      // Set up contextService to return empty context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue({});
 
       const result = await component['handleContinuationKeywords']('und Brot');
 
@@ -930,7 +856,8 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return context with expired action
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
 
       const result = await component['handleContinuationKeywords']('und Brot');
 
@@ -948,7 +875,8 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return the context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
 
       const result = await component['handleContinuationKeywords']('und');
 
@@ -977,6 +905,7 @@ describe('VoiceAIAssistantComponent', () => {
       expect(component['isRecipeInput']('füge milch hinzu', 'Füge Milch hinzu')).toBe(false);
     });
 
+    // Phase 2 Refactoring: processRecipeWithContextPreservation uses getCurrentActiveContext which delegates to contextService
     it('should preserve context during recipe processing', async () => {
       const context: ConversationContext = {
         waitingForArticles: {
@@ -986,7 +915,8 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return the context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
 
       aiServiceMock.executeCommand.mockResolvedValue({
         success: true,
@@ -1007,7 +937,8 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to return the context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
 
       aiServiceMock.executeCommand.mockResolvedValue({
         success: true,
@@ -1021,7 +952,8 @@ describe('VoiceAIAssistantComponent', () => {
     });
 
     it('should handle recipe without active context', async () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
+      // Set up contextService to return empty context
+      contextServiceMock.getCurrentActiveContext.mockReturnValue({});
 
       aiServiceMock.executeCommand.mockResolvedValue({
         success: true,
@@ -1514,16 +1446,14 @@ describe('VoiceAIAssistantComponent', () => {
       component.ngOnInit();
     });
 
+    // Phase 2 Refactoring: getInputPlaceholder uses isInActiveConversation and getCurrentTargetList which delegate to contextService
     it('should get placeholder for active conversation', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Einkauf',
-          prompt: 'test'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to indicate active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(true);
+      contextServiceMock.getCurrentTargetList.mockReturnValue({
+        listId: 'list1',
+        listName: 'Einkauf'
+      });
 
       const placeholder = component.getInputPlaceholder();
 
@@ -1531,7 +1461,8 @@ describe('VoiceAIAssistantComponent', () => {
     });
 
     it('should get default placeholder without active conversation', () => {
-      chatPersistenceMock.getConversationContext.mockReturnValue({});
+      // Set up contextService to indicate no active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(false);
 
       const placeholder = component.getInputPlaceholder();
 
@@ -1546,16 +1477,10 @@ describe('VoiceAIAssistantComponent', () => {
       expect(component.getVoiceTooltip()).toContain('aufnehmen');
     });
 
+    // Phase 2 Refactoring: getSendTooltip uses isInActiveConversation which delegates to contextService
     it('should get send tooltip based on conversation state', () => {
-      const context: ConversationContext = {
-        waitingForArticles: {
-          listId: 'list1',
-          listName: 'Test',
-          prompt: 'test'
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(context);
+      // Set up contextService to indicate active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(true);
 
       const tooltip = component.getSendTooltip();
 
@@ -1573,36 +1498,15 @@ describe('VoiceAIAssistantComponent', () => {
     });
 
     it('should detect if continuation can be used', () => {
-      const recentContext: ConversationContext = {
-        lastAction: {
-          type: 'article_added',
-          listId: 'list1',
-          listName: 'Test',
-          articleName: 'Milk',
-          timestamp: new Date()
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(recentContext);
+      // Phase 2 Refactoring: Now uses contextService
+      contextServiceMock.canUseContinuation.mockReturnValue(true);
 
       expect(component.canUseContinuation()).toBe(true);
     });
 
     it('should detect when continuation cannot be used', () => {
-      const oldDate = new Date();
-      oldDate.setMinutes(oldDate.getMinutes() - 15);
-
-      const oldContext: ConversationContext = {
-        lastAction: {
-          type: 'article_added',
-          listId: 'list1',
-          listName: 'Test',
-          articleName: 'Milk',
-          timestamp: oldDate
-        }
-      };
-
-      chatPersistenceMock.getConversationContext.mockReturnValue(oldContext);
+      // Phase 2 Refactoring: Now uses contextService (default is false)
+      contextServiceMock.canUseContinuation.mockReturnValue(false);
 
       expect(component.canUseContinuation()).toBe(false);
     });
@@ -1830,7 +1734,8 @@ describe('VoiceAIAssistantComponent', () => {
 
       expect(chatPersistenceMock.clearMessages).toHaveBeenCalled();
       expect(chatPersistenceMock.initializeIfEmpty).toHaveBeenCalled();
-      expect(chatPersistenceMock.clearConversationContext).toHaveBeenCalled();
+      // Phase 2 Refactoring: Now uses contextService
+      expect(contextServiceMock.clearAllContexts).toHaveBeenCalled();
       expect(snackBarMock.open).toHaveBeenCalled();
     });
 
@@ -2146,13 +2051,18 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
+      // Phase 2 Refactoring: Set up contextService mock for active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(true);
+      contextServiceMock.getCurrentTargetList.mockReturnValue({ listId: 'list1', listName: 'Test' });
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
       chatPersistenceMock.getConversationContext.mockReturnValue(context);
 
       component.currentMessage = 'nein';
 
       await component.sendMessage();
 
-      expect(chatPersistenceMock.clearConversationContext).toHaveBeenCalled();
+      // Phase 2 Refactoring: Now uses contextService
+      expect(contextServiceMock.clearAllContexts).toHaveBeenCalled();
     });
 
     it('should handle conversation mode with "fertig" keyword', async () => {
@@ -2164,13 +2074,18 @@ describe('VoiceAIAssistantComponent', () => {
         }
       };
 
+      // Phase 2 Refactoring: Set up contextService mock for active conversation
+      contextServiceMock.isInActiveConversation.mockReturnValue(true);
+      contextServiceMock.getCurrentTargetList.mockReturnValue({ listId: 'list1', listName: 'Test' });
+      contextServiceMock.getCurrentActiveContext.mockReturnValue(context);
       chatPersistenceMock.getConversationContext.mockReturnValue(context);
 
       component.currentMessage = 'fertig';
 
       await component.sendMessage();
 
-      expect(chatPersistenceMock.clearConversationContext).toHaveBeenCalled();
+      // Phase 2 Refactoring: Now uses contextService
+      expect(contextServiceMock.clearAllContexts).toHaveBeenCalled();
     });
 
     it('should handle help command', async () => {

@@ -29,6 +29,10 @@ import { AuthService } from './auth.service';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
+// Phase 1 Refactoring: Extracted services
+import { FirebaseMergeService } from './firebase-merge.service';
+import { FirebaseArticleLoaderService } from './firebase-article-loader.service';
+import { FirebaseListenerStateService } from './firebase-listener-state.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = false;
@@ -117,7 +121,11 @@ export class FirebaseDataService {
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    // Phase 1 Refactoring: Extracted services
+    private mergeService: FirebaseMergeService,
+    private articleLoader: FirebaseArticleLoaderService,
+    private listenerState: FirebaseListenerStateService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -206,45 +214,33 @@ export class FirebaseDataService {
       return;
     }
 
-    // QUOTA OPTIMIZATION: Clean up collection listeners after first lazy listener setup
+    // QUOTA OPTIMIZATION: Clean up ALL collection listeners after first lazy listener setup
     // Collection listeners were only needed for initial data load
-    // Now that we have lazy listeners, we can stop the collection listeners to save quota
+    // Keeping them alive causes race conditions: collection listener overwrites merged state
     if (!this.collectionListenersCleanedUp) {
-      this.logger.info('data', '🚀 QUOTA OPTIMIZATION: Cleaning up collection listeners');
-      this.logger.info('data', `📍 articlesUnsubscribe exists: ${!!this.articlesUnsubscribe}, listsUnsubscribe exists: ${!!this.listsUnsubscribe}, sharedListsUnsubscribe exists: ${!!this.sharedListsUnsubscribe}`);
-
       // Clean up Articles collection listener
       if (this.articlesUnsubscribe) {
         this.articlesUnsubscribe();
         this.articlesUnsubscribe = undefined;
-        this.logger.info('data', '✅ Articles collection listener unsubscribed (saves ~450 reads per change!)');
-      } else {
-        this.logger.warn('data', '⚠️ Articles collection listener was already undefined - may have been cleaned up elsewhere');
+        this.logger.info('data', '✅ Articles collection listener unsubscribed');
       }
 
       // Clean up Lists collection listener
       if (this.listsUnsubscribe) {
         this.listsUnsubscribe();
         this.listsUnsubscribe = undefined;
-        this.logger.info('data', '✅ Lists collection listener unsubscribed (saves ~13 reads per change!)');
-      } else {
-        this.logger.warn('data', '⚠️ Lists collection listener was already undefined - may have been cleaned up elsewhere');
+        this.logger.info('data', '✅ Lists collection listener unsubscribed');
       }
 
-      // CRITICAL FIX: Clean up Share-Invites listener
-      // This listener was causing 200-400 reads per session by continuously firing
+      // Clean up Share-Invites listener
       if (this.sharedListsUnsubscribe) {
         this.sharedListsUnsubscribe();
         this.sharedListsUnsubscribe = undefined;
-        this.logger.info('data', '✅ Share-invites listener unsubscribed (saves 200-400 reads per session!)');
-      } else {
-        this.logger.warn('data', '⚠️ Share-invites listener was already undefined - may have been cleaned up elsewhere');
+        this.logger.info('data', '✅ Share-invites listener unsubscribed');
       }
 
       this.collectionListenersCleanedUp = true;
-      this.logger.info('data', '✅ All collection listeners cleanup complete - quota usage should drop by ~80%!');
-    } else {
-      this.logger.info('data', '⏭️  Skipping cleanup - collection listeners already cleaned up (flag is true)');
+      this.logger.info('data', '✅ All collection listeners cleaned up');
     }
 
     // CRITICAL FIX: Subscribe to listsSubject to wait for lists to load
@@ -266,8 +262,9 @@ export class FirebaseDataService {
         this.setupSingleSharedListListener(list);
       }
 
-      // LAZY ARTICLE LOADING: Load articles ONLY for this specific list
-      this.loadArticlesForList(list);
+      // NOTE: Articles are loaded by the listener callbacks when they fire with fresh data
+      // Do NOT load articles here with stale list from cache - it causes wrong articles to be loaded!
+      // See setupSingleOwnedListListener and setupSingleSharedListListener for article loading logic
 
       this.logger.info('data', `✅ Lazy listener active for ${isOwnedList ? 'owned' : 'shared'} list: ${list.name}`);
     };
@@ -330,10 +327,8 @@ export class FirebaseDataService {
       return;
     }
 
-    // Filter out articles we already have loaded
-    const articlesToLoad = articleIds.filter(
-      id => !this.loadedSharedArticleIds.has(id) && !this.failedArticleIds.has(id)
-    );
+    // Filter out articles we already have loaded (using articleLoader service)
+    const articlesToLoad = this.articleLoader.filterUnloadedArticleIds(articleIds);
 
     if (articlesToLoad.length === 0) {
       this.logger.debug('data', `All ${articleIds.length} articles already cached for ${list.name}`);
@@ -364,15 +359,23 @@ export class FirebaseDataService {
     this.logger.info('data', `🔍 Searching for articles in ${ownerIds.length} user collections (owner + ${list.sharedWith?.length || 0} participants)`);
 
     try {
-      const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
+      // Use articleLoader service for batch loading
+      const newArticles = await this.articleLoader.batchLoadArticles(
+        articlesToLoad,
+        ownerIds,
+        currentUserId,
+        this.ownedArticles
+      );
 
-      // Update cache
-      newArticles.forEach(article => {
-        this.loadedSharedArticleIds.add(article.id);
-        if (article.ownerId) {
-          this.articleOwnerCache.set(article.id, article.ownerId);
-        }
-      });
+      // Mark articles as loaded in the cache
+      this.articleLoader.markArticlesAsLoaded(newArticles);
+
+      // Mark failed articles
+      const loadedIds = new Set(newArticles.map(a => a.id));
+      const failedIds = articlesToLoad.filter(id => !loadedIds.has(id));
+      if (failedIds.length > 0) {
+        this.articleLoader.markArticlesAsFailed(failedIds);
+      }
 
       // Merge with existing shared articles
       const existingArticleIds = new Set(this.sharedArticles.map(a => a.id));
@@ -381,6 +384,21 @@ export class FirebaseDataService {
       if (articlesToAdd.length > 0) {
         this.sharedArticles = [...this.sharedArticles, ...articlesToAdd];
         this.logger.info('data', `✅ Loaded ${articlesToAdd.length} new articles for ${list.name}`);
+        this.logger.info('data', `📊 ARTICLE DEBUG: sharedArticles now has ${this.sharedArticles.length} total`);
+        this.logger.info('data', `📊 LOADED IDS: ${articlesToAdd.map(a => a.id).slice(0, 10).join(', ')}${articlesToAdd.length > 10 ? '...' : ''}`);
+        this.logger.info('data', `📊 LIST EXPECTS: ${list.articleIds.slice(0, 10).join(', ')}${list.articleIds.length > 10 ? '...' : ''}`);
+
+        // Check for mismatch
+        const loadedIds = new Set(articlesToAdd.map(a => a.id));
+        const expectedIds = new Set(list.articleIds);
+        const missingFromLoaded = list.articleIds.filter(id => !loadedIds.has(id));
+        const extraInLoaded = articlesToAdd.filter(a => !expectedIds.has(a.id));
+        if (missingFromLoaded.length > 0) {
+          this.logger.warn('data', `⚠️ MISMATCH: ${missingFromLoaded.length} expected IDs not in loaded articles: ${missingFromLoaded.slice(0, 5).join(', ')}`);
+        }
+        if (extraInLoaded.length > 0) {
+          this.logger.warn('data', `⚠️ MISMATCH: ${extraInLoaded.length} loaded articles not in list.articleIds: ${extraInLoaded.map(a => a.id).slice(0, 5).join(', ')}`);
+        }
       }
 
       // CRITICAL FIX: Always call mergeArticles() even if no new articles were loaded
@@ -554,17 +572,16 @@ export class FirebaseDataService {
 
             // NOTE: No merge logic here - individual document listeners handle content updates
             // This collection listener is primarily for initial load
-            // BUG 1 FIX: Populate articleIds from itemStates if empty
-            // Firebase may return empty articleIds for shared lists, but itemStates is populated
             let articleIds = data['articleIds'] || [];
             const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            const sharedWith = data['sharedWith'] || [];
 
             if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
               articleIds = Object.keys(itemStates);
               this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for list ${doc.id} (${articleIds.length} articles)`);
             }
 
-            const sharedWith = data['sharedWith'] || [];
             const list = {
               id: doc.id,
               name: data['name'],
@@ -692,116 +709,78 @@ export class FirebaseDataService {
               const listRef = doc(this.firestore, `users-v2/${ownerId}/lists/${listId}`);
 
               // Use onSnapshot for initial load (fixes permission error)
+              // CRITICAL: Firestore offline persistence returns stale cached data first,
+              // then fresh server data in a second callback. We must wait for the server
+              // data to get correct itemStates. Without this, participants see stale
+              // checked/unchecked counts from a previous session.
+              let processed = false;
+              const processSnapshot = (snapshot: any) => {
+                if (processed) return;
+                processed = true;
+                unsubscribe();
+
+                this.quotaMonitor.trackRead('Shared List Initial Load', 1, { listId, ownerId });
+
+                if (snapshot.exists()) {
+                  const data = snapshot.data();
+                  const sharedWith = data['sharedWith'] || [];
+
+                  if (sharedWith.includes(userId)) {
+                    let articleIds = data['articleIds'] || [];
+                    const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+                    // Populate articleIds from itemStates if empty
+                    if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
+                      articleIds = Object.keys(itemStates);
+                    }
+
+                    sharedLists.push({
+                      id: snapshot.id,
+                      name: data['name'],
+                      color: data['color'],
+                      icon: data['icon'],
+                      shopId: data['shopId'],
+                      articleIds: articleIds,
+                      itemStates: itemStates,
+                      departmentOrder: data['departmentOrder'],
+                      createdAt: data['createdAt']?.toDate() || new Date(),
+                      updatedAt: data['updatedAt']?.toDate() || new Date(),
+                      ownerId: data['ownerId'] || ownerId,
+                      sharedWith: sharedWith
+                    });
+                  } else {
+                    this.logger.warn('data', `List ${listId} no longer shared with user`);
+                  }
+                } else {
+                  this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
+                }
+
+                remainingLists--;
+                if (remainingLists === 0) {
+                  this.sharedLists = sharedLists;
+                  this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
+                  this.mergeLists();
+                }
+              };
+
               const unsubscribe = onSnapshot(
                 listRef,
                 (snapshot) => {
-                  // Unsubscribe immediately after first event (quota optimization)
-                  unsubscribe();
-
-                  // MONITORING: Track shared list initial load
-                  this.quotaMonitor.trackRead('Shared List Initial Load', 1, {
-                    listId: listId,
-                    ownerId: ownerId
-                  });
-
-                  if (DEBUG_FIREBASE_DATA) {
-                    this.logger.debug('data', `\n📥 Loading shared list ${listId} from Firebase...`);
-                    this.logger.debug('data', `   - Query: users-v2/${ownerId}/lists/${listId}`);
-                    this.logger.debug('data', `   - Document exists: ${snapshot.exists()}`);
+                  // Skip stale Firestore cache data - wait for fresh server data
+                  if (snapshot.metadata.fromCache && !processed) {
+                    this.logger.info('data', `⏳ Shared list ${listId} from CACHE - waiting for server...`);
+                    // Fallback: if server doesn't respond within 3s, use cached data
+                    setTimeout(() => processSnapshot(snapshot), 3000);
+                    return;
                   }
-
-                  if (snapshot.exists()) {
-                    const data = snapshot.data();
-
-                    if (DEBUG_FIREBASE_DATA) {
-                      this.logger.debug('data', `\n📥 RAW Firebase data for shared list ${listId}`);
-                      this.logger.debug('data', `   - List name: "${data['name']}"`);
-                      this.logger.debug('data', `   - Raw articleIds from Firebase: [${(data['articleIds'] || []).join(', ')}]`);
-                      this.logger.debug('data', `   - Raw articleIds length: ${(data['articleIds'] || []).length}`);
-                      this.logger.debug('data', `   - Raw itemStates keys: [${Object.keys(data['itemStates'] || {}).join(', ')}]`);
-                      this.logger.debug('data', `   - Raw itemStates length: ${Object.keys(data['itemStates'] || {}).length}`);
-                    }
-
-                    // Verify user is still in sharedWith array
-                    const sharedWith = data['sharedWith'] || [];
-                    if (sharedWith.includes(userId)) {
-                      // BUG 1 FIX: Populate articleIds from itemStates if empty
-                      // Firebase may return empty articleIds for shared lists, but itemStates is populated
-                      let articleIds = data['articleIds'] || [];
-                      const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-
-                      if (DEBUG_FIREBASE_DATA) {
-                        this.logger.debug('data', `   - Raw articleIds from Firebase: [${articleIds.join(', ')}]`);
-                        this.logger.debug('data', `   - ItemStates keys from Firebase: [${Object.keys(itemStates).join(', ')}]`);
-                      }
-
-                      if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
-                        articleIds = Object.keys(itemStates);
-                        this.logger.debug('data', `Bug 1 Fix: Populated articleIds from itemStates for shared list ${snapshot.id} (${articleIds.length} articles)`);
-                        if (DEBUG_FIREBASE_DATA) {
-                          this.logger.debug('data', `🔧 Bug 1 Fix: Populated articleIds from itemStates (${articleIds.length} articles)`);
-                        }
-                      }
-
-                      const list = {
-                        id: snapshot.id,
-                        name: data['name'],
-                        color: data['color'],
-                        icon: data['icon'],
-                        shopId: data['shopId'],
-                        articleIds: articleIds,
-                        itemStates: itemStates,
-                        departmentOrder: data['departmentOrder'],
-                        createdAt: data['createdAt']?.toDate() || new Date(),
-                        updatedAt: data['updatedAt']?.toDate() || new Date(),
-                        ownerId: data['ownerId'] || ownerId,
-                        sharedWith: sharedWith
-                      };
-
-                      if (DEBUG_FIREBASE_DATA) {
-                        this.logger.debug('data', `\n📋 Shared List: "${list.name}"`);
-                        this.logger.debug('data', `   - List ID: ${list.id}`);
-                        this.logger.debug('data', `   - Owner ID: ${list.ownerId}`);
-                        this.logger.debug('data', `   - Shared With: ${list.sharedWith?.length || 0} users`);
-                        this.logger.debug('data', `   - Article IDs (final): [${list.articleIds.join(', ')}]`);
-                        this.logger.debug('data', `   - Total Articles: ${list.articleIds.length}`);
-                        this.logger.debug('data', `   - ItemStates keys (final): [${Object.keys(list.itemStates || {}).join(', ')}]`);
-                      }
-
-                      sharedLists.push(list);
-                      this.logger.debug('data', `Loaded shared list: ${data['name']}`);
-                    } else {
-                      this.logger.warn('data', `List ${listId} no longer shared with user`);
-                      if (DEBUG_FIREBASE_DATA) {
-                        this.logger.debug('data', `⚠️  List ${listId} no longer shared with user`);
-                      }
-                    }
-                  } else {
-                    this.logger.warn('data', `Shared list ${listId} not found (deleted?)`);
-                    if (DEBUG_FIREBASE_DATA) {
-                      this.logger.debug('data', `⚠️  Shared list ${listId} not found (deleted?)`);
-                    }
-                  }
-
-                  // Check if all lists have been processed
-                  remainingLists--;
-                  if (remainingLists === 0) {
-                    // All lists loaded, update store
-                    this.sharedLists = sharedLists;
-                    this.logger.info('data', `Loaded ${sharedLists.length} shared lists successfully`);
-                    if (DEBUG_FIREBASE_DATA) {
-                      this.logger.debug('data', `\n✅ All shared lists loaded successfully: ${sharedLists.length} total`);
-                      this.logger.debug('data', '🔄 Calling mergeLists() to combine owned and shared lists...');
-                    }
-                    this.mergeLists();
-                  }
+                  processSnapshot(snapshot);
                 },
                 (error: any) => {
-                  // Handle error and unsubscribe
-                  unsubscribe();
                   this.logger.error('data', `Failed to load shared list ${listId}:`, error);
-
-                  // Continue even if one list fails
+                  if (!processed) {
+                    processed = true;
+                    unsubscribe();
+                  }
                   remainingLists--;
                   if (remainingLists === 0) {
                     this.sharedLists = sharedLists;
@@ -893,7 +872,8 @@ export class FirebaseDataService {
       new Map(allArticles.map(article => [article.id, article])).values()
     );
 
-    this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
+    this.logger.info('data', `📊 MERGE ARTICLES: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} unique → articlesSubject`);
+    this.logger.info('data', `📊 ARTICLE IDS in subject: ${uniqueArticles.map(a => a.id).slice(0, 10).join(', ')}${uniqueArticles.length > 10 ? '...' : ''}`);
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
@@ -930,25 +910,28 @@ export class FirebaseDataService {
             // Merge itemStates and articleIds
             const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+            const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
 
             const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
             const serverArticleIds = data['articleIds'] || [];
-            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+            const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
             // Prevent infinite loop - check if we just wrote to this list
-            const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-            const timeSinceWrite = Date.now() - lastWriteTime;
-            const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+            const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
             // Check if merge produced different result than server
-            const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-            const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+            const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+            const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
+            // Compare server articleIds with what's currently loaded in articlesSubject
             const previousArticleIds = this.ownedLists[index].articleIds || [];
             const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+
+            // CRITICAL FIX: Also detect articles that are in server but NOT loaded in articlesSubject
+            const loadedArticleIds = new Set(this.articlesSubject.value.map(a => a.id));
+            const missingArticleIds = serverArticleIds.filter((id: string) => !loadedArticleIds.has(id));
 
             this.ownedLists[index] = {
               ...this.ownedLists[index],
@@ -965,18 +948,25 @@ export class FirebaseDataService {
 
             // Only write back if merge changed AND it's not our own write
             if (mergeChanged && !isOurOwnWrite) {
-              this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
-              this.lastMergeWrite.set(list.id, Date.now());
+              this.listenerState.setLastMergeWriteTime(list.id);
               this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
-                this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
+                this.logger.error('data', `Merge writeback failed for ${list.id}:`, error);
               });
             }
 
-            // REAL-TIME SYNC FIX: Load new articles when participants add them
-            // This fixes Issue #1: Owner can't see participant articles in real-time
-            if (newArticleIds.length > 0) {
-              this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in owned list "${data['name']}", loading them now...`);
-              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+            // REAL-TIME SYNC FIX: Load missing articles - either new ones or ones not yet loaded
+            // This fixes both:
+            // - Issue #1: Owner can't see participant articles in real-time
+            // - Issue #2: Stale cache causing wrong articles to be loaded initially
+            const articlesToLoadNow = missingArticleIds.length > 0 ? missingArticleIds : newArticleIds;
+            if (articlesToLoadNow.length > 0) {
+              this.logger.info('data', `🆕 OWNED LIST: ${missingArticleIds.length} missing + ${newArticleIds.length} new = loading ${articlesToLoadNow.length} articles for "${data['name']}"`);
+              this.logger.info('data', `🆕 Missing IDs: ${missingArticleIds.slice(0, 5).join(', ')}${missingArticleIds.length > 5 ? '...' : ''}`);
+
+              // Clear the "already loaded" cache for these IDs so they can be reloaded
+              articlesToLoadNow.forEach((id: string) => {
+                this.articleLoader.clearLoadedStatus(id);
+              });
 
               // Load articles for the updated list (will fetch from all participants)
               this.loadArticlesForList(this.ownedLists[index]).catch(error => {
@@ -996,6 +986,7 @@ export class FirebaseDataService {
       }
     );
 
+    // Register in local maps for proper cleanup and collection listener guard
     this.ownedListListeners.set(list.id, unsubscribe);
     this.ownedListListenersActive = true;
   }
@@ -1039,9 +1030,7 @@ export class FirebaseDataService {
             const newArticleIds = serverArticleIds.filter((id: string) => !previousArticleIds.includes(id));
 
             // Check if this is OUR OWN write (collaborator's recent change)
-            const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-            const timeSinceWrite = Date.now() - lastWriteTime;
-            const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+            const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
             const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
@@ -1056,28 +1045,27 @@ export class FirebaseDataService {
               finalItemStates = currentList?.itemStates || serverItemStates;
               finalArticleIds = currentList?.articleIds || serverArticleIds;
 
-              // BUG FIX: Apply Bug 1 Fix even for optimistic updates
               // Populate articleIds from itemStates if empty
               if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
                 finalArticleIds = Object.keys(finalItemStates);
-                this.logger.debug('data', `Bug 1 Fix (optimistic): Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+                this.logger.debug('data', `Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
               }
 
-              this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our write ${timeSinceWrite}ms ago)`);
+              this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our own write)`);
             } else {
-              // This is OWNER's write or old data - trust server completely
+              // This is OWNER's write or other participant's data - trust server completely
+              // CRITICAL: For shared lists, the server is the source of truth.
+              // Participants should NOT merge their stale local cache with server state.
               finalItemStates = serverItemStates;
               finalArticleIds = serverArticleIds;
 
-              // BUG FIX: Apply Bug 1 Fix to shared list listener
+              // Populate articleIds from itemStates if empty
               // Firebase may return empty articleIds for shared lists, but itemStates is populated
-              // This ensures participants see correct counts even when articleIds is empty on server
               if (finalArticleIds.length === 0 && Object.keys(finalItemStates).length > 0) {
                 finalArticleIds = Object.keys(finalItemStates);
-                this.logger.debug('data', `Bug 1 Fix (server): Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
+                this.logger.debug('data', `Populated articleIds from itemStates for shared list ${data['name']} (${finalArticleIds.length} articles)`);
               }
 
-              this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
             }
 
             this.sharedLists[index] = {
@@ -1094,14 +1082,54 @@ export class FirebaseDataService {
             };
 
             // REAL-TIME SYNC FIX: Load new articles when owner adds them
-            // This fixes Issue #2: Participant can't see owner articles in real-time
             if (newArticleIds.length > 0) {
               this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
-              this.logger.debug('data', `New article IDs: ${newArticleIds.join(', ')}`);
+
+              // Clear the "already loaded" cache for these IDs so they can be reloaded
+              newArticleIds.forEach((id: string) => {
+                this.articleLoader.clearLoadedStatus(id);
+              });
 
               // Load articles for the updated list (will fetch from owner and all participants)
               this.loadArticlesForList(this.sharedLists[index]).catch(error => {
                 this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
+              });
+            }
+
+            this.mergeLists();
+          } else {
+            // CRITICAL FIX: List not found in sharedLists array - add it!
+            // This happens when listener fires before sharedLists is fully populated
+            this.logger.warn('data', `📥 List ${list.id} not found in sharedLists, adding from server data`);
+
+            const serverArticleIds = data['articleIds'] || [];
+            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+
+            // Create new list entry from server data
+            const newList: ShoppingList = {
+              id: list.id,
+              ownerId: list.ownerId,
+              name: data['name'],
+              color: data['color'] || list.color,
+              icon: data['icon'] || list.icon,
+              shopId: data['shopId'] || list.shopId,
+              itemStates: serverItemStates,
+              articleIds: serverArticleIds,
+              departmentOrder: data['departmentOrder'] || [],
+              createdAt: data['createdAt']?.toDate() || list.createdAt || new Date(),
+              updatedAt: data['updatedAt']?.toDate() || new Date(),
+              sharedWith: data['sharedWith'] || []
+            };
+
+            // Add to sharedLists array
+            this.sharedLists.push(newList);
+            this.logger.info('data', `✅ Added shared list "${data['name']}" to sharedLists (now ${this.sharedLists.length} lists)`);
+
+            // Load articles for this new list
+            if (serverArticleIds.length > 0) {
+              this.logger.info('data', `🆕 Loading ${serverArticleIds.length} articles for newly added shared list "${data['name']}"`);
+              this.loadArticlesForList(newList).catch(error => {
+                this.logger.error('data', `Failed to load articles for new shared list ${list.id}:`, error);
               });
             }
 
@@ -1118,6 +1146,7 @@ export class FirebaseDataService {
       }
     );
 
+    // Register in local maps for proper cleanup
     this.sharedListListeners.set(list.id, unsubscribe);
   }
 
@@ -1182,21 +1211,19 @@ export class FirebaseDataService {
               // Use currentList (has optimistic updates) not ownedLists[index] (stale)
               const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
               const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-              const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+              const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
 
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
               const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
-              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+              const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
               // CRITICAL: Prevent infinite loop - check if we just wrote to this list
-              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-              const timeSinceWrite = Date.now() - lastWriteTime;
-              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+              const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
               // Check if merge produced different result than server
-              const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-              const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+              const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
               const mergeChanged = itemStatesChanged || articleIdsChanged;
 
               this.ownedLists[index] = {
@@ -1217,12 +1244,12 @@ export class FirebaseDataService {
               // CRITICAL: Only write back if merge changed AND it's not our own write
               if (mergeChanged && !isOurOwnWrite) {
                 this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
-                this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
+                this.listenerState.setLastMergeWriteTime(list.id);
                 this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                   this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
                 });
               } else if (isOurOwnWrite) {
-                this.logger.debug('data', `⏭️ Skipping write-back (our own write, ${timeSinceWrite}ms ago)`);
+                this.logger.debug('data', `⏭️ Skipping write-back (our own write)`);
               }
 
               this.mergeLists(); // Trigger UI update
@@ -1323,36 +1350,40 @@ export class FirebaseDataService {
             // Update the list in sharedLists array
             const index = this.sharedLists.findIndex(l => l.id === list.id);
             if (index !== -1) {
-              // CRITICAL FIX: Check if this is OUR OWN write (collaborator's recent change)
-              // If yes, preserve optimistic updates; if no, trust server (owner's version)
-              const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
-              const timeSinceWrite = Date.now() - lastWriteTime;
-              const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
+              // Check if this is OUR OWN write (collaborator's recent change)
+              const isOurOwnWrite = this.listenerState.isWithinMergeWriteCooldown(list.id);
 
-              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+              // Get local state from listsSubject (has optimistic updates)
+              const currentLists = this.listsSubject.value;
+              const currentList = currentLists.find(l => l.id === list.id);
+
+              // Get server state
               const serverArticleIds = data['articleIds'] || [];
+              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
 
-              let finalItemStates: { [articleId: string]: any };
-              let finalArticleIds: string[];
+              // Get local state
+              const localItemStates = currentList?.itemStates || this.sharedLists[index].itemStates || {};
+              const localArticleIds = currentList?.articleIds || this.sharedLists[index].articleIds || [];
 
-              if (isOurOwnWrite) {
-                // This is OUR write - preserve local optimistic updates
-                const currentLists = this.listsSubject.value;
-                const currentList = currentLists.find(l => l.id === list.id);
+              // CRITICAL FIX: Use mergeService for proper sync
+              const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
+              const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
-                finalItemStates = currentList?.itemStates || serverItemStates;
-                finalArticleIds = currentList?.articleIds || serverArticleIds;
+              // Check if merge produced different result than server
+              const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+              const mergeChanged = itemStatesChanged || articleIdsChanged;
 
-                this.logger.info('data', `⏭️ Preserving optimistic updates for shared list ${data['name']} (our write ${timeSinceWrite}ms ago)`);
-              } else {
-                // This is OWNER's write or old data - trust server completely
-                finalItemStates = serverItemStates;
-                finalArticleIds = serverArticleIds;
+              this.logger.info('data', `🔀 SHARED LIST MERGE (realtime): ${localArticleIds.length} local + ${serverArticleIds.length} server = ${mergedArticleIds.length} merged`);
 
-                this.logger.debug('data', `📥 Using server state for shared list ${data['name']} (owner's version)`);
+              // Only write back if merge changed AND it's not our own write
+              if (mergeChanged && !isOurOwnWrite) {
+                this.logger.info('data', `🔄 Shared list merge produced different state, writing back for ${data['name']}`);
+                this.listenerState.setLastMergeWriteTime(list.id);
+                this.writeMergedStateToFirestore(list.id, list.ownerId, mergedItemStates, mergedArticleIds).catch(error => {
+                  this.logger.error('data', `Failed to write merged state for shared list ${list.id}:`, error);
+                });
               }
-
-              this.logger.info('data', `📦 Updating sharedLists[${index}] with ${isOurOwnWrite ? 'local' : 'server'} data: ${Object.keys(finalItemStates).length} items, ${finalArticleIds.length} articles`);
 
               this.sharedLists[index] = {
                 ...this.sharedLists[index],
@@ -1360,17 +1391,16 @@ export class FirebaseDataService {
                 color: data['color'],
                 icon: data['icon'],
                 shopId: data['shopId'],
-                itemStates: finalItemStates,
-                articleIds: finalArticleIds,
+                itemStates: mergedItemStates,
+                articleIds: mergedArticleIds,
                 departmentOrder: data['departmentOrder'],
                 updatedAt: data['updatedAt']?.toDate() || new Date(),
                 sharedWith: sharedWith
               };
 
-              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(finalItemStates).length} items, ${finalArticleIds.length} articles)`);
+              this.logger.debug('data', `⚡ Real-time update for shared list: ${data['name']} (${Object.keys(mergedItemStates).length} items, ${mergedArticleIds.length} articles)`);
 
               this.mergeLists(); // Trigger UI update
-              this.logger.info('data', `✅ mergeLists() called, UI should update`);
             } else {
               this.logger.error('data', `❌ List ${list.id} not found in sharedLists array!`);
             }
@@ -1974,178 +2004,8 @@ export class FirebaseDataService {
     return chunks;
   }
 
-  /**
-   * CRITICAL FIX: Smart merge of articleIds arrays to prevent race conditions
-   * When users add/remove articles simultaneously, this ensures all changes persist correctly
-   *
-   * Strategy:
-   * 1. Use itemStates as source of truth (it has timestamps for conflict resolution)
-   * 2. Merge itemStates first (handles check/uncheck/add/remove conflicts)
-   * 3. Build articleIds from merged itemStates
-   * 4. Preserve original order where possible
-   *
-   * BUGFIX: Now respects deletions! If an article is removed from itemStates, it's removed from articleIds
-   * Previous bug: Simple union meant deleted articles would reappear if server still had them
-   */
-  private mergeArticleIds(
-    localIds: string[],
-    serverIds: string[],
-    mergedItemStates: { [articleId: string]: any }
-  ): string[] {
-    const itemStatesCount = Object.keys(mergedItemStates).length;
-    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
-
-    // CRITICAL FIX: Detect migration/partial state
-    // If articleIds significantly outnumber itemStates, we're in migration or partial state
-    // This happens when:
-    // 1. Initial migration (articleIds exist, itemStates empty)
-    // 2. Partial migration (some articles checked, others not yet interacted with)
-    // In these cases, preserve ALL articleIds instead of filtering by itemStates
-    const isMigrationState = maxArticleIdsCount > itemStatesCount;
-
-    if (isMigrationState) {
-      // Migration mode: Preserve all articleIds via union
-      const serverSet = new Set(serverIds);
-      const merged = [...serverIds]; // Start with server order
-
-      // Add local IDs that aren't in server yet
-      for (const localId of localIds) {
-        if (!serverSet.has(localId)) {
-          merged.push(localId);
-        }
-      }
-
-      this.logger.warn('data', `⚠️ Migration state: Preserving ${merged.length} articleIds (${itemStatesCount} have states, ${merged.length - itemStatesCount} pending)`);
-      return merged;
-    }
-
-    // Normal mode: Use itemStates as source of truth for which articles should exist
-    // This only runs when articleIds count == itemStates count (fully synchronized)
-    const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
-
-    // Start with server order as base, but only include articles that are in merged itemStates
-    const merged: string[] = [];
-    for (const serverId of serverIds) {
-      if (articlesFromItemStates.has(serverId)) {
-        merged.push(serverId);
-        articlesFromItemStates.delete(serverId); // Remove from set to track which ones we've added
-      } else {
-        this.logger.debug('data', `Merge: Removing ${serverId} (deleted from itemStates)`);
-      }
-    }
-
-    // Add any remaining articles from local that aren't in server yet
-    // (these are new articles added locally)
-    for (const localId of localIds) {
-      if (articlesFromItemStates.has(localId)) {
-        merged.push(localId);
-        articlesFromItemStates.delete(localId);
-        this.logger.debug('data', `Merge: Adding local-only article ${localId}`);
-      }
-    }
-
-    // Add any remaining articles from itemStates (shouldn't happen, but be safe)
-    for (const remainingId of articlesFromItemStates) {
-      merged.push(remainingId);
-      this.logger.warn('data', `Merge: Adding orphaned article ${remainingId} from itemStates`);
-    }
-
-    this.logger.info('data', `✅ Merged articleIds: ${localIds.length} local + ${serverIds.length} server = ${merged.length} total`);
-    return merged;
-  }
-
-  /**
-   * CRITICAL FIX: Smart merge of itemStates to prevent race conditions
-   * When two users check different articles simultaneously, this ensures both changes persist
-   *
-   * Strategy:
-   * 1. For each article, compare timestamps of local vs server
-   * 2. Use the history array's first event timestamp (most accurate "last modified" time)
-   * 3. If no history, fall back to checkedAt/addedAt timestamps
-   * 4. If timestamps equal, prefer server state (last write wins)
-   * 5. Preserve all articles from both sources
-   *
-   * BUGFIX: Now uses history timestamp which is updated for BOTH check and uncheck
-   * Previous bug: checkedAt wasn't updated on uncheck, causing uncheck operations to lose
-   */
-  private mergeItemStates(
-    localStates: { [articleId: string]: any },
-    serverStates: { [articleId: string]: any }
-  ): { [articleId: string]: any } {
-    const merged: { [articleId: string]: any } = {};
-
-    // Collect all article IDs from both sources
-    const allArticleIds = new Set([
-      ...Object.keys(localStates),
-      ...Object.keys(serverStates)
-    ]);
-
-    for (const articleId of allArticleIds) {
-      const localState = localStates[articleId];
-      const serverState = serverStates[articleId];
-
-      // If only in local, keep local
-      if (localState && !serverState) {
-        merged[articleId] = localState;
-        continue;
-      }
-
-      // If only in server, use server
-      if (serverState && !localState) {
-        merged[articleId] = serverState;
-        continue;
-      }
-
-      // Both exist - merge intelligently based on timestamps
-      // CRITICAL FIX: Use history timestamp (updated for both check AND uncheck)
-      const getTimestamp = (state: any) => {
-        // First, try history array (most accurate - updated for both check and uncheck)
-        if (state.history && Array.isArray(state.history) && state.history.length > 0) {
-          const latestEvent = state.history[0]; // History is sorted newest first
-          const timestamp = latestEvent.timestamp;
-
-          if (timestamp instanceof Date) {
-            return timestamp.getTime();
-          } else if (timestamp?.toMillis) {
-            return timestamp.toMillis();
-          } else if (timestamp) {
-            return new Date(timestamp).getTime();
-          }
-        }
-
-        // Fallback to checkedAt/addedAt (for backwards compatibility)
-        const checkedAt = state.checkedAt;
-        const addedAt = state.addedAt;
-
-        const checkedTime = checkedAt instanceof Date ? checkedAt.getTime() :
-                           (checkedAt?.toMillis ? checkedAt.toMillis() : 0);
-        const addedTime = addedAt instanceof Date ? addedAt.getTime() :
-                         (addedAt?.toMillis ? addedAt.toMillis() : 0);
-
-        return checkedTime || addedTime || 0;
-      };
-
-      const localTime = getTimestamp(localState);
-      const serverTime = getTimestamp(serverState);
-
-      // Use whichever has the most recent change
-      if (serverTime > localTime) {
-        merged[articleId] = serverState;
-        this.logger.debug('data', `Merge: Using server state for ${articleId} (server newer: ${serverTime} > ${localTime})`);
-      } else if (localTime > serverTime) {
-        merged[articleId] = localState;
-        this.logger.debug('data', `Merge: Using local state for ${articleId} (local newer: ${localTime} > ${serverTime})`);
-      } else {
-        // Times equal - prefer SERVER state (most recent write wins)
-        // This ensures collaborator changes persist when timestamps are very close
-        merged[articleId] = serverState;
-        this.logger.debug('data', `Merge: Using server state for ${articleId} (timestamps equal, server wins)`);
-      }
-    }
-
-    this.logger.info('data', `✅ Merged itemStates: ${Object.keys(localStates).length} local + ${Object.keys(serverStates).length} server = ${Object.keys(merged).length} total`);
-    return merged;
-  }
+  // NOTE: mergeArticleIds and mergeItemStates have been moved to FirebaseMergeService
+  // Use this.mergeService.mergeArticleIds() and this.mergeService.mergeItemStates() instead
 
   /**
    * Convert itemStates from Firestore format to application format
@@ -2223,134 +2083,20 @@ export class FirebaseDataService {
     return itemStates;
   }
 
-  /**
-   * CRITICAL: Detect if articleIds array has changed
-   * Used to prevent infinite loop from write-back triggering listener
-   */
-  private hasArticleIdsChanged(
-    articleIds1: string[],
-    articleIds2: string[]
-  ): boolean {
-    // Different lengths = changed
-    if (articleIds1.length !== articleIds2.length) {
-      return true;
-    }
-
-    // Check if all IDs match (order-sensitive)
-    for (let i = 0; i < articleIds1.length; i++) {
-      if (articleIds1[i] !== articleIds2[i]) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * CRITICAL FIX: Detect if itemStates have actually changed
-   * Used to prevent infinite loop from write-back triggering listener
-   *
-   * BUGFIX: Only compares USER-FACING state (isChecked, amount, checkedBy)
-   * Does NOT compare timestamps (checkedAt, addedAt) which are metadata
-   *
-   * Why: Merge creates slightly different timestamps even when state is identical
-   * This was causing 5x listener fires and 2000 quota reads per session!
-   */
-  private hasItemStatesChanged(
-    itemStates1: { [articleId: string]: any },
-    itemStates2: { [articleId: string]: any }
-  ): boolean {
-    // Quick check: different number of articles
-    const keys1 = Object.keys(itemStates1 || {});
-    const keys2 = Object.keys(itemStates2 || {});
-
-    if (keys1.length !== keys2.length) {
-      this.logger.debug('data', `ItemStates changed: different number of articles (${keys1.length} vs ${keys2.length})`);
-      return true;
-    }
-
-    // Check each article
-    for (const articleId of keys1) {
-      const state1 = itemStates1[articleId];
-      const state2 = itemStates2[articleId];
-
-      // Article missing in second object
-      if (!state2) {
-        this.logger.debug('data', `ItemStates changed: article ${articleId} missing in server state`);
-        return true;
-      }
-
-      // CRITICAL: Only compare USER-FACING state, not timestamps!
-      // Timestamps are metadata and differ after merge even when state is identical
-
-      if (state1.isChecked !== state2.isChecked) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} isChecked (${state1.isChecked} vs ${state2.isChecked})`);
-        return true;
-      }
-
-      if (state1.checkedBy !== state2.checkedBy) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} checkedBy (${state1.checkedBy} vs ${state2.checkedBy})`);
-        return true;
-      }
-
-      if (state1.amount !== state2.amount) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} amount (${state1.amount} vs ${state2.amount})`);
-        return true;
-      }
-
-      // REMOVED: Timestamp comparison - this was causing false positives!
-      // The merge might produce slightly different timestamps even when state is identical
-      // This caused owner to write back unnecessarily, triggering 5x listener fires
-    }
-
-    // No differences detected
-    this.logger.debug('data', `ItemStates unchanged (no write-back needed)`);
-    return false;
-  }
+  // NOTE: hasArticleIdsChanged and hasItemStatesChanged have been moved to FirebaseMergeService
+  // Use this.mergeService.hasArticleIdsChanged() and this.mergeService.hasItemStatesChanged() instead
 
   private cleanupListeners(): void {
-    if (this.articlesUnsubscribe) {
-      this.articlesUnsubscribe();
-      this.articlesUnsubscribe = undefined;
-    }
-    if (this.listsUnsubscribe) {
-      this.listsUnsubscribe();
-      this.listsUnsubscribe = undefined;
-    }
-    // Phase 8: Cleanup shared lists listener
-    if (this.sharedListsUnsubscribe) {
-      this.sharedListsUnsubscribe();
-      this.sharedListsUnsubscribe = undefined;
-    }
-
-    // LAZY LISTENERS: Cleanup active list subscription
-    if (this.activeListSubscription) {
-      this.activeListSubscription.unsubscribe();
-      this.activeListSubscription = undefined;
-    }
-
-    // REAL-TIME SYNC: Cleanup owned list listeners
-    this.cleanupOwnedListListeners();
-
-    // REAL-TIME SYNC: Cleanup shared list listeners
-    this.cleanupSharedListListeners();
-
-    // QUOTA OPTIMIZATION: Reset collection listener flags
-    // This allows collection listeners to be set up again on next login
-    this.logger.info('data', '🔄 cleanupListeners() resetting collection listener flags to FALSE');
-    this.collectionListenersCleanedUp = false;
-    this.collectionListenersActive = false;
-    this.isSettingUpListeners = false;
+    // Use listenerState service for centralized cleanup
+    this.listenerState.cleanupAll();
 
     // QUOTA FIX: Reset initialization tracking (allows reload after user switch)
-    this.initialDataLoadDone = false;
     this.articlesLoadedFromFirestore = false;
 
-    // Performance: Clear caches on cleanup
-    this.loadedSharedArticleIds.clear();
-    this.failedArticleIds.clear();
-    this.lastSharedListUpdate.clear();
-    this.articleOwnerCache.clear();
+    // Clear article loader caches
+    this.articleLoader.clearCaches();
+
+    // Clear local state
     this.previousSharedArticleIds.clear();
     if (this.mergeListsTimer) {
       clearTimeout(this.mergeListsTimer);
@@ -2657,7 +2403,7 @@ export class FirebaseDataService {
       }
 
       // Mark this write so listener knows to preserve optimistic updates
-      this.lastMergeWrite.set(id, Date.now());
+      this.listenerState.setLastMergeWriteTime(id);
 
       await updateDoc(doc(this.firestore, listPath), firestoreData);
       this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);

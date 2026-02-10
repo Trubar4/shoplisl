@@ -40,6 +40,8 @@ import { VoiceInputService } from './services/voice-input.service';
 import { VoiceOutputService } from './services/voice-output.service';
 import { ChatUIService } from './services/chat-ui.service';
 import { DisambiguationUIService } from './services/disambiguation-ui.service';
+import { VoiceAIContextService } from './services/voice-ai-context.service';
+import { VoiceAIResultHandlerService } from './services/voice-ai-result-handler.service';
 import { ApiKeyTipDialogComponent } from '../api-key-tip-dialog/api-key-tip-dialog.component';
 
 interface ChatMessage {
@@ -81,14 +83,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   // Lifecycle management
   private destroy$ = new Subject<void>();
 
-  private _cachedActiveConversation: boolean = false;
-  private _lastContextCheck: number = 0;
-  private _lastLoggedState: boolean | null = null;
-  private readonly CONTEXT_CACHE_DURATION = 500; // 500ms cache for conversation check
+  // Note: Context caching moved to VoiceAIContextService (Phase 2 refactoring)
   private verboseLogging = false; // Set to true only when debugging
-  private _cachedContext: ConversationContext = {};
-  private _lastContextSync: number = 0;
-  private readonly CONTEXT_SYNC_CACHE_DURATION = 1000; // 1 second cache for context sync
 
 
   constructor(
@@ -103,7 +99,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     public voiceInput: VoiceInputService,
     public voiceOutput: VoiceOutputService,
     public chatUI: ChatUIService,
-    public disambiguationUI: DisambiguationUIService
+    public disambiguationUI: DisambiguationUIService,
+    // Phase 2 Refactoring: Extracted services
+    public contextService: VoiceAIContextService,
+    private resultHandler: VoiceAIResultHandlerService
   ) {
     this.messages$ = this.chatPersistence.messages$;
     this.disambiguation$ = this.chatPersistence.disambiguation$;
@@ -291,89 +290,17 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   // ========================================
 
   /**
-   * FIXED: Bidirectional context synchronization between services
+   * Sync context bidirectionally - delegates to context service (Phase 2 refactoring)
    */
   private syncContextBidirectional(): void {
-    const chatContext = this.chatPersistence.getConversationContext();
-    const aiContext = this.aiService.getConversationContext();
-    
-    // Determine which context is more recent/complete
-    let sourceContext: ConversationContext | null = null;
-    let targetService: 'chat' | 'ai' | null = null;
-    
-    if (chatContext?.waitingForArticles && !aiContext.waitingForArticles) {
-      sourceContext = chatContext;
-      targetService = 'ai';
-    } else if (aiContext.waitingForArticles && !chatContext?.waitingForArticles) {
-      sourceContext = aiContext;
-      targetService = 'chat';
-    } else if (chatContext?.lastAction && aiContext.lastAction) {
-      const chatTime = chatContext.lastAction.timestamp.getTime();
-      const aiTime = aiContext.lastAction.timestamp.getTime();
-      
-      if (chatTime > aiTime) {
-        sourceContext = chatContext;
-        targetService = 'ai';
-      } else {
-        sourceContext = aiContext;
-        targetService = 'chat';
-      }
-    } else if (chatContext?.lastAction && !aiContext.lastAction) {
-      sourceContext = chatContext;
-      targetService = 'ai';
-    } else if (aiContext.lastAction && !chatContext?.lastAction) {
-      sourceContext = aiContext;
-      targetService = 'chat';
-    }
-    
-    // Perform synchronization (only log significant changes)
-    if (sourceContext && targetService) {
-      // Only log in development and when there's a meaningful change
-      if (!environment.production && sourceContext.waitingForArticles) {
-        console.log(`🔄 SYNC: Context synced (${targetService === 'ai' ? 'chat -> AI' : 'AI -> chat'})`);
-      }
-      
-      if (targetService === 'ai') {
-        this.aiService.setConversationContext(sourceContext);
-      } else {
-        this.chatPersistence.setConversationContext(sourceContext);
-      }
-      
-      this.invalidateConversationCache();
-      this._lastContextSync = 0; // Force context recache on next access
-    }
+    this.contextService.syncContextBidirectional();
   }
 
   /**
-   * FIXED: Enhanced context check with proper fallbacks
+   * Get current active context - delegates to context service (Phase 2 refactoring)
    */
   private getCurrentActiveContext(): ConversationContext {
-    const now = Date.now();
-    
-    // Only sync contexts if cache is expired
-    if (now - this._lastContextSync > this.CONTEXT_SYNC_CACHE_DURATION) {
-      this.syncContextBidirectional();
-      
-      const chatContext = this.chatPersistence.getConversationContext();
-      const aiContext = this.aiService.getConversationContext();
-      
-      // Cache the most complete context
-      if (chatContext?.waitingForArticles) {
-        this._cachedContext = chatContext;
-      } else if (aiContext.waitingForArticles) {
-        this._cachedContext = aiContext;
-      } else if (chatContext?.lastAction) {
-        this._cachedContext = chatContext;
-      } else if (aiContext.lastAction) {
-        this._cachedContext = aiContext;
-      } else {
-        this._cachedContext = {};
-      }
-      
-      this._lastContextSync = now;
-    }
-    
-    return this._cachedContext;
+    return this.contextService.getCurrentActiveContext();
   }
 
   // ========================================
@@ -502,8 +429,8 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   private invalidateConversationCache(): void {
-    this._lastContextCheck = 0;
-    this._lastContextSync = 0; // Also invalidate context sync cache
+    // Delegate to context service (Phase 2 refactoring)
+    this.contextService.invalidateCache();
   }
 
   get activeConversationStatus(): boolean {
@@ -511,15 +438,10 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   /**
-   * FIXED: Clear contexts in both services
+   * Clear contexts - delegates to context service (Phase 2 refactoring)
    */
   private clearAllContexts(): void {
-    console.log('🗑️ Clearing all contexts');
-    this.chatPersistence.clearConversationContext();
-    this.aiService.clearConversationContext();
-    
-    // ADDED: Invalidate cache when contexts are cleared
-    this.invalidateConversationCache();
+    this.contextService.clearAllContexts();
   }
 
   toggleVerboseLogging(): void {
@@ -660,70 +582,21 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   // ========================================
 
   getConversationStatus(): string {
-    // FIXED: Use active context with proper fallback
-    const activeContext = this.getCurrentActiveContext();
-    
-    console.log('🔍 Getting conversation status from active context:', activeContext);
-    
-    // Check for active conversation context
-    if (activeContext.waitingForArticles) {
-      console.log('🔍 Active conversation found:', activeContext.waitingForArticles);
-      return `Sie können direkt weitere Artikel zu "${activeContext.waitingForArticles.listName}" hinzufügen`;
-    }
-    
-    // Check for recent last action
-    if (activeContext.lastAction) {
-      const timeSince = Date.now() - activeContext.lastAction.timestamp.getTime();
-      if (timeSince < 10 * 60 * 1000) { // 10 minutes
-        const minutes = Math.floor(timeSince / 60000);
-        return `Fortsetzung für "${activeContext.lastAction.listName}" möglich (vor ${minutes}min)`;
-      }
-    }
-    
-    console.log('🔍 No active conversation context found');
-    return 'Keine aktive Unterhaltung';
+    // Delegate to context service (Phase 2 refactoring)
+    return this.contextService.getConversationStatus();
   }
 
 
 isInActiveConversation(): boolean {
-  const now = Date.now();
-  
-  // Only recalculate if cache is expired
-  if (now - this._lastContextCheck > this.CONTEXT_CACHE_DURATION) {
-    const activeContext = this.getCurrentActiveContext();
-    const newState = !!(activeContext.waitingForArticles?.listId && activeContext.waitingForArticles?.listName);
-    
-    // Only log if state actually changed
-    if (this._lastLoggedState !== newState && !environment.production && this.verboseLogging) {
-      console.log('🔄 CONTEXT: Active conversation state changed', {
-        hasActiveContext: newState,
-        waitingForArticles: activeContext.waitingForArticles,
-        previousState: this._lastLoggedState
-      });
-      this._lastLoggedState = newState;
-    }
-    
-    this._cachedActiveConversation = newState;
-    this._lastContextCheck = now;
-  }
-  
-  return this._cachedActiveConversation;
+  // Delegate to context service (Phase 2 refactoring)
+  return this.contextService.isInActiveConversation();
 }
 
   /**
-   * FIXED: Get current target list with proper context handling
+   * Get current target list - delegates to context service (Phase 2 refactoring)
    */
   getCurrentTargetList(): { listId: string; listName: string } | null {
-    const activeContext = this.getCurrentActiveContext();
-    
-    if (activeContext.waitingForArticles) {
-      return {
-        listId: activeContext.waitingForArticles.listId,
-        listName: activeContext.waitingForArticles.listName
-      };
-    }
-    
-    return null;
+    return this.contextService.getCurrentTargetList();
   }
 
   finishAddingArticles(): void {
@@ -816,13 +689,8 @@ isInActiveConversation(): boolean {
   // ========================================
 
   private checkForContinuationKeywords(input: string): boolean {
-    const lowerInput = input.toLowerCase().trim();
-    const continuationKeywords = ['und', 'weiters', 'außerdem', 'zusätzlich', 'noch', 'dann', 'danach'];
-    
-    return continuationKeywords.some(keyword => 
-      lowerInput.startsWith(keyword + ' ') || 
-      lowerInput === keyword
-    );
+    // Delegate to context service (Phase 2 refactoring)
+    return this.contextService.checkForContinuationKeywords(input);
   }
 
   private async handleContinuationKeywords(input: string): Promise<AIExecutionResult> {
@@ -1237,14 +1105,8 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   canUseContinuation(): boolean {
-    const activeContext = this.getCurrentActiveContext();
-    
-    if (activeContext.lastAction) {
-      const timeSince = Date.now() - activeContext.lastAction.timestamp.getTime();
-      return timeSince < 10 * 60 * 1000; // 10 minutes
-    }
-    
-    return false;
+    // Delegate to context service (Phase 2 refactoring)
+    return this.contextService.canUseContinuation();
   }
 
   quickContinuation(keyword: string): void {
