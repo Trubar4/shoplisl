@@ -92,9 +92,30 @@ function restDocUrl(docPath: string): string {
   return `${EMULATOR_BASE}/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}`;
 }
 
+/**
+ * Generate a minimal unsigned JWT for the Firebase emulator.
+ * The emulator in test mode parses the JWT to extract request.auth.uid
+ * but does not verify the signature.
+ */
+function makeEmulatorJwt(userId: string): string {
+  const encode = (obj: object) =>
+    Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const header = encode({ alg: 'none', typ: 'JWT' });
+  const now = Math.floor(Date.now() / 1000);
+  const payload = encode({
+    sub: userId,
+    uid: userId,
+    iss: `https://securetoken.google.com/${PROJECT_ID}`,
+    aud: PROJECT_ID,
+    iat: now,
+    exp: now + 3600,
+  });
+  return `${header}.${payload}.`;
+}
+
 function authHeader(userId: string | null): Record<string, string> {
   if (!userId) return {};
-  return { Authorization: `Bearer ${userId}` };
+  return { Authorization: `Bearer ${makeEmulatorJwt(userId)}` };
 }
 
 /**
