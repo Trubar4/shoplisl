@@ -24,11 +24,14 @@ describe('FirebaseDataService - mergeArticleIds', () => {
     serverIds: string[],
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
-    const itemStatesCount = Object.keys(mergedItemStates).length;
-    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
-
-    // CRITICAL FIX: Detect migration/partial state
-    const isMigrationState = maxArticleIdsCount > itemStatesCount;
+    // CORRECT migration detection - only true for genuinely pre-migration data:
+    // A) No itemStates at all (legacy document, genuinely pre-migration)
+    // B) IDs present in BOTH local AND server but lacking states (partial migration)
+    // Stale IDs (in local only, NOT in server) do NOT trigger migration → deletions stick
+    const noStatesAtAll = Object.keys(mergedItemStates).length === 0;
+    const localIdsSet = new Set(localIds);
+    const sharedIdsLackingStates = serverIds.filter(id => localIdsSet.has(id) && !mergedItemStates[id]);
+    const isMigrationState = noStatesAtAll || sharedIdsLackingStates.length > 0;
 
     if (isMigrationState) {
       // Migration mode: Preserve all articleIds via union
@@ -222,6 +225,48 @@ describe('FirebaseDataService - mergeArticleIds', () => {
       expect(result).toContain('a1');
       expect(result).toContain('a2');
       expect(result).toContain('a3');
+    });
+  });
+
+  describe('Stale Local IDs Do NOT Trigger Migration', () => {
+    it('should NOT re-add a deleted article when local cache is stale', () => {
+      // Server deleted article a3 (removed from serverIds and itemStates)
+      // But local cache still has a3 in localIds (stale)
+      const localIds = ['a1', 'a2', 'a3']; // stale - a3 is in local but not server
+      const serverIds = ['a1', 'a2'];       // a3 was deleted on server
+      const mergedItemStates = {
+        'a1': { articleId: 'a1', isChecked: false },
+        'a2': { articleId: 'a2', isChecked: true }
+        // a3 absent from itemStates too (it was deleted)
+      };
+
+      const result = mergeArticleIds(localIds, serverIds, mergedItemStates);
+
+      // a3 should NOT reappear - it's stale local-only, not shared+stateless
+      expect(result).toHaveLength(2);
+      expect(result).not.toContain('a3');
+      expect(result).toContain('a1');
+      expect(result).toContain('a2');
+    });
+
+    it('should NOT trigger migration when local has more IDs than server (stale cache scenario)', () => {
+      // This is THE key bug: stale localIds (5) > serverIds (3) used to trigger migration
+      // because maxArticleIdsCount (5) > itemStatesCount (3)
+      const localIds = ['a1', 'a2', 'a3', 'a4', 'a5']; // stale cache with 2 extra IDs
+      const serverIds = ['a1', 'a2', 'a3'];              // server has 3 current articles
+      const mergedItemStates = {
+        'a1': { articleId: 'a1', isChecked: false },
+        'a2': { articleId: 'a2', isChecked: true },
+        'a3': { articleId: 'a3', isChecked: false }
+        // a4, a5 were deleted - not in server, not in itemStates
+      };
+
+      const result = mergeArticleIds(localIds, serverIds, mergedItemStates);
+
+      // Should use normal mode (NOT migration) and respect deletions
+      expect(result).toHaveLength(3);
+      expect(result).not.toContain('a4');
+      expect(result).not.toContain('a5');
     });
   });
 

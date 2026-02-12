@@ -64,3 +64,6 @@ backups/*
 
 # Firebase credentials (sensitive!)
 firebase-credentials.json
+
+# Firebase emulator debug logs
+*-debug.log

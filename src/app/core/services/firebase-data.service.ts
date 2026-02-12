@@ -29,6 +29,7 @@ import { AuthService } from './auth.service';
 import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
+import { FirebaseMergeService } from './firebase-merge.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = false;
@@ -117,7 +118,8 @@ export class FirebaseDataService {
     private firestore: Firestore,
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
-    private historyService: HistoryService
+    private historyService: HistoryService,
+    private mergeService: FirebaseMergeService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -557,7 +559,7 @@ export class FirebaseDataService {
             // BUG 1 FIX: Populate articleIds from itemStates if empty
             // Firebase may return empty articleIds for shared lists, but itemStates is populated
             let articleIds = data['articleIds'] || [];
-            const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+            const itemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
 
             if (articleIds.length === 0 && Object.keys(itemStates).length > 0) {
               articleIds = Object.keys(itemStates);
@@ -728,7 +730,7 @@ export class FirebaseDataService {
                       // BUG 1 FIX: Populate articleIds from itemStates if empty
                       // Firebase may return empty articleIds for shared lists, but itemStates is populated
                       let articleIds = data['articleIds'] || [];
-                      const itemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+                      const itemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
 
                       if (DEBUG_FIREBASE_DATA) {
                         this.logger.debug('data', `   - Raw articleIds from Firebase: [${articleIds.join(', ')}]`);
@@ -929,12 +931,12 @@ export class FirebaseDataService {
 
             // Merge itemStates and articleIds
             const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
-            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-            const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+            const serverItemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
+            const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
 
             const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
             const serverArticleIds = data['articleIds'] || [];
-            const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+            const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
             // Prevent infinite loop - check if we just wrote to this list
             const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
@@ -942,8 +944,8 @@ export class FirebaseDataService {
             const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
             // Check if merge produced different result than server
-            const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-            const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+            const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+            const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
             // REAL-TIME SYNC FIX: Detect new article IDs to trigger article loading
@@ -1043,7 +1045,7 @@ export class FirebaseDataService {
             const timeSinceWrite = Date.now() - lastWriteTime;
             const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
-            const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+            const serverItemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
 
             let finalItemStates: { [articleId: string]: any };
             let finalArticleIds: string[];
@@ -1181,13 +1183,13 @@ export class FirebaseDataService {
               // CRITICAL FIX: Merge itemStates instead of replacing to prevent race conditions
               // Use currentList (has optimistic updates) not ownedLists[index] (stale)
               const localItemStates = currentList?.itemStates || this.ownedLists[index].itemStates || {};
-              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
-              const mergedItemStates = this.mergeItemStates(localItemStates, serverItemStates);
+              const serverItemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
+              const mergedItemStates = this.mergeService.mergeItemStates(localItemStates, serverItemStates);
 
               // CRITICAL FIX: Merge articleIds to prevent added articles from disappearing
               const localArticleIds = currentList?.articleIds || this.ownedLists[index].articleIds || [];
               const serverArticleIds = data['articleIds'] || [];
-              const mergedArticleIds = this.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
+              const mergedArticleIds = this.mergeService.mergeArticleIds(localArticleIds, serverArticleIds, mergedItemStates);
 
               // CRITICAL: Prevent infinite loop - check if we just wrote to this list
               const lastWriteTime = this.lastMergeWrite.get(list.id) || 0;
@@ -1195,8 +1197,8 @@ export class FirebaseDataService {
               const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
               // Check if merge produced different result than server
-              const itemStatesChanged = this.hasItemStatesChanged(mergedItemStates, serverItemStates);
-              const articleIdsChanged = this.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
+              const itemStatesChanged = this.mergeService.hasItemStatesChanged(mergedItemStates, serverItemStates);
+              const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
               const mergeChanged = itemStatesChanged || articleIdsChanged;
 
               this.ownedLists[index] = {
@@ -1329,7 +1331,7 @@ export class FirebaseDataService {
               const timeSinceWrite = Date.now() - lastWriteTime;
               const isOurOwnWrite = timeSinceWrite < this.MERGE_WRITE_COOLDOWN;
 
-              const serverItemStates = this.convertItemStatesFromFirestore(data['itemStates'] || {});
+              const serverItemStates = this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {});
               const serverArticleIds = data['articleIds'] || [];
 
               let finalItemStates: { [articleId: string]: any };
@@ -1417,7 +1419,7 @@ export class FirebaseDataService {
   ): Promise<void> {
     try {
       const listPath = `users-v2/${ownerId}/lists/${listId}`;
-      const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+      const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
 
       this.logger.info('data', `💾 Writing merged state to ${listPath} (${Object.keys(mergedItemStates).length} items, ${mergedArticleIds.length} articles)`);
 
@@ -1486,7 +1488,7 @@ export class FirebaseDataService {
         }
 
         const serverData = listDoc.data();
-        const serverItemStates = this.convertItemStatesFromFirestore(serverData['itemStates'] || {});
+        const serverItemStates = this.mergeService.convertItemStatesFromFirestore(serverData['itemStates'] || {});
         const serverArticleIds = serverData['articleIds'] || [];
 
         this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
@@ -1515,7 +1517,7 @@ export class FirebaseDataService {
         }
 
         // Step 5: Write merged state back
-        const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+        const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
 
         this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (preserved ${Object.keys(serverItemStates).length - 1} other items)`);
 
@@ -1574,7 +1576,7 @@ export class FirebaseDataService {
         }
 
         const serverData = listDoc.data();
-        const serverItemStates = this.convertItemStatesFromFirestore(serverData['itemStates'] || {});
+        const serverItemStates = this.mergeService.convertItemStatesFromFirestore(serverData['itemStates'] || {});
 
         this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
 
@@ -1585,7 +1587,7 @@ export class FirebaseDataService {
         };
 
         // Step 3: Write merged state back
-        const firestoreItemStates = this.convertItemStatesToFirestore(mergedItemStates);
+        const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
 
         this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (updated ${Object.keys(itemStateUpdates).length})`);
 
@@ -1974,340 +1976,6 @@ export class FirebaseDataService {
     return chunks;
   }
 
-  /**
-   * CRITICAL FIX: Smart merge of articleIds arrays to prevent race conditions
-   * When users add/remove articles simultaneously, this ensures all changes persist correctly
-   *
-   * Strategy:
-   * 1. Use itemStates as source of truth (it has timestamps for conflict resolution)
-   * 2. Merge itemStates first (handles check/uncheck/add/remove conflicts)
-   * 3. Build articleIds from merged itemStates
-   * 4. Preserve original order where possible
-   *
-   * BUGFIX: Now respects deletions! If an article is removed from itemStates, it's removed from articleIds
-   * Previous bug: Simple union meant deleted articles would reappear if server still had them
-   */
-  private mergeArticleIds(
-    localIds: string[],
-    serverIds: string[],
-    mergedItemStates: { [articleId: string]: any }
-  ): string[] {
-    const itemStatesCount = Object.keys(mergedItemStates).length;
-    const maxArticleIdsCount = Math.max(serverIds.length, localIds.length);
-
-    // CRITICAL FIX: Detect migration/partial state
-    // If articleIds significantly outnumber itemStates, we're in migration or partial state
-    // This happens when:
-    // 1. Initial migration (articleIds exist, itemStates empty)
-    // 2. Partial migration (some articles checked, others not yet interacted with)
-    // In these cases, preserve ALL articleIds instead of filtering by itemStates
-    const isMigrationState = maxArticleIdsCount > itemStatesCount;
-
-    if (isMigrationState) {
-      // Migration mode: Preserve all articleIds via union
-      const serverSet = new Set(serverIds);
-      const merged = [...serverIds]; // Start with server order
-
-      // Add local IDs that aren't in server yet
-      for (const localId of localIds) {
-        if (!serverSet.has(localId)) {
-          merged.push(localId);
-        }
-      }
-
-      this.logger.warn('data', `⚠️ Migration state: Preserving ${merged.length} articleIds (${itemStatesCount} have states, ${merged.length - itemStatesCount} pending)`);
-      return merged;
-    }
-
-    // Normal mode: Use itemStates as source of truth for which articles should exist
-    // This only runs when articleIds count == itemStates count (fully synchronized)
-    const articlesFromItemStates = new Set(Object.keys(mergedItemStates));
-
-    // Start with server order as base, but only include articles that are in merged itemStates
-    const merged: string[] = [];
-    for (const serverId of serverIds) {
-      if (articlesFromItemStates.has(serverId)) {
-        merged.push(serverId);
-        articlesFromItemStates.delete(serverId); // Remove from set to track which ones we've added
-      } else {
-        this.logger.debug('data', `Merge: Removing ${serverId} (deleted from itemStates)`);
-      }
-    }
-
-    // Add any remaining articles from local that aren't in server yet
-    // (these are new articles added locally)
-    for (const localId of localIds) {
-      if (articlesFromItemStates.has(localId)) {
-        merged.push(localId);
-        articlesFromItemStates.delete(localId);
-        this.logger.debug('data', `Merge: Adding local-only article ${localId}`);
-      }
-    }
-
-    // Add any remaining articles from itemStates (shouldn't happen, but be safe)
-    for (const remainingId of articlesFromItemStates) {
-      merged.push(remainingId);
-      this.logger.warn('data', `Merge: Adding orphaned article ${remainingId} from itemStates`);
-    }
-
-    this.logger.info('data', `✅ Merged articleIds: ${localIds.length} local + ${serverIds.length} server = ${merged.length} total`);
-    return merged;
-  }
-
-  /**
-   * CRITICAL FIX: Smart merge of itemStates to prevent race conditions
-   * When two users check different articles simultaneously, this ensures both changes persist
-   *
-   * Strategy:
-   * 1. For each article, compare timestamps of local vs server
-   * 2. Use the history array's first event timestamp (most accurate "last modified" time)
-   * 3. If no history, fall back to checkedAt/addedAt timestamps
-   * 4. If timestamps equal, prefer server state (last write wins)
-   * 5. Preserve all articles from both sources
-   *
-   * BUGFIX: Now uses history timestamp which is updated for BOTH check and uncheck
-   * Previous bug: checkedAt wasn't updated on uncheck, causing uncheck operations to lose
-   */
-  private mergeItemStates(
-    localStates: { [articleId: string]: any },
-    serverStates: { [articleId: string]: any }
-  ): { [articleId: string]: any } {
-    const merged: { [articleId: string]: any } = {};
-
-    // Collect all article IDs from both sources
-    const allArticleIds = new Set([
-      ...Object.keys(localStates),
-      ...Object.keys(serverStates)
-    ]);
-
-    for (const articleId of allArticleIds) {
-      const localState = localStates[articleId];
-      const serverState = serverStates[articleId];
-
-      // If only in local, keep local
-      if (localState && !serverState) {
-        merged[articleId] = localState;
-        continue;
-      }
-
-      // If only in server, use server
-      if (serverState && !localState) {
-        merged[articleId] = serverState;
-        continue;
-      }
-
-      // Both exist - merge intelligently based on timestamps
-      // CRITICAL FIX: Use history timestamp (updated for both check AND uncheck)
-      const getTimestamp = (state: any) => {
-        // First, try history array (most accurate - updated for both check and uncheck)
-        if (state.history && Array.isArray(state.history) && state.history.length > 0) {
-          const latestEvent = state.history[0]; // History is sorted newest first
-          const timestamp = latestEvent.timestamp;
-
-          if (timestamp instanceof Date) {
-            return timestamp.getTime();
-          } else if (timestamp?.toMillis) {
-            return timestamp.toMillis();
-          } else if (timestamp) {
-            return new Date(timestamp).getTime();
-          }
-        }
-
-        // Fallback to checkedAt/addedAt (for backwards compatibility)
-        const checkedAt = state.checkedAt;
-        const addedAt = state.addedAt;
-
-        const checkedTime = checkedAt instanceof Date ? checkedAt.getTime() :
-                           (checkedAt?.toMillis ? checkedAt.toMillis() : 0);
-        const addedTime = addedAt instanceof Date ? addedAt.getTime() :
-                         (addedAt?.toMillis ? addedAt.toMillis() : 0);
-
-        return checkedTime || addedTime || 0;
-      };
-
-      const localTime = getTimestamp(localState);
-      const serverTime = getTimestamp(serverState);
-
-      // Use whichever has the most recent change
-      if (serverTime > localTime) {
-        merged[articleId] = serverState;
-        this.logger.debug('data', `Merge: Using server state for ${articleId} (server newer: ${serverTime} > ${localTime})`);
-      } else if (localTime > serverTime) {
-        merged[articleId] = localState;
-        this.logger.debug('data', `Merge: Using local state for ${articleId} (local newer: ${localTime} > ${serverTime})`);
-      } else {
-        // Times equal - prefer SERVER state (most recent write wins)
-        // This ensures collaborator changes persist when timestamps are very close
-        merged[articleId] = serverState;
-        this.logger.debug('data', `Merge: Using server state for ${articleId} (timestamps equal, server wins)`);
-      }
-    }
-
-    this.logger.info('data', `✅ Merged itemStates: ${Object.keys(localStates).length} local + ${Object.keys(serverStates).length} server = ${Object.keys(merged).length} total`);
-    return merged;
-  }
-
-  /**
-   * Convert itemStates from Firestore format to application format
-   * Converts Firestore Timestamps to JavaScript Dates in checkedAt and history events
-   */
-  private convertItemStatesFromFirestore(firestoreItemStates: any): { [articleId: string]: any } {
-    const itemStates: any = {};
-
-    for (const [articleId, state] of Object.entries(firestoreItemStates || {})) {
-      const itemState = state as any;
-
-      itemStates[articleId] = {
-        ...itemState,
-        addedAt: itemState.addedAt?.toDate ? itemState.addedAt.toDate() : itemState.addedAt,
-        checkedAt: itemState.checkedAt?.toDate ? itemState.checkedAt.toDate() : itemState.checkedAt,
-        history: (itemState.history || []).map((event: any) => ({
-          ...event,
-          timestamp: event.timestamp?.toDate ? event.timestamp.toDate() : event.timestamp
-        }))
-      };
-    }
-
-    return itemStates;
-  }
-
-  /**
-   * Convert itemStates from application format to Firestore format
-   * Converts JavaScript Dates to Firestore Timestamps in checkedAt, addedAt, and history events
-   * This is CRITICAL for persistence - Firestore needs Timestamp objects, not Date objects
-   * Also removes undefined values as Firestore doesn't support them
-   */
-  private convertItemStatesToFirestore(appItemStates: any): { [articleId: string]: any } {
-    const itemStates: any = {};
-
-    for (const [articleId, state] of Object.entries(appItemStates || {})) {
-      const itemState = state as any;
-
-      // Build cleanedState by only adding defined values
-      const cleanedState: any = {};
-
-      // Add each property only if it's defined
-      if (itemState.articleId !== undefined) cleanedState.articleId = itemState.articleId;
-      if (itemState.articleName !== undefined) cleanedState.articleName = itemState.articleName;
-      if (itemState.isChecked !== undefined) cleanedState.isChecked = itemState.isChecked;
-      if (itemState.amount !== undefined) cleanedState.amount = itemState.amount;
-      if (itemState.checkedBy !== undefined) cleanedState.checkedBy = itemState.checkedBy;
-
-      // Convert and add addedAt only if defined
-      if (itemState.addedAt !== undefined) {
-        cleanedState.addedAt = itemState.addedAt instanceof Date
-          ? Timestamp.fromDate(itemState.addedAt)
-          : itemState.addedAt;
-      }
-
-      // Convert and add checkedAt only if defined
-      if (itemState.checkedAt !== undefined) {
-        cleanedState.checkedAt = itemState.checkedAt instanceof Date
-          ? Timestamp.fromDate(itemState.checkedAt)
-          : itemState.checkedAt;
-      }
-
-      // Convert timestamps in history events (only if history exists)
-      if (itemState.history !== undefined) {
-        cleanedState.history = itemState.history.map((event: any) => ({
-          ...event,
-          timestamp: event.timestamp instanceof Date
-            ? Timestamp.fromDate(event.timestamp)
-            : event.timestamp
-        }));
-      }
-
-      itemStates[articleId] = cleanedState;
-    }
-
-    return itemStates;
-  }
-
-  /**
-   * CRITICAL: Detect if articleIds array has changed
-   * Used to prevent infinite loop from write-back triggering listener
-   */
-  private hasArticleIdsChanged(
-    articleIds1: string[],
-    articleIds2: string[]
-  ): boolean {
-    // Different lengths = changed
-    if (articleIds1.length !== articleIds2.length) {
-      return true;
-    }
-
-    // Check if all IDs match (order-sensitive)
-    for (let i = 0; i < articleIds1.length; i++) {
-      if (articleIds1[i] !== articleIds2[i]) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * CRITICAL FIX: Detect if itemStates have actually changed
-   * Used to prevent infinite loop from write-back triggering listener
-   *
-   * BUGFIX: Only compares USER-FACING state (isChecked, amount, checkedBy)
-   * Does NOT compare timestamps (checkedAt, addedAt) which are metadata
-   *
-   * Why: Merge creates slightly different timestamps even when state is identical
-   * This was causing 5x listener fires and 2000 quota reads per session!
-   */
-  private hasItemStatesChanged(
-    itemStates1: { [articleId: string]: any },
-    itemStates2: { [articleId: string]: any }
-  ): boolean {
-    // Quick check: different number of articles
-    const keys1 = Object.keys(itemStates1 || {});
-    const keys2 = Object.keys(itemStates2 || {});
-
-    if (keys1.length !== keys2.length) {
-      this.logger.debug('data', `ItemStates changed: different number of articles (${keys1.length} vs ${keys2.length})`);
-      return true;
-    }
-
-    // Check each article
-    for (const articleId of keys1) {
-      const state1 = itemStates1[articleId];
-      const state2 = itemStates2[articleId];
-
-      // Article missing in second object
-      if (!state2) {
-        this.logger.debug('data', `ItemStates changed: article ${articleId} missing in server state`);
-        return true;
-      }
-
-      // CRITICAL: Only compare USER-FACING state, not timestamps!
-      // Timestamps are metadata and differ after merge even when state is identical
-
-      if (state1.isChecked !== state2.isChecked) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} isChecked (${state1.isChecked} vs ${state2.isChecked})`);
-        return true;
-      }
-
-      if (state1.checkedBy !== state2.checkedBy) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} checkedBy (${state1.checkedBy} vs ${state2.checkedBy})`);
-        return true;
-      }
-
-      if (state1.amount !== state2.amount) {
-        this.logger.debug('data', `ItemStates changed: ${articleId} amount (${state1.amount} vs ${state2.amount})`);
-        return true;
-      }
-
-      // REMOVED: Timestamp comparison - this was causing false positives!
-      // The merge might produce slightly different timestamps even when state is identical
-      // This caused owner to write back unnecessarily, triggering 5x listener fires
-    }
-
-    // No differences detected
-    this.logger.debug('data', `ItemStates unchanged (no write-back needed)`);
-    return false;
-  }
-
   private cleanupListeners(): void {
     if (this.articlesUnsubscribe) {
       this.articlesUnsubscribe();
@@ -2524,7 +2192,7 @@ export class FirebaseDataService {
               icon: data['icon'],
               shopId: data['shopId'],
               articleIds: data['articleIds'] || [],
-              itemStates: this.convertItemStatesFromFirestore(data['itemStates'] || {}),
+              itemStates: this.mergeService.convertItemStatesFromFirestore(data['itemStates'] || {}),
               departmentOrder: data['departmentOrder'],
               createdAt: data['createdAt']?.toDate() || new Date(),
               updatedAt: data['updatedAt']?.toDate() || new Date()
@@ -2616,7 +2284,7 @@ export class FirebaseDataService {
     // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
     const firestoreData = { ...listData };
     if (firestoreData.itemStates) {
-      firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+      firestoreData.itemStates = this.mergeService.convertItemStatesToFirestore(firestoreData.itemStates);
     }
 
     const basePath = this.getUserBasePath();
@@ -2633,7 +2301,7 @@ export class FirebaseDataService {
       const firestoreData = { ...updateData };
       if (firestoreData.itemStates) {
         this.logger.debug('data', `Converting ${Object.keys(firestoreData.itemStates).length} itemStates for Firebase write`);
-        firestoreData.itemStates = this.convertItemStatesToFirestore(firestoreData.itemStates);
+        firestoreData.itemStates = this.mergeService.convertItemStatesToFirestore(firestoreData.itemStates);
       }
 
       // Phase 8: Use owner's path for shared lists
