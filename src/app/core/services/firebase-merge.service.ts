@@ -46,13 +46,14 @@ export class FirebaseMergeService {
     mergedItemStates: { [articleId: string]: any }
   ): string[] {
     // CORRECT migration detection - only true for genuinely pre-migration data:
-    // A) No itemStates at all (legacy document, genuinely pre-migration)
+    // A) No itemStates at all AND server still has articles (legacy document, genuinely pre-migration)
+    //    NOTE: if serverIds is empty the list was genuinely cleared — do NOT union local IDs back
     // B) IDs present in BOTH local AND server but lacking states (partial migration)
     // Stale IDs (in local only, NOT in server) do NOT trigger migration → deletions stick
     const noStatesAtAll = Object.keys(mergedItemStates).length === 0;
     const localIdsSet = new Set(localIds);
     const sharedIdsLackingStates = serverIds.filter(id => localIdsSet.has(id) && !mergedItemStates[id]);
-    const isMigrationState = noStatesAtAll || sharedIdsLackingStates.length > 0;
+    const isMigrationState = (noStatesAtAll && serverIds.length > 0) || sharedIdsLackingStates.length > 0;
 
     if (isMigrationState) {
       // Migration mode: Preserve all articleIds via union
