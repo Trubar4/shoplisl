@@ -38,6 +38,14 @@ export interface CrudServiceContext {
    * recognise its own write and suppress infinite-loop write-backs.
    */
   markMergeWrite(listId: string): void;
+  /**
+   * Pushes a newly created list into the owned-lists array.
+   * Used for optimistic updates so the UI reflects the new list immediately,
+   * even when the collection listener has already been cleaned up.
+   */
+  pushOwnedList(list: ShoppingList): void;
+  /** Triggers a debounced merge of owned + shared lists and emits on listsSubject. */
+  mergeLists(): void;
 }
 
 /**
@@ -168,6 +176,28 @@ export class FirebaseCrudService {
 
     const basePath = this.getUserBasePath();
     const docRef = await addDoc(collection(this.firestore, `${basePath}/lists`), firestoreData);
+
+    // Optimistic update: add to ownedLists immediately so the UI shows the new list
+    // without waiting for the collection listener (which may already be cleaned up).
+    // Uses original listData (Date objects), not firestoreData (Timestamps).
+    const newList: ShoppingList = {
+      id: docRef.id,
+      name: listData.name,
+      color: listData.color,
+      icon: listData.icon,
+      shopId: listData.shopId,
+      articleIds: listData.articleIds || [],
+      itemStates: listData.itemStates || {},
+      departmentOrder: listData.departmentOrder,
+      createdAt: listData.createdAt instanceof Date ? listData.createdAt : new Date(),
+      updatedAt: listData.updatedAt instanceof Date ? listData.updatedAt : new Date(),
+      ownerId: listData.ownerId || this.authService.getCurrentUserId() || '',
+      sharedWith: listData.sharedWith || []
+    };
+    this.context.pushOwnedList(newList);
+    this.context.mergeLists();
+    this.logger.info('data', `➕ Optimistically added list to ownedLists: ${newList.name} (${docRef.id})`);
+
     return docRef.id;
   }
 

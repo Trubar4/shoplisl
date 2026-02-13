@@ -125,7 +125,9 @@ export class FirebaseDataService {
       pushOwnedArticle: (article) => { this.ownedArticles.push(article); },
       hasOwnedArticle: (id) => this.ownedArticles.some(a => a.id === id),
       mergeArticles: () => this.mergeArticles(),
-      markMergeWrite: (listId) => { this.lastMergeWrite.set(listId, Date.now()); }
+      markMergeWrite: (listId) => { this.lastMergeWrite.set(listId, Date.now()); },
+      pushOwnedList: (list) => { this.ownedLists.push(list); },
+      mergeLists: () => this.mergeLists()
     });
     this.initializeDataLoading();
     this.setupAuthListener();
