@@ -444,6 +444,7 @@ export class ArticlesRepositoryService {
                 : l
             );
             this.firebaseData.updateLocalLists(cleanedLists);
+            this.logger.debug('data', `🧹 Local list state updated for "${list.name}" — listener will see clean state (no resurrection)`);
 
             successfulUpdates++;
             this.logger.info('data', `✅ Removed article from list "${list.name}"`);
