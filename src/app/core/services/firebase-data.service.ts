@@ -30,6 +30,7 @@ import { QuotaMonitorService } from './quota-monitor.service';
 import { ActiveListService } from './active-list.service';
 import { HistoryService } from './history.service';
 import { FirebaseMergeService } from './firebase-merge.service';
+import { FirebaseWriteService } from './firebase-write.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = false;
@@ -119,7 +120,8 @@ export class FirebaseDataService {
     private quotaMonitor: QuotaMonitorService,
     private activeListService: ActiveListService,
     private historyService: HistoryService,
-    private mergeService: FirebaseMergeService
+    private mergeService: FirebaseMergeService,
+    private writeService: FirebaseWriteService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.initializeDataLoading();
@@ -969,7 +971,7 @@ export class FirebaseDataService {
             if (mergeChanged && !isOurOwnWrite) {
               this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
               this.lastMergeWrite.set(list.id, Date.now());
-              this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
+              this.writeService.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                 this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
               });
             }
@@ -1220,7 +1222,7 @@ export class FirebaseDataService {
               if (mergeChanged && !isOurOwnWrite) {
                 this.logger.info('data', `🔄 Merge produced different state, writing back for ${data['name']}`);
                 this.lastMergeWrite.set(list.id, Date.now()); // Mark write time
-                this.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
+                this.writeService.writeMergedStateToFirestore(list.id, userId, mergedItemStates, mergedArticleIds).catch(error => {
                   this.logger.error('data', `Failed to write merged state for ${list.id}:`, error);
                 });
               } else if (isOurOwnWrite) {
@@ -1405,35 +1407,6 @@ export class FirebaseDataService {
       unsubscribe();
     });
     this.sharedListListeners.clear();
-  }
-
-  /**
-   * CRITICAL FIX: Write merged itemStates and articleIds back to Firestore
-   * This ensures all collaborators see the merged state after conflict resolution
-   */
-  private async writeMergedStateToFirestore(
-    listId: string,
-    ownerId: string,
-    mergedItemStates: { [articleId: string]: any },
-    mergedArticleIds: string[]
-  ): Promise<void> {
-    try {
-      const listPath = `users-v2/${ownerId}/lists/${listId}`;
-      const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
-
-      this.logger.info('data', `💾 Writing merged state to ${listPath} (${Object.keys(mergedItemStates).length} items, ${mergedArticleIds.length} articles)`);
-
-      await updateDoc(doc(this.firestore, listPath), {
-        itemStates: firestoreItemStates,
-        articleIds: mergedArticleIds,
-        updatedAt: Timestamp.now()
-      });
-
-      this.logger.info('data', `✅ Merged state written successfully`);
-    } catch (error: any) {
-      this.logger.error('data', `Failed to write merged state: ${error.message}`);
-      throw error;
-    }
   }
 
   /**
