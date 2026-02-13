@@ -5,18 +5,12 @@ import {
   Firestore,
   collection,
   doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
   getDocs,
   getDoc,
   onSnapshot,
   query,
   orderBy,
-  where,
-  collectionGroup,
-  Timestamp,
-  runTransaction
+  where
 } from '@angular/fire/firestore';
 
 import { Article, ShoppingList } from '../models';
@@ -31,6 +25,8 @@ import { HistoryService } from './history.service';
 import { FirebaseMergeService } from './firebase-merge.service';
 import { FirebaseWriteService } from './firebase-write.service';
 import { FirebaseArticleLoaderService } from './firebase-article-loader.service';
+import { FirebaseTransactionService } from './firebase-transaction.service';
+import { FirebaseCrudService } from './firebase-crud.service';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging Firebase queries and responses
 const DEBUG_FIREBASE_DATA = false;
@@ -107,7 +103,9 @@ export class FirebaseDataService {
     private historyService: HistoryService,
     private mergeService: FirebaseMergeService,
     private writeService: FirebaseWriteService,
-    private articleLoader: FirebaseArticleLoaderService
+    private articleLoader: FirebaseArticleLoaderService,
+    private transactionService: FirebaseTransactionService,
+    private crudService: FirebaseCrudService
   ) {
     this.logger.info('data', 'Firebase Data Service initialized');
     this.articleLoader.setContext({
@@ -118,6 +116,18 @@ export class FirebaseDataService {
       getOwnedArticles: () => this.ownedArticles,
       setOwnedArticles: (articles) => { this.ownedArticles = articles; },
       mergeArticles: () => this.mergeArticles()
+    });
+    this.transactionService.setContext({
+      getCurrentLists: () => this.getCurrentLists()
+    });
+    this.crudService.setContext({
+      getCurrentLists: () => this.getCurrentLists(),
+      pushOwnedArticle: (article) => { this.ownedArticles.push(article); },
+      hasOwnedArticle: (id) => this.ownedArticles.some(a => a.id === id),
+      mergeArticles: () => this.mergeArticles(),
+      markMergeWrite: (listId) => { this.lastMergeWrite.set(listId, Date.now()); },
+      pushOwnedList: (list) => { this.ownedLists.push(list); },
+      mergeLists: () => this.mergeLists()
     });
     this.initializeDataLoading();
     this.setupAuthListener();
@@ -1342,83 +1352,9 @@ export class FirebaseDataService {
     userId?: string,
     userName?: string
   ): Promise<void> {
-    try {
-      const list = this.getCurrentLists().find(l => l.id === listId);
-      if (!list) {
-        throw new Error(`List ${listId} not found`);
-      }
-
-      const ownerId = list.ownerId || userId;
-      if (!ownerId) {
-        throw new Error('Cannot determine list owner');
-      }
-
-      const listPath = `users-v2/${ownerId}/lists/${listId}`;
-      const listRef = doc(this.firestore, listPath);
-
-      this.logger.info('data', `🔒 Starting transaction for ${action} on ${articleId} in ${listPath}`);
-
-      await runTransaction(this.firestore, async (transaction) => {
-        // Step 1: Read latest server state
-        const listDoc = await transaction.get(listRef);
-
-        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
-        this.quotaMonitor.trackRead('Transaction Read (Toggle Item)', 1, {
-          listId,
-          articleId,
-          action
-        });
-
-        if (!listDoc.exists()) {
-          throw new Error(`List ${listId} not found in Firestore`);
-        }
-
-        const serverData = listDoc.data();
-        const serverItemStates = this.mergeService.convertItemStatesFromFirestore(serverData['itemStates'] || {});
-        const serverArticleIds = serverData['articleIds'] || [];
-
-        this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
-
-        // Step 2: Create updated item state for our change
-        const updatedItemState = this.historyService.createUpdatedItemState(
-          serverItemStates[articleId],  // Use SERVER state, not local!
-          articleId,
-          action,
-          amount,
-          userId,
-          userName
-        );
-
-        // Step 3: Merge our change with server state
-        const mergedItemStates = {
-          ...serverItemStates,  // Keep ALL server items (including other users' changes!)
-          [articleId]: updatedItemState  // Add/update our item
-        };
-
-        // Step 4: Update articleIds if needed (add article if not present)
-        let mergedArticleIds = [...serverArticleIds];
-        if (!mergedArticleIds.includes(articleId)) {
-          mergedArticleIds.push(articleId);
-          this.logger.debug('data', `➕ Adding ${articleId} to articleIds`);
-        }
-
-        // Step 5: Write merged state back
-        const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
-
-        this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (preserved ${Object.keys(serverItemStates).length - 1} other items)`);
-
-        transaction.update(listRef, {
-          itemStates: firestoreItemStates,
-          articleIds: mergedArticleIds,
-          updatedAt: Timestamp.now()
-        });
-      });
-
-      this.logger.info('data', `✅ Transaction committed successfully for ${action} on ${articleId}`);
-    } catch (error: any) {
-      this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
-      throw error;
-    }
+    return this.transactionService.updateListItemWithTransaction(
+      listId, articleId, action, amount, userId, userName
+    );
   }
 
   /**
@@ -1431,63 +1367,9 @@ export class FirebaseDataService {
     itemStateUpdates: { [articleId: string]: any },
     operationDescription: string
   ): Promise<void> {
-    try {
-      const list = this.getCurrentLists().find(l => l.id === listId);
-      if (!list) {
-        throw new Error(`List ${listId} not found`);
-      }
-
-      const ownerId = list.ownerId;
-      if (!ownerId) {
-        throw new Error('Cannot determine list owner');
-      }
-
-      const listPath = `users-v2/${ownerId}/lists/${listId}`;
-      const listRef = doc(this.firestore, listPath);
-
-      this.logger.info('data', `🔒 Starting transaction for ${operationDescription} in ${listPath}`);
-
-      await runTransaction(this.firestore, async (transaction) => {
-        // Step 1: Read latest server state
-        const listDoc = await transaction.get(listRef);
-
-        // CRITICAL: Track transaction read (transactions ALWAYS do a read)
-        this.quotaMonitor.trackRead('Transaction Read (Batch Update)', 1, {
-          listId,
-          updateCount: Object.keys(itemStateUpdates).length
-        });
-
-        if (!listDoc.exists()) {
-          throw new Error(`List ${listId} not found in Firestore`);
-        }
-
-        const serverData = listDoc.data();
-        const serverItemStates = this.mergeService.convertItemStatesFromFirestore(serverData['itemStates'] || {});
-
-        this.logger.debug('data', `📖 Transaction read: ${Object.keys(serverItemStates).length} items on server`);
-
-        // Step 2: Merge our updates with server state
-        const mergedItemStates = {
-          ...serverItemStates,  // Keep ALL server items
-          ...itemStateUpdates   // Apply our updates
-        };
-
-        // Step 3: Write merged state back
-        const firestoreItemStates = this.mergeService.convertItemStatesToFirestore(mergedItemStates);
-
-        this.logger.info('data', `💾 Transaction writing: ${Object.keys(mergedItemStates).length} items (updated ${Object.keys(itemStateUpdates).length})`);
-
-        transaction.update(listRef, {
-          itemStates: firestoreItemStates,
-          updatedAt: Timestamp.now()
-        });
-      });
-
-      this.logger.info('data', `✅ Transaction committed successfully for ${operationDescription}`);
-    } catch (error: any) {
-      this.logger.error('data', `❌ Transaction failed: ${error.message}`, error);
-      throw error;
-    }
+    return this.transactionService.updateItemStatesWithTransaction(
+      listId, itemStateUpdates, operationDescription
+    );
   }
 
   /**
@@ -1748,132 +1630,27 @@ export class FirebaseDataService {
   // === FIREBASE OPERATIONS ===
 
   async createArticleInFirebase(articleData: any): Promise<string> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-
-    // Phase 8: Articles are always created in the creator's collection
-    const basePath = this.getUserBasePath();
-    this.logger.info('data', `Creating article in creator's path: ${basePath}/articles`);
-
-    const docRef = await addDoc(collection(this.firestore, `${basePath}/articles`), articleData);
-    this.logger.info('data', `✅ Article created with ID: ${docRef.id}`);
-
-    // CRITICAL FIX: Add article to ownedArticles immediately (optimistic update)
-    // This prevents timing issues where listener fires before Firestore commits
-    const currentUserId = this.authService.getCurrentUserId();
-    this.logger.info('data', `🔍 Optimistic update check: currentUserId=${currentUserId}, ownedArticles.length=${this.ownedArticles.length}`);
-
-    if (currentUserId) {
-      const newArticle: Article = {
-        id: docRef.id,
-        name: articleData.name,
-        amount: articleData.amount || '',
-        notes: articleData.notes || '',
-        icon: articleData.icon || '',
-        categoryId: articleData.categoryId || '',
-        departmentId: articleData.departmentId || '',
-        createdAt: articleData.createdAt || new Date(),
-        updatedAt: articleData.updatedAt || new Date(),
-        availableInShops: articleData.availableInShops || [],
-        usageCount: articleData.usageCount || 0,
-        ownerId: currentUserId,
-        copiedFrom: articleData.copiedFrom
-      };
-
-      // Add to ownedArticles if not already there
-      const existingArticle = this.ownedArticles.find(a => a.id === docRef.id);
-      this.logger.info('data', `🔍 Article already exists? ${!!existingArticle}`);
-
-      if (!existingArticle) {
-        this.ownedArticles.push(newArticle);
-        this.logger.info('data', `➕ Optimistically added article to ownedArticles: ${newArticle.name} (total: ${this.ownedArticles.length})`);
-
-        // Trigger merge to update UI immediately
-        this.mergeArticles();
-        this.logger.info('data', `✅ mergeArticles() called - UI should update now`);
-      } else {
-        this.logger.warn('data', `⚠️ Article ${docRef.id} already in ownedArticles, skipping optimistic update`);
-      }
-    } else {
-      this.logger.error('data', `❌ No currentUserId - optimistic update SKIPPED!`);
-    }
-
-    return docRef.id;
+    return this.crudService.createArticleInFirebase(articleData);
   }
 
   async updateArticleInFirebase(id: string, updateData: any): Promise<void> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-    const basePath = this.getUserBasePath();
-    await updateDoc(doc(this.firestore, `${basePath}/articles/${id}`), updateData);
+    return this.crudService.updateArticleInFirebase(id, updateData);
   }
 
   async deleteArticleInFirebase(id: string): Promise<void> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-    const basePath = this.getUserBasePath();
-    await deleteDoc(doc(this.firestore, `${basePath}/articles/${id}`));
+    return this.crudService.deleteArticleInFirebase(id);
   }
 
   async createListInFirebase(listData: any): Promise<string> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-
-    // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
-    const firestoreData = { ...listData };
-    if (firestoreData.itemStates) {
-      firestoreData.itemStates = this.mergeService.convertItemStatesToFirestore(firestoreData.itemStates);
-    }
-
-    const basePath = this.getUserBasePath();
-    const docRef = await addDoc(collection(this.firestore, `${basePath}/lists`), firestoreData);
-    return docRef.id;
+    return this.crudService.createListInFirebase(listData);
   }
 
   async updateListInFirebase(id: string, updateData: any): Promise<void> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-
-    try {
-      // Convert itemStates from application format (Date objects) to Firestore format (Timestamps)
-      // This is CRITICAL for persistence of history data
-      const firestoreData = { ...updateData };
-      if (firestoreData.itemStates) {
-        this.logger.debug('data', `Converting ${Object.keys(firestoreData.itemStates).length} itemStates for Firebase write`);
-        firestoreData.itemStates = this.mergeService.convertItemStatesToFirestore(firestoreData.itemStates);
-      }
-
-      // Phase 8: Use owner's path for shared lists
-      // Find the list to get its ownerId
-      const currentLists = this.listsSubject.value;
-      const list = currentLists.find(l => l.id === id);
-
-      let listPath: string;
-      if (list && list.ownerId) {
-        // Use the owner's path (works for both owned and shared lists)
-        listPath = `users-v2/${list.ownerId}/lists/${id}`;
-      } else {
-        // Fallback to current user's path
-        const basePath = this.getUserBasePath();
-        listPath = `${basePath}/lists/${id}`;
-      }
-
-      this.logger.info('data', `Writing to Firebase: ${listPath}`);
-      if (firestoreData.articleIds) {
-        this.logger.info('data', `📝 articleIds being written: [${firestoreData.articleIds.join(', ')}] (${firestoreData.articleIds.length} total)`);
-      }
-
-      // Mark this write so listener knows to preserve optimistic updates
-      this.lastMergeWrite.set(id, Date.now());
-
-      await updateDoc(doc(this.firestore, listPath), firestoreData);
-      this.logger.info('data', `✅ Firebase write SUCCESS for list ${id}`);
-    } catch (error: any) {
-      this.logger.error('data', `❌ Firebase write FAILED for list ${id}`, error);
-      this.logger.error('data', `Error code: ${error.code}, message: ${error.message}`);
-      throw error; // Re-throw so caller can handle
-    }
+    return this.crudService.updateListInFirebase(id, updateData);
   }
 
   async deleteListInFirebase(id: string): Promise<void> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-    const basePath = this.getUserBasePath();
-    await deleteDoc(doc(this.firestore, `${basePath}/lists/${id}`));
+    return this.crudService.deleteListInFirebase(id);
   }
 
   async getAllArticlesFromFirebase(): Promise<Article[]> {
@@ -1928,29 +1705,7 @@ export class FirebaseDataService {
    * Used by cleanup scripts to load collaborator articles
    */
   async getArticlesForUser(userId: string): Promise<Article[]> {
-    if (!this.firestore) throw new Error('Firestore not initialized');
-    const snapshot = await getDocs(collection(this.firestore, `users-v2/${userId}/articles`));
-    this.quotaMonitor.trackRead('Get Articles For User', snapshot.size, { userId });
-    const articles: Article[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      articles.push({
-        id: doc.id,
-        name: data['name'],
-        amount: data['amount'],
-        notes: data['notes'],
-        icon: data['icon'],
-        categoryId: data['categoryId'],
-        departmentId: data['departmentId'],
-        createdAt: data['createdAt']?.toDate() || new Date(),
-        updatedAt: data['updatedAt']?.toDate() || new Date(),
-        availableInShops: data['availableInShops'] || [],
-        usageCount: data['usageCount'] || 0,
-        ownerId: data['ownerId'] || userId,
-        copiedFrom: data['copiedFrom'] || undefined
-      });
-    });
-    return articles;
+    return this.crudService.getArticlesForUser(userId);
   }
 
   async getAllListsFromFirebase(): Promise<ShoppingList[]> {
