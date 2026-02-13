@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { FirebaseMergeService } from './firebase-merge.service';
 
 /**
  * Tests for mergeArticleIds logic
@@ -535,6 +536,142 @@ describe('FirebaseDataService - mergeItemStates', () => {
       // Both changes should be preserved
       expect(result['a1'].isChecked).toBe(true); // User A's check
       expect(result['a2'].isChecked).toBe(true); // User B's check
+    });
+  });
+});
+
+/**
+ * Tests for FirebaseMergeService (the REAL production service, not an inline copy).
+ *
+ * These tests document and guard against the "deleted article resurrection" bug:
+ * when an article is deleted from a list in Firestore, but the local cache still
+ * holds its itemState, the merge produces a resurrected state that gets written
+ * back to Firestore.
+ *
+ * The fix lives in ArticlesRepositoryService.removeArticleFromAllLists() —
+ * after writing the cleanup to Firestore it also calls updateLocalLists() so
+ * that the owned-list listener sees clean local state and the merge is harmless.
+ */
+describe('FirebaseMergeService (real service) - Article Deletion Resurrection', () => {
+  let service: FirebaseMergeService;
+
+  const mockLogger = {
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new FirebaseMergeService(mockLogger as any);
+  });
+
+  const addedAt = new Date('2024-01-01T10:00:00');
+
+  const survivingState = { articleId: 'surviving', isChecked: false, addedAt };
+  const deletedState   = { articleId: 'deleted',   isChecked: false, addedAt };
+
+  // ─── mergeItemStates behaviour ────────────────────────────────────────────
+
+  describe('mergeItemStates - local-only entry is preserved (union behaviour)', () => {
+    it('keeps a local-only article state even when server has removed it', () => {
+      // This demonstrates WHY the repo fix is needed:
+      // mergeItemStates unions — it cannot distinguish "offline add" from
+      // "server deleted". The fix is to update local state BEFORE the listener
+      // fires so that local and server match.
+      const staleLocal  = { surviving: survivingState, deleted: deletedState };
+      const cleanServer = { surviving: survivingState };
+
+      const merged = service.mergeItemStates(staleLocal, cleanServer);
+
+      // Union behaviour: deleted article's state is preserved from local.
+      // This is expected behaviour — the FIX is upstream (clean local state).
+      expect(merged).toHaveProperty('surviving');
+      expect(merged).toHaveProperty('deleted'); // local-only entry survives
+    });
+
+    it('produces a clean result when local state has been updated before merge (the fixed path)', () => {
+      // After the fix, removeArticleFromAllLists() updates local state so that
+      // when the listener fires, local already matches the cleaned server state.
+      const cleanLocal  = { surviving: survivingState };
+      const cleanServer = { surviving: survivingState };
+
+      const merged = service.mergeItemStates(cleanLocal, cleanServer);
+
+      expect(Object.keys(merged)).toHaveLength(1);
+      expect(merged).toHaveProperty('surviving');
+      expect(merged).not.toHaveProperty('deleted');
+    });
+  });
+
+  // ─── mergeArticleIds - resurrection chain ─────────────────────────────────
+
+  describe('mergeArticleIds - resurrection when local state is stale', () => {
+    it('resurrects the deleted article ID when merged itemStates still contain it', () => {
+      // Stale path (BEFORE fix): local itemStates still has deleted article,
+      // so merged itemStates has it, and mergeArticleIds puts it back.
+      const staleLocal  = { surviving: survivingState, deleted: deletedState };
+      const cleanServer = { surviving: survivingState };
+      const mergedStates = service.mergeItemStates(staleLocal, cleanServer);
+
+      const result = service.mergeArticleIds(
+        ['surviving', 'deleted'], // local (stale)
+        ['surviving'],            // server (after cleanup)
+        mergedStates
+      );
+
+      // Normal mode: itemStates is source of truth → deleted is resurrected
+      expect(result).toContain('deleted');
+      expect(result).toHaveLength(2);
+    });
+
+    it('does NOT resurrect the deleted article when local state is clean (the fixed path)', () => {
+      // Fixed path: local state was updated by removeArticleFromAllLists(),
+      // so the listener's merge sees clean inputs and produces a clean result.
+      const cleanLocal  = { surviving: survivingState };
+      const cleanServer = { surviving: survivingState };
+      const mergedStates = service.mergeItemStates(cleanLocal, cleanServer);
+
+      const result = service.mergeArticleIds(
+        ['surviving'],  // local (already cleaned by the fix)
+        ['surviving'],  // server (after cleanup)
+        mergedStates
+      );
+
+      expect(result).toEqual(['surviving']);
+      expect(result).not.toContain('deleted');
+    });
+  });
+
+  // ─── empty-list edge case (noStatesAtAll fix) ──────────────────────────────
+
+  describe('mergeArticleIds - empty list after deleting the last article', () => {
+    it('does NOT add back local IDs when server and itemStates are both empty', () => {
+      // The noStatesAtAll fix: migration mode only fires when server has
+      // articles but no states. If server is also empty, the list was
+      // genuinely cleared and local IDs must NOT be unioned back.
+      const staleLocalIds = ['last-article'];
+      const cleanServerIds: string[] = [];
+      const emptyMergedStates = {};
+
+      const result = service.mergeArticleIds(staleLocalIds, cleanServerIds, emptyMergedStates);
+
+      expect(result).toHaveLength(0);
+      expect(result).not.toContain('last-article');
+    });
+
+    it('still triggers migration mode when server has articles but no itemStates', () => {
+      // Legacy pre-migration documents: server has articleIds but zero itemStates.
+      const localIds  = ['a1', 'a2', 'a3'];
+      const serverIds = ['a1', 'a2', 'a3'];
+      const emptyStates = {};
+
+      const result = service.mergeArticleIds(localIds, serverIds, emptyStates);
+
+      // Migration mode must preserve all IDs.
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(['a1', 'a2', 'a3']);
     });
   });
 });

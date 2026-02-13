@@ -15,6 +15,7 @@ import {
   clearFirestoreData,
   getAuthContext,
   seedArticle,
+  seedList,
   readDocAsAdmin,
   TEST_USERS,
 } from './firestore-e2e.setup';
@@ -301,6 +302,102 @@ describe('Articles CRUD Operations', () => {
       expect(kept).toBeDefined();
       expect(kept!['name']).toBe('Keep');
       expect(deleted).toBeUndefined();
+    });
+
+    it('should deny another user from deleting an article they do not own', async () => {
+      await seedArticle(TEST_USERS.alice, 'alice-article-1');
+
+      const { assertFails } = await import('@firebase/rules-unit-testing');
+      const db = getAuthContext(TEST_USERS.bob).firestore();
+      await assertFails(
+        db.doc(`users-v2/${TEST_USERS.alice}/articles/alice-article-1`).delete()
+      );
+
+      // Article must still exist
+      const doc = await readDocAsAdmin(
+        `users-v2/${TEST_USERS.alice}/articles/alice-article-1`
+      );
+      expect(doc).toBeDefined();
+    });
+  });
+
+  // ============================================================
+  // List cleanup after article deletion (resurrection bug guard)
+  // ============================================================
+
+  describe('List cleanup after article deletion', () => {
+    it('after removing article from list in Firestore, list state should be clean', async () => {
+      // Seed: article + list that contains the article (with itemState)
+      await seedArticle(TEST_USERS.alice, 'art-surviving', { name: 'Surviving' });
+      await seedArticle(TEST_USERS.alice, 'art-deleted',   { name: 'ToDelete' });
+      await seedList(TEST_USERS.alice, 'list-cleanup-test', {
+        articleIds: ['art-surviving', 'art-deleted'],
+        itemStates: {
+          'art-surviving': { articleId: 'art-surviving', isChecked: false },
+          'art-deleted':   { articleId: 'art-deleted',   isChecked: false },
+        },
+      });
+
+      // Simulate removeArticleFromAllLists: update list to remove the deleted article
+      const db = getAuthContext(TEST_USERS.alice).firestore();
+      await assertSucceeds(
+        db.doc(`users-v2/${TEST_USERS.alice}/lists/list-cleanup-test`).update({
+          articleIds: ['art-surviving'],
+          itemStates: { 'art-surviving': { articleId: 'art-surviving', isChecked: false } },
+        })
+      );
+
+      // Simulate deleteArticleInFirebase: delete the article document
+      await assertSucceeds(
+        db.doc(`users-v2/${TEST_USERS.alice}/articles/art-deleted`).delete()
+      );
+
+      // Verify: list no longer references the deleted article
+      const listDoc = await readDocAsAdmin(
+        `users-v2/${TEST_USERS.alice}/lists/list-cleanup-test`
+      );
+      expect(listDoc).toBeDefined();
+      expect(listDoc!['articleIds']).toEqual(['art-surviving']);
+      expect(listDoc!['itemStates']).not.toHaveProperty('art-deleted');
+
+      // Verify: surviving article still in list
+      expect((listDoc!['articleIds'] as string[])).toContain('art-surviving');
+      expect(listDoc!['itemStates']).toHaveProperty('art-surviving');
+
+      // Verify: deleted article document is gone
+      const artDoc = await readDocAsAdmin(
+        `users-v2/${TEST_USERS.alice}/articles/art-deleted`
+      );
+      expect(artDoc).toBeUndefined();
+    });
+
+    it('an empty list after deleting the last article has clean Firestore state', async () => {
+      // Seed: list with exactly one article (will be deleted → list becomes empty)
+      await seedArticle(TEST_USERS.alice, 'art-only', { name: 'OnlyArticle' });
+      await seedList(TEST_USERS.alice, 'list-single-article', {
+        articleIds: ['art-only'],
+        itemStates: { 'art-only': { articleId: 'art-only', isChecked: false } },
+      });
+
+      const db = getAuthContext(TEST_USERS.alice).firestore();
+      // Remove article from list
+      await assertSucceeds(
+        db.doc(`users-v2/${TEST_USERS.alice}/lists/list-single-article`).update({
+          articleIds: [],
+          itemStates: {},
+        })
+      );
+      // Delete article document
+      await assertSucceeds(
+        db.doc(`users-v2/${TEST_USERS.alice}/articles/art-only`).delete()
+      );
+
+      const listDoc = await readDocAsAdmin(
+        `users-v2/${TEST_USERS.alice}/lists/list-single-article`
+      );
+      expect(listDoc).toBeDefined();
+      expect(listDoc!['articleIds']).toEqual([]);
+      expect(listDoc!['itemStates']).toEqual({});
     });
   });
 });

@@ -433,6 +433,18 @@ export class ArticlesRepositoryService {
               updatedAt: Timestamp.now()
             });
 
+            // Also update local state immediately so that the owned-list listener,
+            // which fires right after this Firestore write, sees clean local data.
+            // Without this, mergeItemStates() unions stale local + clean server and
+            // the deleted article's itemState/articleId is written back (resurrection bug).
+            const currentLists = this.firebaseData.getCurrentLists();
+            const cleanedLists = currentLists.map(l =>
+              l.id === list.id
+                ? { ...l, articleIds: newArticleIds, itemStates: newItemStates }
+                : l
+            );
+            this.firebaseData.updateLocalLists(cleanedLists);
+
             successfulUpdates++;
             this.logger.info('data', `✅ Removed article from list "${list.name}"`);
           } catch (listError: any) {
