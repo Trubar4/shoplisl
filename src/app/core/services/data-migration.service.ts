@@ -358,38 +358,18 @@ export class DataMigrationService {
     }
 
     try {
-      const lists = await this.firebaseData.getAllListsFromFirebase();
+      // Use in-memory state — no extra Firestore reads needed.
+      // getCurrentLists() has all lists the user can see (owned + shared).
+      // getCurrentArticles() has all valid articles already loaded by the
+      // article-loader (owner + all collaborator collections).
+      const lists = this.firebaseData.getCurrentLists();
+      const validArticleIds = new Set(
+        this.firebaseData.getCurrentArticles().map(a => a.id)
+      );
 
-      // Collect all collaborator user IDs from all lists
-      const allUserIds = new Set<string>();
-
-      lists.forEach(list => {
-        allUserIds.add(list.ownerId);
-        if (list.sharedWith && list.sharedWith.length > 0) {
-          list.sharedWith.forEach(userId => allUserIds.add(userId));
-        }
-      });
-
-      this.logger.debug('data', `Quick cleanup: Loading articles from ${allUserIds.size} collaborators`);
-
-      // Load articles from ALL collaborators
-      // CRITICAL: If loading fails for ANY user, abort cleanup to prevent data loss
-      const validArticleIds = new Set<string>();
-      for (const userId of allUserIds) {
-        try {
-          const userArticles = await this.firebaseData.getArticlesForUser(userId);
-          userArticles.forEach(article => validArticleIds.add(article.id));
-        } catch (error: any) {
-          const errorMsg = `Failed to load articles for user ${userId}: ${error.message}`;
-          this.logger.error('data', errorMsg);
-
-          // ❌ ABORT cleanup - don't risk data loss
-          // If we can't load articles for a user, we can't safely determine which IDs are orphaned
-          throw new Error(`Cannot safely cleanup - ${errorMsg}`);
-        }
-      }
-
-      this.logger.debug('data', `Quick cleanup: Found ${validArticleIds.size} valid articles across all collaborators`);
+      this.logger.debug('data',
+        `Quick cleanup: ${lists.length} lists, ${validArticleIds.size} valid articles in memory`
+      );
 
       let listsUpdated = 0;
       let referencesRemoved = 0;
@@ -418,24 +398,33 @@ export class DataMigrationService {
             updatedAt: Timestamp.now()
           });
 
+          // Keep local state in sync immediately (prevents resurrection on next listener fire)
+          const currentLists = this.firebaseData.getCurrentLists();
+          const updatedLists = currentLists.map(l =>
+            l.id === list.id
+              ? { ...l, articleIds: cleanedArticleIds, itemStates: cleanedItemStates }
+              : l
+          );
+          this.firebaseData.updateLocalLists(updatedLists);
+
           listsUpdated++;
           referencesRemoved += totalRemoved;
 
           const isShared = list.sharedWith && list.sharedWith.length > 0;
-          this.logger.debug('data',
-            `Quick cleanup "${list.name}"${isShared ? ' (shared)' : ''}: removed ${articleIdsRemoved} article IDs + ${itemStatesRemoved} item states`
+          this.logger.info('data',
+            `Quick cleanup "${list.name}"${isShared ? ' (shared)' : ''}: removed ${articleIdsRemoved} orphaned article IDs + ${itemStatesRemoved} orphaned item states`
           );
         }
       }
-      
+
       if (listsUpdated > 0) {
-        this.logger.info('data', `Quick cleanup: ${listsUpdated} lists cleaned, ${referencesRemoved} references removed`);
-        // Refresh local data
-        await this.firebaseData.refreshData();
+        this.logger.info('data', `Quick cleanup: ${listsUpdated} lists cleaned, ${referencesRemoved} orphaned references removed`);
+      } else {
+        this.logger.debug('data', 'Quick cleanup: no orphaned references found');
       }
-      
+
       return { listsUpdated, referencesRemoved };
-      
+
     } catch (error) {
       this.logger.error('data', 'Error during quick cleanup', error);
       return { listsUpdated: 0, referencesRemoved: 0 };
