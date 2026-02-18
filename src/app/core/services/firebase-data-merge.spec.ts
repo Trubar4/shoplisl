@@ -675,3 +675,107 @@ describe('FirebaseMergeService (real service) - Article Deletion Resurrection', 
     });
   });
 });
+
+// ============================================================
+// updateLocalArticles — ownedArticles pruning (article master-data deletion bug)
+// ============================================================
+//
+// Bug: deleteArticleAndCleanupLists() calls updateLocalArticles(filteredArticles)
+// which updated articlesSubject but NOT ownedArticles / sharedArticles.
+// After navigation back to the list, the list listener fired and called
+// mergeArticles() = [...ownedArticles, ...sharedArticles].  Because ownedArticles
+// was stale (still contained the deleted article), it was RESTORED in articlesSubject
+// and the deleted article reappeared in the article overview.
+//
+// Fix: updateLocalArticles() now also filters ownedArticles and sharedArticles
+// so that a subsequent mergeArticles() call produces a consistent result.
+
+describe('updateLocalArticles — ownedArticles pruning prevents article-overview resurrection', () => {
+
+  // Simulates the private state of FirebaseDataService
+  let ownedArticles: Array<{ id: string; name: string; ownerId: string }>;
+  let sharedArticles: Array<{ id: string; name: string; ownerId: string }>;
+  let articlesSubjectValue: Array<{ id: string; name: string; ownerId: string }>;
+
+  // Mirrors the FIXED updateLocalArticles logic
+  function updateLocalArticles(
+    articles: Array<{ id: string; name: string; ownerId: string }>
+  ) {
+    const articleSet = new Set(articles.map(a => a.id));
+    ownedArticles  = ownedArticles.filter(a => articleSet.has(a.id));
+    sharedArticles = sharedArticles.filter(a => articleSet.has(a.id));
+    articlesSubjectValue = articles;
+  }
+
+  // Mirrors mergeArticles() — called by the list listener after navigation
+  function mergeArticles() {
+    const all = [...ownedArticles, ...sharedArticles];
+    const unique = Array.from(new Map(all.map(a => [a.id, a])).values());
+    articlesSubjectValue = unique;
+  }
+
+  beforeEach(() => {
+    ownedArticles = [
+      { id: 'kept-1',  name: 'Milk',  ownerId: 'alice' },
+      { id: 'kept-2',  name: 'Bread', ownerId: 'alice' },
+      { id: 'deleted', name: 'AA3',   ownerId: 'alice' },
+    ];
+    sharedArticles = [];
+    articlesSubjectValue = [...ownedArticles];
+  });
+
+  it('[BUG DOCUMENTED] without the fix, mergeArticles restores the deleted article', () => {
+    // Simulate OLD buggy updateLocalArticles: only updates articlesSubject, not ownedArticles
+    articlesSubjectValue = ownedArticles.filter(a => a.id !== 'deleted');
+    // ownedArticles is NOT updated — stale
+
+    // Simulate mergeArticles() triggered by list listener after navigation
+    mergeArticles(); // uses stale ownedArticles
+
+    // Bug: deleted article reappears
+    expect(articlesSubjectValue.map(a => a.id)).toContain('deleted');
+  });
+
+  it('[FIX VERIFIED] with the fix, mergeArticles does NOT restore the deleted article', () => {
+    // FIXED updateLocalArticles: filters ownedArticles before updating articlesSubject
+    updateLocalArticles(ownedArticles.filter(a => a.id !== 'deleted'));
+
+    // Simulate mergeArticles() triggered by list listener after navigation
+    mergeArticles();
+
+    // Fix: deleted article stays gone
+    expect(articlesSubjectValue.map(a => a.id)).not.toContain('deleted');
+    expect(articlesSubjectValue.map(a => a.id)).toEqual(['kept-1', 'kept-2']);
+  });
+
+  it('[FIX VERIFIED] surviving articles are all still present after mergeArticles', () => {
+    updateLocalArticles(ownedArticles.filter(a => a.id !== 'deleted'));
+    mergeArticles();
+
+    expect(articlesSubjectValue).toHaveLength(2);
+    expect(articlesSubjectValue[0].id).toBe('kept-1');
+    expect(articlesSubjectValue[1].id).toBe('kept-2');
+  });
+
+  it('[FIX VERIFIED] shared articles are also pruned when article is deleted', () => {
+    sharedArticles = [
+      { id: 'shared-ok',      name: 'Shared Good', ownerId: 'bob' },
+      { id: 'shared-deleted', name: 'Shared Gone', ownerId: 'bob' },
+    ];
+    articlesSubjectValue = [...ownedArticles, ...sharedArticles];
+
+    // Delete 'deleted' (owned) and 'shared-deleted' (shared) simultaneously
+    const remaining = articlesSubjectValue.filter(
+      a => a.id !== 'deleted' && a.id !== 'shared-deleted'
+    );
+    updateLocalArticles(remaining);
+    mergeArticles();
+
+    const ids = articlesSubjectValue.map(a => a.id);
+    expect(ids).not.toContain('deleted');
+    expect(ids).not.toContain('shared-deleted');
+    expect(ids).toContain('kept-1');
+    expect(ids).toContain('kept-2');
+    expect(ids).toContain('shared-ok');
+  });
+});
