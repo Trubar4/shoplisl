@@ -29,13 +29,18 @@ infrastructure has not yet been extracted.
 
 ### Recent bug fixes (also merged to main)
 
-Three bugs in the article-deletion flow were fixed on the last branch:
+Four bugs in the article-deletion flow were fixed across two sessions:
 1. `noStatesAtAll` triggered migration mode on genuinely empty lists → fixed in
    `firebase-merge.service.ts`
-2. Deleted article IDs were resurrected by the listener firing on stale local state
-   → fixed in `articles-repository.service.ts` (`removeArticleFromAllLists`)
+2. Deleted article IDs were resurrected by the list listener firing on stale local
+   state → fixed in `articles-repository.service.ts` (`removeArticleFromAllLists`)
 3. Pre-Phase-8 articles (no `ownerId` field) could not be deleted due to a strict
    Firestore rule → fixed in `firestore.rules` using `.get()` with a safe default
+4. Deleted article reappeared in the article overview after navigating back to the
+   list — `updateLocalArticles()` updated `articlesSubject` but NOT the
+   `ownedArticles` / `sharedArticles` backing arrays, so the next `mergeArticles()`
+   call (triggered by the list listener) restored it → fixed in
+   `firebase-data.service.ts` by pruning both backing arrays in `updateLocalArticles`
 
 See `docs/REFACTOR_SESSION_BUG_FIXES_SUMMARY.md` for full details.
 
@@ -76,6 +81,8 @@ one or more focused services, reducing the facade to a thin coordinator.
   the facade or be passed in — sub-services must NOT own the canonical state.
 - The `updateLocalLists` / `updateLocalArticles` pattern (synchronous local-state
   update after Firestore write, used to prevent resurrection) must be preserved.
+  `updateLocalArticles` also prunes `ownedArticles` and `sharedArticles` backing
+  arrays so that a subsequent `mergeArticles()` call cannot restore deleted articles.
 - Run `npm run test` and `npm run test:firestore` after extraction; maintain or
   improve the 126-pass baseline.
 

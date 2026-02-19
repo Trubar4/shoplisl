@@ -1,7 +1,7 @@
 # Refactoring Session: Article Deletion Bug Fixes
 
 **Branch merged:** `claude/refactor-firebase-data-service-azODg`
-**Date:** 2026-02-16
+**Date:** 2026-02-16 / 2026-02-19
 **Status:** ✅ All fixes verified working by user
 
 ---
@@ -14,7 +14,8 @@ After deleting an article from the article-details page, the list overview still
 showed a non-zero count (e.g., "1/1" instead of "0/0"), and the deleted article's
 ID + `itemState` remained in Firestore.
 
-Three separate root-causes were identified and fixed:
+Three separate root-causes were identified and fixed on the first session, and a
+fourth root-cause was found and fixed on the second session.
 
 ---
 
@@ -98,6 +99,46 @@ constraint (`userId == request.auth.uid`) still prevents any cross-user deletion
 
 ---
 
+### Fix 4 — Deleted article reappears in article overview after navigation
+
+**File:** `src/app/core/services/firebase-data.service.ts`
+**Method:** `updateLocalArticles()`
+
+**Sequence causing resurrection:**
+1. `deleteArticleAndCleanupLists()` calls `updateLocalArticles(filteredArticles)`
+   → `articlesSubject` is updated correctly ✅
+2. User navigates back to the list
+3. `setupLazyListenerForList()` fires → list listener calls `mergeArticles()`
+4. `mergeArticles()` = `[...ownedArticles, ...sharedArticles]`
+   — `ownedArticles` was **stale** (still contained the deleted article)
+5. Deleted article **restored** in `articlesSubject` → reappears in article overview ❌
+
+**Root cause:** `updateLocalArticles()` updated `articlesSubject` directly but did
+NOT update the `ownedArticles` / `sharedArticles` backing arrays.  When
+`mergeArticles()` ran next (triggered by any list listener), it re-merged from the
+stale backing arrays, overwriting the correct `articlesSubject` state.
+
+**Fix:**
+
+```typescript
+// Before (buggy): only articlesSubject was kept in sync
+updateLocalArticles(articles: Article[]): void {
+  this.articlesSubject.next(articles);
+  this.cacheService.cacheArticles(articles);
+}
+
+// After (fixed): backing arrays are pruned before updating articlesSubject
+updateLocalArticles(articles: Article[]): void {
+  const articleSet = new Set(articles.map(a => a.id));
+  this.ownedArticles  = this.ownedArticles.filter(a => articleSet.has(a.id));
+  this.sharedArticles = this.sharedArticles.filter(a => articleSet.has(a.id));
+  this.articlesSubject.next(articles);
+  this.cacheService.cacheArticles(articles);
+}
+```
+
+---
+
 ## Debug Logging Added
 
 `firebase-crud.service.ts` — `deleteArticleInFirebase`:
@@ -115,7 +156,7 @@ constraint (`userId == request.auth.uid`) still prevents any cross-user deletion
 
 ## Tests Added
 
-### `firebase-data-merge.spec.ts` — new describe block
+### `firebase-data-merge.spec.ts` — describe block (session 1)
 Uses the **real** `FirebaseMergeService` (not inline copies) to document and
 guard against the resurrection mechanism:
 - Documents union behaviour of `mergeItemStates` (intentional for offline, source
@@ -123,21 +164,28 @@ guard against the resurrection mechanism:
 - Verifies `noStatesAtAll` edge cases (empty list vs. pre-migration document)
 - Verifies clean merge path after the fix
 
-### `articles-repository.service.spec.ts` — new describe block
+### `articles-repository.service.spec.ts` — describe block (session 1)
 Tests that `updateLocalLists` is called with a cleaned list immediately after
 `updateListInFirebase` succeeds, preventing resurrection.
 
-### `articles-crud.e2e.spec.ts` — new tests
+### `articles-crud.e2e.spec.ts` — new tests (session 1)
 - Permission denial for cross-user article delete
 - Clean list state after article removal
 - Empty list state after last article deleted
 
-**Baseline after fixes:** 126 unit-test assertions pass / 10 pre-existing known
-failures (admin 3-segment path tests).
+### `firebase-data-merge.spec.ts` — describe block (session 2)
+Documents and verifies Fix 4 (`ownedArticles` pruning):
+- `[BUG DOCUMENTED]` — proves the article reappears without the fix when
+  `mergeArticles()` runs after `updateLocalArticles()`
+- `[FIX VERIFIED]` — proves the article stays gone with the fix
+- `[FIX VERIFIED]` — surviving articles all preserved after `mergeArticles()`
+- `[FIX VERIFIED]` — shared articles are also correctly pruned
 
 ---
 
-## Commits on this branch
+## Commits
+
+### Session 1 (2026-02-16)
 
 | SHA | Message |
 |-----|---------|
@@ -145,3 +193,9 @@ failures (admin 3-segment path tests).
 | `ac1cb73` | fix: update local list state after article cleanup to prevent resurrection |
 | `085c883` | debug: add log lines for article deletion path and local state update |
 | `d21f504` | fix: allow deletion of pre-Phase-8 articles that lack ownerId field |
+
+### Session 2 (2026-02-19)
+
+| SHA | Message |
+|-----|---------|
+| `9bde73e` | fix: sync ownedArticles/sharedArticles when updateLocalArticles is called |
