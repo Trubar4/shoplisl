@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { of } from 'rxjs';
 import { ArticlesRepositoryService } from './articles-repository.service';
-import { Article } from '../models';
+import { Article, ShoppingList } from '../models';
 
 /**
  * BUG 2 UNIT TEST: Testing REAL production code in articles-repository.service.ts
@@ -298,5 +298,114 @@ describe('ArticlesRepositoryService - updateArticle() - Bug 2 Fix', () => {
       // Other properties unchanged
       expect(result.icon).toBe('🥛');
     });
+  });
+});
+
+/**
+ * BUG FIX: deleteArticle / removeArticleFromAllLists must update local list state
+ *
+ * PROBLEM:
+ *   deleteArticle() calls removeArticleFromAllLists() which writes the cleaned
+ *   list to Firestore (removes articleId + itemState). Immediately after, the
+ *   owned-list listener fires. The listener reads LOCAL state (listsSubject.value)
+ *   which still contains the deleted article's itemState. mergeItemStates() unions
+ *   local+server → the deleted article's state survives. mergeArticleIds() then
+ *   adds it back. The listener writes this resurrected state back to Firestore.
+ *
+ * FIX:
+ *   After each successful updateListInFirebase() call inside removeArticleFromAllLists(),
+ *   also call updateLocalLists() with the cleaned list. This ensures local state
+ *   matches Firestore before the listener fires, so the merge is a no-op.
+ *
+ * This test: FAILS without the fix, PASSES with the fix.
+ */
+describe('ArticlesRepositoryService - deleteArticle - updateLocalLists called after cleanup', () => {
+  let service: ArticlesRepositoryService;
+  let firebaseDataMock: any;
+  let localListsState: ShoppingList[];
+
+  const USER_ID = 'user-delete-test';
+  const SURVIVING_ARTICLE = 'article-alive';
+  const DELETED_ARTICLE   = 'article-to-delete';
+
+  const addedAt = new Date('2024-01-01T10:00:00');
+
+  beforeEach(() => {
+    localListsState = [
+      {
+        id: 'list-with-article',
+        name: 'Test List',
+        ownerId: USER_ID,
+        articleIds: [SURVIVING_ARTICLE, DELETED_ARTICLE],
+        itemStates: {
+          [SURVIVING_ARTICLE]: { articleId: SURVIVING_ARTICLE, isChecked: false, addedAt } as any,
+          [DELETED_ARTICLE]:   { articleId: DELETED_ARTICLE,   isChecked: false, addedAt } as any,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as ShoppingList,
+    ];
+
+    firebaseDataMock = {
+      getLists:                    vi.fn(() => of(localListsState)),
+      getCurrentLists:             vi.fn(() => localListsState),
+      getCurrentArticles:          vi.fn(() => []),
+      updateListInFirebase:        vi.fn(() => Promise.resolve()),
+      updateLocalLists:            vi.fn((lists: ShoppingList[]) => { localListsState = lists; }),
+      updateLocalArticles:         vi.fn(),
+      deleteArticleInFirebase:     vi.fn(() => Promise.resolve()),
+    };
+
+    const connectionServiceMock = { isOnline: vi.fn(() => true) };
+    const offlineSyncMock       = { queueOperation: vi.fn() };
+    const loggerMock            = { info: vi.fn(), debug: vi.fn(), error: vi.fn(), warn: vi.fn() };
+    const migrationMock         = { quickCleanupOrphanedReferences: vi.fn(() => Promise.resolve()) };
+    const authMock              = { getCurrentUserId: vi.fn(() => USER_ID) };
+
+    service = new ArticlesRepositoryService(
+      firebaseDataMock,
+      offlineSyncMock,
+      connectionServiceMock,
+      loggerMock,
+      migrationMock,
+      authMock
+    );
+  });
+
+  it('updateLocalLists is called with clean list → no resurrection possible', async () => {
+    await new Promise((resolve, reject) => {
+      service.deleteArticle(DELETED_ARTICLE).subscribe({ next: resolve, error: reject });
+    });
+
+    // Firestore write happened
+    expect(firebaseDataMock.updateListInFirebase).toHaveBeenCalled();
+
+    // WITH the fix, updateLocalLists must have been called at least once with
+    // a version of the list that has the deleted article removed.
+    expect(firebaseDataMock.updateLocalLists).toHaveBeenCalled();
+
+    const wasCleaned = firebaseDataMock.updateLocalLists.mock.calls.some((call: any[]) => {
+      const lists: ShoppingList[] = call[0];
+      const updatedList = lists.find((l) => l.id === 'list-with-article');
+      if (!updatedList) return false;
+      return (
+        !updatedList.articleIds.includes(DELETED_ARTICLE) &&
+        !updatedList.itemStates[DELETED_ARTICLE]
+      );
+    });
+
+    expect(wasCleaned).toBe(true);
+  });
+
+  it('AFTER FIX: surviving article is preserved in local list state', async () => {
+    await new Promise((resolve, reject) => {
+      service.deleteArticle(DELETED_ARTICLE).subscribe({ next: resolve, error: reject });
+    });
+
+    const lastCall = firebaseDataMock.updateLocalLists.mock.calls.at(-1);
+    expect(lastCall).toBeDefined();
+    const updatedList: ShoppingList = lastCall[0].find((l: ShoppingList) => l.id === 'list-with-article');
+    expect(updatedList.articleIds).toContain(SURVIVING_ARTICLE);
+    expect(updatedList.itemStates).toHaveProperty(SURVIVING_ARTICLE);
   });
 });

@@ -86,9 +86,13 @@ service cloud.firestore {
                               userId == request.auth.uid &&
                               request.resource.data.ownerId == request.auth.uid;
 
+      // Use .get() so legacy articles without ownerId field (pre-Phase-8) can still
+      // be deleted by the path owner. resource.data.get('ownerId', request.auth.uid)
+      // returns the stored ownerId when present, or defaults to request.auth.uid when
+      // the field is missing — keeping the rule equivalent for modern documents.
       allow delete: if isAuthenticated() &&
                       userId == request.auth.uid &&
-                      resource.data.ownerId == request.auth.uid;
+                      resource.data.get('ownerId', request.auth.uid) == request.auth.uid;
     }
 
     // ==========================================

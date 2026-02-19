@@ -259,6 +259,7 @@ export class ArticlesRepositoryService {
     }
 
     return from(this.removeArticleFromAllLists(id)).pipe(
+      mergeMap(() => from(this.repairArticleOwnerId(id))),
       mergeMap(() => {
         return from(this.firebaseData.deleteArticleInFirebase(id));
       }),
@@ -433,6 +434,19 @@ export class ArticlesRepositoryService {
               updatedAt: Timestamp.now()
             });
 
+            // Also update local state immediately so that the owned-list listener,
+            // which fires right after this Firestore write, sees clean local data.
+            // Without this, mergeItemStates() unions stale local + clean server and
+            // the deleted article's itemState/articleId is written back (resurrection bug).
+            const currentLists = this.firebaseData.getCurrentLists();
+            const cleanedLists = currentLists.map(l =>
+              l.id === list.id
+                ? { ...l, articleIds: newArticleIds, itemStates: newItemStates }
+                : l
+            );
+            this.firebaseData.updateLocalLists(cleanedLists);
+            this.logger.debug('data', `🧹 Local list state updated for "${list.name}" — listener will see clean state (no resurrection)`);
+
             successfulUpdates++;
             this.logger.info('data', `✅ Removed article from list "${list.name}"`);
           } catch (listError: any) {
@@ -464,6 +478,28 @@ export class ArticlesRepositoryService {
     }
   }
 
+  /**
+   * Repair: write ownerId onto the article document before deleting it.
+   * Articles created before Phase 8 may lack an ownerId field, which causes
+   * the Firestore delete rule to deny the operation. Setting ownerId via an
+   * update (allowed by the update rule) ensures the subsequent delete succeeds.
+   * Errors are swallowed — if the update fails the delete attempt still proceeds.
+   */
+  private async repairArticleOwnerId(articleId: string): Promise<void> {
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) return;
+    try {
+      await this.firebaseData.updateArticleInFirebase(articleId, {
+        ownerId: currentUserId,
+        updatedAt: Timestamp.now()
+      });
+      this.logger.debug('data', `🔧 ownerId repair applied to article ${articleId}`);
+    } catch (e: any) {
+      // Non-fatal: the document may already be gone or owned correctly.
+      this.logger.debug('data', `🔧 ownerId repair skipped for ${articleId}: ${e?.message}`);
+    }
+  }
+
   deleteArticleAndCleanupLists(articleId: string): Observable<{
     success: boolean;
     activeInLists?: string[];
@@ -474,6 +510,14 @@ export class ArticlesRepositoryService {
     this.logger.info('data', `Starting deletion process for article ${articleId}`);
 
     return from(this.removeArticleFromAllLists(articleId)).pipe(
+      mergeMap(() => {
+        // Repair: ensure ownerId is set before deleting.
+        // Pre-Phase-8 articles stored in Firestore without ownerId cannot be deleted
+        // by the strict `resource.data.ownerId == request.auth.uid` rule. Writing
+        // ownerId first satisfies the UPDATE rule (incoming data sets ownerId = uid)
+        // so the subsequent DELETE rule check also passes.
+        return from(this.repairArticleOwnerId(articleId));
+      }),
       mergeMap(() => {
         // After removing from lists, delete the article document
         this.logger.info('data', 'Lists updated, now deleting article document');

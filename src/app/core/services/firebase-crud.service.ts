@@ -160,7 +160,9 @@ export class FirebaseCrudService {
   async deleteArticleInFirebase(id: string): Promise<void> {
     if (!this.firestore) throw new Error('Firestore not initialized');
     const basePath = this.getUserBasePath();
+    this.logger.info('data', `🗑️ deleteArticleInFirebase: DELETE ${basePath}/articles/${id}`);
     await deleteDoc(doc(this.firestore, `${basePath}/articles/${id}`));
+    this.logger.info('data', `✅ deleteArticleInFirebase: success for ${id}`);
   }
 
   // ── List CRUD ─────────────────────────────────────────────────────────────

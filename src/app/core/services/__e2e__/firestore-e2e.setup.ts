@@ -296,6 +296,42 @@ export async function seedShareInvite(
 }
 
 /**
+ * Seed a pre-Phase-8 article that has NO ownerId field.
+ * Used to reproduce the legacy-data permission bug where the delete rule
+ * `resource.data.ownerId == request.auth.uid` evaluates to `null == uid` and denies.
+ */
+export async function seedLegacyArticle(
+  pathUserId: string,
+  articleId: string,
+  data?: Record<string, unknown>
+): Promise<void> {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(`users-v2/${pathUserId}/articles/${articleId}`).set({
+      id: articleId,
+      name: `Legacy Article ${articleId}`,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      // NOTE: no ownerId field — simulates data created before Phase 8
+      ...data,
+    });
+  });
+}
+
+/**
+ * Write any document as admin (bypasses security rules).
+ * Useful for setting up edge-case test data that would be rejected by rules.
+ */
+export async function writeDocAsAdmin(
+  path: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(path).set(data);
+  });
+}
+
+/**
  * Read a document bypassing security rules (for assertions).
  */
 export async function readDocAsAdmin(path: string): Promise<Record<string, unknown> | undefined> {

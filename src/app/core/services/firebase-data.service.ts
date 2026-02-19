@@ -1820,6 +1820,17 @@ export class FirebaseDataService {
   }
 
   updateLocalArticles(articles: Article[]): void {
+    // Keep the underlying owned/shared buckets in sync so that the next
+    // mergeArticles() call (triggered by any list listener or article loader)
+    // does not overwrite this update by re-merging stale bucket contents.
+    // Without this, a deleted article reappears in the article overview when
+    // the list listener fires after navigation back to the list.
+    const currentUserId = this.authService.getCurrentUserId();
+    if (currentUserId) {
+      const articleSet = new Set(articles.map(a => a.id));
+      this.ownedArticles = this.ownedArticles.filter(a => articleSet.has(a.id));
+      this.sharedArticles = this.sharedArticles.filter(a => articleSet.has(a.id));
+    }
     this.articlesSubject.next(articles);
     this.cacheService.cacheArticles(articles);
   }
