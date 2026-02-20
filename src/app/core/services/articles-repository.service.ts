@@ -284,10 +284,6 @@ export class ArticlesRepositoryService {
       mergeMap(() => {
         return from(this.firebaseData.deleteArticleInFirebase(id));
       }),
-      mergeMap(() => {
-        // Trigger immediate cleanup after successful deletion
-        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
-      }),
       map(() => {
         // Update local state immediately for UI responsiveness
         const currentArticles = this.firebaseData.getCurrentArticles();
@@ -547,11 +543,6 @@ export class ArticlesRepositoryService {
         // After removing from lists, delete the article document
         this.logger.info('data', 'Lists updated, now deleting article document');
         return from(this.firebaseData.deleteArticleInFirebase(articleId));
-      }),
-      mergeMap(() => {
-        // Trigger immediate cleanup after successful deletion
-        this.logger.info('data', 'Article deleted, running cleanup');
-        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
       }),
       map(() => {
         // Update local state immediately for UI responsiveness

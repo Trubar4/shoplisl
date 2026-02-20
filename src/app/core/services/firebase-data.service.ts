@@ -243,24 +243,32 @@ export class FirebaseDataService {
    * Called by article loader (via context) and directly.
    */
   private mergeArticles(): void {
+    // Prune shared articles that are no longer referenced by any shared list.
+    // This handles the case where the owner deleted an article while the participant
+    // was away (listener cleaned up), or when the article overview loads from cache
+    // and the cache contains a now-deleted shared article.
+    // Guard: only prune when shared lists have been loaded — otherwise sharedLists
+    // is empty and every shared article would be incorrectly flagged as orphaned.
+    if (this.sharedLists.length > 0) {
+      const allListArticleIds = new Set(
+        [...this.ownedLists, ...this.sharedLists].flatMap(l => l.articleIds || [])
+      );
+      const orphanedShared = this.sharedArticles.filter(a => !allListArticleIds.has(a.id));
+      if (orphanedShared.length > 0) {
+        this.logger.warn('data',
+          `⚠️ mergeArticles: pruning ${orphanedShared.length} orphaned shared article(s) no longer on any list: ` +
+          orphanedShared.map(a => `"${a.name}" (${a.id})`).join(', '));
+        this.sharedArticles = this.sharedArticles.filter(a => allListArticleIds.has(a.id));
+        this.articleLoader.evictFromCache(orphanedShared.map(a => a.id));
+      }
+    }
+
     const allArticles = [...this.ownedArticles, ...this.sharedArticles];
     const uniqueArticles = Array.from(
       new Map(allArticles.map(article => [article.id, article])).values()
     );
 
     this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
-
-    // DIAGNOSTIC: Warn if any article is no longer referenced by any list.
-    // This catches cases where the backing array was not pruned after a deletion.
-    const allListArticleIds = new Set(
-      [...this.ownedLists, ...this.sharedLists].flatMap(l => l.articleIds || [])
-    );
-    const orphaned = uniqueArticles.filter(a => !allListArticleIds.has(a.id));
-    if (orphaned.length > 0) {
-      this.logger.warn('data',
-        `⚠️ mergeArticles: ${orphaned.length} article(s) not on any list — possible stale entry: ` +
-        orphaned.map(a => `"${a.name}" (${a.id})`).join(', '));
-    }
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
@@ -473,6 +481,9 @@ export class FirebaseDataService {
       const cacheAge = this.cacheService.formatAge(articlesCache.status.age);
       this.logger.info('data', `⏭️ Fresh cache has all ${articleIdsOnLists.size} articles (age: ${cacheAge}) - skipping Firestore`);
       this.ensureOwnedArticlesFromCache();
+      // Run merge to prune any stale shared articles from cache
+      // (e.g. deleted by owner since cache was written).
+      this.mergeArticles();
       return;
     }
 
