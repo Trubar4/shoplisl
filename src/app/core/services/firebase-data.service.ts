@@ -236,6 +236,13 @@ export class FirebaseDataService {
 
     this.listsSubject.next(uniqueLists);
     this.cacheService.cacheLists(uniqueLists);
+
+    // Re-merge articles whenever lists change — this prunes stale shared articles
+    // (deleted by owner) that are still in the sharedArticles backing array or cache.
+    // Guard: only when articles have been loaded this session, to avoid no-op calls.
+    if (this.articlesLoadedFromFirestore) {
+      this.mergeArticles();
+    }
   }
 
   /**
