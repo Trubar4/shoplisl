@@ -50,6 +50,15 @@ export interface ListenerServiceContext {
    * it owns: initialDataLoadDone, articlesLoadedFromFirestore, mergeListsTimer.
    */
   onListenersCleanedUp(): void;
+  /**
+   * Remove the given article IDs from the sharedArticles backing array,
+   * evict them from the article-loader cache, and trigger mergeArticles().
+   *
+   * Called whenever a shared-list listener detects that articles have been
+   * removed from a list (owner deleted them), so stale articles are not
+   * resurrected by the next mergeArticles() call.
+   */
+  pruneSharedArticles(removedIds: string[]): void;
 }
 
 /**
@@ -638,9 +647,12 @@ export class FirebaseListenerService {
             const articleIdsChanged = this.mergeService.hasArticleIdsChanged(mergedArticleIds, serverArticleIds);
             const mergeChanged = itemStatesChanged || articleIdsChanged;
 
-            // Detect new article IDs to trigger article loading
+            // Detect added / removed article IDs
             const previousArticleIds = ownedLists[index].articleIds || [];
             const newArticleIds = mergedArticleIds.filter((id: string) => !previousArticleIds.includes(id));
+            const removedArticleIds = previousArticleIds.filter((id: string) => !mergedArticleIds.includes(id));
+            this.logger.info('data',
+              `📊 Owned list "${data['name']}": ${newArticleIds.length} added, ${removedArticleIds.length} removed article IDs`);
 
             ownedLists[index] = {
               ...ownedLists[index],
@@ -669,6 +681,14 @@ export class FirebaseListenerService {
               this.articleLoader.loadArticlesForList(ownedLists[index]).catch(error => {
                 this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
               });
+            }
+
+            // FIX: Prune sharedArticles when a participant's article is removed
+            // (owner's view: article was in sharedArticles because a participant created it)
+            if (removedArticleIds.length > 0) {
+              this.logger.info('data',
+                `🗑️ Pruning ${removedArticleIds.length} removed articles from sharedArticles: [${removedArticleIds.join(', ')}]`);
+              this.ctx!.pruneSharedArticles(removedArticleIds);
             }
 
             this.ctx!.mergeLists();
@@ -780,6 +800,11 @@ export class FirebaseListenerService {
               sharedWith: sharedWith
             };
 
+            // Detect articles removed from the shared list (e.g. owner deleted them)
+            const removedArticleIds = previousArticleIds.filter((id: string) => !finalArticleIds.includes(id));
+            this.logger.info('data',
+              `📊 Shared list "${data['name']}": ${newArticleIds.length} added, ${removedArticleIds.length} removed article IDs`);
+
             // REAL-TIME SYNC FIX: Load new articles when owner adds them
             if (newArticleIds.length > 0) {
               this.logger.info('data', `🆕 Detected ${newArticleIds.length} new articles in shared list "${data['name']}", loading them now...`);
@@ -787,6 +812,15 @@ export class FirebaseListenerService {
               this.articleLoader.loadArticlesForList(sharedLists[index]).catch(error => {
                 this.logger.error('data', `Failed to load new articles for ${list.id}:`, error);
               });
+            }
+
+            // FIX: Prune sharedArticles when owner removes/deletes articles from the list.
+            // Without this the deleted article remains in the sharedArticles backing array
+            // and is resurrected by the next mergeArticles() call.
+            if (removedArticleIds.length > 0) {
+              this.logger.info('data',
+                `🗑️ Pruning ${removedArticleIds.length} deleted articles from sharedArticles: [${removedArticleIds.join(', ')}]`);
+              this.ctx!.pruneSharedArticles(removedArticleIds);
             }
 
             this.ctx!.mergeLists();

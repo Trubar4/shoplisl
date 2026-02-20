@@ -124,6 +124,18 @@ export class FirebaseDataService {
           clearTimeout(this.mergeListsTimer);
           this.mergeListsTimer = null;
         }
+      },
+      pruneSharedArticles: (ids) => {
+        const idSet = new Set(ids);
+        const before = this.sharedArticles.length;
+        this.sharedArticles = this.sharedArticles.filter(a => !idSet.has(a.id));
+        const pruned = before - this.sharedArticles.length;
+        if (pruned > 0) {
+          this.logger.info('data',
+            `🗑️ pruneSharedArticles: removed ${pruned} article(s) from sharedArticles backing array`);
+        }
+        this.articleLoader.evictFromCache(ids);
+        this.mergeArticles();
       }
     });
 
@@ -237,6 +249,18 @@ export class FirebaseDataService {
     );
 
     this.logger.debug('data', `Merged articles: ${this.ownedArticles.length} owned + ${this.sharedArticles.length} shared = ${uniqueArticles.length} total`);
+
+    // DIAGNOSTIC: Warn if any article is no longer referenced by any list.
+    // This catches cases where the backing array was not pruned after a deletion.
+    const allListArticleIds = new Set(
+      [...this.ownedLists, ...this.sharedLists].flatMap(l => l.articleIds || [])
+    );
+    const orphaned = uniqueArticles.filter(a => !allListArticleIds.has(a.id));
+    if (orphaned.length > 0) {
+      this.logger.warn('data',
+        `⚠️ mergeArticles: ${orphaned.length} article(s) not on any list — possible stale entry: ` +
+        orphaned.map(a => `"${a.name}" (${a.id})`).join(', '));
+    }
 
     this.articlesSubject.next(uniqueArticles);
     this.cacheService.cacheArticles(uniqueArticles);
