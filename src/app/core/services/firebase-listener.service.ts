@@ -582,22 +582,22 @@ export class FirebaseListenerService {
   }
 
   /**
-   * LAZY LISTENERS: Clean up all lazy (per-list) listeners.
+   * LAZY LISTENERS: Clean up owned-list lazy listeners.
    * Called when user navigates away from list detail.
+   *
+   * Shared-list listeners are intentionally kept alive so that owner deletions
+   * are detected even after the participant navigates away from the list.
+   * They are only torn down in cleanupListeners() (logout / user switch).
    */
   cleanupLazyListeners(): void {
-    this.logger.debug('data', `Cleaning up lazy listeners (${this.ownedListListeners.size} owned + ${this.sharedListListeners.size} shared)`);
+    this.logger.debug('data',
+      `Cleaning up lazy listeners (${this.ownedListListeners.size} owned, keeping ${this.sharedListListeners.size} shared alive)`);
 
     this.ownedListListeners.forEach((unsubscribe) => {
       unsubscribe();
     });
     this.ownedListListeners.clear();
     this.ownedListListenersActive = false;
-
-    this.sharedListListeners.forEach((unsubscribe) => {
-      unsubscribe();
-    });
-    this.sharedListListeners.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -719,6 +719,13 @@ export class FirebaseListenerService {
     const userId = this.authService.getCurrentUserId();
     if (!userId) {
       this.logger.warn('data', 'No user ID, cannot set up shared list listener');
+      return;
+    }
+
+    // Duplicate guard: listener already running for this list — keep it alive.
+    if (this.sharedListListeners.has(list.id)) {
+      this.logger.debug('data',
+        `⏭️ Shared list listener for "${list.name}" (${list.id}) already active — skipping duplicate setup`);
       return;
     }
 
