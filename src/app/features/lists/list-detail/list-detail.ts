@@ -314,13 +314,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     this.triggerChangeDetection();
   }
 
-  private originalOnUndoArticleCompletion_oldDataServiceCode(article: ArticleItemData): void {
-    // OLD CODE KEPT FOR REFERENCE - DELETE AFTER TESTING
-    this.dataService.toggleItemChecked(this.listId, article.id).subscribe({
-      next: (success) => success && console.log('Undo successful for:', article.name),
-      error: (error) => console.error('Undo error:', error)
-    });
-  }
   onEditAmountFromList(data: { article: ArticleItemData; event: Event }): void {
     data.event.stopPropagation();
     this.editArticleAmount(data.article);
