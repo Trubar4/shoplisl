@@ -54,6 +54,18 @@ export class ArticlesRepositoryService {
     };
 
     this.logger.info('data', `Creating local copy of article "${originalArticle.name}" (${originalArticle.id})`);
+
+    // Track article copied event
+    this.analyticsService.trackEvent(
+      currentUserId,
+      AnalyticsEventType.ARTICLE_COPIED,
+      {
+        originalArticleId: originalArticle.id,
+        articleName: originalArticle.name,
+        originalOwnerId: originalArticle.ownerId
+      }
+    );
+
     return this.createArticle(copyData);
   }
 
