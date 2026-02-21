@@ -523,6 +523,20 @@ export class ListsRepositoryService {
       return of(true);
     }
 
+    // Track article added to list event
+    if (currentUser?.id) {
+      this.analyticsService.trackEvent(
+        currentUser.id,
+        AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+        {
+          listId,
+          articleId,
+          articleName,
+          isAlreadyInList: isAlreadyInList
+        }
+      );
+    }
+
     // Online - update Firebase directly and wait for completion
     this.logger.info('data', `📝 ADD INTERNAL: Online - updating Firebase with articleIds: [${newArticleIds.join(', ')}]`);
     return from(this.firebaseData.updateListInFirebase(listId, {
@@ -668,6 +682,20 @@ export class ListsRepositoryService {
             );
             this.firebaseData.updateLocalLists(updatedLists);
 
+            // Track batch article added to list event
+            if (currentUser?.id) {
+              this.analyticsService.trackEvent(
+                currentUser.id,
+                AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+                {
+                  listId,
+                  articleIds: finalArticleIds,
+                  count: finalArticleIds.length,
+                  batch: true
+                }
+              );
+            }
+
             if (!this.connectionService.isOnline()) {
               // Queue for sync when online
               this.offlineSync.queueOperation(async () => {
@@ -790,7 +818,8 @@ export class ListsRepositoryService {
     return this.firebaseData.getList(listId).pipe(
       mergeMap(list => {
         if (!list) return of(false);
-        
+
+        const articleName = list.itemStates[articleId]?.articleName;
         const newArticleIds = list.articleIds.filter(id => id !== articleId);
         const newItemStates = { ...list.itemStates };
         delete newItemStates[articleId];
@@ -806,6 +835,20 @@ export class ListsRepositoryService {
           } : l
         );
         this.firebaseData.updateLocalLists(updatedLists);
+
+        // Track article removed from list event
+        const currentUserId = this.authService.getCurrentUserId();
+        if (currentUserId) {
+          this.analyticsService.trackEvent(
+            currentUserId,
+            AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST,
+            {
+              listId,
+              articleId,
+              articleName
+            }
+          );
+        }
 
         if (!this.connectionService.isOnline()) {
           // Queue for sync when online
@@ -874,6 +917,21 @@ export class ListsRepositoryService {
           } : l
         );
         this.firebaseData.updateLocalLists(updatedLists);
+
+        // Track article removed from list events
+        const currentUserId = this.authService.getCurrentUserId();
+        if (currentUserId) {
+          this.analyticsService.trackEvent(
+            currentUserId,
+            AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST,
+            {
+              listId,
+              articleIds,
+              count: articleIds.length,
+              batch: true
+            }
+          );
+        }
 
         if (!this.connectionService.isOnline()) {
           // Queue for sync when online

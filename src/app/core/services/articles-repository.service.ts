@@ -10,6 +10,8 @@ import { ConnectionService } from './connection.service';
 import { LoggerService } from './logger.service';
 import { DataMigrationService } from './data-migration.service';
 import { AuthService } from './auth.service';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsEventType } from '../models/analytics.model';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +24,8 @@ export class ArticlesRepositoryService {
     private connectionService: ConnectionService,
     private logger: LoggerService,
     private dataMigrationService: DataMigrationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private analyticsService: AnalyticsService
   ) {}
 
   // === BASIC CRUD OPERATIONS ===
@@ -51,6 +54,18 @@ export class ArticlesRepositoryService {
     };
 
     this.logger.info('data', `Creating local copy of article "${originalArticle.name}" (${originalArticle.id})`);
+
+    // Track article copied event
+    this.analyticsService.trackEvent(
+      currentUserId,
+      AnalyticsEventType.ARTICLE_COPIED,
+      {
+        originalArticleId: originalArticle.id,
+        articleName: originalArticle.name,
+        originalOwnerId: originalArticle.ownerId
+      }
+    );
+
     return this.createArticle(copyData);
   }
 
@@ -165,16 +180,23 @@ export class ArticlesRepositoryService {
     }
 
     return from(this.firebaseData.createArticleInFirebase(articleData)).pipe(
-      map(docId => ({
-        id: docId,
-        ...article,
-        amount: article.amount || '',
-        notes: article.notes || '',
-        icon: article.icon || '📦',
-        ownerId: currentUserId,  // Phase 8: Creator owns the article
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } as Article)),
+      map(docId => {
+        this.analyticsService.trackEvent(currentUserId, AnalyticsEventType.ARTICLE_CREATED, {
+          articleId: docId,
+          articleName: article.name,
+          offline: false
+        });
+        return {
+          id: docId,
+          ...article,
+          amount: article.amount || '',
+          notes: article.notes || '',
+          icon: article.icon || '📦',
+          ownerId: currentUserId,  // Phase 8: Creator owns the article
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as Article;
+      }),
       catchError(error => {
         this.logger.error('data', 'Error creating article', error);
         throw error;
@@ -220,6 +242,7 @@ export class ArticlesRepositoryService {
     // FIX BUG 2: Update local state immediately after Firebase write (optimistic update)
     // This ensures UI updates instantly without waiting for real-time listener
     // Matches offline behavior for consistency
+    const currentUserId = this.authService.getCurrentUserId();
     return from(this.firebaseData.updateArticleInFirebase(id, updateData)).pipe(
       map(() => {
         // Immediately update local state with new data
@@ -228,6 +251,16 @@ export class ArticlesRepositoryService {
           article.id === id ? { ...article, ...updates, updatedAt: new Date() } : article
         );
         this.firebaseData.updateLocalArticles(updatedArticles);
+
+        if (currentUserId) {
+          const updated = updatedArticles.find(a => a.id === id);
+          this.analyticsService.trackEvent(currentUserId, AnalyticsEventType.ARTICLE_UPDATED, {
+            articleId: id,
+            articleName: updated?.name,
+            updatedFields: Object.keys(updates),
+            offline: false
+          });
+        }
 
         // Return the updated article
         return updatedArticles.find(a => a.id === id);
@@ -262,10 +295,6 @@ export class ArticlesRepositoryService {
       mergeMap(() => from(this.repairArticleOwnerId(id))),
       mergeMap(() => {
         return from(this.firebaseData.deleteArticleInFirebase(id));
-      }),
-      mergeMap(() => {
-        // Trigger immediate cleanup after successful deletion
-        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
       }),
       map(() => {
         // Update local state immediately for UI responsiveness
@@ -509,6 +538,10 @@ export class ArticlesRepositoryService {
     // This avoids race conditions and duplicate operations from action dispatches
     this.logger.info('data', `Starting deletion process for article ${articleId}`);
 
+    const currentUserId = this.authService.getCurrentUserId();
+    // Capture name before deletion so it can be included in the analytics event.
+    const articleName = this.firebaseData.getCurrentArticles().find(a => a.id === articleId)?.name;
+
     return from(this.removeArticleFromAllLists(articleId)).pipe(
       mergeMap(() => {
         // Repair: ensure ownerId is set before deleting.
@@ -523,17 +556,21 @@ export class ArticlesRepositoryService {
         this.logger.info('data', 'Lists updated, now deleting article document');
         return from(this.firebaseData.deleteArticleInFirebase(articleId));
       }),
-      mergeMap(() => {
-        // Trigger immediate cleanup after successful deletion
-        this.logger.info('data', 'Article deleted, running cleanup');
-        return from(this.dataMigrationService.quickCleanupOrphanedReferences());
-      }),
       map(() => {
         // Update local state immediately for UI responsiveness
         const currentArticles = this.firebaseData.getCurrentArticles();
         const updatedArticles = currentArticles.filter(a => a.id !== articleId);
         this.firebaseData.updateLocalArticles(updatedArticles);
         this.logger.info('data', '✅ Article deletion completed successfully');
+
+        if (currentUserId) {
+          this.analyticsService.trackEvent(currentUserId, AnalyticsEventType.ARTICLE_DELETED, {
+            articleId,
+            articleName,
+            offline: false
+          });
+        }
+
         return { success: true };
       }),
       catchError(error => {

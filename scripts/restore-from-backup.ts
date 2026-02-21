@@ -22,7 +22,9 @@ import * as path from 'path';
 // Parse command line arguments
 const args = process.argv.slice(2);
 const backupFile = args.find(arg => !arg.startsWith('--'));
-const executeArg = args.includes('--execute');
+// npm intercepts --execute and sets npm_config_execute instead of passing it through.
+// Check both so the flag works whether invoked via npm run or npx tsx directly.
+const executeArg = args.includes('--execute') || process.env['npm_config_execute'] !== undefined;
 const DRY_RUN = !executeArg;
 
 if (!backupFile) {

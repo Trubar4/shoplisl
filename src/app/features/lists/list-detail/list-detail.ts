@@ -205,6 +205,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   switchToEditMode(): void {
+    // Load all owned articles so the 'fehlend' filter can show articles not yet on the list
+    this.dataService.loadAllOwnedArticles();
     this.currentMode.set('edit');
     this.cdr.detectChanges();
   }
@@ -249,6 +251,10 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private setEditFilter(filter: EditFilter): void {
+    if (filter === 'fehlend' || filter === 'alle') {
+      // Ensure all articles are loaded so 'fehlend' can show non-listed articles
+      this.dataService.loadAllOwnedArticles();
+    }
     this.currentEditFilter.set(filter);
     this.filterService.setEditFilter(filter);
     this.isFabExpanded.set(false);
@@ -617,6 +623,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   private initializeComponent(): void {
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'edit') {
+      this.dataService.loadAllOwnedArticles();
       this.currentMode.set('edit');
       this.filterService.setEditFilter('alle'); // Ensure edit filter is set to 'alle' by default
     }

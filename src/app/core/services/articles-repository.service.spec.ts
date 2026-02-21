@@ -86,6 +86,8 @@ describe('ArticlesRepositoryService - updateArticle() - Bug 2 Fix', () => {
       getCurrentUserId: vi.fn(() => USER_ID),
     };
 
+    const analyticsMock = { trackEvent: vi.fn() };
+
     // Manually instantiate service with mocks (avoid Angular DI complexity)
     service = new ArticlesRepositoryService(
       firebaseDataMock,
@@ -93,7 +95,8 @@ describe('ArticlesRepositoryService - updateArticle() - Bug 2 Fix', () => {
       connectionServiceMock,
       loggerMock,
       migrationMock,
-      authMock
+      authMock,
+      analyticsMock as any
     );
   });
 
@@ -361,6 +364,7 @@ describe('ArticlesRepositoryService - deleteArticle - updateLocalLists called af
     const loggerMock            = { info: vi.fn(), debug: vi.fn(), error: vi.fn(), warn: vi.fn() };
     const migrationMock         = { quickCleanupOrphanedReferences: vi.fn(() => Promise.resolve()) };
     const authMock              = { getCurrentUserId: vi.fn(() => USER_ID) };
+    const analyticsMock         = { trackEvent: vi.fn() };
 
     service = new ArticlesRepositoryService(
       firebaseDataMock,
@@ -368,7 +372,8 @@ describe('ArticlesRepositoryService - deleteArticle - updateLocalLists called af
       connectionServiceMock,
       loggerMock,
       migrationMock,
-      authMock
+      authMock,
+      analyticsMock as any
     );
   });
 

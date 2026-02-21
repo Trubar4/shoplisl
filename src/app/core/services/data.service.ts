@@ -54,6 +54,10 @@ export class DataService {
 
   // === ARTICLES API ===
 
+  loadAllOwnedArticles(): void {
+    this.firebaseData.loadAllOwnedArticles();
+  }
+
   getArticles(): Observable<Article[]> {
     return this.firebaseData.getArticles();
   }

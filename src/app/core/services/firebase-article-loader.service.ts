@@ -100,6 +100,20 @@ export class FirebaseArticleLoaderService {
   }
 
   /**
+   * Remove specific article IDs from all caches so they can be re-loaded
+   * (or not restored) after being deleted from a shared list.
+   * Called by FirebaseDataService.pruneSharedArticles().
+   */
+  evictFromCache(ids: string[]): void {
+    ids.forEach(id => {
+      this.loadedSharedArticleIds.delete(id);
+      this.failedArticleIds.delete(id);
+      this.articleOwnerCache.delete(id);
+    });
+    this.logger.debug('data', `🗑️ Evicted ${ids.length} article IDs from loader cache: [${ids.join(', ')}]`);
+  }
+
+  /**
    * Load articles for a single list.
    * Only loads articles for shared lists (or owned lists shared with others).
    * Skips articles already in the cache.
