@@ -1,11 +1,11 @@
 # Shoplisl Refactoring Plan
-**Last Updated:** 2025-11-24
-**Current Phase:** Phase 6 - History Feature (Phases 6A-C Complete) ✅
-**Completed:** Phases 0-5 ✅ | Phase 6A-C ✅ | Bug Fixes ✅ | UI Enhancements Pending 🚧
-**Recent Work:** History feature bugs fixed + Documentation (2025-11-24)
-**Status:** All tests passing ✅ | Build successful ✅ | Core history features working
-**Remaining:** Phase 6C (count chip) | Phase 6D (verify sorting) | Phase 6E (stats editing)
-**Next Major Features:** Complete Phase 6 UI → Multi-User Authentication → Real-Time Collaboration
+**Last Updated:** 2026-02-22
+**Current Phase:** Firebase Service Refactor ✅ COMPLETE | Next: Analytics Gap Fill
+**Completed:** Phases 0–8 ✅ | Firebase Service Refactor ✅ | Bug Fixes ✅
+**Recent Work:** Firebase service refactor complete — facade reduced 1,842 → 645 lines. Dead code removed. (2026-02-22)
+**Status:** Unit tests 769 pass / 171 pre-existing fails ✅ | E2E 147 pass / 10 pre-existing fails ✅
+**Remaining:** Analytics event gaps (sharing, move, LIST_VIEWED, AI source metadata)
+**Next Session:** Add missing analytics events — see `docs/NEXT_SESSION_PROMPT_ANALYTICS_EVENTS.md`
 
 ---
 
@@ -1027,6 +1027,85 @@ export interface ShoppingList {
 
 **Resume Point After Phase 8:**
 > "Multi-user data scoping complete. Users see only their own data. Sharing works for lists and articles. Real-time sync implemented with NgRx effects. Conflict resolution handles offline changes. All features tested with multiple users. Project ready for production."
+
+---
+
+### Phase 8 (Actual): Multi-User Data Scoping & Sharing - ✅ COMPLETE
+**Completed:** ~2025-12 (merged to main before Firebase refactor sessions)
+**Status:** Implemented ✅ | Real-time sync ✅ | Sharing ✅ | Firestore rules ✅
+
+#### What was built:
+- `sharing.service.ts` — share/unshare lists, create/accept invitations, remove collaborators
+- `real-time-sync.service.ts` — Firestore onSnapshot subscriptions dispatching NgRx actions
+- Multi-user Firestore rules (`users-v2/{uid}/...` path isolation)
+- `ownerId` + `sharedWith` fields on lists and articles
+- Share invite flow: create invite → accept → participant sees list in real time
+- Per-article history tracking (`checkedBy`, timestamp) via HistoryService
+
+**Resume Point After Phase 8:**
+> "Multi-user scoping and real-time sharing complete. All data lives under users-v2/{uid}/. Sharing via email invitations, accepted invites load shared lists via onSnapshot. Article history tracks who checked/unchecked. Firebase rules deployed. Real-time sync working between owner and participants."
+
+---
+
+### Firebase Service Refactor - ✅ COMPLETE
+**Completed:** 2026-02-22 (multiple sessions, all merged to main; cleanup committed to claude/refactor-firebase-service-ieGPp)
+**Status:** All goals achieved ✅ | Tests unchanged ✅
+
+#### Goal
+Break up `firebase-data.service.ts` — a 1,842-line monolith — into focused sub-services
+while keeping it as the public API facade (no caller changes).
+
+#### Services extracted (all previously done pre-refactor sessions):
+| Service | Lines | Responsibility |
+|---------|-------|----------------|
+| `firebase-crud.service.ts` | ~290 | Firestore CRUD primitives |
+| `firebase-merge.service.ts` | ~350 | Pure merge logic (mergeArticleIds, mergeItemStates, etc.) |
+| `firebase-transaction.service.ts` | ~225 | Firestore transactions (updateListItemWithTransaction) |
+| `firebase-write.service.ts` | ~60 | writeMergedStateToFirestore |
+| `firebase-article-loader.service.ts` | ~545 | Article batch loading, lazy loading |
+
+#### Services extracted in refactor sessions:
+| Service | Lines | Responsibility |
+|---------|-------|----------------|
+| `firebase-listener.service.ts` | 945 | All onSnapshot real-time listeners (lazy + collection) |
+| `firebase-data-loader.service.ts` | ~230 | First-load: loadFreshData, loadCachedData |
+
+#### Architecture rules:
+- `firebase-data.service.ts` is the **facade** — only it is called by repositories/components
+- All `BehaviorSubject`s (`articlesSubject`, `listsSubject`) stay in the facade
+- Sub-services access facade state via typed `Context` interfaces (no circular deps)
+- `updateLocalArticles()` / `updateLocalLists()` prune backing arrays to prevent resurrection
+
+#### Bug fixes shipped alongside refactor:
+1. **Shared list listener destroyed on navigation** — `cleanupLazyListeners()` now only tears down owned-list listeners; shared-list listeners stay alive
+2. **Mass article deletion by `quickCleanupOrphanedReferences`** — dangerous method removed; `mergeArticles()` upgraded to prune orphaned shared articles
+3. **`mergeArticles()` not called on list changes** — `executeMergeLists()` now calls `mergeArticles()` when articles have been loaded
+4. **Edit mode "fehlend" filter shows 0 articles** — `loadAllOwnedArticles()` called on edit-mode entry and filter change
+5. **Restore script `--execute` flag eaten by npm** — also checks `process.env['npm_config_execute']`
+6. **Deleted article reappeared after navigation** — `updateLocalArticles()` now prunes both `ownedArticles` and `sharedArticles` backing arrays
+
+#### Analytics events added:
+- `ARTICLE_CREATED`, `ARTICLE_UPDATED`, `ARTICLE_DELETED`
+- `ARTICLE_ADDED_TO_LIST` (single + batch), `ARTICLE_REMOVED_FROM_LIST` (single + batch)
+- `ARTICLE_COPIED`
+- `LIST_CREATED` (both offline/online paths), `LIST_UPDATED`, `LIST_DELETED`
+- `ARTICLE_CHECKED`, `ARTICLE_UNCHECKED`
+
+#### Cleanup (final session 2026-02-22):
+- Removed `originalOnUndoArticleCompletion_oldDataServiceCode` dead code from `list-detail.ts`
+- Removed `setupOwnedListRealtimeListeners()` and `setupSharedListRealtimeListeners()` deprecated/unused bulk listener methods from `firebase-listener.service.ts` (−186 lines)
+
+#### Final metrics:
+| File | Before | After |
+|------|--------|-------|
+| `firebase-data.service.ts` (facade) | 1,842 lines | 645 lines (−65%) |
+| `firebase-listener.service.ts` | — | 945 lines |
+| `firebase-data-loader.service.ts` | — | ~230 lines |
+
+**Test baseline:** Unit 769 pass / 171 pre-existing fail | E2E 147 pass / 10 pre-existing fail
+
+**Resume Point After Firebase Refactor:**
+> "Firebase service refactor 100% complete. Facade reduced from 1,842 → 645 lines. FirebaseListenerService (945L) owns all onSnapshot listeners with lazy architecture. FirebaseDataLoaderService owns first-load logic. Six bug fixes shipped. Analytics events added for all article/list CRUD. Dead code and deprecated methods removed. All manual tests passing. Next: fill analytics gaps (sharing events, move event, LIST_VIEWED, AI source metadata) — see docs/NEXT_SESSION_PROMPT_ANALYTICS_EVENTS.md."
 
 ---
 
