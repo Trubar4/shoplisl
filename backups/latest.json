@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-21T09:17:37.041Z",
+  "timestamp": "2026-02-22T09:20:40.327Z",
   "users": {
     "2RZNjeKK20hXdoy2vbZ61lnk0D62": {
       "lists": [],
@@ -2639,6 +2639,801 @@
             "mmOjfwJOaeywRccCUM5k"
           ],
           "itemStates": {
+            "N1JdWRDo5cAihC2Ahy16": {
+              "articleId": "N1JdWRDo5cAihC2Ahy16",
+              "articleName": "Äpfel",
+              "isChecked": false,
+              "amount": "2",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1765644506,
+                "_nanoseconds": 159000000
+              },
+              "checkedAt": {
+                "_nanoseconds": 886000000,
+                "_seconds": 1770976345
+              },
+              "history": [
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 920000000,
+                    "_seconds": 1770983779
+                  },
+                  "amount": "2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 886000000,
+                    "_seconds": 1770976345
+                  }
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1770976292,
+                    "_nanoseconds": 832000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1770910659,
+                    "_nanoseconds": 795000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1770478679,
+                    "_nanoseconds": 133000000
+                  },
+                  "amount": "2"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 47000000,
+                    "_seconds": 1770478631
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 808000000,
+                    "_seconds": 1770390325
+                  },
+                  "amount": "2",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 574000000,
+                    "_seconds": 1770388239
+                  }
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1770294488,
+                    "_nanoseconds": 537000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 397000000,
+                    "_seconds": 1770287278
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1770195247,
+                    "_nanoseconds": 121000000
+                  },
+                  "amount": "2"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 355000000,
+                    "_seconds": 1770195236
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 976000000,
+                    "_seconds": 1769531664
+                  },
+                  "amount": "2",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 183000000,
+                    "_seconds": 1769531653
+                  },
+                  "amount": "2"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 284000000,
+                    "_seconds": 1769077017
+                  },
+                  "amount": "2",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 184000000,
+                    "_seconds": 1767968455
+                  },
+                  "amount": "2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 352000000,
+                    "_seconds": 1767117274
+                  }
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1767115830,
+                    "_nanoseconds": 207000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1767113887,
+                    "_nanoseconds": 661000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1767112861,
+                    "_nanoseconds": 752000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 144000000,
+                    "_seconds": 1767112839
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1767111940,
+                    "_nanoseconds": 457000000
+                  }
+                },
+                {
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1767109925,
+                    "_nanoseconds": 410000000
+                  },
+                  "amount": "2"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 288000000,
+                    "_seconds": 1767105144
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "unchecked",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 573000000,
+                    "_seconds": 1767102440
+                  }
+                },
+                {
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 994000000,
+                    "_seconds": 1767102428
+                  },
+                  "amount": "2"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 762000000,
+                    "_seconds": 1767096574
+                  },
+                  "amount": "2",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 629000000,
+                    "_seconds": 1767021999
+                  },
+                  "amount": "2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1767001498,
+                    "_nanoseconds": 34000000
+                  }
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 102000000,
+                    "_seconds": 1766921802
+                  },
+                  "amount": "2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 255000000,
+                    "_seconds": 1766914717
+                  }
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 728000000,
+                    "_seconds": 1766858539
+                  },
+                  "amount": "2",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_seconds": 1766858492,
+                    "_nanoseconds": 657000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 660000000,
+                    "_seconds": 1766567876
+                  },
+                  "amount": "2",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 992000000,
+                    "_seconds": 1766494556
+                  }
+                },
+                {
+                  "amount": "2",
+                  "timestamp": {
+                    "_nanoseconds": 363000000,
+                    "_seconds": 1766493133
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked"
+                },
+                {
+                  "action": "unchecked",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_seconds": 1765647444,
+                    "_nanoseconds": 905000000
+                  },
+                  "amount": ""
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 25000000,
+                    "_seconds": 1765647443
+                  },
+                  "amount": "",
+                  "userId": "shared-shoplisl-user",
+                  "action": "checked",
+                  "userName": "Du"
+                }
+              ]
+            },
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
+              "articleName": "Tomaten",
+              "isChecked": false,
+              "amount": "200 g",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_nanoseconds": 714000000,
+                "_seconds": 1765626138
+              },
+              "checkedAt": {
+                "_seconds": 1770294492,
+                "_nanoseconds": 545000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1770478680,
+                    "_nanoseconds": 837000000
+                  },
+                  "amount": "200 g",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 545000000,
+                    "_seconds": 1770294492
+                  },
+                  "amount": "200 g",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "200 g",
+                  "timestamp": {
+                    "_seconds": 1769252128,
+                    "_nanoseconds": 86000000
+                  }
+                },
+                {
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 252000000,
+                    "_seconds": 1769077020
+                  },
+                  "amount": "200 g"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 192000000,
+                    "_seconds": 1767785395
+                  },
+                  "amount": "200 g",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "200 g",
+                  "timestamp": {
+                    "_seconds": 1767598617,
+                    "_nanoseconds": 508000000
+                  }
+                },
+                {
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1767540272,
+                    "_nanoseconds": 624000000
+                  },
+                  "amount": "200 g"
+                },
+                {
+                  "amount": "200 g",
+                  "timestamp": {
+                    "_seconds": 1766858502,
+                    "_nanoseconds": 297000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "200 g",
+                  "timestamp": {
+                    "_nanoseconds": 146000000,
+                    "_seconds": 1766855851
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                },
+                {
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user",
+                  "userName": "Du",
+                  "timestamp": {
+                    "_nanoseconds": 895000000,
+                    "_seconds": 1766567835
+                  },
+                  "amount": "200 g"
+                }
+              ]
+            },
+            "GBOCCaCZOUOavPIX2Y88": {
+              "articleId": "GBOCCaCZOUOavPIX2Y88",
+              "articleName": "Servietten",
+              "isChecked": false,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769585025,
+                "_nanoseconds": 748000000
+              },
+              "checkedAt": {
+                "_seconds": 1770195235,
+                "_nanoseconds": 411000000
+              },
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 707000000,
+                    "_seconds": 1770478677
+                  }
+                },
+                {
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 411000000,
+                    "_seconds": 1770195235
+                  },
+                  "amount": ""
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1769585025,
+                    "_nanoseconds": 748000000
+                  }
+                }
+              ]
+            },
+            "Oe0AGgutrgNSAC0JNLO2": {
+              "articleId": "Oe0AGgutrgNSAC0JNLO2",
+              "articleName": "Jacke",
+              "isChecked": false,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769412128,
+                "_nanoseconds": 237000000
+              },
+              "checkedAt": {
+                "_seconds": 1770478632,
+                "_nanoseconds": 595000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_nanoseconds": 744000000,
+                    "_seconds": 1770478684
+                  },
+                  "amount": "",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770478632,
+                    "_nanoseconds": 595000000
+                  }
+                }
+              ]
+            },
+            "yrycRyaCpZDMu1SH3Gim": {
+              "articleId": "yrycRyaCpZDMu1SH3Gim",
+              "articleName": "Karotten",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769358017,
+                "_nanoseconds": 522000000
+              },
+              "checkedAt": {
+                "_seconds": 1770478692,
+                "_nanoseconds": 693000000
+              },
+              "history": [
+                {
+                  "timestamp": {
+                    "_seconds": 1770478692,
+                    "_nanoseconds": 693000000
+                  },
+                  "amount": "",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1770478679,
+                    "_nanoseconds": 988000000
+                  },
+                  "amount": ""
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770388273,
+                    "_nanoseconds": 141000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                }
+              ]
+            },
+            "UHWQK4LSdZHvc3oldjUH": {
+              "articleId": "UHWQK4LSdZHvc3oldjUH",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_nanoseconds": 185000000,
+                "_seconds": 1770388309
+              },
+              "checkedAt": {
+                "_seconds": 1770478697,
+                "_nanoseconds": 453000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 453000000,
+                    "_seconds": 1770478697
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 269000000,
+                    "_seconds": 1770478684
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 185000000,
+                    "_seconds": 1770388309
+                  },
+                  "amount": "",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "2hpqvzf1oEkSTzi1bx92": {
+              "articleId": "2hpqvzf1oEkSTzi1bx92",
+              "articleName": "Kartoffeln",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_seconds": 1769358017,
+                "_nanoseconds": 522000000
+              },
+              "checkedAt": {
+                "_seconds": 1771225870,
+                "_nanoseconds": 818000000
+              },
+              "history": [
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 818000000,
+                    "_seconds": 1771225870
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770478680,
+                    "_nanoseconds": 427000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 591000000,
+                    "_seconds": 1770287486
+                  }
+                }
+              ]
+            },
+            "9WhzeKHKKuqjoJjUUJ2E": {
+              "articleId": "9WhzeKHKKuqjoJjUUJ2E",
+              "articleName": "Kümmelsamen",
+              "isChecked": false,
+              "amount": "",
+              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+              "addedAt": {
+                "_seconds": 1769412128,
+                "_nanoseconds": 237000000
+              },
+              "checkedAt": {
+                "_seconds": 1770910664,
+                "_nanoseconds": 518000000
+              },
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 871000000,
+                    "_seconds": 1770976287
+                  }
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770910664,
+                    "_nanoseconds": 518000000
+                  }
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770478682,
+                    "_nanoseconds": 554000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770390316,
+                    "_nanoseconds": 613000000
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                }
+              ]
+            },
             "NGEfd68pDBTqhKpvDg3r": {
               "articleId": "NGEfd68pDBTqhKpvDg3r",
               "articleName": "Buns für Burger",
@@ -2646,222 +3441,232 @@
               "amount": "3",
               "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
               "addedAt": {
-                "_nanoseconds": 487000000,
-                "_seconds": 1765648068
+                "_seconds": 1765648068,
+                "_nanoseconds": 487000000
               },
               "checkedAt": {
-                "_nanoseconds": 236000000,
-                "_seconds": 1770976279
+                "_seconds": 1770976279,
+                "_nanoseconds": 236000000
               },
               "history": [
                 {
                   "amount": "3",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1770983789,
                     "_nanoseconds": 747000000
                   },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "action": "unchecked"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "3",
                   "timestamp": {
-                    "_seconds": 1770976279,
-                    "_nanoseconds": 236000000
+                    "_nanoseconds": 236000000,
+                    "_seconds": 1770976279
                   },
-                  "action": "checked",
                   "userName": "Philipp Thurnher",
-                  "amount": "3"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
                 },
                 {
+                  "timestamp": {
+                    "_nanoseconds": 283000000,
+                    "_seconds": 1770478677
+                  },
                   "amount": "3",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478677,
-                    "_nanoseconds": 283000000
-                  },
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "action": "checked",
                   "timestamp": {
                     "_seconds": 1770478630,
                     "_nanoseconds": 289000000
                   },
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "3"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1770390335,
-                    "_nanoseconds": 331000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "3"
-                },
-                {
                   "amount": "3",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1770195234,
-                    "_nanoseconds": 908000000
-                  },
                   "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "userName": "Philipp Thurnher"
                 },
                 {
                   "amount": "3",
                   "timestamp": {
-                    "_seconds": 1769358034,
-                    "_nanoseconds": 468000000
+                    "_nanoseconds": 331000000,
+                    "_seconds": 1770390335
                   },
                   "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "unchecked"
                 },
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1770195234,
+                    "_nanoseconds": 908000000
+                  },
+                  "amount": "3"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "3",
+                  "timestamp": {
+                    "_seconds": 1769358034,
+                    "_nanoseconds": 468000000
+                  }
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
                   "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1769252026,
                     "_nanoseconds": 821000000
                   },
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "amount": "3"
                 },
                 {
                   "amount": "3",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1769077017,
                     "_nanoseconds": 804000000
                   },
                   "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "unchecked"
                 },
                 {
-                  "amount": "3",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
-                    "_seconds": 1767117235,
-                    "_nanoseconds": 13000000
+                    "_nanoseconds": 13000000,
+                    "_seconds": 1767117235
                   },
+                  "amount": "3",
                   "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "amount": "3",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
                   "timestamp": {
                     "_seconds": 1767115829,
                     "_nanoseconds": 125000000
                   },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "amount": "3",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "userName": "Philipp Thurnher"
                 },
                 {
                   "amount": "3",
-                  "userId": "shared-shoplisl-user",
                   "timestamp": {
                     "_seconds": 1766567833,
                     "_nanoseconds": 463000000
                   },
                   "userName": "Du",
-                  "action": "checked"
-                },
-                {
-                  "amount": "3",
-                  "userId": "BH083r7NxMWyikNFncZcYZ3BHmP2",
-                  "userName": "Trubar Four",
-                  "timestamp": {
-                    "_seconds": 1766493964,
-                    "_nanoseconds": 274000000
-                  },
-                  "action": "unchecked"
-                },
-                {
-                  "amount": "3",
-                  "userId": "shared-shoplisl-user",
                   "action": "checked",
+                  "userId": "shared-shoplisl-user"
+                },
+                {
+                  "userName": "Trubar Four",
+                  "action": "unchecked",
+                  "userId": "BH083r7NxMWyikNFncZcYZ3BHmP2",
+                  "amount": "3",
+                  "timestamp": {
+                    "_nanoseconds": 274000000,
+                    "_seconds": 1766493964
+                  }
+                },
+                {
+                  "amount": "3",
                   "timestamp": {
                     "_seconds": 1766492468,
                     "_nanoseconds": 779000000
                   },
-                  "userName": "Du"
+                  "userName": "Du",
+                  "action": "checked",
+                  "userId": "shared-shoplisl-user"
                 },
                 {
-                  "userName": "Du",
                   "timestamp": {
                     "_seconds": 1765718093,
                     "_nanoseconds": 646000000
                   },
+                  "amount": "",
                   "action": "unchecked",
                   "userId": "shared-shoplisl-user",
-                  "amount": ""
+                  "userName": "Du"
                 },
                 {
-                  "userName": "Du",
                   "timestamp": {
-                    "_seconds": 1765718092,
-                    "_nanoseconds": 104000000
+                    "_nanoseconds": 104000000,
+                    "_seconds": 1765718092
                   },
+                  "amount": "",
                   "action": "checked",
                   "userId": "shared-shoplisl-user",
-                  "amount": ""
+                  "userName": "Du"
                 }
               ]
             },
-            "GBOCCaCZOUOavPIX2Y88": {
-              "articleId": "GBOCCaCZOUOavPIX2Y88",
-              "articleName": "Servietten",
+            "4tvHVq9nSg39pqku5gvA": {
+              "articleId": "4tvHVq9nSg39pqku5gvA",
+              "articleName": "Toastbrot",
+              "isChecked": true,
               "amount": "",
+              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
               "addedAt": {
-                "_nanoseconds": 748000000,
-                "_seconds": 1769585025
+                "_nanoseconds": 307000000,
+                "_seconds": 1769585017
               },
               "checkedAt": {
-                "_nanoseconds": 411000000,
-                "_seconds": 1770195235
+                "_seconds": 1771225867,
+                "_nanoseconds": 90000000
               },
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "history": [
                 {
-                  "amount": "",
                   "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478677,
-                    "_nanoseconds": 707000000
-                  },
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770195235,
-                    "_nanoseconds": 411000000
-                  },
                   "action": "checked",
-                  "amount": ""
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 90000000,
+                    "_seconds": 1771225867
+                  }
                 },
                 {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 105000000,
+                    "_seconds": 1770478678
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 591000000,
+                    "_seconds": 1770287478
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked"
+                },
+                {
+                  "action": "added",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
                   "timestamp": {
-                    "_seconds": 1769585025,
-                    "_nanoseconds": 748000000
+                    "_nanoseconds": 307000000,
+                    "_seconds": 1769585017
                   },
-                  "action": "added",
                   "amount": ""
                 }
-              ],
-              "isChecked": false
+              ]
             },
             "yzK5A8aoFxzSLEJ0kG34": {
               "articleId": "yzK5A8aoFxzSLEJ0kG34",
@@ -2874,39 +3679,39 @@
                 "_seconds": 1769412128
               },
               "checkedAt": {
-                "_nanoseconds": 694000000,
-                "_seconds": 1770478694
+                "_seconds": 1770478694,
+                "_nanoseconds": 694000000
               },
               "history": [
                 {
-                  "amount": "",
                   "timestamp": {
                     "_seconds": 1770478694,
                     "_nanoseconds": 694000000
                   },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
                   "amount": "",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478682,
-                    "_nanoseconds": 106000000
-                  },
+                  "action": "checked",
                   "userName": "Philipp Thurnher"
                 },
                 {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "amount": "",
+                  "timestamp": {
+                    "_seconds": 1770478682,
+                    "_nanoseconds": 106000000
+                  }
+                },
+                {
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
                   "userName": "Philipp Thurnher",
                   "timestamp": {
-                    "_seconds": 1770287565,
-                    "_nanoseconds": 848000000
+                    "_nanoseconds": 848000000,
+                    "_seconds": 1770287565
                   },
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
+                  "amount": ""
                 }
               ]
             },
@@ -2917,39 +3722,39 @@
               "amount": "",
               "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
               "addedAt": {
-                "_nanoseconds": 707000000,
-                "_seconds": 1766996594
+                "_seconds": 1766996594,
+                "_nanoseconds": 707000000
               },
               "checkedAt": {
-                "_nanoseconds": 397000000,
-                "_seconds": 1770976276
+                "_seconds": 1770976276,
+                "_nanoseconds": 397000000
               },
               "history": [
                 {
-                  "amount": "",
                   "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "action": "checked",
+                  "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1770976276,
                     "_nanoseconds": 397000000
                   },
-                  "userName": "Philipp Thurnher"
+                  "amount": ""
                 },
                 {
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1770478676,
                     "_nanoseconds": 269000000
                   },
                   "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "unchecked"
                 },
                 {
-                  "amount": "",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "userName": "Philipp Thurnher",
                   "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "",
                   "timestamp": {
                     "_seconds": 1770287265,
                     "_nanoseconds": 366000000
@@ -2957,730 +3762,105 @@
                 },
                 {
                   "timestamp": {
-                    "_seconds": 1769585010,
-                    "_nanoseconds": 362000000
+                    "_nanoseconds": 362000000,
+                    "_seconds": 1769585010
                   },
-                  "userName": "Philipp Thurnher",
+                  "amount": "",
                   "action": "unchecked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1769358026,
-                    "_nanoseconds": 727000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": ""
-                },
-                {
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769252030,
-                    "_nanoseconds": 7000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
+                  "userName": "Philipp Thurnher"
                 },
                 {
                   "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 727000000,
+                    "_seconds": 1769358026
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 7000000,
+                    "_seconds": 1769252030
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked"
+                },
+                {
+                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "checked",
-                  "userName": "Philipp Thurnher",
+                  "amount": "",
                   "timestamp": {
-                    "_seconds": 1769077018,
-                    "_nanoseconds": 591000000
+                    "_nanoseconds": 591000000,
+                    "_seconds": 1769077018
+                  }
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 408000000,
+                    "_seconds": 1768549867
+                  },
+                  "amount": "",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 408000000,
+                    "_seconds": 1767785364
                   }
                 },
                 {
                   "amount": "",
                   "timestamp": {
-                    "_seconds": 1768549867,
-                    "_nanoseconds": 408000000
+                    "_seconds": 1767467941,
+                    "_nanoseconds": 943000000
                   },
                   "userName": "Philipp Thurnher",
                   "action": "unchecked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767785364,
-                    "_nanoseconds": 408000000
-                  },
                   "action": "checked",
-                  "amount": ""
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1767467941,
-                    "_nanoseconds": 943000000
-                  },
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 192000000,
+                    "_seconds": 1767112838
+                  },
                   "amount": ""
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1767112838,
-                    "_nanoseconds": 192000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
                   "action": "unchecked",
+                  "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1767105141,
                     "_nanoseconds": 887000000
                   },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "amount": ""
                 },
                 {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
                   "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
                   "timestamp": {
                     "_seconds": 1767102506,
                     "_nanoseconds": 999000000
                   }
                 }
               ]
-            },
-            "4tvHVq9nSg39pqku5gvA": {
-              "articleId": "4tvHVq9nSg39pqku5gvA",
-              "articleName": "Toastbrot",
-              "amount": "",
-              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-              "addedAt": {
-                "_nanoseconds": 307000000,
-                "_seconds": 1769585017
-              },
-              "checkedAt": {
-                "_nanoseconds": 90000000,
-                "_seconds": 1771225867
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1771225867,
-                    "_nanoseconds": 90000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478678,
-                    "_nanoseconds": 105000000
-                  },
-                  "action": "unchecked"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1770287478,
-                    "_nanoseconds": 591000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": ""
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769585017,
-                    "_nanoseconds": 307000000
-                  },
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                }
-              ],
-              "isChecked": true
-            },
-            "mmOjfwJOaeywRccCUM5k": {
-              "articleId": "mmOjfwJOaeywRccCUM5k",
-              "articleName": "Suppennudeln",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 504000000,
-                "_seconds": 1769585060
-              },
-              "checkedAt": {
-                "_nanoseconds": 288000000,
-                "_seconds": 1770983772
-              },
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1771225883,
-                    "_nanoseconds": 428000000
-                  },
-                  "amount": ""
-                },
-                {
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770983772,
-                    "_nanoseconds": 288000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770910673,
-                    "_nanoseconds": 242000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770478696,
-                    "_nanoseconds": 663000000
-                  },
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478683,
-                    "_nanoseconds": 110000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770287570,
-                    "_nanoseconds": 99000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769585060,
-                    "_nanoseconds": 504000000
-                  },
-                  "action": "added"
-                }
-              ]
-            },
-            "Oe0AGgutrgNSAC0JNLO2": {
-              "articleId": "Oe0AGgutrgNSAC0JNLO2",
-              "articleName": "Jacke",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 237000000,
-                "_seconds": 1769412128
-              },
-              "checkedAt": {
-                "_nanoseconds": 595000000,
-                "_seconds": 1770478632
-              },
-              "history": [
-                {
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478684,
-                    "_nanoseconds": 744000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1770478632,
-                    "_nanoseconds": 595000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": ""
-                }
-              ]
-            },
-            "yrycRyaCpZDMu1SH3Gim": {
-              "articleId": "yrycRyaCpZDMu1SH3Gim",
-              "articleName": "Karotten",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 522000000,
-                "_seconds": 1769358017
-              },
-              "checkedAt": {
-                "_nanoseconds": 693000000,
-                "_seconds": 1770478692
-              },
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1770478692,
-                    "_nanoseconds": 693000000
-                  },
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "amount": ""
-                },
-                {
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478679,
-                    "_nanoseconds": 988000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770388273,
-                    "_nanoseconds": 141000000
-                  },
-                  "action": "checked",
-                  "amount": ""
-                }
-              ]
-            },
-            "N1JdWRDo5cAihC2Ahy16": {
-              "articleId": "N1JdWRDo5cAihC2Ahy16",
-              "articleName": "Äpfel",
-              "amount": "2",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 159000000,
-                "_seconds": 1765644506
-              },
-              "checkedAt": {
-                "_nanoseconds": 886000000,
-                "_seconds": 1770976345
-              },
-              "history": [
-                {
-                  "amount": "2",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770983779,
-                    "_nanoseconds": 920000000
-                  },
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "amount": "2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770976345,
-                    "_nanoseconds": 886000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "2",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1770976292,
-                    "_nanoseconds": 832000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked"
-                },
-                {
-                  "amount": "2",
-                  "timestamp": {
-                    "_seconds": 1770910659,
-                    "_nanoseconds": 795000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478679,
-                    "_nanoseconds": 133000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1770478631,
-                    "_nanoseconds": 47000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770390325,
-                    "_nanoseconds": 808000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1770388239,
-                    "_nanoseconds": 574000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770294488,
-                    "_nanoseconds": 537000000
-                  },
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770287278,
-                    "_nanoseconds": 397000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770195247,
-                    "_nanoseconds": 121000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1770195236,
-                    "_nanoseconds": 355000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked"
-                },
-                {
-                  "amount": "2",
-                  "timestamp": {
-                    "_seconds": 1769531664,
-                    "_nanoseconds": 976000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769531653,
-                    "_nanoseconds": 183000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769077017,
-                    "_nanoseconds": 284000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "2",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1767968455,
-                    "_nanoseconds": 184000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767117274,
-                    "_nanoseconds": 352000000
-                  },
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767115830,
-                    "_nanoseconds": 207000000
-                  },
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "amount": "2",
-                  "timestamp": {
-                    "_seconds": 1767113887,
-                    "_nanoseconds": 661000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "2",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767112861,
-                    "_nanoseconds": 752000000
-                  }
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1767112839,
-                    "_nanoseconds": 144000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767111940,
-                    "_nanoseconds": 457000000
-                  },
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1767109925,
-                    "_nanoseconds": 410000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1767105144,
-                    "_nanoseconds": 288000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked"
-                },
-                {
-                  "amount": "2",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767102440,
-                    "_nanoseconds": 573000000
-                  }
-                },
-                {
-                  "amount": "2",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1767102428,
-                    "_nanoseconds": 994000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1767096574,
-                    "_nanoseconds": 762000000
-                  },
-                  "amount": "2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1767021999,
-                    "_nanoseconds": 629000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1767001498,
-                    "_nanoseconds": 34000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": "2"
-                },
-                {
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1766921802,
-                    "_nanoseconds": 102000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "timestamp": {
-                    "_seconds": 1766914717,
-                    "_nanoseconds": 255000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": {
-                    "_seconds": 1766858539,
-                    "_nanoseconds": 728000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1766858492,
-                    "_nanoseconds": 657000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2"
-                },
-                {
-                  "amount": "2",
-                  "timestamp": {
-                    "_seconds": 1766567876,
-                    "_nanoseconds": 660000000
-                  },
-                  "userName": "Du",
-                  "action": "checked",
-                  "userId": "shared-shoplisl-user"
-                },
-                {
-                  "amount": "2",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1766494556,
-                    "_nanoseconds": 992000000
-                  },
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1766493133,
-                    "_nanoseconds": 363000000
-                  },
-                  "amount": "2"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1765647444,
-                    "_nanoseconds": 905000000
-                  },
-                  "userName": "Du",
-                  "action": "unchecked",
-                  "userId": "shared-shoplisl-user",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "userId": "shared-shoplisl-user",
-                  "timestamp": {
-                    "_seconds": 1765647443,
-                    "_nanoseconds": 25000000
-                  },
-                  "userName": "Du",
-                  "action": "checked"
-                }
-              ],
-              "isChecked": false
             },
             "Qv74gTO8acX8NncqWLjP": {
               "articleId": "Qv74gTO8acX8NncqWLjP",
@@ -3698,371 +3878,104 @@
               },
               "history": [
                 {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770478689,
-                    "_nanoseconds": 754000000
-                  },
-                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 754000000,
+                    "_seconds": 1770478689
+                  },
                   "amount": ""
                 },
                 {
+                  "userName": "Philipp Thurnher",
                   "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478676,
-                    "_nanoseconds": 711000000
-                  },
-                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
+                  "amount": "",
                   "timestamp": {
-                    "_seconds": 1770390308,
-                    "_nanoseconds": 522000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "amount": ""
+                    "_nanoseconds": 711000000,
+                    "_seconds": 1770478676
+                  }
                 },
                 {
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
                   "timestamp": {
-                    "_seconds": 1770388214,
-                    "_nanoseconds": 75000000
+                    "_nanoseconds": 522000000,
+                    "_seconds": 1770390308
                   },
+                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 75000000,
+                    "_seconds": 1770388214
+                  },
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 313000000,
+                    "_seconds": 1770294519
+                  }
+                },
+                {
+                  "timestamp": {
+                    "_nanoseconds": 472000000,
+                    "_seconds": 1770287557
+                  },
+                  "amount": "",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
+                  "action": "checked",
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "timestamp": {
-                    "_seconds": 1770294519,
-                    "_nanoseconds": 313000000
-                  },
                   "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1770287557,
-                    "_nanoseconds": 472000000
-                  },
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769358035,
-                    "_nanoseconds": 130000000
-                  },
                   "action": "unchecked",
-                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 130000000,
+                    "_seconds": 1769358035
+                  }
                 },
                 {
-                  "amount": "",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1769346381,
                     "_nanoseconds": 595000000
                   },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked"
+                  "amount": ""
                 },
                 {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "amount": "",
                   "timestamp": {
                     "_seconds": 1769252137,
                     "_nanoseconds": 122000000
-                  },
-                  "action": "unchecked"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769252113,
-                    "_nanoseconds": 514000000
-                  },
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": ""
-                }
-              ]
-            },
-            "UHWQK4LSdZHvc3oldjUH": {
-              "articleId": "UHWQK4LSdZHvc3oldjUH",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 185000000,
-                "_seconds": 1770388309
-              },
-              "checkedAt": {
-                "_nanoseconds": 453000000,
-                "_seconds": 1770478697
-              },
-              "history": [
-                {
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478697,
-                    "_nanoseconds": 453000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478684,
-                    "_nanoseconds": 269000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770388309,
-                    "_nanoseconds": 185000000
-                  },
-                  "action": "checked"
-                }
-              ]
-            },
-            "9WhzeKHKKuqjoJjUUJ2E": {
-              "articleId": "9WhzeKHKKuqjoJjUUJ2E",
-              "articleName": "Kümmelsamen",
-              "amount": "",
-              "addedAt": {
-                "_nanoseconds": 237000000,
-                "_seconds": 1769412128
-              },
-              "checkedAt": {
-                "_nanoseconds": 518000000,
-                "_seconds": 1770910664
-              },
-              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-              "history": [
-                {
-                  "amount": "",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770976287,
-                    "_nanoseconds": 871000000
-                  },
-                  "action": "unchecked"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770910664,
-                    "_nanoseconds": 518000000
-                  },
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": ""
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478682,
-                    "_nanoseconds": 554000000
-                  },
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770390316,
-                    "_nanoseconds": 613000000
-                  },
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                }
-              ],
-              "isChecked": false
-            },
-            "hhGOInicyhPVYD9Gr3kD": {
-              "articleId": "hhGOInicyhPVYD9Gr3kD",
-              "articleName": "Tomaten",
-              "isChecked": false,
-              "amount": "200 g",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 714000000,
-                "_seconds": 1765626138
-              },
-              "checkedAt": {
-                "_nanoseconds": 545000000,
-                "_seconds": 1770294492
-              },
-              "history": [
-                {
-                  "amount": "200 g",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1770478680,
-                    "_nanoseconds": 837000000
                   }
                 },
                 {
                   "timestamp": {
-                    "_seconds": 1770294492,
-                    "_nanoseconds": 545000000
+                    "_nanoseconds": 514000000,
+                    "_seconds": 1769252113
                   },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "amount": "200 g"
-                },
-                {
-                  "amount": "200 g",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1769252128,
-                    "_nanoseconds": 86000000
-                  }
-                },
-                {
-                  "amount": "200 g",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769077020,
-                    "_nanoseconds": 252000000
-                  },
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767785395,
-                    "_nanoseconds": 192000000
-                  },
-                  "action": "unchecked",
-                  "amount": "200 g"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767598617,
-                    "_nanoseconds": 508000000
-                  },
-                  "amount": "200 g"
-                },
-                {
-                  "amount": "200 g",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1767540272,
-                    "_nanoseconds": 624000000
-                  },
-                  "action": "unchecked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1766858502,
-                    "_nanoseconds": 297000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "200 g"
-                },
-                {
-                  "amount": "200 g",
-                  "timestamp": {
-                    "_seconds": 1766855851,
-                    "_nanoseconds": 146000000
-                  },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
-                  "userName": "Du",
-                  "timestamp": {
-                    "_seconds": 1766567835,
-                    "_nanoseconds": 895000000
-                  },
-                  "action": "checked",
-                  "userId": "shared-shoplisl-user",
-                  "amount": "200 g"
-                }
-              ]
-            },
-            "2hpqvzf1oEkSTzi1bx92": {
-              "articleId": "2hpqvzf1oEkSTzi1bx92",
-              "articleName": "Kartoffeln",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": {
-                "_nanoseconds": 522000000,
-                "_seconds": 1769358017
-              },
-              "checkedAt": {
-                "_nanoseconds": 818000000,
-                "_seconds": 1771225870
-              },
-              "history": [
-                {
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1771225870,
-                    "_nanoseconds": 818000000
-                  },
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "action": "checked",
                   "userName": "Philipp Thurnher"
-                },
-                {
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": {
-                    "_seconds": 1770478680,
-                    "_nanoseconds": 427000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1770287486,
-                    "_nanoseconds": 591000000
-                  },
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 }
               ]
             },
@@ -4071,140 +3984,167 @@
               "articleName": "Kakis2",
               "isChecked": false,
               "amount": "",
+              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
               "addedAt": {
-                "_nanoseconds": 591000000,
-                "_seconds": 1767978311
+                "_seconds": 1767978311,
+                "_nanoseconds": 591000000
               },
               "checkedAt": {
-                "_nanoseconds": 886000000,
-                "_seconds": 1770976345
+                "_seconds": 1770976345,
+                "_nanoseconds": 886000000
               },
-              "checkedBy": "iO2DfORaRESybCOkr7uMZeC8OZV2",
               "history": [
                 {
-                  "amount": "",
-                  "timestamp": {
-                    "_seconds": 1771225877,
-                    "_nanoseconds": 76000000
-                  },
                   "userName": "Philipp Thurnher",
                   "action": "unchecked",
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2"
-                },
-                {
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
                   "timestamp": {
-                    "_seconds": 1770976345,
-                    "_nanoseconds": 886000000
-                  },
-                  "action": "checked"
+                    "_nanoseconds": 76000000,
+                    "_seconds": 1771225877
+                  }
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 886000000,
+                    "_seconds": 1770976345
+                  }
                 },
                 {
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": {
                     "_seconds": 1770478679,
                     "_nanoseconds": 541000000
                   },
                   "userName": "Philipp Thurnher",
-                  "action": "unchecked"
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
                   "action": "checked",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1770478631,
                     "_nanoseconds": 835000000
                   },
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "amount": ""
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": {
-                    "_seconds": 1770390327,
-                    "_nanoseconds": 828000000
-                  },
                   "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 828000000,
+                    "_seconds": 1770390327
+                  },
                   "amount": ""
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
                   "userName": "Philipp Thurnher",
                   "timestamp": {
                     "_seconds": 1770195237,
                     "_nanoseconds": 205000000
                   },
-                  "action": "checked",
                   "amount": ""
                 },
                 {
                   "timestamp": {
-                    "_seconds": 1769531695,
-                    "_nanoseconds": 289000000
+                    "_nanoseconds": 289000000,
+                    "_seconds": 1769531695
                   },
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
                   "amount": "",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769358025,
-                    "_nanoseconds": 226000000
-                  },
-                  "action": "checked"
-                },
-                {
-                  "timestamp": {
-                    "_seconds": 1769346387,
-                    "_nanoseconds": 620000000
-                  },
-                  "userName": "Philipp Thurnher",
                   "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
-                },
-                {
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "timestamp": {
-                    "_seconds": 1769252116,
-                    "_nanoseconds": 920000000
-                  },
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "action": "unchecked",
                   "userName": "Philipp Thurnher",
-                  "timestamp": {
-                    "_seconds": 1769077027,
-                    "_nanoseconds": 531000000
-                  },
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": ""
+                  "action": "checked",
+                  "amount": "",
+                  "timestamp": {
+                    "_seconds": 1769358025,
+                    "_nanoseconds": 226000000
+                  }
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
+                  "action": "unchecked",
                   "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_nanoseconds": 620000000,
+                    "_seconds": 1769346387
+                  },
+                  "amount": ""
+                },
+                {
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 920000000,
+                    "_seconds": 1769252116
+                  },
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "amount": "",
+                  "timestamp": {
+                    "_nanoseconds": 531000000,
+                    "_seconds": 1769077027
+                  }
+                },
+                {
                   "timestamp": {
                     "_seconds": 1769077019,
                     "_nanoseconds": 311000000
+                  },
+                  "amount": "",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "mmOjfwJOaeywRccCUM5k": {
+              "articleId": "mmOjfwJOaeywRccCUM5k",
+              "articleName": "Suppennudeln",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": {
+                "_nanoseconds": 504000000,
+                "_seconds": 1769585060
+              },
+              "checkedAt": {
+                "_seconds": 1771750067,
+                "_nanoseconds": 477000000
+              },
+              "history": [
+                {
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "timestamp": {
+                    "_seconds": 1771750067,
+                    "_nanoseconds": 477000000
                   },
                   "amount": ""
                 }
               ]
             }
           },
-          "updatedAt": "2026-02-19T09:26:05.583Z"
+          "updatedAt": "2026-02-22T08:47:54.202Z"
         },
         {
           "id": "CemqHIYJ868O89362x9V",
