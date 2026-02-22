@@ -45,7 +45,7 @@ export class ArticleOperationsService {
         icon
       };
       
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
+      const newArticle = await this.dataService.createArticle(articleData, 'ai').toPromise();
       
       if (!newArticle) {
         throw new Error(`Failed to create article: ${quantityExtraction.itemName}`);
@@ -153,7 +153,7 @@ export class ArticleOperationsService {
   ): Promise<AIExecutionResult> {
     try {
       // Try optimized method first
-      const addSuccess = await this.dataService.addArticleToList(targetList.id, articleId).toPromise();
+      const addSuccess = await this.dataService.addArticleToList(targetList.id, articleId, 'ai').toPromise();
       
       if (addSuccess) {
         // Set amount if specified

@@ -21,6 +21,8 @@ import {
 import { ShoppingList, ShareInvite, UnshareNotification } from '../models';
 import { AuthService } from './auth.service';
 import { LoggerService } from './logger.service';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsEventType } from '../models/analytics.model';
 
 /**
  * Phase 8B: Service for managing list sharing and collaboration
@@ -40,7 +42,8 @@ export class SharingService {
   constructor(
     private firestore: Firestore,
     private authService: AuthService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private analyticsService: AnalyticsService
   ) {}
 
   /**
@@ -96,6 +99,18 @@ export class SharingService {
       };
 
       this.logger.info('sharing', `Created share invite for list ${listId}, token: ${inviteToken}`);
+
+      const userId = this.authService.getCurrentUserId();
+      if (userId) {
+        this.analyticsService.trackEvent(userId, AnalyticsEventType.SHARE_INVITE_CREATED, {
+          listId,
+          fromUserId: inviteData.fromUserId
+        });
+        this.analyticsService.trackEvent(userId, AnalyticsEventType.LIST_SHARED, {
+          listId
+        });
+      }
+
       return invite;
     } catch (error: any) {
       this.logger.error('sharing', 'Failed to create share invite', error);
@@ -232,6 +247,12 @@ export class SharingService {
 
       this.logger.info('sharing', `User ${currentUser.id} accepted invite for list ${invite.listId}`);
 
+      this.analyticsService.trackEvent(currentUser.id, AnalyticsEventType.SHARE_INVITE_ACCEPTED, {
+        listId: invite.listId,
+        inviteId: invite.id,
+        fromUserId: invite.fromUserId
+      });
+
       return list;
     } catch (error: any) {
       this.logger.error('sharing', 'Failed to accept invite', error);
@@ -333,6 +354,14 @@ export class SharingService {
       }
 
       this.logger.info('sharing', `Removed user ${userId} from list ${listId}`);
+
+      const currentUserId = this.authService.getCurrentUserId();
+      if (currentUserId) {
+        this.analyticsService.trackEvent(currentUserId, AnalyticsEventType.LIST_UNSHARED, {
+          listId,
+          removedUserId: userId
+        });
+      }
     } catch (error: any) {
       this.logger.error('sharing', 'Failed to remove collaborator', error);
       throw error;

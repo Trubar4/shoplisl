@@ -209,7 +209,7 @@ export class MultiItemProcessorService {
           icon: suggestions.icon
         };
 
-        const newArticle = await this.dataService.createArticle(articleData).toPromise();
+        const newArticle = await this.dataService.createArticle(articleData, 'ai').toPromise();
         if (!newArticle) {
           throw new Error(`Failed to create article: ${currentItem.itemName}`);
         }

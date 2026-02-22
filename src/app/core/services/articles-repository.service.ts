@@ -71,7 +71,8 @@ export class ArticlesRepositoryService {
 
   // Phase 8: ownerId is added automatically (creator owns the article)
   createArticle(
-    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>,
+    source: 'ai' | 'manual' = 'manual'
   ): Observable<Article> {
     // Phase 8: Get current user ID for ownership
     const currentUserId = this.authService.getCurrentUserId();
@@ -184,7 +185,8 @@ export class ArticlesRepositoryService {
         this.analyticsService.trackEvent(currentUserId, AnalyticsEventType.ARTICLE_CREATED, {
           articleId: docId,
           articleName: article.name,
-          offline: false
+          offline: false,
+          source
         });
         return {
           id: docId,

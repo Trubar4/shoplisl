@@ -114,7 +114,7 @@ export class ArticleExecutionService {
         icon: suggestions.icon
       };
 
-      const newArticle = await this.dataService.createArticle(articleData).toPromise();
+      const newArticle = await this.dataService.createArticle(articleData, 'ai').toPromise();
 
       if (!newArticle) {
         return {
@@ -165,7 +165,7 @@ export class ArticleExecutionService {
    */
   async addArticleToList(articleId: string, listId: string, amount: string): Promise<void> {
     // Use repository's addArticleToList for optimistic UI updates
-    const result = await this.dataService.addArticleToList(listId, articleId).pipe(take(1)).toPromise();
+    const result = await this.dataService.addArticleToList(listId, articleId, 'ai').pipe(take(1)).toPromise();
 
     if (!result) {
       throw new Error(`Failed to add article to list`);
@@ -191,7 +191,7 @@ export class ArticleExecutionService {
     pendingAction: PendingAction
   ): Promise<AIExecutionResult> {
     // Use repository's addMultipleArticlesToList for optimistic UI updates and race condition prevention
-    const updateResult = await this.dataService.addMultipleArticlesToList(targetList.id, multipleArticleIds)
+    const updateResult = await this.dataService.addMultipleArticlesToList(targetList.id, multipleArticleIds, 'ai')
       .pipe(take(1)).toPromise();
 
     if (updateResult) {
@@ -277,7 +277,7 @@ export class ArticleExecutionService {
         amount: articleData.amount || '',
         departmentId: suggestions.departmentId,
         icon: suggestions.icon
-      }).pipe(take(1), timeout(5000)).toPromise();
+      }, 'ai').pipe(take(1), timeout(5000)).toPromise();
 
       if (!newArticle) {
         return {

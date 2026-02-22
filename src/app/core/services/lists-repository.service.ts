@@ -385,7 +385,7 @@ export class ListsRepositoryService {
     );
   }
 
-  addArticleToList(listId: string, articleId: string): Observable<boolean> {
+  addArticleToList(listId: string, articleId: string, source: 'ai' | 'manual' = 'manual'): Observable<boolean> {
     // Phase 8.2: Check if we need to create a local copy first
     const currentUserId = this.authService.getCurrentUserId();
     if (!currentUserId) {
@@ -441,7 +441,7 @@ export class ListsRepositoryService {
                 mergeMap(copiedArticle => {
                   this.logger.info('data', `📥 ADD ARTICLE: Local copy created with ID ${copiedArticle.id}, adding to list`);
                   // Add the copied article to the list instead of the original
-                  return this.addArticleToListInternal(listId, copiedArticle.id, copiedArticle.name, list);
+                  return this.addArticleToListInternal(listId, copiedArticle.id, copiedArticle.name, list, source);
                 })
               );
             })
@@ -449,7 +449,7 @@ export class ListsRepositoryService {
         } else {
           // Use original article (either user owns it, or list is shared)
           this.logger.info('data', `📥 ADD ARTICLE: Using original article "${article.name}" (${articleId})`);
-          return this.addArticleToListInternal(listId, articleId, article.name, list);
+          return this.addArticleToListInternal(listId, articleId, article.name, list, source);
         }
       }),
       catchError(error => {
@@ -466,7 +466,8 @@ export class ListsRepositoryService {
     listId: string,
     articleId: string,
     articleName: string | undefined,
-    list: ShoppingList
+    list: ShoppingList,
+    source: 'ai' | 'manual' = 'manual'
   ): Observable<boolean> {
     this.logger.info('data', `📝 ADD INTERNAL: Adding article ${articleId} ("${articleName}") to list ${listId}`);
 
@@ -532,7 +533,8 @@ export class ListsRepositoryService {
           listId,
           articleId,
           articleName,
-          isAlreadyInList: isAlreadyInList
+          isAlreadyInList: isAlreadyInList,
+          source
         }
       );
     }
@@ -585,7 +587,7 @@ export class ListsRepositoryService {
    * This avoids race conditions when adding multiple articles simultaneously
    * Phase 8.2: Now handles local copy creation for non-owned articles
    */
-  addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
+  addMultipleArticlesToList(listId: string, articleIds: string[], source: 'ai' | 'manual' = 'manual'): Observable<boolean> {
     if (articleIds.length === 0) {
       return of(true);
     }
@@ -691,7 +693,8 @@ export class ListsRepositoryService {
                   listId,
                   articleIds: finalArticleIds,
                   count: finalArticleIds.length,
-                  batch: true
+                  batch: true,
+                  source
                 }
               );
             }

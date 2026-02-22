@@ -58,7 +58,7 @@ export class ListOperationsService {
           icon: this.aiResponse.suggestIcon(firstItem.itemName)
         };
         
-        const newArticle = await this.dataService.createArticle(articleData).toPromise();
+        const newArticle = await this.dataService.createArticle(articleData, 'ai').toPromise();
         
         if (newArticle) {
           listToCreate.articleIds.push(newArticle.id);

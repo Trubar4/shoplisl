@@ -45,6 +45,8 @@ import { AIService } from '../../../core/services/ai';
 import { ApiKeyTipDialogComponent } from '../../../shared/components/api-key-tip-dialog/api-key-tip-dialog.component';
 import { ActiveListService } from '../../../core/services/active-list.service';
 import { HistoryService } from '../../../core/services/history.service';
+import { AnalyticsService } from '../../../core/services/analytics.service';
+import { AnalyticsEventType } from '../../../core/models/analytics.model';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -98,6 +100,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   // === PRIVATE PROPERTIES ===
   private autoSwitchTimer?: any;
   private disambiguationManuallyClosed = false;
+  private listViewTracked = false;
   
   constructor(
     private readonly route: ActivatedRoute,
@@ -117,7 +120,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly userProfileService: UserProfileService,
     private readonly aiService: AIService,
     private readonly activeListService: ActiveListService,
-    private readonly historyService: HistoryService
+    private readonly historyService: HistoryService,
+    private readonly analyticsService: AnalyticsService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -633,6 +637,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
           this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
             const isOwner = user?.id === list.ownerId;
             this.isOwner.set(isOwner);
+
+            // Track LIST_VIEWED once per navigation
+            if (!this.listViewTracked && user?.id) {
+              this.listViewTracked = true;
+              this.analyticsService.trackEvent(user.id, AnalyticsEventType.LIST_VIEWED, {
+                listId: this.listId,
+                listName: list.name
+              });
+            }
           });
 
           // Phase 8: Preload collaborator profiles for faster display

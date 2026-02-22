@@ -32,6 +32,7 @@ export enum AnalyticsEventType {
   ARTICLE_CHECKED = 'article_checked',
   ARTICLE_UNCHECKED = 'article_unchecked',
   ARTICLE_COPIED = 'article_copied',
+  ARTICLE_MOVED_BETWEEN_LISTS = 'article_moved_between_lists',
 
   // AI Events
   AI_COMMAND_EXECUTED = 'ai_command_executed',
