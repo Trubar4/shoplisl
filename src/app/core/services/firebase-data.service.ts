@@ -584,6 +584,23 @@ export class FirebaseDataService {
     }
   }
 
+  /**
+   * Add a newly shared list directly to state without waiting for the
+   * share-invites listener to re-fire.
+   *
+   * This is the primary fix for the sharing bug: after acceptInvite() returns
+   * the ShoppingList, calling this method immediately makes the list visible
+   * in the UI without requiring a page refresh.
+   *
+   * Delegates to FirebaseListenerService.addSharedListToState() which:
+   *   - Pushes the list into the sharedLists backing array
+   *   - Resets the share-invites throttle (lastShareInvitesReload = 0)
+   *   - Triggers a debounced mergeLists() → listsSubject emits
+   */
+  addSharedListToState(list: ShoppingList): void {
+    this.listenerService.addSharedListToState(list);
+  }
+
   async refreshData(): Promise<void> {
     this.logger.info('data', 'Manually refreshing user data');
 
