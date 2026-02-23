@@ -155,6 +155,21 @@ service cloud.firestore {
     match /users-v2/{userId}/unshare-notifications/{notificationId} {
       allow read: if isAuthenticated() && userId == request.auth.uid;
       allow write: if isAuthenticated() && userId == request.auth.uid;
+
+      // Allow a list owner to create an unshare notification for a collaborator
+      // they just removed. The owner writes to the removed user's subcollection.
+      //
+      // Security constraints:
+      //   - removedUserId must equal the path userId  (notification is for this user)
+      //   - ownerUserId must equal request.auth.uid   (owner must claim their own UID)
+      //   - `create` only – the owner cannot read, update or delete the notification
+      //
+      // This fixes: FirebaseError: Missing or insufficient permissions
+      // when SharingService.removeCollaborator() calls addDoc() on the removed
+      // user's unshare-notifications subcollection.
+      allow create: if isAuthenticated() &&
+        request.resource.data.removedUserId == userId &&
+        request.resource.data.ownerUserId == request.auth.uid;
     }
 
     // ==========================================
