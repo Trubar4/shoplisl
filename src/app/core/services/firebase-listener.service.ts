@@ -902,6 +902,46 @@ export class FirebaseListenerService {
   }
 
   /**
+   * Add a newly shared list directly to the shared lists backing array and
+   * trigger a debounced mergeLists().
+   *
+   * Called immediately after SharingService.acceptInvite() returns the list,
+   * bypassing the two blockers that prevent the normal listener pipeline from
+   * picking up the new share:
+   *
+   *   1. setupRealtimeListeners() is guarded by collectionListenersActive=true
+   *      so refreshData() is effectively a no-op after the initial load.
+   *
+   *   2. The share-invites onSnapshot fires within the 5-second throttle window
+   *      (612ms in the reported bug) and is silently dropped.
+   *
+   * After this call the list is in listsSubject and setupLazyListenerForList()
+   * will find it when the router redirects to /lists/{id}.
+   *
+   * Also resets lastShareInvitesReload so the next onSnapshot event (if any)
+   * is not throttled.
+   */
+  addSharedListToState(list: ShoppingList): void {
+    if (!this.ctx) return;
+
+    const sharedLists = this.ctx.getSharedLists();
+    const existingIndex = sharedLists.findIndex(l => l.id === list.id);
+
+    if (existingIndex === -1) {
+      sharedLists.push(list);
+      this.logger.info('data', `✅ Added newly shared list "${list.name}" (${list.id}) directly to state`);
+    } else {
+      sharedLists[existingIndex] = list;
+      this.logger.info('data', `✅ Updated newly shared list "${list.name}" (${list.id}) in state`);
+    }
+
+    // Reset throttle so the next share-invites onSnapshot event is not blocked
+    this.lastShareInvitesReload = 0;
+
+    this.ctx.mergeLists();
+  }
+
+  /**
    * Tear down all active listeners and reset all state flags.
    * Called on user logout and user switch.
    * Notifies the facade via onListenersCleanedUp() to reset facade-owned flags.

@@ -139,9 +139,24 @@ export class AcceptInviteComponent implements OnInit, OnDestroy {
       this.loading = false;
 
       this.logger.info('invite', `Successfully accepted invite for list: ${list.name}`);
-      console.log('🔗 AcceptInviteComponent: Success! Refreshing data...');
+      console.log('🔗 AcceptInviteComponent: Success! Adding list to state immediately...');
 
-      // Refresh data to reload shared lists with new permissions
+      // FIX: Immediately add the shared list to state so it is available
+      // before the redirect to /lists/{id}.
+      //
+      // Without this call, two issues block the normal listener pipeline:
+      //   1. refreshData() → setupRealtimeListeners() is a no-op because
+      //      collectionListenersActive=true (quota optimisation guard).
+      //   2. The share-invites onSnapshot fires within the 5-second throttle
+      //      window and is silently dropped.
+      // As a result setupLazyListenerForList() cannot find the list in state
+      // and logs "List not found, cannot set up listener", leaving the user
+      // with an empty view until they manually refresh the page.
+      this.dataService.addSharedList(list);
+      console.log('🔗 AcceptInviteComponent: List added to state, triggering data refresh...');
+
+      // Also call refreshData() to reset the throttle and ensure any in-flight
+      // listener events are not blocked on the next fire.
       this.dataService.refreshData();
       console.log('🔗 AcceptInviteComponent: Data refresh triggered, redirecting to list...');
 

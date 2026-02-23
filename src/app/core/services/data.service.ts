@@ -326,6 +326,20 @@ export class DataService {
     return this.firebaseData.getSharedUserId();
   }
 
+  /**
+   * Add a newly shared list directly to state.
+   *
+   * Call this immediately after SharingService.acceptInvite() returns the
+   * ShoppingList so it appears in the UI without a page refresh.
+   *
+   * Fixes the bug where refreshData() was a no-op (collectionListenersActive=true)
+   * and the share-invites onSnapshot was throttled, leaving the newly shared list
+   * absent from state until the user manually refreshed the page.
+   */
+  addSharedList(list: ShoppingList): void {
+    this.firebaseData.addSharedListToState(list);
+  }
+
   async refreshData(): Promise<void> {
     await this.firebaseData.refreshData();
   }
