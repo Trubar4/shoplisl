@@ -91,7 +91,7 @@ describe('ArticleExecutionService', () => {
       expect(result.message).toContain('Milch');
       expect(result.message).toContain('Einkaufen');
       expect(result.listId).toBe('list-1');
-      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1');
+      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1', 'ai');
     });
 
     it('should return error if target list not found', async () => {
@@ -262,7 +262,7 @@ describe('ArticleExecutionService', () => {
 
       await service.addArticleToList('article-1', 'list-1', '2kg');
 
-      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1');
+      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1', 'ai');
       expect(dataServiceSpy.updateListItemAmount).toHaveBeenCalledWith('list-1', 'article-1', '2kg');
     });
 
@@ -271,7 +271,7 @@ describe('ArticleExecutionService', () => {
 
       await service.addArticleToList('article-1', 'list-1', '');
 
-      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1');
+      expect(dataServiceSpy.addArticleToList).toHaveBeenCalledWith('list-1', 'article-1', 'ai');
       expect(dataServiceSpy.updateListItemAmount).not.toHaveBeenCalled();
     });
 

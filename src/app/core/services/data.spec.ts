@@ -19,6 +19,8 @@ describe('DataService', () => {
   let connectionServiceSpy: any;
   let cacheServiceSpy: any;
   let loggerSpy: any;
+  let authServiceSpy: any;
+  let analyticsServiceSpy: any;
 
   beforeEach(() => {
     // Create mock objects for all dependencies
@@ -75,6 +77,14 @@ describe('DataService', () => {
       debug: vi.fn()
     };
 
+    authServiceSpy = {
+      getCurrentUserId: vi.fn().mockReturnValue('test-user-id')
+    };
+
+    analyticsServiceSpy = {
+      trackEvent: vi.fn()
+    };
+
     // Manually create the service with mocks to bypass Angular DI issues in Vitest
     service = new DataService(
       firebaseDataSpy as any,
@@ -84,7 +94,9 @@ describe('DataService', () => {
       migrationSpy as any,
       connectionServiceSpy as any,
       cacheServiceSpy as any,
-      loggerSpy as any
+      loggerSpy as any,
+      authServiceSpy as any,
+      analyticsServiceSpy as any
     );
   });
 
@@ -109,7 +121,9 @@ describe('DataService', () => {
         migrationSpy as any,
         connectionServiceSpy as any,
         cacheServiceSpy as any,
-        loggerSpy as any
+        loggerSpy as any,
+        authServiceSpy as any,
+        analyticsServiceSpy as any
       );
     });
 
@@ -130,7 +144,7 @@ describe('DataService', () => {
 
         // Verify batch add was called ONCE with all articles
         expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledTimes(1);
-        expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledWith(targetListId, articleIds);
+        expect(listsRepoSpy.addMultipleArticlesToList).toHaveBeenCalledWith(targetListId, articleIds, 'manual');
 
         // Verify batch check was called ONCE with all articles
         expect(listsRepoSpy.markMultipleArticlesAsChecked).toHaveBeenCalledTimes(1);

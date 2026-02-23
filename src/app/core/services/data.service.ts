@@ -12,6 +12,9 @@ import { DataMigrationService } from './data-migration.service';
 import { ConnectionService } from './connection.service';
 import { OfflineCacheService } from './offline-cache.service';
 import { LoggerService } from './logger.service';
+import { AuthService } from './auth.service';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsEventType } from '../models/analytics.model';
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +31,9 @@ export class DataService {
     private migration: DataMigrationService,
     private connectionService: ConnectionService,
     private cacheService: OfflineCacheService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private authService: AuthService,
+    private analyticsService: AnalyticsService
   ) {
     this.logger.info('data', 'DataService facade initialized');
     
@@ -72,9 +77,10 @@ export class DataService {
 
   // Phase 8: ownerId is added automatically by repository, so callers don't need to provide it
   createArticle(
-    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>
+    article: Omit<Article, 'id' | 'createdAt' | 'updatedAt' | 'ownerId'>,
+    source: 'ai' | 'manual' = 'manual'
   ): Observable<Article> {
-    return this.articlesRepo.createArticle(article);
+    return this.articlesRepo.createArticle(article, source);
   }
 
   updateArticle(id: string, updates: Partial<Article>): Observable<Article | undefined> {
@@ -159,12 +165,12 @@ export class DataService {
     return this.listsRepo.toggleItemChecked(listId, articleId);
   }
 
-  addArticleToList(listId: string, articleId: string): Observable<boolean> {
-    return this.listsRepo.addArticleToList(listId, articleId);
+  addArticleToList(listId: string, articleId: string, source: 'ai' | 'manual' = 'manual'): Observable<boolean> {
+    return this.listsRepo.addArticleToList(listId, articleId, source);
   }
 
-  addMultipleArticlesToList(listId: string, articleIds: string[]): Observable<boolean> {
-    return this.listsRepo.addMultipleArticlesToList(listId, articleIds);
+  addMultipleArticlesToList(listId: string, articleIds: string[], source: 'ai' | 'manual' = 'manual'): Observable<boolean> {
+    return this.listsRepo.addMultipleArticlesToList(listId, articleIds, source);
   }
 
   markMultipleArticlesAsChecked(listId: string, articleIds: string[]): Observable<boolean> {
@@ -214,7 +220,21 @@ export class DataService {
         // Phase 2: Mark all articles as checked in source list in a single batch operation
         // This avoids race conditions from parallel individual toggles
         return this.markMultipleArticlesAsChecked(sourceListId, articleIds).pipe(
-          map(() => ({ success: errors.length === 0, errors })),
+          map(() => {
+            const result = { success: errors.length === 0, errors };
+            if (result.success) {
+              const userId = this.authService?.getCurrentUserId();
+              if (userId) {
+                this.analyticsService?.trackEvent(userId, AnalyticsEventType.ARTICLE_MOVED_BETWEEN_LISTS, {
+                  sourceListId,
+                  targetListId,
+                  count: articleIds.length,
+                  articleIds
+                });
+              }
+            }
+            return result;
+          }),
           catchError(err => {
             errors.push(`Failed to mark articles as checked in source list: ${err}`);
             return of({ success: false, errors });
