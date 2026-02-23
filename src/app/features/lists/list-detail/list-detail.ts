@@ -637,16 +637,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
           this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
             const isOwner = user?.id === list.ownerId;
             this.isOwner.set(isOwner);
-
-            // Track LIST_VIEWED once per navigation
-            if (!this.listViewTracked && user?.id) {
-              this.listViewTracked = true;
-              this.analyticsService.trackEvent(user.id, AnalyticsEventType.LIST_VIEWED, {
-                listId: this.listId,
-                listName: list.name
-              });
-            }
           });
+
+          // Track LIST_VIEWED once per navigation.
+          // Guard is set synchronously so rapid list$ re-emissions can't both enqueue the event.
+          if (!this.listViewTracked) {
+            this.listViewTracked = true;
+            this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
+              if (user?.id) {
+                this.analyticsService.trackEvent(user.id, AnalyticsEventType.LIST_VIEWED, {
+                  listId: this.listId,
+                  listName: list.name
+                });
+              }
+            });
+          }
 
           // Phase 8: Preload collaborator profiles for faster display
           // This eagerly fetches user names when entering a shared list
