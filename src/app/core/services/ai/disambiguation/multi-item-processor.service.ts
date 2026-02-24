@@ -104,15 +104,20 @@ export class MultiItemProcessorService {
 
     try {
       const disambiguationOptions = await getDisambiguationOptionsFn(currentItem.itemName);
-      const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
 
-      if (existingOptions.length > 0) {
+      // Always show disambiguation for every item so the user is informed and can confirm or skip.
+      // Previously only shown when existingOptions.length > 0, which silently added items 3-5
+      // of a recipe without asking the user (Bug: items with no existing match were auto-created).
+      if (disambiguationOptions.length > 0) {
         // Mark as sequential processing
         (action as any).isMultiItemSequential = true;
         (action as any).isFromRecipe = true;
         action.itemName = currentItem.itemName;
 
-        const message = `"${currentItem.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`;
+        const existingOptions = disambiguationOptions.filter(opt => opt.type === 'existing');
+        const message = existingOptions.length > 0
+          ? `"${currentItem.itemName}" Ich habe ähnliche Artikel gefunden. Welchen möchtest du verwenden?`
+          : `"${currentItem.itemName}" wird als neuer Artikel hinzugefügt.`;
 
         return {
           success: true,
@@ -123,7 +128,7 @@ export class MultiItemProcessorService {
         };
       }
 
-      // No disambiguation needed - create new article and continue
+      // No options at all (edge case) - create new article and continue
       return this.processCurrentItemAndContinue(
         action,
         null,
@@ -201,9 +206,11 @@ export class MultiItemProcessorService {
         articleId = selectedArticle.id;
       } else {
         // Create new article with enhanced suggestions
-        const suggestions = await getEnhancedSuggestionsFn(currentItem.itemName);
+        // Normalize the article name to strip preparation adjectives (e.g. "weiche Butter" → "Butter")
+        const normalizedName = this.normalizeArticleName(currentItem.itemName);
+        const suggestions = await getEnhancedSuggestionsFn(normalizedName);
         const articleData = {
-          name: currentItem.itemName,
+          name: normalizedName,
           amount: currentItem.quantity || '',
           departmentId: suggestions.departmentId,
           icon: suggestions.icon
@@ -384,6 +391,54 @@ export class MultiItemProcessorService {
       conversationContext,
       followUpPrompt
     };
+  }
+
+  /**
+   * Normalizes a recipe item name by stripping preparation-state adjectives.
+   *
+   * Recipe ingredients often include adjectives that describe how to prepare them
+   * (e.g. "weiche Butter" = soft butter, "frische Tomaten" = fresh tomatoes).
+   * These adjectives are not part of the article's identity and should be stripped
+   * when creating or searching for articles.
+   *
+   * Product specifications (e.g. "Type 405", "3,5%") are NOT stripped.
+   *
+   * @param itemName - Raw item name from recipe (e.g. "weiche Butter")
+   * @returns Normalized article name (e.g. "Butter")
+   *
+   * @example
+   * ```typescript
+   * normalizeArticleName('weiche Butter')    // → 'Butter'
+   * normalizeArticleName('frische Tomaten')  // → 'Tomaten'
+   * normalizeArticleName('Vollmilch 3,5%')   // → 'Vollmilch 3,5%' (unchanged)
+   * normalizeArticleName('Weizenmehl Type 405') // → 'Weizenmehl Type 405' (unchanged)
+   * ```
+   */
+  normalizeArticleName(itemName: string): string {
+    // Common German preparation-state adjectives to strip from the beginning of item names.
+    // These describe how to use the ingredient in a recipe, not what the ingredient is.
+    const preparationAdjectives = [
+      /^weiche[rns]?\s+/i,    // weiche(r/n/s) → soft (e.g. weiche Butter → Butter)
+      /^frische[rns]?\s+/i,   // frische(r/n/s) → fresh (e.g. frische Tomaten → Tomaten)
+      /^gehackte[rns]?\s+/i,  // gehackte(r/n/s) → chopped (e.g. gehackte Tomaten → Tomaten)
+      /^geriebene[rns]?\s+/i, // geriebene(r/n/s) → grated (e.g. geriebener Parmesan → Parmesan)
+      /^gefrorene[rns]?\s+/i, // gefrorene(r/n/s) → frozen
+      /^getrocknete[rns]?\s+/i, // getrocknete(r/n/s) → dried
+      /^gemahlene[rns]?\s+/i, // gemahlene(r/n/s) → ground
+      /^geschälte[rns]?\s+/i, // geschälte(r/n/s) → peeled
+      /^gekochte[rns]?\s+/i,  // gekochte(r/n/s) → cooked
+    ];
+
+    let normalized = itemName.trim();
+    for (const pattern of preparationAdjectives) {
+      const result = normalized.replace(pattern, '');
+      if (result !== normalized) {
+        // Pattern matched and something was stripped
+        normalized = result;
+        break; // Only strip one adjective prefix
+      }
+    }
+    return normalized.trim() || itemName.trim();
   }
 
   /**

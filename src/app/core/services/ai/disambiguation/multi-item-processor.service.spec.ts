@@ -161,7 +161,10 @@ describe('MultiItemProcessorService', () => {
       expect(result.message).toContain('ähnliche Artikel gefunden');
     });
 
-    it('should create new article when no disambiguation needed', async () => {
+    it('should show disambiguation asking user to confirm when only new-article option exists', async () => {
+      // UPDATED: Previously this test verified that items with no existing matches were
+      // auto-created. After the fix, these items now show disambiguation so the user
+      // can confirm or skip. The user must actively choose to create the new article.
       const action: MultiItemPendingAction = {
         type: 'add_multi_items_to_list',
         items: [{ itemName: 'UniqueItem', quantity: '2kg' }],
@@ -186,11 +189,6 @@ describe('MultiItemProcessorService', () => {
       ];
 
       getDisambiguationOptionsFn.mockResolvedValue(disambiguationOptions);
-      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'miscellaneous', icon: '📦' });
-      dataServiceSpy.createArticle.mockReturnValue({
-        toPromise: vi.fn().mockResolvedValue({ id: 'new-article-1', name: 'UniqueItem' })
-      });
-      addArticleToListFn.mockResolvedValue(undefined);
 
       const result = await service.processMultiItemSequentially(
         action,
@@ -199,9 +197,12 @@ describe('MultiItemProcessorService', () => {
         addArticleToListFn
       );
 
-      // Should complete the processing
+      // Now shows disambiguation to ask user instead of silently creating
       expect(result.success).toBe(true);
-      expect(result.message).toContain('erfolgreich');
+      expect(result.needsUserInput).toBe(true);
+      expect(result.message).toContain('UniqueItem');
+      // Article should NOT be created without user confirmation
+      expect(dataServiceSpy.createArticle).not.toHaveBeenCalled();
     });
 
     it('should handle errors during processing', async () => {
@@ -408,6 +409,302 @@ describe('MultiItemProcessorService', () => {
       );
 
       expect(addArticleToListFn).toHaveBeenCalledWith('article-1', 'list-1', '1kg');
+    });
+  });
+
+  // ========================================
+  // BUG REPRODUCTION TESTS
+  // ========================================
+
+  describe('Bug: items without existing matches are silently added without user confirmation', () => {
+    it('should show disambiguation (needsUserInput) even when only new-article option exists', async () => {
+      // REPRODUCES BUG: Items 3-5 in recipe (Vollmilch, Salz, Tomaten) were added silently
+      // because getDisambiguationOptionsFn returned only [{type: 'new'}] (no existing articles),
+      // and the code skipped showing disambiguation when existingOptions.length === 0.
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'Vollmilch 3,5%', quantity: '400 ml' }],
+        currentItemIndex: 0,
+        itemName: 'Vollmilch 3,5%',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'dairy',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      // Only 'new' option - no existing articles found (exactly like items 3-5 in the bug)
+      const onlyNewOption: DisambiguationOption[] = [
+        {
+          id: 'new_article',
+          displayName: '"Vollmilch 3,5%" (neu erstellen)',
+          type: 'new',
+          confidence: 1.0
+        }
+      ];
+
+      getDisambiguationOptionsFn.mockResolvedValue(onlyNewOption);
+
+      const result = await service.processMultiItemSequentially(
+        action,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // EXPECTED after fix: should show disambiguation so user can confirm or skip
+      expect(result.needsUserInput).toBe(true);
+      expect(result.message).toContain('Vollmilch 3,5%');
+      // Article should NOT be created silently without user confirmation
+      expect(dataServiceSpy.createArticle).not.toHaveBeenCalled();
+    });
+
+    it('should show disambiguation for item 3 of 6-item recipe when items 1-2 were already processed', async () => {
+      // REPRODUCES BUG: After items 1-2 show disambiguation, items 3-5 are auto-processed
+      // This tests item 3 specifically: the first item after user interaction
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [
+          { itemName: 'Weizenmehl Type 405', quantity: '500 g' },
+          { itemName: 'Eier', quantity: '2 Stück' },
+          { itemName: 'Vollmilch 3,5%', quantity: '400 ml' },
+          { itemName: 'Salz', quantity: '1 TL' },
+          { itemName: 'Tomaten gehackt', quantity: '200 g' },
+          { itemName: 'weiche Butter', quantity: '75 g' }
+        ],
+        currentItemIndex: 2, // Processing item 3 (index 2): Vollmilch 3,5%
+        itemName: 'Vollmilch 3,5%',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'dairy',
+        originalInput: 'recipe',
+        processedItems: [
+          { item: { itemName: 'Weizenmehl Type 405', quantity: '500 g' }, addedToList: true, originalText: 'Weizenmehl Type 405' } as any,
+          { item: { itemName: 'Eier', quantity: '2 Stück' }, failed: true, originalText: 'Eier' } as any
+        ],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      // Items 3-5 have no existing matches (as in the reported bug)
+      const onlyNewOption: DisambiguationOption[] = [
+        {
+          id: 'new_article',
+          displayName: '"Vollmilch 3,5%" (neu erstellen)',
+          type: 'new',
+          confidence: 1.0
+        }
+      ];
+
+      getDisambiguationOptionsFn.mockResolvedValue(onlyNewOption);
+
+      const result = await service.processMultiItemSequentially(
+        action,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // EXPECTED: user should be asked to confirm adding Vollmilch 3,5%
+      // BUG: currently auto-creates Vollmilch, Salz, Tomaten silently
+      expect(result.needsUserInput).toBe(true);
+      expect(result.message).toContain('Vollmilch 3,5%');
+    });
+
+    it('should not silently create articles for items with no existing matches', async () => {
+      // REPRODUCES BUG: Salz was silently added as new article (shown in console log)
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'Salz', quantity: '1 TL' }],
+        currentItemIndex: 0,
+        itemName: 'Salz',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'spices',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      const onlyNewOption: DisambiguationOption[] = [
+        {
+          id: 'new_article',
+          displayName: '"Salz" (neu erstellen)',
+          type: 'new',
+          confidence: 1.0
+        }
+      ];
+
+      getDisambiguationOptionsFn.mockResolvedValue(onlyNewOption);
+
+      const result = await service.processMultiItemSequentially(
+        action,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // BUG: createArticle is called silently without user confirmation
+      // EXPECTED after fix: user should be asked first
+      expect(result.needsUserInput).toBe(true);
+      expect(dataServiceSpy.createArticle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Bug: article name normalization for adjective-prefixed items', () => {
+    it('should normalize "weiche Butter" to "Butter" when creating new article', async () => {
+      // REPRODUCES BUG: When user creates new article from "weiche Butter",
+      // it creates an article named "weiche Butter" instead of "Butter".
+      // "weiche" is a preparation adjective (soft), not part of the article name.
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'weiche Butter', quantity: '75 g' }],
+        currentItemIndex: 0,
+        itemName: 'weiche Butter',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'dairy',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'dairy', icon: '🧈' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        toPromise: vi.fn().mockResolvedValue({ id: 'new-butter-id', name: 'Butter' })
+      });
+      addArticleToListFn.mockResolvedValue(undefined);
+      getDisambiguationOptionsFn.mockResolvedValue([]);
+
+      await service.processCurrentItemAndContinue(
+        action,
+        null, // no selected article - creating new
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // BUG: currently creates with name 'weiche Butter'
+      // EXPECTED after fix: should strip preparation adjective, create with name 'Butter'
+      expect(dataServiceSpy.createArticle).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Butter' }),
+        'ai'
+      );
+    });
+
+    it('should normalize "frische Tomaten" to "Tomaten" when creating new article', async () => {
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'frische Tomaten', quantity: '300 g' }],
+        currentItemIndex: 0,
+        itemName: 'frische Tomaten',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'vegetables',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'vegetables', icon: '🍅' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        toPromise: vi.fn().mockResolvedValue({ id: 'new-tomaten-id', name: 'Tomaten' })
+      });
+      addArticleToListFn.mockResolvedValue(undefined);
+      getDisambiguationOptionsFn.mockResolvedValue([]);
+
+      await service.processCurrentItemAndContinue(
+        action,
+        null,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      expect(dataServiceSpy.createArticle).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Tomaten' }),
+        'ai'
+      );
+    });
+
+    it('should NOT normalize product specifications like "Vollmilch 3,5%"', async () => {
+      // "3,5%" is a product specification, not a preparation adjective - should be kept
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'Vollmilch 3,5%', quantity: '400 ml' }],
+        currentItemIndex: 0,
+        itemName: 'Vollmilch 3,5%',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'dairy',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'dairy', icon: '🥛' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        toPromise: vi.fn().mockResolvedValue({ id: 'new-milk-id', name: 'Vollmilch 3,5%' })
+      });
+      addArticleToListFn.mockResolvedValue(undefined);
+      getDisambiguationOptionsFn.mockResolvedValue([]);
+
+      await service.processCurrentItemAndContinue(
+        action,
+        null,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // "Vollmilch 3,5%" should remain unchanged - it's a product specification
+      expect(dataServiceSpy.createArticle).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Vollmilch 3,5%' }),
+        'ai'
+      );
+    });
+
+    it('should NOT normalize "Weizenmehl Type 405" - Type 405 is a product spec', async () => {
+      const action: MultiItemPendingAction = {
+        type: 'add_multi_items_to_list',
+        items: [{ itemName: 'Weizenmehl Type 405', quantity: '500 g' }],
+        currentItemIndex: 0,
+        itemName: 'Weizenmehl Type 405',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'bakery',
+        originalInput: 'recipe',
+        processedItems: [],
+        confirmedTargetListId: 'list-1',
+        confirmedTargetListName: 'Baum'
+      } as any;
+
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'bakery', icon: '🌾' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        toPromise: vi.fn().mockResolvedValue({ id: 'new-mehl-id', name: 'Weizenmehl Type 405' })
+      });
+      addArticleToListFn.mockResolvedValue(undefined);
+      getDisambiguationOptionsFn.mockResolvedValue([]);
+
+      await service.processCurrentItemAndContinue(
+        action,
+        null,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn,
+        addArticleToListFn
+      );
+
+      // "Weizenmehl Type 405" should remain unchanged - product specification
+      expect(dataServiceSpy.createArticle).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Weizenmehl Type 405' }),
+        'ai'
+      );
     });
   });
 
