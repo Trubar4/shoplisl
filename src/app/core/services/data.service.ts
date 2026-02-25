@@ -192,22 +192,40 @@ export class DataService {
   // === BATCH LIST ITEM OPERATIONS ===
 
   /**
-   * Moves articles between lists (copies to target list and marks as checked in source list)
+   * Moves articles between lists (copies to target list, optionally marks as checked in source list)
    * @param articleIds - Array of article IDs to move
    * @param sourceListId - Source list ID
    * @param targetListId - Target list ID
+   * @param checkOnSourceList - When true (default), marks articles as checked in the source list
    * @returns Observable that completes when all operations are done
    */
   moveArticlesBetweenLists(
     articleIds: string[],
     sourceListId: string,
-    targetListId: string
+    targetListId: string,
+    checkOnSourceList: boolean = true
   ): Observable<{ success: boolean; errors: string[] }> {
     if (articleIds.length === 0) {
       return of({ success: true, errors: [] });
     }
 
     const errors: string[] = [];
+
+    const trackSuccess = () => {
+      const result = { success: errors.length === 0, errors };
+      if (result.success) {
+        const userId = this.authService?.getCurrentUserId();
+        if (userId) {
+          this.analyticsService?.trackEvent(userId, AnalyticsEventType.ARTICLE_MOVED_BETWEEN_LISTS, {
+            sourceListId,
+            targetListId,
+            count: articleIds.length,
+            articleIds
+          });
+        }
+      }
+      return result;
+    };
 
     // Phase 1: Add all articles to target list in a single batch operation
     // This avoids race conditions from parallel individual adds
@@ -217,24 +235,14 @@ export class DataService {
         return of(false);
       }),
       mergeMap(() => {
+        if (!checkOnSourceList) {
+          // Skip marking as checked – articles stay open on the source list
+          return of(trackSuccess());
+        }
         // Phase 2: Mark all articles as checked in source list in a single batch operation
         // This avoids race conditions from parallel individual toggles
         return this.markMultipleArticlesAsChecked(sourceListId, articleIds).pipe(
-          map(() => {
-            const result = { success: errors.length === 0, errors };
-            if (result.success) {
-              const userId = this.authService?.getCurrentUserId();
-              if (userId) {
-                this.analyticsService?.trackEvent(userId, AnalyticsEventType.ARTICLE_MOVED_BETWEEN_LISTS, {
-                  sourceListId,
-                  targetListId,
-                  count: articleIds.length,
-                  articleIds
-                });
-              }
-            }
-            return result;
-          }),
+          map(() => trackSuccess()),
           catchError(err => {
             errors.push(`Failed to mark articles as checked in source list: ${err}`);
             return of({ success: false, errors });
