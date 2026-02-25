@@ -388,7 +388,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         this.dataService.moveArticlesBetweenLists(
           articleIds,
           this.listId,
-          result.selectedListId
+          result.selectedListId,
+          result.checkOnSourceList
         ).subscribe({
           next: (response) => {
             if (response.success) {

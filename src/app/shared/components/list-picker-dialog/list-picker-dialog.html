@@ -4,6 +4,14 @@
     {{ data.title }}
   </h2>
 
+  <div class="check-on-source-option">
+    <mat-checkbox
+      [(ngModel)]="checkOnSourceList"
+      color="primary">
+      Auf aktueller Liste abhaken
+    </mat-checkbox>
+  </div>
+
   <mat-dialog-content>
     <p *ngIf="data.message" class="dialog-message">{{ data.message }}</p>
 

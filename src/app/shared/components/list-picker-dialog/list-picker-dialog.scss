@@ -19,6 +19,14 @@
     }
   }
 
+  .check-on-source-option {
+    padding: 0 24px 12px;
+
+    mat-checkbox {
+      font-size: 14px;
+    }
+  }
+
   mat-dialog-content {
     padding: 0 16px 24px;
     max-height: none;
