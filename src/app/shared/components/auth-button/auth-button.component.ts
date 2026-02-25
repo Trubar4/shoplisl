@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { SwUpdate } from '@angular/service-worker';
 
 import { AppState } from '../../../state/app.state';
 import { User } from '../../../core/models';
@@ -66,6 +67,11 @@ import { BUILD_INFO } from '../../../../environments/version';
           <div class="user-email">{{ (user$ | async)?.email }}</div>
           <div class="version-info">{{ buildVersion }}</div>
         </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="reloadApp()">
+          <mat-icon>refresh</mat-icon>
+          <span>Neue Version laden</span>
+        </button>
         <mat-divider></mat-divider>
         <button mat-menu-item (click)="openHelp()">
           <mat-icon>help_outline</mat-icon>
@@ -145,7 +151,8 @@ export class AuthButtonComponent implements OnInit {
 
   constructor(
     private store: Store<AppState>,
-    private router: Router
+    private router: Router,
+    private swUpdate: SwUpdate
   ) {
     this.user$ = this.store.select(selectUser);
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
@@ -163,6 +170,20 @@ export class AuthButtonComponent implements OnInit {
 
   signOut(): void {
     this.store.dispatch(AuthActions.signOut());
+  }
+
+  async reloadApp(): Promise<void> {
+    if (this.swUpdate.isEnabled) {
+      try {
+        const updateFound = await this.swUpdate.checkForUpdate();
+        if (updateFound) {
+          await this.swUpdate.activateUpdate();
+        }
+      } catch {
+        // proceed to reload regardless
+      }
+    }
+    window.location.reload();
   }
 
   openHelp(): void {
