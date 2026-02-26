@@ -149,12 +149,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       map(([list, articles]) => {
         if (!list) return false;
         this.logger.debug('recommendations', `--- evaluating list "${list.id}" (${list.name}) ---`);
-        const frequent = this.recommendationsService.getFrequentArticles(list, articles);
-        const longNotBought = this.recommendationsService.getLongNotBoughtArticles(list, articles);
-        const hasAny = frequent.length > 0 || longNotBought.length > 0;
+        const { frequentArticles, longNotBoughtArticles } = this.recommendationsService.getRecommendations(list, articles);
+        const hasAny = frequentArticles.length > 0 || longNotBoughtArticles.length > 0;
         this.logger.debug('recommendations',
           `hasRecommendations → ${hasAny} ` +
-          `(frequent: ${frequent.length}, longNotBought: ${longNotBought.length})`
+          `(frequent: ${frequentArticles.length}, longNotBought: ${longNotBoughtArticles.length})`
         );
         return hasAny;
       })
@@ -583,10 +582,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
     this.store.select(selectAllArticles).pipe(take(1)).subscribe(articles => {
       const list = this.currentList!;
+      const { frequentArticles, longNotBoughtArticles } = this.recommendationsService.getRecommendations(list, articles);
       const data: RecommendationsBottomSheetData = {
         listId: list.id,
-        frequentArticles: this.recommendationsService.getFrequentArticles(list, articles),
-        longNotBoughtArticles: this.recommendationsService.getLongNotBoughtArticles(list, articles)
+        frequentArticles,
+        longNotBoughtArticles
       };
       this.bottomSheet.open(RecommendationsBottomSheetComponent, { data });
     });

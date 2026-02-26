@@ -35,6 +35,32 @@ export class RecommendationsService {
   private readonly LONG_NOT_BOUGHT_MAX_DAYS = 365;     // TEST: production value is 90
 
   /**
+   * Computes both recommendation categories with mutual exclusion:
+   * an article appears in at most one category. "Häufig" takes priority —
+   * articles already in frequentArticles are removed from longNotBoughtArticles.
+   */
+  getRecommendations(
+    list: ShoppingList,
+    catalog: Article[]
+  ): { frequentArticles: Article[]; longNotBoughtArticles: Article[] } {
+    const frequentArticles = this.getFrequentArticles(list, catalog);
+    const frequentIds = new Set(frequentArticles.map(a => a.id));
+
+    const allLongNotBought = this.getLongNotBoughtArticles(list, catalog);
+    const dedupRemoved = allLongNotBought.filter(a => frequentIds.has(a.id));
+    const longNotBoughtArticles = allLongNotBought.filter(a => !frequentIds.has(a.id));
+
+    if (dedupRemoved.length > 0) {
+      this.logger.debug('recommendations',
+        `[dedup] removed ${dedupRemoved.length} article(s) from longNotBought ` +
+        `(already in frequent): ${dedupRemoved.map(a => a.name).join(', ')}`
+      );
+    }
+
+    return { frequentArticles, longNotBoughtArticles };
+  }
+
+  /**
    * Returns articles that were checked on at least 1/3 of all shopping days.
    * A "shopping day" is a calendar day on which ≥N unique articles were checked.
    */

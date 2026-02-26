@@ -317,7 +317,7 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, catalog)).toHaveLength(0);
     });
 
-    it('article on list and checked appears in both algorithms (no duplicates within each result)', () => {
+    it('article on list and checked appears in both individual algorithms (no duplicates within each result)', () => {
       const list = makeList(['a1'], {
         'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
       });
@@ -329,6 +329,73 @@ describe('RecommendationsService', () => {
       // Each list has exactly 1 entry — deduplication within a list is implicit
       expect(freq).toHaveLength(1);
       expect(long).toHaveLength(1);
+    });
+
+  });
+
+  // =========================================================================
+  // getRecommendations — mutual exclusion
+  // =========================================================================
+
+  describe('getRecommendations', () => {
+
+    it('article qualifying for both categories appears only in frequentArticles', () => {
+      // a1 qualifies for both frequent (1/1 shopping days) and longNotBought (within 0–365d).
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+      });
+      const catalog = [makeArticle('a1')];
+
+      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
+
+      expect(frequentArticles).toHaveLength(1);
+      expect(frequentArticles[0].id).toBe('a1');
+      expect(longNotBoughtArticles).toHaveLength(0);
+    });
+
+    it('article only qualifying for longNotBought appears there and not in frequent', () => {
+      // a2 has no check history matching frequent threshold; a1 is frequent.
+      // Make two separate shopping trips so a1 has ratio 1/1 and a2 only appears in longNotBought.
+      const list = makeList(['a1', 'a2'], {
+        'a1': itemState('a1', [daysAgo(5)], { isChecked: true }),
+        'a2': itemState('a2', [daysAgo(50)], { isChecked: true }),
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2')];
+
+      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
+
+      // Both qualify individually — but in getRecommendations, a1 must not be in longNotBought
+      expect(frequentArticles.some(a => a.id === 'a1')).toBe(true);
+      // a1 must not appear in longNotBought
+      expect(longNotBoughtArticles.some(a => a.id === 'a1')).toBe(false);
+    });
+
+    it('no article appears in both result arrays', () => {
+      const list = makeList(['a1', 'a2', 'a3'], {
+        'a1': itemState('a1', [daysAgo(1)], { isChecked: true }),
+        'a2': itemState('a2', [daysAgo(2)], { isChecked: true }),
+        'a3': itemState('a3', [daysAgo(30)], { isChecked: true }),
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2'), makeArticle('a3')];
+
+      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
+
+      const frequentIds = new Set(frequentArticles.map(a => a.id));
+      const longNotBoughtIds = new Set(longNotBoughtArticles.map(a => a.id));
+
+      // Intersection must be empty
+      for (const id of frequentIds) {
+        expect(longNotBoughtIds.has(id)).toBe(false);
+      }
+    });
+
+    it('returns empty arrays when list has no checked articles', () => {
+      const list = makeList(['a1'], {
+        'a1': { articleId: 'a1', isChecked: false }
+      });
+      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, [makeArticle('a1')]);
+      expect(frequentArticles).toHaveLength(0);
+      expect(longNotBoughtArticles).toHaveLength(0);
     });
 
   });
