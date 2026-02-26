@@ -20,10 +20,11 @@ import { Article, ShoppingList, ListItemState, CheckEvent } from '../models';
 })
 export class RecommendationsService {
 
-  private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 3;
-  private readonly FREQUENT_MIN_RATIO = 1 / 3;
-  private readonly LONG_NOT_BOUGHT_MIN_DAYS = 14;
-  private readonly LONG_NOT_BOUGHT_MAX_DAYS = 90;
+  private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 1; // TEST: production value is 3
+  private readonly FREQUENT_MIN_RATIO = 1 / 10;       // TEST: production value is 1 / 3
+  private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 1; // TEST: production value is 2
+  private readonly LONG_NOT_BOUGHT_MIN_DAYS = 0;       // TEST: production value is 14
+  private readonly LONG_NOT_BOUGHT_MAX_DAYS = 365;     // TEST: production value is 90
   private readonly RECENTLY_CHECKED_MINUTES = 60;
 
   /**
@@ -103,7 +104,7 @@ export class RecommendationsService {
       if (!state.history) continue;
 
       const checkedEvents = state.history.filter(e => e.action === 'checked');
-      if (checkedEvents.length < 2) continue;
+      if (checkedEvents.length < this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT) continue;
 
       // history is stored most-recent-first (see HistoryService.addEventToHistory)
       const lastCheckedDate = this.toDate(checkedEvents[0].timestamp);
@@ -158,10 +159,21 @@ export class RecommendationsService {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  /** Normalises Firestore Timestamp objects and plain Date/string values to Date. */
-  private toDate(value: Date | { toDate(): Date } | string | number): Date {
+  /**
+   * Normalises all timestamp formats that can appear after a Firestore → NgRx round-trip:
+   * - native Date
+   * - Firestore Timestamp (has toDate() method, from the SDK)
+   * - { _seconds, _nanoseconds } plain object (NgRx strips class methods on serialisation)
+   * - { seconds, nanoseconds } plain object (alternate Firestore serialisation)
+   * - ISO string or Unix ms number
+   */
+  private toDate(value: any): Date {
     if (value instanceof Date) return value;
-    if (typeof value === 'object' && 'toDate' in value) return value.toDate();
+    if (value && typeof value === 'object') {
+      if (typeof value.toDate === 'function') return value.toDate();
+      if (typeof value._seconds === 'number') return new Date(value._seconds * 1000);
+      if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+    }
     return new Date(value as string | number);
   }
 }
