@@ -50,6 +50,7 @@ import { AnalyticsService } from '../../../core/services/analytics.service';
 import { AnalyticsEventType } from '../../../core/models/analytics.model';
 import { RecommendationsService } from '../../../core/services/recommendations.service';
 import { RecommendationsBottomSheetComponent, RecommendationsBottomSheetData } from './recommendations-bottom-sheet/recommendations-bottom-sheet.component';
+import { LoggerService } from '../../../core/services/logger.service';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -127,7 +128,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly historyService: HistoryService,
     private readonly analyticsService: AnalyticsService,
     private readonly bottomSheet: MatBottomSheet,
-    private readonly recommendationsService: RecommendationsService
+    private readonly recommendationsService: RecommendationsService,
+    private readonly logger: LoggerService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -146,10 +148,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     ]).pipe(
       map(([list, articles]) => {
         if (!list) return false;
+        this.logger.debug('recommendations', `--- evaluating list "${list.id}" (${list.name}) ---`);
         const frequent = this.recommendationsService.getFrequentArticles(list, articles);
-        if (frequent.length > 0) return true;
         const longNotBought = this.recommendationsService.getLongNotBoughtArticles(list, articles);
-        return longNotBought.length > 0;
+        const hasAny = frequent.length > 0 || longNotBought.length > 0;
+        this.logger.debug('recommendations',
+          `hasRecommendations → ${hasAny} ` +
+          `(frequent: ${frequent.length}, longNotBought: ${longNotBought.length})`
+        );
+        return hasAny;
       })
     );
   }

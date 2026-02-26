@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
-import { Article, ShoppingList, ListItemState, CheckEvent } from '../models';
+import { Injectable, inject } from '@angular/core';
+import { Article, ShoppingList } from '../models';
+import { LoggerService } from './logger.service';
 
 /**
  * RecommendationsService
@@ -14,11 +15,15 @@ import { Article, ShoppingList, ListItemState, CheckEvent } from '../models';
  *
  * Note: "Removed articles" (in itemStates but no longer in catalog) are intentionally
  * excluded from MVP recommendations — see PLAN.md for future iteration idea.
+ *
+ * Logging: enable with  logger.setTopics('recommendations'); logger.setLevel('debug')
  */
 @Injectable({
   providedIn: 'root'
 })
 export class RecommendationsService {
+
+  private readonly logger = inject(LoggerService);
 
   private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 1; // TEST: production value is 3
   private readonly FREQUENT_MIN_RATIO = 1 / 10;       // TEST: production value is 1 / 3
@@ -34,9 +39,11 @@ export class RecommendationsService {
   getFrequentArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
     const catalogSet = new Set(catalog.map(a => a.id));
+    const allIds = Object.keys(itemStates);
 
     // Step 1: Collect all checked events keyed by article id
     const checkedEventsByArticle = new Map<string, Date[]>();
+    let totalCheckedEvents = 0;
     for (const [articleId, state] of Object.entries(itemStates)) {
       if (!state.history) continue;
       const checkedDates = state.history
@@ -44,8 +51,15 @@ export class RecommendationsService {
         .map(e => this.toDate(e.timestamp));
       if (checkedDates.length > 0) {
         checkedEventsByArticle.set(articleId, checkedDates);
+        totalCheckedEvents += checkedDates.length;
       }
     }
+
+    this.logger.debug('recommendations',
+      `[getFrequent] itemStates: ${allIds.length} entries, ` +
+      `${checkedEventsByArticle.size} with checked events, ` +
+      `${totalCheckedEvents} total checked events`
+    );
 
     // Step 2: Build a map of date-string → Set<articleId> for all checked events
     const articlesByDay = new Map<string, Set<string>>();
@@ -59,11 +73,17 @@ export class RecommendationsService {
       }
     }
 
-    // Step 3: Keep only shopping days (≥3 unique articles checked)
+    // Step 3: Keep only shopping days (≥N unique articles checked)
     const shoppingDays = Array.from(articlesByDay.entries())
       .filter(([, articles]) => articles.size >= this.MIN_ARTICLES_PER_SHOPPING_DAY);
 
+    this.logger.debug('recommendations',
+      `[getFrequent] ${articlesByDay.size} calendar days with any check, ` +
+      `${shoppingDays.length} qualify as shopping days (threshold: ≥${this.MIN_ARTICLES_PER_SHOPPING_DAY} article/day)`
+    );
+
     if (shoppingDays.length === 0) {
+      this.logger.debug('recommendations', '[getFrequent] no shopping days → result: 0 articles');
       return [];
     }
 
@@ -77,20 +97,30 @@ export class RecommendationsService {
       }
     }
 
-    // Step 5: Collect candidates where ratio ≥ 1/3
+    // Step 5: Collect candidates where ratio ≥ threshold
     const candidates: string[] = [];
     for (const [articleId, count] of articleDayCount.entries()) {
-      if (count / totalShoppingDays >= this.FREQUENT_MIN_RATIO) {
+      const ratio = count / totalShoppingDays;
+      if (ratio >= this.FREQUENT_MIN_RATIO) {
         candidates.push(articleId);
+        this.logger.debug('recommendations',
+          `[getFrequent] candidate: ${articleId} (${count}/${totalShoppingDays} days = ${(ratio * 100).toFixed(0)}%)`
+        );
       }
     }
 
-    return this.applyExclusionFilter(candidates, list, catalog, catalogSet);
+    this.logger.debug('recommendations',
+      `[getFrequent] ${candidates.length} candidates before exclusion filter`
+    );
+
+    const result = this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'getFrequent');
+    this.logger.debug('recommendations', `[getFrequent] result: ${result.length} article(s)`);
+    return result;
   }
 
   /**
-   * Returns articles that have ≥2 checks in this list's history and whose last
-   * check was between 14 and 90 days ago — indicating a recurring but overdue item.
+   * Returns articles that have ≥N checks in this list's history and whose last
+   * check was between MIN and MAX days ago — indicating a recurring but overdue item.
    */
   getLongNotBoughtArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
@@ -101,10 +131,19 @@ export class RecommendationsService {
     const candidates: string[] = [];
 
     for (const [articleId, state] of Object.entries(itemStates)) {
-      if (!state.history) continue;
+      if (!state.history) {
+        this.logger.debug('recommendations', `[getLongNotBought] skip "${articleId}" — no history`);
+        continue;
+      }
 
       const checkedEvents = state.history.filter(e => e.action === 'checked');
-      if (checkedEvents.length < this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT) continue;
+
+      if (checkedEvents.length < this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT) {
+        this.logger.debug('recommendations',
+          `[getLongNotBought] skip "${state.articleName ?? articleId}" — only ${checkedEvents.length} check(s), need ≥${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT}`
+        );
+        continue;
+      }
 
       // history is stored most-recent-first (see HistoryService.addEventToHistory)
       const lastCheckedDate = this.toDate(checkedEvents[0].timestamp);
@@ -113,10 +152,27 @@ export class RecommendationsService {
       if (daysSinceLast >= this.LONG_NOT_BOUGHT_MIN_DAYS &&
           daysSinceLast <= this.LONG_NOT_BOUGHT_MAX_DAYS) {
         candidates.push(articleId);
+        this.logger.debug('recommendations',
+          `[getLongNotBought] candidate: "${state.articleName ?? articleId}" — ` +
+          `${checkedEvents.length} check(s), last ${daysSinceLast.toFixed(1)} days ago ` +
+          `(window: ${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS} days)`
+        );
+      } else {
+        this.logger.debug('recommendations',
+          `[getLongNotBought] skip "${state.articleName ?? articleId}" — ` +
+          `last check ${daysSinceLast.toFixed(1)} days ago, outside window ` +
+          `(${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS} days)`
+        );
       }
     }
 
-    return this.applyExclusionFilter(candidates, list, catalog, catalogSet);
+    this.logger.debug('recommendations',
+      `[getLongNotBought] ${candidates.length} candidates before exclusion filter`
+    );
+
+    const result = this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'getLongNotBought');
+    this.logger.debug('recommendations', `[getLongNotBought] result: ${result.length} article(s)`);
+    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -135,7 +191,8 @@ export class RecommendationsService {
     candidateIds: string[],
     list: ShoppingList,
     catalog: Article[],
-    catalogSet: Set<string>
+    catalogSet: Set<string>,
+    logPrefix: string
   ): Article[] {
     const onListSet = new Set(list.articleIds || []);
     const now = Date.now();
@@ -144,15 +201,29 @@ export class RecommendationsService {
 
     return candidateIds
       .filter(id => {
-        if (!catalogSet.has(id)) return false;
-        if (onListSet.has(id)) return false;
+        const name = list.itemStates[id]?.articleName ?? id;
+
+        if (!catalogSet.has(id)) {
+          this.logger.debug('recommendations', `[${logPrefix}] exclude "${name}" — not in catalog`);
+          return false;
+        }
+        if (onListSet.has(id)) {
+          this.logger.debug('recommendations', `[${logPrefix}] exclude "${name}" — already on list`);
+          return false;
+        }
 
         const state = list.itemStates[id];
         if (state?.isChecked && state.checkedAt) {
           const checkedAt = this.toDate(state.checkedAt).getTime();
-          if (now - checkedAt < recentlyCheckedMs) return false;
+          if (now - checkedAt < recentlyCheckedMs) {
+            this.logger.debug('recommendations',
+              `[${logPrefix}] exclude "${name}" — checked within last ${this.RECENTLY_CHECKED_MINUTES} min`
+            );
+            return false;
+          }
         }
 
+        this.logger.debug('recommendations', `[${logPrefix}] ✓ include "${name}"`);
         return true;
       })
       .map(id => catalogById.get(id)!)
