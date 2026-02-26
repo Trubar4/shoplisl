@@ -10,7 +10,7 @@
         *ngFor="let article of frequentArticles()"
         class="article-tile"
         matRipple
-        (click)="onAddArticle(article)">
+        (click)="onSelectArticle(article)">
         <span class="article-icon">{{ article.icon || '🛒' }}</span>
         <span class="article-name">{{ article.name }}</span>
         <span class="add-hint">+</span>
@@ -26,7 +26,7 @@
         *ngFor="let article of longNotBoughtArticles()"
         class="article-tile"
         matRipple
-        (click)="onAddArticle(article)">
+        (click)="onSelectArticle(article)">
         <span class="article-icon">{{ article.icon || '🛒' }}</span>
         <span class="article-name">{{ article.name }}</span>
         <span class="add-hint">+</span>

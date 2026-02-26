@@ -36,12 +36,14 @@ export class RecommendationsBottomSheetComponent {
     this.longNotBoughtArticles.set([...data.longNotBoughtArticles]);
   }
 
-  onAddArticle(article: Article): void {
+  onSelectArticle(article: Article): void {
     // Optimistic UI: remove from the displayed list immediately
     this.frequentArticles.update(list => list.filter(a => a.id !== article.id));
     this.longNotBoughtArticles.update(list => list.filter(a => a.id !== article.id));
 
-    this.dataService.addArticleToList(this.listId, article.id).subscribe();
+    // The article is already on the list and currently checked — uncheck it so it
+    // re-appears as an active item in the shopping list.
+    this.dataService.toggleItemChecked(this.listId, article.id).subscribe();
 
     // Auto-close when both lists are empty
     if (this.frequentArticles().length === 0 && this.longNotBoughtArticles().length === 0) {

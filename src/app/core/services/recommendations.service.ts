@@ -13,8 +13,11 @@ import { LoggerService } from './logger.service';
  * 1. "Häufig gekaufte Artikel"  — articles present in ≥1/3 of all shopping days
  * 2. "Schon lange nicht mehr gekauft" — articles with ≥2 checks and last check 14–90 days ago
  *
- * Note: "Removed articles" (in itemStates but no longer in catalog) are intentionally
- * excluded from MVP recommendations — see PLAN.md for future iteration idea.
+ * Candidate rules:
+ * - The article must still be on the list (in articleIds). Removed articles are never shown.
+ * - The article must currently be checked off (isChecked = true). Unchecked articles are
+ *   already visible as active items and need no separate recommendation.
+ * - Tapping a recommendation unchecks the article so it re-appears as an active list item.
  *
  * Logging: enable with  logger.setTopics('recommendations'); logger.setLevel('debug')
  */
@@ -30,7 +33,6 @@ export class RecommendationsService {
   private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 1; // TEST: production value is 2
   private readonly LONG_NOT_BOUGHT_MIN_DAYS = 0;       // TEST: production value is 14
   private readonly LONG_NOT_BOUGHT_MAX_DAYS = 365;     // TEST: production value is 90
-  private readonly RECENTLY_CHECKED_MINUTES = 60;
 
   /**
    * Returns articles that were checked on at least 1/3 of all shopping days.
@@ -156,8 +158,9 @@ export class RecommendationsService {
   /**
    * Filters candidate article IDs to only those that:
    * - exist in the user's catalog
-   * - are NOT already on the list (articleIds)
-   * - are NOT checked within the last 60 minutes
+   * - are currently on the list (articleIds) — removed articles are never recommended
+   * - are currently checked off (isChecked === true) — unchecked articles are already
+   *   visible as active list items and do not need a recommendation
    *
    * Returns the matching Article objects sorted by name.
    */
@@ -169,32 +172,25 @@ export class RecommendationsService {
     logPrefix: string
   ): Article[] {
     const onListSet = new Set(list.articleIds || []);
-    const now = Date.now();
-    const recentlyCheckedMs = this.RECENTLY_CHECKED_MINUTES * 60 * 1000;
     const catalogById = new Map(catalog.map(a => [a.id, a]));
 
-    let notInCatalog = 0, onList = 0, recentlyChecked = 0;
+    let notInCatalog = 0, notOnList = 0, notChecked = 0;
 
     const result = candidateIds
       .filter(id => {
         if (!catalogSet.has(id)) { notInCatalog++; return false; }
-        if (onListSet.has(id)) { onList++; return false; }
+        if (!onListSet.has(id)) { notOnList++; return false; }
         const state = list.itemStates[id];
-        if (state?.isChecked && state.checkedAt) {
-          if (now - this.toDate(state.checkedAt).getTime() < recentlyCheckedMs) {
-            recentlyChecked++;
-            return false;
-          }
-        }
+        if (!state?.isChecked) { notChecked++; return false; }
         return true;
       })
       .map(id => catalogById.get(id)!)
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const excluded: string[] = [];
-    if (onList) excluded.push(`${onList} on list`);
+    if (notOnList) excluded.push(`${notOnList} not on list`);
     if (notInCatalog) excluded.push(`${notInCatalog} not in catalog`);
-    if (recentlyChecked) excluded.push(`${recentlyChecked} recently checked`);
+    if (notChecked) excluded.push(`${notChecked} not checked`);
 
     this.logger.debug('recommendations',
       `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
