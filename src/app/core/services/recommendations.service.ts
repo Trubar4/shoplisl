@@ -34,16 +34,14 @@ export class RecommendationsService {
 
   /**
    * Returns articles that were checked on at least 1/3 of all shopping days.
-   * A "shopping day" is a calendar day on which ≥3 unique articles were checked.
+   * A "shopping day" is a calendar day on which ≥N unique articles were checked.
    */
   getFrequentArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
     const catalogSet = new Set(catalog.map(a => a.id));
-    const allIds = Object.keys(itemStates);
 
     // Step 1: Collect all checked events keyed by article id
     const checkedEventsByArticle = new Map<string, Date[]>();
-    let totalCheckedEvents = 0;
     for (const [articleId, state] of Object.entries(itemStates)) {
       if (!state.history) continue;
       const checkedDates = state.history
@@ -51,15 +49,8 @@ export class RecommendationsService {
         .map(e => this.toDate(e.timestamp));
       if (checkedDates.length > 0) {
         checkedEventsByArticle.set(articleId, checkedDates);
-        totalCheckedEvents += checkedDates.length;
       }
     }
-
-    this.logger.debug('recommendations',
-      `[getFrequent] itemStates: ${allIds.length} entries, ` +
-      `${checkedEventsByArticle.size} with checked events, ` +
-      `${totalCheckedEvents} total checked events`
-    );
 
     // Step 2: Build a map of date-string → Set<articleId> for all checked events
     const articlesByDay = new Map<string, Set<string>>();
@@ -77,13 +68,11 @@ export class RecommendationsService {
     const shoppingDays = Array.from(articlesByDay.entries())
       .filter(([, articles]) => articles.size >= this.MIN_ARTICLES_PER_SHOPPING_DAY);
 
-    this.logger.debug('recommendations',
-      `[getFrequent] ${articlesByDay.size} calendar days with any check, ` +
-      `${shoppingDays.length} qualify as shopping days (threshold: ≥${this.MIN_ARTICLES_PER_SHOPPING_DAY} article/day)`
-    );
-
     if (shoppingDays.length === 0) {
-      this.logger.debug('recommendations', '[getFrequent] no shopping days → result: 0 articles');
+      this.logger.debug('recommendations',
+        `[frequent] ${Object.keys(itemStates).length} states, ` +
+        `${checkedEventsByArticle.size} with checks, 0 shopping days → no candidates`
+      );
       return [];
     }
 
@@ -100,22 +89,19 @@ export class RecommendationsService {
     // Step 5: Collect candidates where ratio ≥ threshold
     const candidates: string[] = [];
     for (const [articleId, count] of articleDayCount.entries()) {
-      const ratio = count / totalShoppingDays;
-      if (ratio >= this.FREQUENT_MIN_RATIO) {
+      if (count / totalShoppingDays >= this.FREQUENT_MIN_RATIO) {
         candidates.push(articleId);
-        this.logger.debug('recommendations',
-          `[getFrequent] candidate: ${articleId} (${count}/${totalShoppingDays} days = ${(ratio * 100).toFixed(0)}%)`
-        );
       }
     }
 
     this.logger.debug('recommendations',
-      `[getFrequent] ${candidates.length} candidates before exclusion filter`
+      `[frequent] ${Object.keys(itemStates).length} states, ` +
+      `${checkedEventsByArticle.size} with checks, ` +
+      `${shoppingDays.length}/${articlesByDay.size} shopping days, ` +
+      `${candidates.length} candidates`
     );
 
-    const result = this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'getFrequent');
-    this.logger.debug('recommendations', `[getFrequent] result: ${result.length} article(s)`);
-    return result;
+    return this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'frequent');
   }
 
   /**
@@ -129,50 +115,38 @@ export class RecommendationsService {
     const msPerDay = 86_400_000;
 
     const candidates: string[] = [];
+    let skippedNoChecks = 0;
+    let skippedOutsideWindow = 0;
 
     for (const [articleId, state] of Object.entries(itemStates)) {
-      if (!state.history) {
-        this.logger.debug('recommendations', `[getLongNotBought] skip "${articleId}" — no history`);
-        continue;
-      }
+      if (!state.history) { skippedNoChecks++; continue; }
 
       const checkedEvents = state.history.filter(e => e.action === 'checked');
 
       if (checkedEvents.length < this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT) {
-        this.logger.debug('recommendations',
-          `[getLongNotBought] skip "${state.articleName ?? articleId}" — only ${checkedEvents.length} check(s), need ≥${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT}`
-        );
+        skippedNoChecks++;
         continue;
       }
 
       // history is stored most-recent-first (see HistoryService.addEventToHistory)
-      const lastCheckedDate = this.toDate(checkedEvents[0].timestamp);
-      const daysSinceLast = (now - lastCheckedDate.getTime()) / msPerDay;
+      const daysSinceLast = (now - this.toDate(checkedEvents[0].timestamp).getTime()) / msPerDay;
 
       if (daysSinceLast >= this.LONG_NOT_BOUGHT_MIN_DAYS &&
           daysSinceLast <= this.LONG_NOT_BOUGHT_MAX_DAYS) {
         candidates.push(articleId);
-        this.logger.debug('recommendations',
-          `[getLongNotBought] candidate: "${state.articleName ?? articleId}" — ` +
-          `${checkedEvents.length} check(s), last ${daysSinceLast.toFixed(1)} days ago ` +
-          `(window: ${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS} days)`
-        );
       } else {
-        this.logger.debug('recommendations',
-          `[getLongNotBought] skip "${state.articleName ?? articleId}" — ` +
-          `last check ${daysSinceLast.toFixed(1)} days ago, outside window ` +
-          `(${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS} days)`
-        );
+        skippedOutsideWindow++;
       }
     }
 
     this.logger.debug('recommendations',
-      `[getLongNotBought] ${candidates.length} candidates before exclusion filter`
+      `[longNotBought] ${Object.keys(itemStates).length} states → ` +
+      `${skippedNoChecks} skipped (insufficient checks), ` +
+      `${skippedOutsideWindow} skipped (outside ${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS}d window), ` +
+      `${candidates.length} candidates`
     );
 
-    const result = this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'getLongNotBought');
-    this.logger.debug('recommendations', `[getLongNotBought] result: ${result.length} article(s)`);
-    return result;
+    return this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'longNotBought');
   }
 
   // ---------------------------------------------------------------------------
@@ -199,35 +173,35 @@ export class RecommendationsService {
     const recentlyCheckedMs = this.RECENTLY_CHECKED_MINUTES * 60 * 1000;
     const catalogById = new Map(catalog.map(a => [a.id, a]));
 
-    return candidateIds
+    let notInCatalog = 0, onList = 0, recentlyChecked = 0;
+
+    const result = candidateIds
       .filter(id => {
-        const name = list.itemStates[id]?.articleName ?? id;
-
-        if (!catalogSet.has(id)) {
-          this.logger.debug('recommendations', `[${logPrefix}] exclude "${name}" — not in catalog`);
-          return false;
-        }
-        if (onListSet.has(id)) {
-          this.logger.debug('recommendations', `[${logPrefix}] exclude "${name}" — already on list`);
-          return false;
-        }
-
+        if (!catalogSet.has(id)) { notInCatalog++; return false; }
+        if (onListSet.has(id)) { onList++; return false; }
         const state = list.itemStates[id];
         if (state?.isChecked && state.checkedAt) {
-          const checkedAt = this.toDate(state.checkedAt).getTime();
-          if (now - checkedAt < recentlyCheckedMs) {
-            this.logger.debug('recommendations',
-              `[${logPrefix}] exclude "${name}" — checked within last ${this.RECENTLY_CHECKED_MINUTES} min`
-            );
+          if (now - this.toDate(state.checkedAt).getTime() < recentlyCheckedMs) {
+            recentlyChecked++;
             return false;
           }
         }
-
-        this.logger.debug('recommendations', `[${logPrefix}] ✓ include "${name}"`);
         return true;
       })
       .map(id => catalogById.get(id)!)
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    const excluded: string[] = [];
+    if (onList) excluded.push(`${onList} on list`);
+    if (notInCatalog) excluded.push(`${notInCatalog} not in catalog`);
+    if (recentlyChecked) excluded.push(`${recentlyChecked} recently checked`);
+
+    this.logger.debug('recommendations',
+      `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
+      (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '')
+    );
+
+    return result;
   }
 
   /**
