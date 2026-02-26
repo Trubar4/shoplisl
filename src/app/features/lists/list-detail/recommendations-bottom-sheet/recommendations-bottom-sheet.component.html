@@ -1,0 +1,36 @@
+<div class="recommendations-sheet">
+  <div class="drag-handle"></div>
+  <h2 class="sheet-title">Vorschläge</h2>
+
+  <!-- Häufig gekaufte Artikel -->
+  <section *ngIf="frequentArticles().length > 0">
+    <h3 class="section-title">Häufig gekaufte Artikel</h3>
+    <ul class="article-list">
+      <li
+        *ngFor="let article of frequentArticles()"
+        class="article-tile"
+        matRipple
+        (click)="onAddArticle(article)">
+        <span class="article-icon">{{ article.icon || '🛒' }}</span>
+        <span class="article-name">{{ article.name }}</span>
+        <span class="add-hint">+</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Schon lange nicht mehr gekauft -->
+  <section *ngIf="longNotBoughtArticles().length > 0">
+    <h3 class="section-title">Schon lange nicht mehr gekauft</h3>
+    <ul class="article-list">
+      <li
+        *ngFor="let article of longNotBoughtArticles()"
+        class="article-tile"
+        matRipple
+        (click)="onAddArticle(article)">
+        <span class="article-icon">{{ article.icon || '🛒' }}</span>
+        <span class="article-name">{{ article.name }}</span>
+        <span class="add-hint">+</span>
+      </li>
+    </ul>
+  </section>
+</div>

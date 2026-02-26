@@ -52,6 +52,13 @@
     </button>
   </div>
 
+  <!-- Vorschläge Button -->
+  <div class="suggestions-bar" *ngIf="hasRecommendations && !isSelectionMode">
+    <button mat-button class="suggestions-button" (click)="onOpenRecommendations()">
+      Vorschläge
+    </button>
+  </div>
+
   <!-- Celebration Animation Overlay -->
   <div
     class="celebration-overlay"

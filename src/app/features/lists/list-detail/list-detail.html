@@ -113,13 +113,15 @@
       [isSelectionMode]="isSelectionMode()"
       [isDialogOpen]="isDialogOpen()"
       [selectionService]="selectionService"
+      [hasRecommendations]="(hasRecommendations$ | async) ?? false"
       (articleToggle)="onArticleToggle($event)"
       (articleInfo)="onArticleInfo($event)"
       (editAmount)="onEditAmountFromList($event)"
       (undoCompletion)="onUndoArticleCompletion($event)"
       (moveSelectedArticles)="onMoveSelectedArticles($event)"
       (deleteSelectedArticles)="onDeleteSelectedArticles($event)"
-      (markSelectedAsDone)="onMarkSelectedAsDone($event)">
+      (markSelectedAsDone)="onMarkSelectedAsDone($event)"
+      (openRecommendations)="onOpenRecommendations()">
     </app-shopping-mode>
   </div>
 

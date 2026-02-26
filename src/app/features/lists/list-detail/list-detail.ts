@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Store } from '@ngrx/store';
 
@@ -47,6 +48,8 @@ import { ActiveListService } from '../../../core/services/active-list.service';
 import { HistoryService } from '../../../core/services/history.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
 import { AnalyticsEventType } from '../../../core/models/analytics.model';
+import { RecommendationsService } from '../../../core/services/recommendations.service';
+import { RecommendationsBottomSheetComponent, RecommendationsBottomSheetData } from './recommendations-bottom-sheet/recommendations-bottom-sheet.component';
 
 // Simplified type definitions
 type ViewMode = 'shopping' | 'edit';
@@ -58,7 +61,7 @@ type EditFilter = 'gelistet' | 'fehlend' | 'alle';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatToolbarModule, MatIconModule,
-    MatButtonModule, MatSnackBarModule, MatDialogModule, MatTooltipModule,
+    MatButtonModule, MatSnackBarModule, MatDialogModule, MatBottomSheetModule, MatTooltipModule,
     SearchDisambiguationComponent,
     FilterFabComponent,
     ShoppingModeComponent,
@@ -90,6 +93,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   readonly departmentGroups$: Observable<DepartmentGroup[]>;
   readonly departmentGroupsEdit$: Observable<DepartmentGroup[]>;
   readonly searchDisambiguation$ = new BehaviorSubject<any>(null);
+  readonly hasRecommendations$: Observable<boolean>;
   
   // === STATE STREAMS ===
   
@@ -121,7 +125,9 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     private readonly aiService: AIService,
     private readonly activeListService: ActiveListService,
     private readonly historyService: HistoryService,
-    private readonly analyticsService: AnalyticsService
+    private readonly analyticsService: AnalyticsService,
+    private readonly bottomSheet: MatBottomSheet,
+    private readonly recommendationsService: RecommendationsService
   ) {
     this.listId = this.route.snapshot.paramMap.get('id') || '';
 
@@ -133,6 +139,19 @@ export class ListDetailComponent implements OnInit, OnDestroy {
 
     this.departmentGroups$ = this.createUnifiedObservable('shopping');
     this.departmentGroupsEdit$ = this.createUnifiedObservable('edit');
+
+    this.hasRecommendations$ = combineLatest([
+      this.list$,
+      this.store.select(selectAllArticles)
+    ]).pipe(
+      map(([list, articles]) => {
+        if (!list) return false;
+        const frequent = this.recommendationsService.getFrequentArticles(list, articles);
+        if (frequent.length > 0) return true;
+        const longNotBought = this.recommendationsService.getLongNotBoughtArticles(list, articles);
+        return longNotBought.length > 0;
+      })
+    );
   }
 
   /**
@@ -548,6 +567,22 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     // Only close disambiguation, keep search text and filtered results
     this.searchDisambiguation$.next(null);
     this.disambiguationManuallyClosed = true;
+  }
+
+  // === RECOMMENDATIONS ===
+
+  onOpenRecommendations(): void {
+    if (!this.currentList) return;
+
+    this.store.select(selectAllArticles).pipe(take(1)).subscribe(articles => {
+      const list = this.currentList!;
+      const data: RecommendationsBottomSheetData = {
+        listId: list.id,
+        frequentArticles: this.recommendationsService.getFrequentArticles(list, articles),
+        longNotBoughtArticles: this.recommendationsService.getLongNotBoughtArticles(list, articles)
+      };
+      this.bottomSheet.open(RecommendationsBottomSheetComponent, { data });
+    });
   }
 
   // === LIST ACTIONS ===
