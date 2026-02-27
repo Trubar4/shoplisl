@@ -34,7 +34,8 @@ function makeArticle(id: string, name = id): Article {
 
 /**
  * Builds a ListItemState with checked history.
- * By default isChecked = true (article is checked off from a previous session).
+ * checkedTimestamps should be in most-recent-first order (matching HistoryService behaviour).
+ * Defaults to isChecked = true so articles pass the exclusion filter.
  */
 function itemState(
   articleId: string,
@@ -46,8 +47,7 @@ function itemState(
     articleName: opts.articleName ?? articleId,
     isChecked: opts.isChecked ?? true,
     checkedAt: opts.checkedAt,
-    // history is most-recent-first (matching HistoryService behaviour)
-    history: checkedTimestamps.map(ts => checkedEvent(ts)).reverse().reverse()
+    history: checkedTimestamps.map(ts => checkedEvent(ts))
   };
 }
 
@@ -75,20 +75,18 @@ describe('RecommendationsService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [RecommendationsService]
-      // LoggerService is providedIn: 'root' — auto-provided, no mock needed
     });
     service = TestBed.inject(RecommendationsService);
   });
 
   // =========================================================================
-  // getFrequentArticles
+  // getFrequentArticles — Rule A: ≥ 40% of shopping days
   // =========================================================================
 
   describe('getFrequentArticles', () => {
 
     it('returns empty array when list has no itemStates', () => {
-      const list = makeList([], {});
-      expect(service.getFrequentArticles(list, [])).toEqual([]);
+      expect(service.getFrequentArticles(makeList([], {}), [])).toEqual([]);
     });
 
     it('returns empty array when no article has check history', () => {
@@ -98,27 +96,48 @@ describe('RecommendationsService', () => {
       expect(service.getFrequentArticles(list, [makeArticle('a1')])).toEqual([]);
     });
 
-    it('returns article that passes frequency ratio (present on 1 of 1 shopping day)', () => {
-      // 1 shopping day (test threshold: ≥1 article/day). "a1" was on that day.
-      // ratio = 1/1 = 100% ≥ 10% threshold → should appear.
-      const list = makeList(['a1'], {  // a1 is on the list AND checked
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+    it('includes article present on 100% of shopping days (1 of 1)', () => {
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(5)])
       });
       const result = service.getFrequentArticles(list, [makeArticle('a1')]);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('a1');
     });
 
+    it('includes article at exactly the 40% threshold (4 of 10 shopping days)', () => {
+      // a1 (helper) is checked on all 10 different days → creates 10 shopping days.
+      // a2 (candidate) is checked on 4 of those 10 days → ratio 40% = threshold → included.
+      const helperDays = Array.from({ length: 10 }, (_, i) => daysAgo(i + 1));
+      const list = makeList(['a1', 'a2'], {
+        'a1': itemState('a1', helperDays),
+        'a2': itemState('a2', [daysAgo(1), daysAgo(2), daysAgo(3), daysAgo(4)])
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2')];
+      const result = service.getFrequentArticles(list, catalog);
+      expect(result.some(a => a.id === 'a2')).toBe(true);
+    });
+
+    it('excludes article below the 40% threshold (3 of 10 shopping days)', () => {
+      // Same setup but a2 only appears on 3 of 10 days → ratio 30% < 40% → excluded.
+      const helperDays = Array.from({ length: 10 }, (_, i) => daysAgo(i + 1));
+      const list = makeList(['a1', 'a2'], {
+        'a1': itemState('a1', helperDays),
+        'a2': itemState('a2', [daysAgo(1), daysAgo(2), daysAgo(3)])
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2')];
+      const result = service.getFrequentArticles(list, catalog);
+      expect(result.some(a => a.id === 'a2')).toBe(false);
+    });
+
     it('excludes article that is not on the list (removed from articleIds)', () => {
-      // Article has history but was removed from the list → must not appear
       const list = makeList([], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(5)])
       });
       expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
     it('excludes article that is on the list but not checked (isChecked = false)', () => {
-      // Unchecked articles are already visible as active items — no recommendation needed
       const list = makeList(['a1'], {
         'a1': itemState('a1', [daysAgo(5)], { isChecked: false })
       });
@@ -127,40 +146,33 @@ describe('RecommendationsService', () => {
 
     it('excludes article that is not in the catalog', () => {
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(5)])
       });
-      // Pass an empty catalog — a1 not present
       expect(service.getFrequentArticles(list, [])).toHaveLength(0);
     });
 
     it('handles { _seconds, _nanoseconds } timestamp format (NgRx-serialised Firestore Timestamp)', () => {
       const secondsAgo5Days = Math.floor(daysAgo(5).getTime() / 1000);
-      const firestoreTimestamp = { _seconds: secondsAgo5Days, _nanoseconds: 0 };
-
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [firestoreTimestamp], { isChecked: true })
+        'a1': itemState('a1', [{ _seconds: secondsAgo5Days, _nanoseconds: 0 }])
       });
-      // Should not throw and should produce a valid result
-      const result = service.getFrequentArticles(list, [makeArticle('a1')]);
-      expect(result).toHaveLength(1);
+      expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
     it('handles { seconds, nanoseconds } timestamp format (alternate Firestore serialisation)', () => {
       const secondsAgo5Days = Math.floor(daysAgo(5).getTime() / 1000);
-      const firestoreTimestamp = { seconds: secondsAgo5Days, nanoseconds: 0 };
-
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [firestoreTimestamp], { isChecked: true })
+        'a1': itemState('a1', [{ seconds: secondsAgo5Days, nanoseconds: 0 }])
       });
-      const result = service.getFrequentArticles(list, [makeArticle('a1')]);
-      expect(result).toHaveLength(1);
+      expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
     it('returns results sorted alphabetically by name', () => {
+      // All three articles checked on the same day → 1 shopping day, ratio 1/1 = 100% ≥ 40%.
       const list = makeList(['a1', 'a2', 'a3'], {
-        'a1': itemState('a1', [daysAgo(1)], { isChecked: true }),
-        'a2': itemState('a2', [daysAgo(2)], { isChecked: true }),
-        'a3': itemState('a3', [daysAgo(3)], { isChecked: true }),
+        'a1': itemState('a1', [daysAgo(1)]),
+        'a2': itemState('a2', [daysAgo(1)]),
+        'a3': itemState('a3', [daysAgo(1)]),
       });
       const catalog = [
         makeArticle('a1', 'Zwiebeln'),
@@ -172,20 +184,19 @@ describe('RecommendationsService', () => {
     });
 
     it('counts multiple checks on the same calendar day as one shopping day', () => {
-      // Two checks on the same day for a1 → still only 1 shopping day for a1
       const day = daysAgo(3);
-      const daySlightlyLater = new Date(day.getTime() + 3600_000); // +1h, same day
+      const sameDay = new Date(day.getTime() + 3600_000); // +1h, still the same calendar day
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [day, daySlightlyLater], { isChecked: true })
+        'a1': itemState('a1', [sameDay, day]) // most-recent-first
       });
-      // 1 shopping day, a1 present on 1/1 days → included
+      // 1 shopping day, a1 on 1/1 days → 100% ≥ 40% → included
       expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
   });
 
   // =========================================================================
-  // getLongNotBoughtArticles
+  // getLongNotBoughtArticles — Rule B: ≥ 3 checks, dynamic time window
   // =========================================================================
 
   describe('getLongNotBoughtArticles', () => {
@@ -195,9 +206,7 @@ describe('RecommendationsService', () => {
     });
 
     it('returns empty array when article has no history', () => {
-      const list = makeList(['a1'], {
-        'a1': { articleId: 'a1', isChecked: true }
-      });
+      const list = makeList(['a1'], { 'a1': { articleId: 'a1', isChecked: true } });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
@@ -208,73 +217,137 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('includes article with 1 check last bought within the 0–365 day window (test thresholds)', () => {
+    it('excludes article with fewer than 3 check events', () => {
+      // 2 checks → does not meet MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 3
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(30)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(7), daysAgo(14)]) // only 2 checks
+      });
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+    });
+
+    it('includes article with 3 checks whose days-since-last is in the dynamic window', () => {
+      // most-recent-first: [9, 18, 27] days ago
+      // avg_interval = (27 − 9) / 2 = 9 days
+      // days_since_last = 9
+      // window = [9 × 0.8, 9 × 2] = [7.2, 18] → 9 is in window
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
       });
       const result = service.getLongNotBoughtArticles(list, [makeArticle('a1')]);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('a1');
     });
 
-    it('excludes article last bought more than 365 days ago (outside test window)', () => {
+    it('excludes article when days-since-last is below the window minimum (checked too recently)', () => {
+      // most-recent-first: [5, 15, 25] days ago
+      // avg_interval = (25 − 5) / 2 = 10 days
+      // days_since_last = 5 < 10 × 0.8 = 8 → below window → excluded
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(400)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(5), daysAgo(15), daysAgo(25)])
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('excludes article that is not on the list (removed from articleIds)', () => {
-      // Article has history but was removed from the list → must not appear
-      const list = makeList([], {
-        'a1': itemState('a1', [daysAgo(20)], { isChecked: true })
+    it('excludes article when days-since-last exceeds the window maximum (overdue by more than 2×)', () => {
+      // most-recent-first: [25, 35, 45] days ago
+      // avg_interval = (45 − 25) / 2 = 10 days
+      // days_since_last = 25 > 10 × 2 = 20 → above window → excluded
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(25), daysAgo(35), daysAgo(45)])
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('excludes article that is on the list but not checked (isChecked = false)', () => {
+    it('skips article when all checks share the same timestamp (avg interval = 0)', () => {
+      const sameDay = daysAgo(10);
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(20)], { isChecked: false })
+        'a1': itemState('a1', [sameDay, sameDay, sameDay]) // 3 checks, all identical
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('excludes article not in catalog', () => {
+    it('matches the spec example: avg 5 weeks → suggest between 4 and 10 weeks after last check', () => {
+      // 3 checks spaced 5 weeks apart; last check exactly 5 weeks ago.
+      // avg_interval = 35 days, days_since_last = 35
+      // window = [35 × 0.8, 35 × 2] = [28, 70] → 35 is in window ✓
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(20)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(35), daysAgo(70), daysAgo(105)]) // most-recent-first
       });
-      expect(service.getLongNotBoughtArticles(list, [])).toHaveLength(0);
+      const result = service.getLongNotBoughtArticles(list, [makeArticle('a1')]);
+      expect(result).toHaveLength(1);
     });
 
-    it('handles { _seconds, _nanoseconds } timestamp format', () => {
-      const secondsAgo20Days = Math.floor(daysAgo(20).getTime() / 1000);
+    it('correctly excludes when last check was only 3 weeks ago (below 4-week min for 5-week avg)', () => {
+      // avg = 35 days, days_since = 21 < 28 → excluded
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [{ _seconds: secondsAgo20Days, _nanoseconds: 0 }], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(21), daysAgo(56), daysAgo(91)])
       });
-      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(1);
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('uses the most recent checked event (history[0]) for day calculation', () => {
-      // Two checks: 400 days ago and 20 days ago.
-      // Most recent (index 0 in history) is 20 days ago → within 0–365 window → included.
-      // history is stored most-recent-first per HistoryService convention.
+    it('correctly excludes when last check was 11 weeks ago (above 10-week max for 5-week avg)', () => {
+      // avg = 35 days, days_since = 77 > 70 → excluded
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(77), daysAgo(112), daysAgo(147)])
+      });
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+    });
+
+    it('uses history[0] as last check and history[N-1] as first check for avg interval', () => {
+      // history[0] = daysAgo(9) (most recent), history[2] = daysAgo(27) (oldest)
+      // avg = (27 − 9) / 2 = 9 days, window = [7.2, 18] → 9 in window → included
       const list = makeList(['a1'], {
         'a1': {
           articleId: 'a1', isChecked: true,
           history: [
-            checkedEvent(daysAgo(20)),  // index 0 = most recent
-            checkedEvent(daysAgo(400))  // index 1 = older
+            checkedEvent(daysAgo(9)),   // index 0 = most recent
+            checkedEvent(daysAgo(18)),
+            checkedEvent(daysAgo(27))   // index 2 = oldest
           ]
         }
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
+    it('excludes article that is not on the list (removed from articleIds)', () => {
+      const list = makeList([], {
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
+      });
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+    });
+
+    it('excludes article that is on the list but not checked (isChecked = false)', () => {
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)], { isChecked: false })
+      });
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+    });
+
+    it('excludes article not in catalog', () => {
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
+      });
+      expect(service.getLongNotBoughtArticles(list, [])).toHaveLength(0);
+    });
+
+    it('handles { _seconds, _nanoseconds } timestamp format', () => {
+      const toSeconds = (d: Date) => Math.floor(d.getTime() / 1000);
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [
+          { _seconds: toSeconds(daysAgo(9)),  _nanoseconds: 0 },
+          { _seconds: toSeconds(daysAgo(18)), _nanoseconds: 0 },
+          { _seconds: toSeconds(daysAgo(27)), _nanoseconds: 0 }
+        ])
+      });
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(1);
+    });
+
     it('returns results sorted alphabetically', () => {
+      // All three articles: avg = 9 days, days_since_last = 9 → in window [7.2, 18]
       const list = makeList(['a1', 'a2', 'a3'], {
-        'a1': itemState('a1', [daysAgo(10)], { isChecked: true }),
-        'a2': itemState('a2', [daysAgo(20)], { isChecked: true }),
-        'a3': itemState('a3', [daysAgo(30)], { isChecked: true }),
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)]),
+        'a2': itemState('a2', [daysAgo(9), daysAgo(18), daysAgo(27)]),
+        'a3': itemState('a3', [daysAgo(9), daysAgo(18), daysAgo(27)]),
       });
       const catalog = [
         makeArticle('a1', 'Zucker'),
@@ -288,47 +361,27 @@ describe('RecommendationsService', () => {
   });
 
   // =========================================================================
-  // Edge cases shared between both algorithms
+  // Shared edge cases
   // =========================================================================
 
   describe('shared edge cases', () => {
 
     it('article removed from list (not in articleIds) is never recommended, even with history', () => {
-      // Simulates: article added → checked → removed from list.
-      // articleIds is empty, itemStates still has the entry with history and isChecked.
       const list = makeList([], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
       });
       const catalog = [makeArticle('a1')];
-
-      // Both algorithms must exclude it because it is not in articleIds
       expect(service.getFrequentArticles(list, catalog)).toHaveLength(0);
       expect(service.getLongNotBoughtArticles(list, catalog)).toHaveLength(0);
     });
 
     it('article on list but unchecked is never recommended', () => {
-      // Unchecked items are already visible on the active list — no recommendation needed.
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: false })
+        'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)], { isChecked: false })
       });
       const catalog = [makeArticle('a1')];
-
       expect(service.getFrequentArticles(list, catalog)).toHaveLength(0);
       expect(service.getLongNotBoughtArticles(list, catalog)).toHaveLength(0);
-    });
-
-    it('article on list and checked appears in both individual algorithms (no duplicates within each result)', () => {
-      const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
-      });
-      const catalog = [makeArticle('a1')];
-
-      const freq = service.getFrequentArticles(list, catalog);
-      const long = service.getLongNotBoughtArticles(list, catalog);
-
-      // Each list has exactly 1 entry — deduplication within a list is implicit
-      expect(freq).toHaveLength(1);
-      expect(long).toHaveLength(1);
     });
 
   });
@@ -339,53 +392,36 @@ describe('RecommendationsService', () => {
 
   describe('getRecommendations', () => {
 
-    it('article qualifying for both categories appears only in frequentArticles', () => {
-      // a1 qualifies for both frequent (1/1 shopping days) and longNotBought (within 0–365d).
+    it('article qualifying for both A and B appears only in frequentArticles', () => {
+      // 5 checks on 5 different days → ratio 5/5 = 100% ≥ 40% → qualifies for A.
+      // avg_interval = (80 − 16) / 4 = 16 days; days_since_last = 16
+      // window = [16 × 0.8, 16 × 2] = [12.8, 32] → 16 is in window → qualifies for B.
+      // getRecommendations must remove it from longNotBought.
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true })
+        'a1': itemState('a1', [daysAgo(16), daysAgo(20), daysAgo(40), daysAgo(60), daysAgo(80)])
       });
       const catalog = [makeArticle('a1')];
 
       const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
 
-      expect(frequentArticles).toHaveLength(1);
-      expect(frequentArticles[0].id).toBe('a1');
-      expect(longNotBoughtArticles).toHaveLength(0);
-    });
-
-    it('article only qualifying for longNotBought appears there and not in frequent', () => {
-      // a2 has no check history matching frequent threshold; a1 is frequent.
-      // Make two separate shopping trips so a1 has ratio 1/1 and a2 only appears in longNotBought.
-      const list = makeList(['a1', 'a2'], {
-        'a1': itemState('a1', [daysAgo(5)], { isChecked: true }),
-        'a2': itemState('a2', [daysAgo(50)], { isChecked: true }),
-      });
-      const catalog = [makeArticle('a1'), makeArticle('a2')];
-
-      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
-
-      // Both qualify individually — but in getRecommendations, a1 must not be in longNotBought
       expect(frequentArticles.some(a => a.id === 'a1')).toBe(true);
-      // a1 must not appear in longNotBought
       expect(longNotBoughtArticles.some(a => a.id === 'a1')).toBe(false);
     });
 
-    it('no article appears in both result arrays', () => {
+    it('no article ever appears in both result arrays (invariant)', () => {
+      // Mix of articles to exercise both algorithms simultaneously.
       const list = makeList(['a1', 'a2', 'a3'], {
-        'a1': itemState('a1', [daysAgo(1)], { isChecked: true }),
-        'a2': itemState('a2', [daysAgo(2)], { isChecked: true }),
-        'a3': itemState('a3', [daysAgo(30)], { isChecked: true }),
+        'a1': itemState('a1', [daysAgo(16), daysAgo(20), daysAgo(40), daysAgo(60), daysAgo(80)]),
+        'a2': itemState('a2', [daysAgo(9), daysAgo(18), daysAgo(27)]),
+        'a3': itemState('a3', [daysAgo(1)])
       });
       const catalog = [makeArticle('a1'), makeArticle('a2'), makeArticle('a3')];
 
       const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
 
       const frequentIds = new Set(frequentArticles.map(a => a.id));
-      const longNotBoughtIds = new Set(longNotBoughtArticles.map(a => a.id));
-
-      // Intersection must be empty
-      for (const id of frequentIds) {
-        expect(longNotBoughtIds.has(id)).toBe(false);
+      for (const a of longNotBoughtArticles) {
+        expect(frequentIds.has(a.id)).toBe(false);
       }
     });
 
@@ -393,7 +429,8 @@ describe('RecommendationsService', () => {
       const list = makeList(['a1'], {
         'a1': { articleId: 'a1', isChecked: false }
       });
-      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, [makeArticle('a1')]);
+      const { frequentArticles, longNotBoughtArticles } =
+        service.getRecommendations(list, [makeArticle('a1')]);
       expect(frequentArticles).toHaveLength(0);
       expect(longNotBoughtArticles).toHaveLength(0);
     });

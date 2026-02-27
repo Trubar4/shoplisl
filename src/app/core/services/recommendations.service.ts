@@ -10,14 +10,20 @@ import { LoggerService } from './logger.service';
  * Data source: ListItemState.history[] (CheckEvent arrays, 365-day retention).
  *
  * Two recommendation categories:
- * 1. "Häufig gekaufte Artikel"  — articles present in ≥1/3 of all shopping days
- * 2. "Schon lange nicht mehr gekauft" — articles with ≥2 checks and last check 14–90 days ago
+ * 1. "Häufig gekaufte Artikel"  — articles present on ≥ 4/10 of all shopping days
+ * 2. "Schon lange nicht mehr gekauft" — articles with ≥ 3 checks whose time since
+ *    last check falls within a dynamic window based on average purchase interval:
+ *    window = [avgInterval × 0.8, avgInterval × 2]
  *
- * Candidate rules:
+ * Candidate rules (applied by applyExclusionFilter before returning):
  * - The article must still be on the list (in articleIds). Removed articles are never shown.
  * - The article must currently be checked off (isChecked = true). Unchecked articles are
- *   already visible as active items and need no separate recommendation.
+ *   already visible as active items and do not need a separate recommendation.
  * - Tapping a recommendation unchecks the article so it re-appears as an active list item.
+ *
+ * NOTE: The two category rules are NOT mutually exclusive — an article can mathematically
+ * satisfy both. getRecommendations() enforces exclusion: "Häufig" takes priority, and any
+ * article already there is removed from "Schon lange nicht mehr gekauft".
  *
  * Logging: enable with  logger.setTopics('recommendations'); logger.setLevel('debug')
  */
@@ -28,11 +34,15 @@ export class RecommendationsService {
 
   private readonly logger = inject(LoggerService);
 
-  private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 1; // TEST: production value is 3
-  private readonly FREQUENT_MIN_RATIO = 1 / 10;       // TEST: production value is 1 / 3
-  private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 1; // TEST: production value is 2
-  private readonly LONG_NOT_BOUGHT_MIN_DAYS = 0;       // TEST: production value is 14
-  private readonly LONG_NOT_BOUGHT_MAX_DAYS = 365;     // TEST: production value is 90
+  // Rule A — "Häufig gekaufte Artikel"
+  private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 1; // minimum unique articles to count a day as a shopping day
+  private readonly FREQUENT_MIN_RATIO = 4 / 10;       // article must appear on ≥ 40% of shopping days
+
+  // Rule B — "Schon lange nicht mehr gekauft"
+  private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 3; // minimum check events required
+  // Dynamic window: time since last check must be within [avgInterval × INNER, avgInterval × OUTER]
+  private readonly LONG_NOT_BOUGHT_WINDOW_INNER = 1 - 1 / 5; // 0.8 — lower bound (80% of avg interval)
+  private readonly LONG_NOT_BOUGHT_WINDOW_OUTER = 2;          // 2.0 — upper bound (200% of avg interval)
 
   /**
    * Computes both recommendation categories with mutual exclusion:
@@ -53,7 +63,7 @@ export class RecommendationsService {
     if (dedupRemoved.length > 0) {
       this.logger.debug('recommendations',
         `[dedup] removed ${dedupRemoved.length} article(s) from longNotBought ` +
-        `(already in frequent): ${dedupRemoved.map(a => a.name).join(', ')}`
+        `(already in frequent): ${dedupRemoved.map(a => `"${a.name}" (${a.id})`).join(', ')}`
       );
     }
 
@@ -61,8 +71,9 @@ export class RecommendationsService {
   }
 
   /**
-   * Returns articles that were checked on at least 1/3 of all shopping days.
-   * A "shopping day" is a calendar day on which ≥N unique articles were checked.
+   * Returns articles that were checked on at least 40% of all shopping days.
+   * A "shopping day" is a calendar day on which ≥ MIN_ARTICLES_PER_SHOPPING_DAY
+   * unique articles were checked.
    */
   getFrequentArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
@@ -92,7 +103,7 @@ export class RecommendationsService {
       }
     }
 
-    // Step 3: Keep only shopping days (≥N unique articles checked)
+    // Step 3: Keep only shopping days (≥ MIN_ARTICLES_PER_SHOPPING_DAY unique articles checked)
     const shoppingDays = Array.from(articlesByDay.entries())
       .filter(([, articles]) => articles.size >= this.MIN_ARTICLES_PER_SHOPPING_DAY);
 
@@ -133,8 +144,15 @@ export class RecommendationsService {
   }
 
   /**
-   * Returns articles that have ≥N checks in this list's history and whose last
-   * check was between MIN and MAX days ago — indicating a recurring but overdue item.
+   * Returns articles with ≥ MIN_CHECKS_FOR_LONG_NOT_BOUGHT check events
+   * whose time since last check falls within a dynamic window:
+   *   windowMin = avgInterval × 0.8
+   *   windowMax = avgInterval × 2
+   * where avgInterval = (lastCheck − firstCheck) / (N − 1).
+   *
+   * Articles where avgInterval = 0 (all checks on the same timestamp) are skipped.
+   *
+   * Example: avg interval 5 weeks → suggest between 4 weeks and 10 weeks after last check.
    */
   getLongNotBoughtArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
@@ -143,24 +161,38 @@ export class RecommendationsService {
     const msPerDay = 86_400_000;
 
     const candidates: string[] = [];
-    let skippedNoChecks = 0;
+    let skippedInsufficientChecks = 0;
+    let skippedZeroInterval = 0;
     let skippedOutsideWindow = 0;
 
     for (const [articleId, state] of Object.entries(itemStates)) {
-      if (!state.history) { skippedNoChecks++; continue; }
+      if (!state.history) { skippedInsufficientChecks++; continue; }
 
       const checkedEvents = state.history.filter(e => e.action === 'checked');
 
       if (checkedEvents.length < this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT) {
-        skippedNoChecks++;
+        skippedInsufficientChecks++;
         continue;
       }
 
       // history is stored most-recent-first (see HistoryService.addEventToHistory)
-      const daysSinceLast = (now - this.toDate(checkedEvents[0].timestamp).getTime()) / msPerDay;
+      const lastCheckMs  = this.toDate(checkedEvents[0].timestamp).getTime();
+      const firstCheckMs = this.toDate(checkedEvents[checkedEvents.length - 1].timestamp).getTime();
 
-      if (daysSinceLast >= this.LONG_NOT_BOUGHT_MIN_DAYS &&
-          daysSinceLast <= this.LONG_NOT_BOUGHT_MAX_DAYS) {
+      const avgIntervalMs = (lastCheckMs - firstCheckMs) / (checkedEvents.length - 1);
+
+      if (avgIntervalMs <= 0) {
+        // All checks share the same timestamp — cannot compute a meaningful window
+        skippedZeroInterval++;
+        continue;
+      }
+
+      const daysSinceLast   = (now - lastCheckMs) / msPerDay;
+      const avgIntervalDays = avgIntervalMs / msPerDay;
+      const windowMin = avgIntervalDays * this.LONG_NOT_BOUGHT_WINDOW_INNER; // × 0.8
+      const windowMax = avgIntervalDays * this.LONG_NOT_BOUGHT_WINDOW_OUTER; // × 2.0
+
+      if (daysSinceLast >= windowMin && daysSinceLast <= windowMax) {
         candidates.push(articleId);
       } else {
         skippedOutsideWindow++;
@@ -169,8 +201,9 @@ export class RecommendationsService {
 
     this.logger.debug('recommendations',
       `[longNotBought] ${Object.keys(itemStates).length} states → ` +
-      `${skippedNoChecks} skipped (insufficient checks), ` +
-      `${skippedOutsideWindow} skipped (outside ${this.LONG_NOT_BOUGHT_MIN_DAYS}–${this.LONG_NOT_BOUGHT_MAX_DAYS}d window), ` +
+      `${skippedInsufficientChecks} skipped (< ${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT} checks), ` +
+      `${skippedZeroInterval} skipped (zero avg interval), ` +
+      `${skippedOutsideWindow} skipped (outside dynamic window), ` +
       `${candidates.length} candidates`
     );
 
@@ -189,6 +222,7 @@ export class RecommendationsService {
    *   visible as active list items and do not need a recommendation
    *
    * Returns the matching Article objects sorted by name.
+   * Logs article names and IDs for each passing article (useful for diagnosing duplicates).
    */
   private applyExclusionFilter(
     candidateIds: string[],
@@ -220,7 +254,10 @@ export class RecommendationsService {
 
     this.logger.debug('recommendations',
       `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
-      (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '')
+      (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '') +
+      (result.length > 0
+        ? ` — articles: ${result.map(a => `"${a.name}" (${a.id})`).join(', ')}`
+        : '')
     );
 
     return result;
