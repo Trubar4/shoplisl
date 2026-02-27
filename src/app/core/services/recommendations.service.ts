@@ -16,10 +16,12 @@ import { LoggerService } from './logger.service';
  *    window = [avgInterval × 0.8, avgInterval × 2]
  *
  * Candidate rules (applied by applyExclusionFilter before returning):
- * - The article must still be on the list (in articleIds). Removed articles are never shown.
- * - The article must currently be checked off (isChecked = true). Unchecked articles are
- *   already visible as active items and do not need a separate recommendation.
- * - Tapping a recommendation unchecks the article so it re-appears as an active list item.
+ * - The article must exist in the user's catalog.
+ * - Articles that are on the list AND currently unchecked are excluded — they are already
+ *   visible as active items and do not need a recommendation.
+ * - Articles NOT on the list (removed but with history) ARE recommended — they can be added back.
+ * - Articles on the list AND checked off (hidden in "offen" view) ARE recommended — they can be unchecked.
+ * - Tapping a recommendation either unchecks the article (if on list) or adds it back (if not on list).
  *
  * NOTE: The two category rules are NOT mutually exclusive — an article can mathematically
  * satisfy both. getRecommendations() enforces exclusion: "Häufig" takes priority, and any
@@ -217,9 +219,12 @@ export class RecommendationsService {
   /**
    * Filters candidate article IDs to only those that:
    * - exist in the user's catalog
-   * - are currently on the list (articleIds) — removed articles are never recommended
-   * - are currently checked off (isChecked === true) — unchecked articles are already
-   *   visible as active list items and do not need a recommendation
+   * - are NOT currently active on the list (i.e. NOT the combination: in articleIds AND isChecked = false)
+   *   An active (unchecked) article is already visible to the user — no recommendation needed.
+   *
+   * Articles that pass:
+   * - NOT on the list (removed but with history) — will be added when tapped
+   * - On the list AND checked off (hidden) — will be unchecked when tapped
    *
    * Returns the matching Article objects sorted by name.
    * Logs article names and IDs for each passing article (useful for diagnosing duplicates).
@@ -234,23 +239,21 @@ export class RecommendationsService {
     const onListSet = new Set(list.articleIds || []);
     const catalogById = new Map(catalog.map(a => [a.id, a]));
 
-    let notInCatalog = 0, notOnList = 0, notChecked = 0;
+    let notInCatalog = 0, alreadyActive = 0;
 
     const result = candidateIds
       .filter(id => {
         if (!catalogSet.has(id)) { notInCatalog++; return false; }
-        if (!onListSet.has(id)) { notOnList++; return false; }
-        const state = list.itemStates[id];
-        if (!state?.isChecked) { notChecked++; return false; }
+        // Exclude article only if it is on the list AND currently unchecked (already visible)
+        if (onListSet.has(id) && !list.itemStates?.[id]?.isChecked) { alreadyActive++; return false; }
         return true;
       })
       .map(id => catalogById.get(id)!)
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const excluded: string[] = [];
-    if (notOnList) excluded.push(`${notOnList} not on list`);
     if (notInCatalog) excluded.push(`${notInCatalog} not in catalog`);
-    if (notChecked) excluded.push(`${notChecked} not checked`);
+    if (alreadyActive) excluded.push(`${alreadyActive} already active on list`);
 
     this.logger.debug('recommendations',
       `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +

@@ -585,6 +585,7 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       const { frequentArticles, longNotBoughtArticles } = this.recommendationsService.getRecommendations(list, articles);
       const data: RecommendationsBottomSheetData = {
         listId: list.id,
+        list,
         frequentArticles,
         longNotBoughtArticles
       };

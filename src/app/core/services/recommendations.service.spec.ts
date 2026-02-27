@@ -130,11 +130,11 @@ describe('RecommendationsService', () => {
       expect(result.some(a => a.id === 'a2')).toBe(false);
     });
 
-    it('excludes article that is not on the list (removed from articleIds)', () => {
+    it('includes article not on the list (removed from articleIds) — can be added back', () => {
       const list = makeList([], {
         'a1': itemState('a1', [daysAgo(5)])
       });
-      expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(0);
+      expect(service.getFrequentArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
     it('excludes article that is on the list but not checked (isChecked = false)', () => {
@@ -309,11 +309,11 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
-    it('excludes article that is not on the list (removed from articleIds)', () => {
+    it('includes article not on the list (removed from articleIds) — can be added back', () => {
       const list = makeList([], {
         'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
       });
-      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+      expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(1);
     });
 
     it('excludes article that is on the list but not checked (isChecked = false)', () => {
@@ -366,13 +366,14 @@ describe('RecommendationsService', () => {
 
   describe('shared edge cases', () => {
 
-    it('article removed from list (not in articleIds) is never recommended, even with history', () => {
+    it('article removed from list (not in articleIds) IS recommended if it has qualifying history', () => {
+      // 3 checks on different days → qualifies for A (3/3 = 100% ≥ 40%) and B (avg 9d, window [7.2, 18])
       const list = makeList([], {
         'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
       });
       const catalog = [makeArticle('a1')];
-      expect(service.getFrequentArticles(list, catalog)).toHaveLength(0);
-      expect(service.getLongNotBoughtArticles(list, catalog)).toHaveLength(0);
+      expect(service.getFrequentArticles(list, catalog)).toHaveLength(1);
+      expect(service.getLongNotBoughtArticles(list, catalog)).toHaveLength(1);
     });
 
     it('article on list but unchecked is never recommended', () => {
@@ -425,7 +426,8 @@ describe('RecommendationsService', () => {
       }
     });
 
-    it('returns empty arrays when list has no checked articles', () => {
+    it('returns empty arrays when articles have no check history', () => {
+      // Without check history, neither rule A nor B can be satisfied — isChecked is irrelevant here.
       const list = makeList(['a1'], {
         'a1': { articleId: 'a1', isChecked: false }
       });
