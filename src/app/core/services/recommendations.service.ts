@@ -110,6 +110,10 @@ export class RecommendationsService {
       .filter(([, articles]) => articles.size >= this.MIN_ARTICLES_PER_SHOPPING_DAY);
 
     if (shoppingDays.length === 0) {
+      console.log(
+        `[RECO][frequent] ${Object.keys(itemStates).length} states, ` +
+        `${checkedEventsByArticle.size} with check history, 0 shopping days → no candidates`
+      );
       this.logger.debug('recommendations',
         `[frequent] ${Object.keys(itemStates).length} states, ` +
         `${checkedEventsByArticle.size} with checks, 0 shopping days → no candidates`
@@ -135,6 +139,12 @@ export class RecommendationsService {
       }
     }
 
+    console.log(
+      `[RECO][frequent] ${Object.keys(itemStates).length} states, ` +
+      `${checkedEventsByArticle.size} with check history, ` +
+      `${shoppingDays.length} shopping days (of ${articlesByDay.size} days with activity), ` +
+      `${candidates.length} pass rule A (≥${this.FREQUENT_MIN_RATIO * 100}%)`
+    );
     this.logger.debug('recommendations',
       `[frequent] ${Object.keys(itemStates).length} states, ` +
       `${checkedEventsByArticle.size} with checks, ` +
@@ -201,6 +211,13 @@ export class RecommendationsService {
       }
     }
 
+    console.log(
+      `[RECO][longNotBought] ${Object.keys(itemStates).length} states → ` +
+      `${skippedInsufficientChecks} skipped (<${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT} checks), ` +
+      `${skippedZeroInterval} skipped (zero avg interval), ` +
+      `${skippedOutsideWindow} skipped (outside window), ` +
+      `${candidates.length} pass rule B`
+    );
     this.logger.debug('recommendations',
       `[longNotBought] ${Object.keys(itemStates).length} states → ` +
       `${skippedInsufficientChecks} skipped (< ${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT} checks), ` +
@@ -244,7 +261,7 @@ export class RecommendationsService {
     const result = candidateIds
       .filter(id => {
         if (!catalogSet.has(id)) { notInCatalog++; return false; }
-        // Exclude article only if it is on the list AND currently unchecked (already visible)
+        // Exclude only if on list AND unchecked — those are already visible to the user
         if (onListSet.has(id) && !list.itemStates?.[id]?.isChecked) { alreadyActive++; return false; }
         return true;
       })
@@ -255,6 +272,13 @@ export class RecommendationsService {
     if (notInCatalog) excluded.push(`${notInCatalog} not in catalog`);
     if (alreadyActive) excluded.push(`${alreadyActive} already active on list`);
 
+    console.log(
+      `[RECO][filter:${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
+      (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '') +
+      (result.length > 0
+        ? ` — articles: ${result.map(a => `"${a.name}" (${a.id})`).join(', ')}`
+        : '')
+    );
     this.logger.debug('recommendations',
       `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
       (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '') +

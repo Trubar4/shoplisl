@@ -51,7 +51,7 @@ export class RecommendationsBottomSheetComponent {
       // Article is on the list and checked off — uncheck it so it re-appears as an active item.
       this.dataService.toggleItemChecked(this.listId, article.id).subscribe();
     } else {
-      // Article was removed from the list — add it back.
+      // Article was removed from the list (has history but not in articleIds) — add it back.
       this.dataService.addArticleToList(this.listId, article.id).subscribe();
     }
 

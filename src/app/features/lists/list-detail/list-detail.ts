@@ -147,10 +147,37 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       this.store.select(selectAllArticles)
     ]).pipe(
       map(([list, articles]) => {
-        if (!list) return false;
+        if (!list) {
+          console.log('[RECO] hasRecommendations$: no list yet');
+          return false;
+        }
+
+        const itemStates = list.itemStates || {};
+        const articleIds = list.articleIds || [];
+        const onListSet = new Set(articleIds);
+        const checkedOnList   = articleIds.filter(id => itemStates[id]?.isChecked).length;
+        const uncheckedOnList = articleIds.filter(id => !itemStates[id]?.isChecked).length;
+        const removedWithHistory = Object.keys(itemStates).filter(id => !onListSet.has(id)).length;
+
+        console.log(
+          `[RECO] "${list.name}" — catalog: ${articles.length}, ` +
+          `articleIds: ${articleIds.length}, ` +
+          `checked: ${checkedOnList}, unchecked: ${uncheckedOnList}, ` +
+          `removed-with-history: ${removedWithHistory}`
+        );
+
         this.logger.debug('recommendations', `--- evaluating list "${list.id}" (${list.name}) ---`);
         const { frequentArticles, longNotBoughtArticles } = this.recommendationsService.getRecommendations(list, articles);
         const hasAny = frequentArticles.length > 0 || longNotBoughtArticles.length > 0;
+
+        console.log(
+          `[RECO] result → frequent: ${frequentArticles.length} ` +
+          `[${frequentArticles.map(a => a.name).join(', ')}], ` +
+          `longNotBought: ${longNotBoughtArticles.length} ` +
+          `[${longNotBoughtArticles.map(a => a.name).join(', ')}], ` +
+          `showButton: ${hasAny}`
+        );
+
         this.logger.debug('recommendations',
           `hasRecommendations → ${hasAny} ` +
           `(frequent: ${frequentArticles.length}, longNotBought: ${longNotBoughtArticles.length})`
