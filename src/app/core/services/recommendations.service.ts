@@ -10,8 +10,8 @@ import { LoggerService } from './logger.service';
  * Data source: ListItemState.history[] (CheckEvent arrays, 365-day retention).
  *
  * Two recommendation categories:
- * 1. "Häufig gekaufte Artikel"  — articles present on ≥ 4/10 of all shopping days
- * 2. "Schon lange nicht mehr gekauft" — articles with ≥ 3 checks whose time since
+ * 1. "Häufig gekaufte Artikel"  — articles present on ≥ 1/3 of all shopping days (~33%)
+ * 2. "Schon lange nicht mehr gekauft" — articles with ≥ 2 checks whose time since
  *    last check falls within a dynamic window based on average purchase interval:
  *    window = [avgInterval × 0.8, avgInterval × 2]
  *
@@ -38,10 +38,10 @@ export class RecommendationsService {
 
   // Rule A — "Häufig gekaufte Artikel"
   private readonly MIN_ARTICLES_PER_SHOPPING_DAY = 1; // minimum unique articles to count a day as a shopping day
-  private readonly FREQUENT_MIN_RATIO = 4 / 10;       // article must appear on ≥ 40% of shopping days
+  private readonly FREQUENT_MIN_RATIO = 1 / 3;        // article must appear on ≥ 1/3 of shopping days (~33%)
 
   // Rule B — "Schon lange nicht mehr gekauft"
-  private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 3; // minimum check events required
+  private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 2; // minimum check events required
   // Dynamic window: time since last check must be within [avgInterval × INNER, avgInterval × OUTER]
   private readonly LONG_NOT_BOUGHT_WINDOW_INNER = 1 - 1 / 5; // 0.8 — lower bound (80% of avg interval)
   private readonly LONG_NOT_BOUGHT_WINDOW_OUTER = 2;          // 2.0 — upper bound (200% of avg interval)
@@ -73,7 +73,7 @@ export class RecommendationsService {
   }
 
   /**
-   * Returns articles that were checked on at least 40% of all shopping days.
+   * Returns articles that were checked on at least 1/3 (~33%) of all shopping days.
    * A "shopping day" is a calendar day on which ≥ MIN_ARTICLES_PER_SHOPPING_DAY
    * unique articles were checked.
    */
@@ -156,7 +156,7 @@ export class RecommendationsService {
   }
 
   /**
-   * Returns articles with ≥ MIN_CHECKS_FOR_LONG_NOT_BOUGHT check events
+   * Returns articles with ≥ 2 (MIN_CHECKS_FOR_LONG_NOT_BOUGHT) check events
    * whose time since last check falls within a dynamic window:
    *   windowMin = avgInterval × 0.8
    *   windowMax = avgInterval × 2

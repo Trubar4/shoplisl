@@ -105,9 +105,9 @@ describe('RecommendationsService', () => {
       expect(result[0].id).toBe('a1');
     });
 
-    it('includes article at exactly the 40% threshold (4 of 10 shopping days)', () => {
+    it('includes article on ≥ 1/3 of shopping days (4 of 10 → 40% ≥ 33%)', () => {
       // a1 (helper) is checked on all 10 different days → creates 10 shopping days.
-      // a2 (candidate) is checked on 4 of those 10 days → ratio 40% = threshold → included.
+      // a2 (candidate) is checked on 4 of those 10 days → ratio 40% ≥ threshold (1/3) → included.
       const helperDays = Array.from({ length: 10 }, (_, i) => daysAgo(i + 1));
       const list = makeList(['a1', 'a2'], {
         'a1': itemState('a1', helperDays),
@@ -118,8 +118,20 @@ describe('RecommendationsService', () => {
       expect(result.some(a => a.id === 'a2')).toBe(true);
     });
 
-    it('excludes article below the 40% threshold (3 of 10 shopping days)', () => {
-      // Same setup but a2 only appears on 3 of 10 days → ratio 30% < 40% → excluded.
+    it('includes article on exactly 1/3 of shopping days (2 of 6 → 33.3% ≥ threshold)', () => {
+      // a1 (helper) creates 6 shopping days; a2 appears on 2 of 6 → ratio exactly 1/3 → included.
+      const helperDays = Array.from({ length: 6 }, (_, i) => daysAgo(i + 1));
+      const list = makeList(['a1', 'a2'], {
+        'a1': itemState('a1', helperDays),
+        'a2': itemState('a2', [daysAgo(1), daysAgo(2)])
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2')];
+      const result = service.getFrequentArticles(list, catalog);
+      expect(result.some(a => a.id === 'a2')).toBe(true);
+    });
+
+    it('excludes article below the 1/3 threshold (3 of 10 shopping days → 30% < 33%)', () => {
+      // a2 appears on 3 of 10 days → ratio 30% < threshold (1/3 ≈ 33.3%) → excluded.
       const helperDays = Array.from({ length: 10 }, (_, i) => daysAgo(i + 1));
       const list = makeList(['a1', 'a2'], {
         'a1': itemState('a1', helperDays),
@@ -217,12 +229,24 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('excludes article with fewer than 3 check events', () => {
-      // 2 checks → does not meet MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 3
+    it('excludes article with fewer than 2 check events (only 1 check)', () => {
+      // 1 check → does not meet MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 2
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(7), daysAgo(14)]) // only 2 checks
+        'a1': itemState('a1', [daysAgo(7)]) // only 1 check
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
+    });
+
+    it('includes article with exactly 2 check events whose days-since-last is in window', () => {
+      // 2 checks: [daysAgo(7), daysAgo(14)]
+      // avgInterval = (14 − 7) / 1 = 7 days
+      // window = [7 × 0.8, 7 × 2] = [5.6, 14] → 7 days in window → included
+      const list = makeList(['a1'], {
+        'a1': itemState('a1', [daysAgo(7), daysAgo(14)])
+      });
+      const result = service.getLongNotBoughtArticles(list, [makeArticle('a1')]);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('a1');
     });
 
     it('includes article with 3 checks whose days-since-last is in the dynamic window', () => {
@@ -367,7 +391,7 @@ describe('RecommendationsService', () => {
   describe('shared edge cases', () => {
 
     it('article removed from list (not in articleIds) IS recommended if it has qualifying history', () => {
-      // 3 checks on different days → qualifies for A (3/3 = 100% ≥ 40%) and B (avg 9d, window [7.2, 18])
+      // 3 checks on different days → qualifies for A (3/3 = 100% ≥ 33%) and B (avg 9d, window [7.2, 18])
       const list = makeList([], {
         'a1': itemState('a1', [daysAgo(9), daysAgo(18), daysAgo(27)])
       });
@@ -394,7 +418,7 @@ describe('RecommendationsService', () => {
   describe('getRecommendations', () => {
 
     it('article qualifying for both A and B appears only in frequentArticles', () => {
-      // 5 checks on 5 different days → ratio 5/5 = 100% ≥ 40% → qualifies for A.
+      // 5 checks on 5 different days → ratio 5/5 = 100% ≥ 33% → qualifies for A.
       // avg_interval = (80 − 16) / 4 = 16 days; days_since_last = 16
       // window = [16 × 0.8, 16 × 2] = [12.8, 32] → 16 is in window → qualifies for B.
       // getRecommendations must remove it from longNotBought.
