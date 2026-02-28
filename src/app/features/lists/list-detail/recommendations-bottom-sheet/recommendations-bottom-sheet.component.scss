@@ -1,0 +1,66 @@
+.recommendations-sheet {
+  padding: 0 0 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.drag-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  margin: 10px auto 4px;
+}
+
+.sheet-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 8px 16px 12px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 12px 16px 4px;
+}
+
+.article-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.article-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  &:active {
+    background: rgba(0, 0, 0, 0.04);
+  }
+}
+
+.article-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.article-name {
+  flex: 1;
+  font-size: 15px;
+}
+
+.add-hint {
+  font-size: 20px;
+  font-weight: 300;
+  color: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}

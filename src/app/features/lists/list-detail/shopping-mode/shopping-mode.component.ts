@@ -57,6 +57,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   @Input() isSelectionMode: boolean = false;
   @Input() isDialogOpen: boolean = false;
   @Input() selectionService!: ArticleSelectionService;
+  @Input() hasRecommendations: boolean = false;
 
   // === OUTPUTS ===
   @Output() articleToggle = new EventEmitter<ArticleItemData>();
@@ -66,6 +67,7 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   @Output() moveSelectedArticles = new EventEmitter<string[]>();
   @Output() deleteSelectedArticles = new EventEmitter<string[]>();
   @Output() markSelectedAsDone = new EventEmitter<string[]>();
+  @Output() openRecommendations = new EventEmitter<void>();
 
   // === SIGNALS ===
   readonly showCelebrationAnimation = signal<boolean>(false);
@@ -313,6 +315,13 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
     if (selectedIds.length > 0) {
       this.deleteSelectedArticles.emit(selectedIds);
     }
+  }
+
+  /**
+   * Opens the recommendations bottom sheet
+   */
+  onOpenRecommendations(): void {
+    this.openRecommendations.emit();
   }
 
   /**

@@ -219,6 +219,15 @@ export class HistoryService {
 
     const resolvedArticleName = articleName || currentState?.articleName;
 
+    // Always-on diagnostic: confirms history is being recorded and shows event count
+    if (action === 'checked' || action === 'unchecked') {
+      const checkedCount = updatedHistory.filter(e => e.action === 'checked').length;
+      console.log(
+        `[HISTORY] ${action} "${resolvedArticleName || articleId}" ` +
+        `(${articleId}) — total check events in history: ${checkedCount}`
+      );
+    }
+
     // Log warning when articleName is missing (helps diagnose ghost itemStates)
     if (action === 'added' && !resolvedArticleName) {
       this.logger.warn('data', `[HistoryService] Creating itemState for article ${articleId} WITHOUT articleName!`, {

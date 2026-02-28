@@ -21,7 +21,8 @@ export type LogTopic =
   | 'analytics'       // Analytics, metrics, quota monitoring
   | 'upload'          // List/article upload & import
   | 'chat'            // Chat persistence & history
-  | 'ui';             // UI components, lifecycle, user interactions
+  | 'ui'              // UI components, lifecycle, user interactions
+  | 'recommendations'; // Article recommendations (Vorschläge feature)
 
 /**
  * Topic groups for convenient bulk enable/disable.
@@ -38,7 +39,7 @@ const ALL_TOPICS: LogTopic[] = [
   'ai', 'recipe', 'context', 'disambiguation', 'voice',
   'data', 'sync', 'cache', 'general',
   'auth', 'invite', 'sharing', 'auth-effects',
-  'analytics', 'upload', 'chat', 'ui'
+  'analytics', 'upload', 'chat', 'ui', 'recommendations'
 ];
 
 interface LogConfig {
@@ -76,7 +77,8 @@ export class LoggerService {
     'analytics': '📊',
     'upload': '📤',
     'chat': '💭',
-    'ui': '🖥️'
+    'ui': '🖥️',
+    'recommendations': '🔍'
   };
 
   private levelPriority: Record<LogLevel, number> = {

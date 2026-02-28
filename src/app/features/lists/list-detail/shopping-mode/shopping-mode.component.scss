@@ -108,6 +108,28 @@
     }
   }
 
+  // === SUGGESTIONS BAR ===
+  .suggestions-bar {
+    position: fixed;
+    bottom: 64px; // Above tab bar, same as selection-action-bar
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    z-index: 100; // Below CDK overlay container (1000) so bottom sheets render above it
+
+    .suggestions-button {
+      color: var(--list-primary-color, #1a9edb);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+  }
+
   // === CELEBRATION ANIMATION ===
   .celebration-overlay {
     position: fixed;
