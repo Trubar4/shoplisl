@@ -1,0 +1,257 @@
+<div class="backup-container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <mat-icon class="header-icon">backup</mat-icon>
+    <div>
+      <h1>List Backup &amp; Restore</h1>
+      <p class="subtitle">
+        Export a complete list state (including check history) to JSON,
+        then re-import it to restore the full history needed by the
+        Vorschläge recommendation engine.
+      </p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading lists…</p>
+    </div>
+  }
+
+  @if (!isLoading()) {
+
+    <!-- ── List Overview ─────────────────────────────────────────────────── -->
+    <mat-card class="overview-card">
+      <mat-card-header>
+        <mat-card-title>Current Lists</mat-card-title>
+        <mat-card-subtitle>History coverage for the recommendation engine</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (lists().length === 0) {
+          <p class="empty-hint">No lists found.</p>
+        }
+        <div class="list-grid">
+          @for (list of lists(); track list.id) {
+            <div class="list-card" [style.border-left-color]="list.color || '#ccc'">
+              <div class="list-card-header">
+                <span class="list-icon">{{ list.icon || '🛒' }}</span>
+                <span class="list-name">{{ list.name }}</span>
+              </div>
+              <div class="list-stats">
+                <span class="stat">
+                  <mat-icon class="stat-icon">shopping_cart</mat-icon>
+                  {{ list.itemCount }} items
+                </span>
+                <span class="stat">
+                  <mat-icon class="stat-icon">history</mat-icon>
+                  {{ list.historyEvents }} events
+                </span>
+              </div>
+              <div class="history-health">
+                <mat-chip [color]="historyHealthColor(list)" highlighted>
+                  {{ historyHealthLabel(list) || 'No items' }}
+                </mat-chip>
+              </div>
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Export ──────────────────────────────────────────────────────────── -->
+    <mat-card class="export-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>download</mat-icon>
+          Export List to JSON
+        </mat-card-title>
+        <mat-card-subtitle>
+          Downloads a complete backup including all <code>itemStates</code> and
+          <code>history[]</code> arrays.
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="list-select">
+            <mat-label>Select list to export</mat-label>
+            <mat-select [(ngModel)]="selectedExportListId" [ngModel]="selectedExportListId()"
+                        (ngModelChange)="selectedExportListId.set($event)">
+              @for (list of lists(); track list.id) {
+                <mat-option [value]="list.id">
+                  {{ list.icon || '🛒' }} {{ list.name }}
+                  ({{ list.itemCount }} items, {{ list.historyEvents }} events)
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <button
+            mat-raised-button
+            color="primary"
+            [disabled]="!selectedExportListId() || isExporting()"
+            (click)="exportList()"
+          >
+            @if (isExporting()) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              <mat-icon>download</mat-icon>
+            }
+            Export JSON
+          </button>
+        </div>
+
+        @if (selectedExportList) {
+          <div class="selection-info">
+            <strong>{{ selectedExportList.icon }} {{ selectedExportList.name }}</strong>
+            &mdash;
+            {{ selectedExportList.articlesWithHistory }} of {{ selectedExportList.itemCount }}
+            items carry history
+            ({{ selectedExportList.historyEvents }} total events).
+            @if (selectedExportList.articlesWithHistory === 0 && selectedExportList.itemCount > 0) {
+              <span class="warn-text">
+                This list has no history — the backup will not help the Vorschläge engine.
+              </span>
+            }
+          </div>
+        }
+
+        @if (exportMessage()) {
+          <div class="success-banner">
+            <mat-icon>check_circle</mat-icon>
+            {{ exportMessage() }}
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Import ──────────────────────────────────────────────────────────── -->
+    <mat-card class="import-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>upload</mat-icon>
+          Import / Restore from JSON
+        </mat-card-title>
+        <mat-card-subtitle>
+          Uploads a backup file and writes the full <code>itemStates</code>
+          (including <code>history[]</code>) back to Firestore.
+          The selected target list will be updated in-place.
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+
+        <!-- Step 1: pick file -->
+        <div class="import-step">
+          <span class="step-number">1</span>
+          <div class="step-content">
+            <p class="step-label">Choose a backup file</p>
+            <button mat-stroked-button (click)="fileInput.click()">
+              <mat-icon>folder_open</mat-icon>
+              Choose JSON file
+            </button>
+            <input
+              #fileInput
+              type="file"
+              accept=".json,application/json"
+              class="hidden-input"
+              (change)="onFileSelected($event)"
+            />
+            @if (selectedImportFile()) {
+              <span class="file-name">
+                <mat-icon class="file-icon">description</mat-icon>
+                {{ selectedImportFile()!.name }}
+                ({{ (selectedImportFile()!.size / 1024).toFixed(1) }} KB)
+              </span>
+            }
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Step 2: pick target list -->
+        <div class="import-step" [class.disabled]="!selectedImportFile()">
+          <span class="step-number">2</span>
+          <div class="step-content">
+            <p class="step-label">Select the list to restore into</p>
+            <mat-form-field appearance="outline" class="list-select">
+              <mat-label>Target list</mat-label>
+              <mat-select [(ngModel)]="selectedTargetListId" [ngModel]="selectedTargetListId()"
+                          (ngModelChange)="selectedTargetListId.set($event)"
+                          [disabled]="!selectedImportFile()">
+                @for (list of lists(); track list.id) {
+                  <mat-option [value]="list.id">
+                    {{ list.icon || '🛒' }} {{ list.name }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>
+                The existing <code>itemStates</code> and <code>articleIds</code>
+                of this list will be replaced.
+              </mat-hint>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Step 3: restore -->
+        <div class="import-step" [class.disabled]="!canImport">
+          <span class="step-number">3</span>
+          <div class="step-content">
+            <p class="step-label">Restore</p>
+            <div class="import-actions">
+              <button
+                mat-raised-button
+                color="warn"
+                [disabled]="!canImport || isImporting()"
+                (click)="importList()"
+              >
+                @if (isImporting()) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                  <mat-icon>restore</mat-icon>
+                }
+                Restore List State
+              </button>
+
+              <button mat-stroked-button (click)="clearImport()">
+                <mat-icon>clear</mat-icon>
+                Reset
+              </button>
+            </div>
+
+            <p class="destructive-warning">
+              <mat-icon>warning</mat-icon>
+              This will <strong>overwrite</strong> the current
+              <code>itemStates</code> of the selected list. This cannot be undone
+              (unless you exported it first).
+            </p>
+          </div>
+        </div>
+
+        <!-- Result / Error -->
+        @if (importResult()) {
+          <div class="success-banner">
+            <mat-icon>check_circle</mat-icon>
+            Restored <strong>{{ importResult()!.listName }}</strong>:
+            {{ importResult()!.restoredItemCount }} items,
+            {{ importResult()!.totalHistoryEvents }} history events written to Firestore.
+          </div>
+        }
+
+        @if (importError()) {
+          <div class="error-banner">
+            <mat-icon>error</mat-icon>
+            {{ importError() }}
+          </div>
+        }
+
+      </mat-card-content>
+    </mat-card>
+
+  }<!-- end !isLoading -->
+
+</div>

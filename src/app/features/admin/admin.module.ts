@@ -9,6 +9,7 @@ import { AnalyticsEventsExportComponent } from './analytics-events-export/analyt
 import { DebugUserComponent } from './debug-user/debug-user.component';
 import { QuotaMonitorComponent } from './quota-monitor/quota-monitor.component';
 import { UserSupportComponent } from './user-support/user-support.component';
+import { ListBackupComponent } from './list-backup/list-backup.component';
 import { SharedModule } from '../../shared/shared-module';
 
 const routes: Routes = [
@@ -48,6 +49,10 @@ const routes: Routes = [
   {
     path: 'user-support',
     component: UserSupportComponent
+  },
+  {
+    path: 'list-backup',
+    component: ListBackupComponent
   }
 ];
 
@@ -63,7 +68,8 @@ const routes: Routes = [
     AnalyticsEventsExportComponent,
     DebugUserComponent,
     QuotaMonitorComponent,
-    UserSupportComponent
+    UserSupportComponent,
+    ListBackupComponent
   ]
 })
 export class AdminModule { }
