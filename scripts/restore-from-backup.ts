@@ -50,6 +50,36 @@ interface BackupData {
   };
 }
 
+/**
+ * Recursively convert every ISO-8601 string back to a Firestore Timestamp.
+ * This is the inverse of deepConvertTimestamps() in the backup script, and
+ * ensures itemStates — including history[].timestamp, addedAt, checkedAt —
+ * are restored as proper Firestore Timestamps, not plain strings.
+ */
+function deepConvertToTimestamps(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+
+  // ISO-8601 date string produced by the backup script
+  if (typeof obj === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)) {
+    const d = new Date(obj);
+    if (!isNaN(d.getTime())) return Timestamp.fromDate(d);
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepConvertToTimestamps(item));
+  }
+
+  if (typeof obj === 'object') {
+    const out: any = {};
+    for (const key of Object.keys(obj)) {
+      out[key] = deepConvertToTimestamps(obj[key]);
+    }
+    return out;
+  }
+
+  return obj;
+}
+
 async function main() {
   console.log('='.repeat(80));
   console.log('🔄 RESTORE: Restore Firestore from Backup');
@@ -126,14 +156,10 @@ async function main() {
     for (const list of userData.lists) {
       const listRef = db.doc(`users-v2/${userId}/lists/${list.id}`);
 
-      // Convert ISO strings back to Firestore Timestamps
-      const listData = {
-        ...list,
-        createdAt: list.createdAt ? Timestamp.fromDate(new Date(list.createdAt)) : Timestamp.now(),
-        updatedAt: list.updatedAt ? Timestamp.fromDate(new Date(list.updatedAt)) : Timestamp.now()
-      };
-
-      delete listData.id; // Remove id from data (it's in the doc path)
+      // Deep-convert all ISO strings back to Firestore Timestamps (covers
+      // createdAt, updatedAt, and all nested timestamps in itemStates/history)
+      const { id: _id, ...listFields } = list;
+      const listData = deepConvertToTimestamps(listFields);
 
       await listRef.set(listData, { merge: true });
       restoredLists++;
@@ -145,13 +171,8 @@ async function main() {
     for (const article of userData.articles) {
       const articleRef = db.doc(`users-v2/${userId}/articles/${article.id}`);
 
-      const articleData = {
-        ...article,
-        createdAt: article.createdAt ? Timestamp.fromDate(new Date(article.createdAt)) : Timestamp.now(),
-        updatedAt: article.updatedAt ? Timestamp.fromDate(new Date(article.updatedAt)) : Timestamp.now()
-      };
-
-      delete articleData.id;
+      const { id: _id, ...articleFields } = article;
+      const articleData = deepConvertToTimestamps(articleFields);
 
       await articleRef.set(articleData, { merge: true });
       restoredArticles++;

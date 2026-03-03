@@ -40,6 +40,34 @@ interface BackupData {
   };
 }
 
+/**
+ * Recursively convert every Firestore Timestamp in obj to an ISO-8601 string.
+ * This ensures itemStates — including history[].timestamp, addedAt, checkedAt —
+ * are human-readable in the JSON file and can be round-tripped by the restore script.
+ */
+function deepConvertTimestamps(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+
+  // Firestore Timestamp from Admin SDK: has toDate() and seconds/nanoseconds
+  if (typeof obj === 'object' && typeof obj.toDate === 'function') {
+    return obj.toDate().toISOString();
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepConvertTimestamps(item));
+  }
+
+  if (typeof obj === 'object') {
+    const out: any = {};
+    for (const key of Object.keys(obj)) {
+      out[key] = deepConvertTimestamps(obj[key]);
+    }
+    return out;
+  }
+
+  return obj;
+}
+
 async function main() {
   console.log('='.repeat(80));
   console.log('💾 FULL BACKUP: Export All Firestore Data');
@@ -107,10 +135,7 @@ async function main() {
         const listData = listDoc.data();
         lists.push({
           id: listDoc.id,
-          ...listData,
-          // Convert Firestore Timestamps to ISO strings for JSON serialization
-          createdAt: listData.createdAt?.toDate?.()?.toISOString() || null,
-          updatedAt: listData.updatedAt?.toDate?.()?.toISOString() || null
+          ...deepConvertTimestamps(listData)
         });
       });
 
@@ -126,10 +151,7 @@ async function main() {
         const articleData = articleDoc.data();
         articles.push({
           id: articleDoc.id,
-          ...articleData,
-          // Convert Firestore Timestamps to ISO strings
-          createdAt: articleData.createdAt?.toDate?.()?.toISOString() || null,
-          updatedAt: articleData.updatedAt?.toDate?.()?.toISOString() || null
+          ...deepConvertTimestamps(articleData)
         });
       });
 
@@ -153,9 +175,7 @@ async function main() {
           const listData = listDoc.data();
           legacyLists.push({
             id: listDoc.id,
-            ...listData,
-            createdAt: listData.createdAt?.toDate?.()?.toISOString() || null,
-            updatedAt: listData.updatedAt?.toDate?.()?.toISOString() || null
+            ...deepConvertTimestamps(listData)
           });
         });
 
