@@ -34,6 +34,9 @@ import {
 } from '../../../core/services/ai';
 import { ChatPersistenceService } from '../../../core/services/chat-persistence.service';
 import { DepartmentService } from '../../../core/services/department.service';
+import { AnalyticsService } from '../../../core/services/analytics.service';
+import { AnalyticsEventType } from '../../../core/models/analytics.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 // Voice assistant services
 import { VoiceInputService } from './services/voice-input.service';
@@ -103,7 +106,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     public voiceInput: VoiceInputService,
     public voiceOutput: VoiceOutputService,
     public chatUI: ChatUIService,
-    public disambiguationUI: DisambiguationUIService
+    public disambiguationUI: DisambiguationUIService,
+    private analyticsService: AnalyticsService,
+    private authService: AuthService
   ) {
     this.messages$ = this.chatPersistence.messages$;
     this.disambiguation$ = this.chatPersistence.disambiguation$;
@@ -141,6 +146,14 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         this.lastInputSource = 'voice';
         this.shouldProvideAudioFeedback = true;
         console.log('🎤 Voice input received:', result.transcript);
+
+        const userId = this.authService.getCurrentUserId();
+        if (userId) {
+          this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_VOICE_INPUT_USED, {
+            transcriptLength: result.transcript.length
+          });
+        }
+
         setTimeout(() => this.sendMessage(), 500);
       });
 

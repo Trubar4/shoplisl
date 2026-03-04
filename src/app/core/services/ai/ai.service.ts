@@ -121,6 +121,21 @@ export class AIService {
             hasPendingAction: result.pendingAction !== undefined
           }
         );
+
+        // Track specific sub-events
+        if (result.needsUserInput && result.disambiguationOptions) {
+          this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_SHOWN, {
+            itemName: input.substring(0, 200),
+            optionsCount: result.disambiguationOptions.length
+          });
+        }
+
+        if (commandType === 'recipe' && result.success) {
+          this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_RECIPE_PROCESSED, {
+            inputLength: input.length,
+            usedGroqApi: this.groqApi.hasApiKey()
+          });
+        }
       }
 
       return result;
