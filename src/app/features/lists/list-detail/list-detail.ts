@@ -358,6 +358,21 @@ export class ListDetailComponent implements OnInit, OnDestroy {
       listId: this.listId,
       articleId: article.id
     }));
+
+    // Track check/uncheck — article.isChecked is the state BEFORE toggle
+    const userId = this.authService.getCurrentUserValue()?.id;
+    if (userId) {
+      const eventType = article.isChecked
+        ? AnalyticsEventType.ARTICLE_UNCHECKED
+        : AnalyticsEventType.ARTICLE_CHECKED;
+      this.analyticsService.trackEvent(userId, eventType, {
+        articleId: article.id,
+        articleName: article.name,
+        listId: this.listId,
+        listName: this.currentList?.name
+      });
+    }
+
     this.triggerChangeDetection();
   }
 
@@ -388,6 +403,20 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         articleId: article.id,
         amount: ''
       }));
+    }
+
+    // Track add/remove — article.isInList is the state BEFORE toggle
+    const userId = this.authService.getCurrentUserValue()?.id;
+    if (userId) {
+      const eventType = article.isInList
+        ? AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
+        : AnalyticsEventType.ARTICLE_ADDED_TO_LIST;
+      this.analyticsService.trackEvent(userId, eventType, {
+        articleId: article.id,
+        articleName: article.name,
+        listId: this.listId,
+        listName: this.currentList?.name
+      });
     }
 
     // Optimistic UI update
