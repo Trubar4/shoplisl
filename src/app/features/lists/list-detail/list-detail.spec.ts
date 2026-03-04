@@ -1219,6 +1219,13 @@ describe('ListDetailComponent', () => {
   // =========================================
 
   describe('Analytics Tracking', () => {
+    // Tracking for ARTICLE_CHECKED/UNCHECKED and ARTICLE_ADDED_TO_LIST/
+    // ARTICLE_REMOVED_FROM_LIST is intentionally owned by lists-repository.service.ts
+    // (the NgRx effect layer), not here. The component only dispatches NgRx actions;
+    // the repository tracks the event once, handling both online and offline paths.
+    // Tests here verify that the component delegates correctly via NgRx actions and
+    // does NOT double-fire tracking events.
+
     const uncheckedArticle: any = {
       id: 'article1',
       name: 'Milch',
@@ -1244,37 +1251,7 @@ describe('ListDetailComponent', () => {
     });
 
     describe('onArticleToggle', () => {
-      it('should track ARTICLE_CHECKED when article is currently unchecked', () => {
-        component.onArticleToggle(uncheckedArticle);
-
-        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
-          'user1',
-          AnalyticsEventType.ARTICLE_CHECKED,
-          {
-            articleId: 'article1',
-            articleName: 'Milch',
-            listId: 'list1',
-            listName: testList.name
-          }
-        );
-      });
-
-      it('should track ARTICLE_UNCHECKED when article is currently checked', () => {
-        component.onArticleToggle(checkedArticle);
-
-        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
-          'user1',
-          AnalyticsEventType.ARTICLE_UNCHECKED,
-          {
-            articleId: 'article2',
-            articleName: 'Brot',
-            listId: 'list1',
-            listName: testList.name
-          }
-        );
-      });
-
-      it('should dispatch toggleArticleChecked action', () => {
+      it('should dispatch toggleArticleChecked action when article is unchecked', () => {
         component.onArticleToggle(uncheckedArticle);
 
         expect(storeMock.dispatch).toHaveBeenCalledWith(
@@ -1282,9 +1259,15 @@ describe('ListDetailComponent', () => {
         );
       });
 
-      it('should not track analytics when no user is logged in', () => {
-        authServiceMock.getCurrentUserValue = vi.fn(() => null);
+      it('should dispatch toggleArticleChecked action when article is checked', () => {
+        component.onArticleToggle(checkedArticle);
 
+        expect(storeMock.dispatch).toHaveBeenCalledWith(
+          ListsActions.toggleArticleChecked({ listId: 'list1', articleId: 'article2' })
+        );
+      });
+
+      it('should not call analyticsService directly (tracking owned by repository)', () => {
         component.onArticleToggle(uncheckedArticle);
 
         expect(analyticsServiceMock.trackEvent).not.toHaveBeenCalled();
@@ -1308,36 +1291,6 @@ describe('ListDetailComponent', () => {
         departmentId: 'dairy'
       };
 
-      it('should track ARTICLE_REMOVED_FROM_LIST when article is in list', () => {
-        component.onToggleArticleInList(articleInList);
-
-        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
-          'user1',
-          AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST,
-          {
-            articleId: 'article1',
-            articleName: 'Milch',
-            listId: 'list1',
-            listName: testList.name
-          }
-        );
-      });
-
-      it('should track ARTICLE_ADDED_TO_LIST when article is not in list', () => {
-        component.onToggleArticleInList(articleNotInList);
-
-        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
-          'user1',
-          AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
-          {
-            articleId: 'article4',
-            articleName: 'Käse',
-            listId: 'list1',
-            listName: testList.name
-          }
-        );
-      });
-
       it('should dispatch removeArticleFromList when article is in list', () => {
         component.onToggleArticleInList(articleInList);
 
@@ -1354,10 +1307,8 @@ describe('ListDetailComponent', () => {
         );
       });
 
-      it('should not track analytics when no user is logged in', () => {
-        authServiceMock.getCurrentUserValue = vi.fn(() => null);
-
-        component.onToggleArticleInList(articleNotInList);
+      it('should not call analyticsService directly (tracking owned by repository)', () => {
+        component.onToggleArticleInList(articleInList);
 
         expect(analyticsServiceMock.trackEvent).not.toHaveBeenCalled();
       });
