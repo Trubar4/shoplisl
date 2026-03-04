@@ -299,6 +299,24 @@ export class UserSupportService {
   }
 
   /**
+   * Convert any date-like value to an ISO-8601 string.
+   * Handles Date objects, ISO strings, and Firestore Timestamp forms.
+   */
+  private toIso(val: any): string | undefined {
+    if (!val) return undefined;
+    if (val instanceof Date) return val.toISOString();
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object' && val._seconds !== undefined) {
+      return new Date(val._seconds * 1000 + (val._nanoseconds ?? 0) / 1e6).toISOString();
+    }
+    if (typeof val === 'object' && val.seconds !== undefined) {
+      return new Date(val.seconds * 1000 + (val.nanoseconds ?? 0) / 1e6).toISOString();
+    }
+    if (typeof val?.toDate === 'function') return val.toDate().toISOString();
+    return undefined;
+  }
+
+  /**
    * Export user data as JSON (for GDPR compliance)
    */
   async exportUserData(userId: string): Promise<Blob> {
@@ -329,6 +347,20 @@ export class UserSupportService {
           articleCount: list.articleIds?.length || 0,
           isShared: list.sharedWith && list.sharedWith.length > 0,
           sharedWithCount: list.sharedWith?.length || 0,
+          itemStates: Object.fromEntries(
+            Object.entries(list.itemStates || {}).map(([articleId, state]) => [
+              articleId,
+              {
+                ...state,
+                addedAt: this.toIso(state.addedAt),
+                checkedAt: this.toIso(state.checkedAt),
+                history: (state.history || []).map((ev) => ({
+                  ...ev,
+                  timestamp: this.toIso(ev.timestamp),
+                })),
+              },
+            ])
+          ),
         })),
         articles: profile.articles.map((article) => ({
           id: article.id,
