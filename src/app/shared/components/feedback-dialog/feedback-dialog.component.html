@@ -1,0 +1,43 @@
+<div class="feedback-dialog">
+  <h2 mat-dialog-title>Feedback senden</h2>
+
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Art des Feedbacks</mat-label>
+      <mat-select [(ngModel)]="type">
+        <mat-option *ngFor="let opt of typeOptions" [value]="opt.value">
+          {{ opt.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Beschreibung</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="description"
+        rows="4"
+        placeholder="Mindestens 10 Zeichen …"
+        maxlength="1000">
+      </textarea>
+      <mat-hint align="end">{{ description.length }}/1000</mat-hint>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()" [disabled]="submitting()">Abbrechen</button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="onSubmit()"
+      [disabled]="!isValid || submitting()">
+      <mat-progress-spinner
+        *ngIf="submitting()"
+        diameter="18"
+        mode="indeterminate"
+        style="display:inline-block;vertical-align:middle;margin-right:4px">
+      </mat-progress-spinner>
+      Senden
+    </button>
+  </mat-dialog-actions>
+</div>
