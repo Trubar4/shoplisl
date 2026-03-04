@@ -15,9 +15,11 @@ import { ArticleSelectionService } from './services/article-selection.service';
 import { ShoppingList, Article, Department } from '../../../core/models';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import * as ListsActions from '../../../state/lists/lists.actions';
 import { selectAllLists } from '../../../state/lists/lists.selectors';
 import { selectAllArticles } from '../../../state/articles/articles.selectors';
+import { AnalyticsEventType } from '../../../core/models/analytics.model';
 
 /**
  * List Detail Component Tests
@@ -54,6 +56,16 @@ describe('ListDetailComponent', () => {
   let routerMock: any;
   let activatedRouteMock: any;
   let cdrMock: any;
+  let sharingServiceMock: any;
+  let authServiceMock: any;
+  let userProfileServiceMock: any;
+  let aiServiceMock: any;
+  let activeListServiceMock: any;
+  let historyServiceMock: any;
+  let analyticsServiceMock: any;
+  let bottomSheetMock: any;
+  let recommendationsServiceMock: any;
+  let loggerMock: any;
 
   // Test data
   const createTestList = (id: string, name: string): ShoppingList => ({
@@ -123,7 +135,11 @@ describe('ListDetailComponent', () => {
       clearAllItemsFromList: vi.fn(() => of(true)),
       deleteList: vi.fn(() => of(true)),
       updateList: vi.fn(() => of(true)),
-      createArticle: vi.fn((data) => of({ id: 'new-article', ...data }))
+      createArticle: vi.fn((data) => of({ id: 'new-article', ...data })),
+      loadAllOwnedArticles: vi.fn(),
+      removeMultipleArticlesFromList: vi.fn(() => of({ success: true, errors: [] })),
+      markMultipleArticlesAsDone: vi.fn(() => of({ success: true, errors: [] })),
+      moveArticlesBetweenLists: vi.fn(() => of({ success: true, errors: [] }))
     };
 
     departmentServiceMock = {
@@ -233,6 +249,52 @@ describe('ListDetailComponent', () => {
       markForCheck: vi.fn()
     };
 
+    sharingServiceMock = {
+      createInvite: vi.fn(() => of({ token: 'test-token' }))
+    };
+
+    authServiceMock = {
+      getCurrentUser: vi.fn(() => of({ id: 'user1', name: 'Test User' })),
+      getCurrentUserValue: vi.fn(() => ({ id: 'user1', name: 'Test User' }))
+    };
+
+    userProfileServiceMock = {
+      preloadUserProfiles: vi.fn()
+    };
+
+    aiServiceMock = {
+      hasApiKey: vi.fn(() => false),
+      processCommand: vi.fn(() => of({ success: true }))
+    };
+
+    activeListServiceMock = {
+      setActiveList: vi.fn(),
+      clearActiveList: vi.fn()
+    };
+
+    historyServiceMock = {
+      createUpdatedItemState: vi.fn(() => ({ isChecked: false, amount: '' }))
+    };
+
+    analyticsServiceMock = {
+      trackEvent: vi.fn()
+    };
+
+    bottomSheetMock = {
+      open: vi.fn(() => ({ dismiss: vi.fn() }))
+    };
+
+    recommendationsServiceMock = {
+      getRecommendations: vi.fn(() => ({ frequentArticles: [], longNotBoughtArticles: [] }))
+    };
+
+    loggerMock = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+
     // Create component instance directly
     component = new ListDetailComponent(
       activatedRouteMock as any,
@@ -246,7 +308,17 @@ describe('ListDetailComponent', () => {
       disambiguationMock as DisambiguationService,
       filterServiceMock as ListFilterService,
       selectionServiceMock as ArticleSelectionService,
-      dialogMock as MatDialog
+      dialogMock as MatDialog,
+      sharingServiceMock as any,
+      authServiceMock as any,
+      userProfileServiceMock as any,
+      aiServiceMock as any,
+      activeListServiceMock as any,
+      historyServiceMock as any,
+      analyticsServiceMock as any,
+      bottomSheetMock as MatBottomSheet,
+      recommendationsServiceMock as any,
+      loggerMock as any
     );
   });
 
@@ -295,7 +367,17 @@ describe('ListDetailComponent', () => {
         disambiguationMock as DisambiguationService,
         filterServiceMock as ListFilterService,
         selectionServiceMock as ArticleSelectionService,
-        dialogMock as MatDialog
+        dialogMock as MatDialog,
+        sharingServiceMock as any,
+        authServiceMock as any,
+        userProfileServiceMock as any,
+        aiServiceMock as any,
+        activeListServiceMock as any,
+        historyServiceMock as any,
+        analyticsServiceMock as any,
+        bottomSheetMock as MatBottomSheet,
+        recommendationsServiceMock as any,
+        loggerMock as any
       );
 
       newComponent.ngOnInit();
@@ -338,7 +420,17 @@ describe('ListDetailComponent', () => {
         disambiguationMock as DisambiguationService,
         filterServiceMock as ListFilterService,
         selectionServiceMock as ArticleSelectionService,
-        dialogMock as MatDialog
+        dialogMock as MatDialog,
+        sharingServiceMock as any,
+        authServiceMock as any,
+        userProfileServiceMock as any,
+        aiServiceMock as any,
+        activeListServiceMock as any,
+        historyServiceMock as any,
+        analyticsServiceMock as any,
+        bottomSheetMock as MatBottomSheet,
+        recommendationsServiceMock as any,
+        loggerMock as any
       );
 
       newComponent.ngOnInit();
@@ -835,7 +927,17 @@ describe('ListDetailComponent', () => {
         disambiguationMock as DisambiguationService,
         filterServiceMock as ListFilterService,
         selectionServiceMock as ArticleSelectionService,
-        dialogMock as MatDialog
+        dialogMock as MatDialog,
+        sharingServiceMock as any,
+        authServiceMock as any,
+        userProfileServiceMock as any,
+        aiServiceMock as any,
+        activeListServiceMock as any,
+        historyServiceMock as any,
+        analyticsServiceMock as any,
+        bottomSheetMock as MatBottomSheet,
+        recommendationsServiceMock as any,
+        loggerMock as any
       );
 
       newComponent.ngOnInit();
@@ -1060,7 +1162,17 @@ describe('ListDetailComponent', () => {
         disambiguationMock as DisambiguationService,
         filterServiceMock as ListFilterService,
         selectionServiceMock as ArticleSelectionService,
-        dialogMock as MatDialog
+        dialogMock as MatDialog,
+        sharingServiceMock as any,
+        authServiceMock as any,
+        userProfileServiceMock as any,
+        aiServiceMock as any,
+        activeListServiceMock as any,
+        historyServiceMock as any,
+        analyticsServiceMock as any,
+        bottomSheetMock as MatBottomSheet,
+        recommendationsServiceMock as any,
+        loggerMock as any
       );
 
       newComponent.ngOnInit();
@@ -1099,6 +1211,156 @@ describe('ListDetailComponent', () => {
 
       // Should not navigate
       expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================
+  // ANALYTICS TRACKING TESTS
+  // =========================================
+
+  describe('Analytics Tracking', () => {
+    const uncheckedArticle: any = {
+      id: 'article1',
+      name: 'Milch',
+      isChecked: false,
+      isInList: true,
+      amount: '1kg',
+      departmentId: 'dairy'
+    };
+
+    const checkedArticle: any = {
+      id: 'article2',
+      name: 'Brot',
+      isChecked: true,
+      isInList: true,
+      amount: '1',
+      departmentId: 'bakery'
+    };
+
+    beforeEach(() => {
+      component.ngOnInit();
+      component['currentList'] = testList;
+      vi.clearAllMocks();
+    });
+
+    describe('onArticleToggle', () => {
+      it('should track ARTICLE_CHECKED when article is currently unchecked', () => {
+        component.onArticleToggle(uncheckedArticle);
+
+        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+          'user1',
+          AnalyticsEventType.ARTICLE_CHECKED,
+          {
+            articleId: 'article1',
+            articleName: 'Milch',
+            listId: 'list1',
+            listName: testList.name
+          }
+        );
+      });
+
+      it('should track ARTICLE_UNCHECKED when article is currently checked', () => {
+        component.onArticleToggle(checkedArticle);
+
+        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+          'user1',
+          AnalyticsEventType.ARTICLE_UNCHECKED,
+          {
+            articleId: 'article2',
+            articleName: 'Brot',
+            listId: 'list1',
+            listName: testList.name
+          }
+        );
+      });
+
+      it('should dispatch toggleArticleChecked action', () => {
+        component.onArticleToggle(uncheckedArticle);
+
+        expect(storeMock.dispatch).toHaveBeenCalledWith(
+          ListsActions.toggleArticleChecked({ listId: 'list1', articleId: 'article1' })
+        );
+      });
+
+      it('should not track analytics when no user is logged in', () => {
+        authServiceMock.getCurrentUserValue = vi.fn(() => null);
+
+        component.onArticleToggle(uncheckedArticle);
+
+        expect(analyticsServiceMock.trackEvent).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('onToggleArticleInList', () => {
+      const articleInList: any = {
+        id: 'article1',
+        name: 'Milch',
+        isChecked: false,
+        isInList: true,
+        departmentId: 'dairy'
+      };
+
+      const articleNotInList: any = {
+        id: 'article4',
+        name: 'Käse',
+        isChecked: false,
+        isInList: false,
+        departmentId: 'dairy'
+      };
+
+      it('should track ARTICLE_REMOVED_FROM_LIST when article is in list', () => {
+        component.onToggleArticleInList(articleInList);
+
+        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+          'user1',
+          AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST,
+          {
+            articleId: 'article1',
+            articleName: 'Milch',
+            listId: 'list1',
+            listName: testList.name
+          }
+        );
+      });
+
+      it('should track ARTICLE_ADDED_TO_LIST when article is not in list', () => {
+        component.onToggleArticleInList(articleNotInList);
+
+        expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+          'user1',
+          AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+          {
+            articleId: 'article4',
+            articleName: 'Käse',
+            listId: 'list1',
+            listName: testList.name
+          }
+        );
+      });
+
+      it('should dispatch removeArticleFromList when article is in list', () => {
+        component.onToggleArticleInList(articleInList);
+
+        expect(storeMock.dispatch).toHaveBeenCalledWith(
+          ListsActions.removeArticleFromList({ listId: 'list1', articleId: 'article1' })
+        );
+      });
+
+      it('should dispatch addArticleToList when article is not in list', () => {
+        component.onToggleArticleInList(articleNotInList);
+
+        expect(storeMock.dispatch).toHaveBeenCalledWith(
+          ListsActions.addArticleToList({ listId: 'list1', articleId: 'article4', amount: '' })
+        );
+      });
+
+      it('should not track analytics when no user is logged in', () => {
+        authServiceMock.getCurrentUserValue = vi.fn(() => null);
+
+        component.onToggleArticleInList(articleNotInList);
+
+        expect(analyticsServiceMock.trackEvent).not.toHaveBeenCalled();
+      });
     });
   });
 });
