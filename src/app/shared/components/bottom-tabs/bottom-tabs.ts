@@ -3,11 +3,9 @@ import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { filter } from 'rxjs/operators';
 
 import { AuthButtonComponent } from '../auth-button/auth-button.component';
-import { FeedbackDialogComponent } from '../feedback-dialog/feedback-dialog.component';
 
 @Component({
   selector: 'app-bottom-tabs',
@@ -16,9 +14,7 @@ import { FeedbackDialogComponent } from '../feedback-dialog/feedback-dialog.comp
     CommonModule,
     RouterModule,
     MatIconModule,
-    MatDialogModule,
-    AuthButtonComponent,
-    FeedbackDialogComponent
+    AuthButtonComponent
   ],
   templateUrl: './bottom-tabs.html',
   styleUrls: ['./bottom-tabs.scss']
@@ -26,14 +22,14 @@ import { FeedbackDialogComponent } from '../feedback-dialog/feedback-dialog.comp
 export class BottomTabsComponent {
   currentUrl: string = '';
 
-  constructor(private router: Router, private dialog: MatDialog) {
+  constructor(private router: Router) {
     // Track route changes to update active state
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
         this.currentUrl = event.url;
       });
-    
+
     // Set initial URL
     this.currentUrl = this.router.url;
   }
@@ -49,9 +45,5 @@ export class BottomTabsComponent {
       return this.currentUrl === '/ai-assistant' || this.currentUrl.startsWith('/ai-assistant/');
     }
     return this.currentUrl === route;
-  }
-
-  openFeedback(): void {
-    this.dialog.open(FeedbackDialogComponent, { width: '400px' });
   }
 }
