@@ -121,7 +121,15 @@ describe('HistoryModeComponent', () => {
       })
     };
 
-    component = new HistoryModeComponent(storeMock, historyServiceMock);
+    const authServiceMock = {
+      getCurrentUserId: vi.fn(() => 'shared-shoplisl-user')
+    };
+
+    const userProfileServiceMock = {
+      getUserProfiles: vi.fn(() => of(new Map()))
+    };
+
+    component = new HistoryModeComponent(storeMock, historyServiceMock, authServiceMock as any, userProfileServiceMock as any);
     component.list = mockList;
   });
 

@@ -76,8 +76,12 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['list'] && this.list) {
-      this.setupObservables();
+    if (changes['list']) {
+      const checkedCount = Object.values(this.list?.itemStates || {}).filter((s: any) => s.isChecked).length;
+      console.log(`[ERLEDIGT] ngOnChanges — list: ${this.list?.id ?? 'null'}, isFirstChange: ${changes['list'].isFirstChange()}, checked in itemStates: ${checkedCount}`);
+      if (this.list) {
+        this.setupObservables();
+      }
     }
     if (changes['searchQuery']) {
       this.searchQuery$.next(this.searchQuery);
@@ -90,7 +94,13 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private setupObservables(): void {
-    if (!this.list) return;
+    if (!this.list) {
+      console.warn('[ERLEDIGT] setupObservables called with null list — skipping');
+      return;
+    }
+
+    const checkedInStore = Object.values(this.list.itemStates || {}).filter((s: any) => s.isChecked).length;
+    console.log(`[ERLEDIGT] setupObservables — listId: ${this.list.id}, checked items in input list: ${checkedInStore}`);
 
     this.articles$ = this.store.select(selectAllArticles);
 
@@ -106,6 +116,11 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
       this.searchQuery$
     ]).pipe(
       map(([completedStates, articles, searchQuery]) => {
+        console.log(`[ERLEDIGT] selector emitted — completedStates: ${completedStates.length}, articles in store: ${articles.length}, query: "${searchQuery}"`);
+        if (completedStates.length === 0) {
+          // Re-check store list directly for comparison
+          console.warn('[ERLEDIGT] Selector returned 0 completed states. Check NgRx store for isChecked values.');
+        }
         const articlesMap = new Map(articles.map(a => [a.id, a]));
 
         // Collect all unique user IDs from completed articles
