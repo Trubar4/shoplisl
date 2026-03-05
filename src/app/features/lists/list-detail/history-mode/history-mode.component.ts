@@ -173,9 +173,16 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
     );
 
     // Update completed count
-    this.completedArticles$.subscribe(articles => {
-      this.completedCount.set(articles.length);
+    console.log('[ERLEDIGT] About to subscribe. destroy$.isStopped:', this.destroy$.isStopped);
+    const sub = this.completedArticles$.subscribe({
+      next: articles => {
+        console.log('[ERLEDIGT] subscribe next — count:', articles.length);
+        this.completedCount.set(articles.length);
+      },
+      error: err => console.error('[ERLEDIGT] subscribe error:', err),
+      complete: () => console.log('[ERLEDIGT] subscribe complete — takeUntil fired immediately?')
     });
+    console.log('[ERLEDIGT] Subscribed. closed:', sub.closed);
   }
 
   /**
