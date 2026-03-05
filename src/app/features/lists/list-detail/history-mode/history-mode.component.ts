@@ -13,7 +13,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { Observable, Subject, BehaviorSubject, combineLatest } from 'rxjs';
-import { map, takeUntil } from 'rxjs/operators';
+import { map, takeUntil, tap } from 'rxjs/operators';
 
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
 import { ShoppingList, Article, ListItemState } from '../../../../core/models';
@@ -107,13 +107,21 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
     // Get completed articles from the list
     const completedItemStates$ = this.store.select(
       selectCompletedArticlesFromList(this.list.id)
+    ).pipe(tap(s => console.log('[ERLEDIGT] src1 completedStates:', s.length)));
+
+    const articles$ = this.articles$.pipe(
+      tap(a => console.log('[ERLEDIGT] src2 articles:', a.length))
+    );
+
+    const searchQuery$ = this.searchQuery$.pipe(
+      tap(q => console.log('[ERLEDIGT] src3 searchQuery:', JSON.stringify(q)))
     );
 
     // Combine with article details and search query
     this.completedArticles$ = combineLatest([
       completedItemStates$,
-      this.articles$,
-      this.searchQuery$
+      articles$,
+      searchQuery$
     ]).pipe(
       map(([completedStates, articles, searchQuery]) => {
         console.log(`[ERLEDIGT] selector emitted — completedStates: ${completedStates.length}, articles in store: ${articles.length}, query: "${searchQuery}"`);
