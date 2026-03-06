@@ -169,7 +169,11 @@ describe('VoiceAIAssistantComponent', () => {
     loggerMock = {
       disableTopic: vi.fn(),
       enableTopic: vi.fn(),
-      log: vi.fn()
+      log: vi.fn(),
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
     };
 
     voiceInputServiceMock = {

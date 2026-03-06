@@ -1,116 +1,138 @@
-# Prompt for Next Session: Fix Cleanup Script to Load Collaborator Articles
+# Next Session Prompt — User Tracking / Analytics
 
-## Context
-
-**Branch:** `claude/fix-article-count-inconsistency-Xh3SN` (already pushed)
-
-**Problem:** Cleanup script to remove orphaned article IDs cannot run safely because it only loads the current user's articles, not collaborators' articles. It would incorrectly delete valid articles owned by list participants.
-
-**Read first:** `ARTICLE_COUNT_FIX_SUMMARY.md` for full context.
+**Branch:** `claude/analyze-user-tracking-8OKBN`
+**Date:** 2026-03-06
 
 ---
 
-## The Task
+## What Was Accomplished This Session
 
-Fix the cleanup script (`cleanup-orphaned-article-ids.ts`) to load articles from ALL collaborators before determining which article IDs are truly orphaned.
+| Commit | Description |
+|--------|-------------|
+| `14c3c24` | feat(analytics): track article check/uncheck and add/remove from list (Priority 1) |
+| `c32535b` | test(analytics): add unit tests for article check/uncheck and add/remove tracking |
+| `b5085d4` | fix(analytics): remove double-tracking from list-detail component |
+| `83d7a49` | feat(analytics): wire up AI_DISAMBIGUATION_SHOWN, AI_RECIPE_PROCESSED, AI_VOICE_INPUT_USED events |
+| `8b3e14e` | feat(feedback): implement FEEDBACK_SUBMITTED tracking (reverted — see below) |
+| `8786a36` | revert: remove unauthorized feedback implementation |
+| `d1c599f` | cleanup: remove debug logs from history-mode, add logger for AI analytics events |
+| *(this session)* | cleanup: remove debug console.logs from voice-ai-assistant and list-detail |
+
+### FEEDBACK_SUBMITTED — Why It Was Reverted
+
+The feedback dialog + Firestore persistence was implemented but then reverted in `8786a36`
+because it requires explicit user approval before implementing a new UI feature. The
+implementation exists in the git history and can be cherry-picked when approved.
 
 ---
 
-## Why Current Approach Doesn't Work
+## Current Test Baseline (2026-03-06)
 
-**Current code** (`cleanup-orphaned-article-ids.ts:128-132`):
-```typescript
-// Step 2: Load all accessible articles (owned + shared)
-const allArticles = await this.firebaseData.getAllArticlesFromFirebase();
-const validArticleIds = new Set<string>(allArticles.map((article: Article) => article.id));
+```
+npm test
+Test Files: 16 failed | 28 passed | 8 skipped (52)
+Tests:      119 failed | 890 passed | 155 skipped (1164)
 ```
 
-**Problem:**
-- `getAllArticlesFromFirebase()` only loads current user's articles
-- Doesn't load articles from list collaborators
-- Example: Frisch list has 1 article from User B, but User A's cleanup can't see it
-- Would mark User B's article as "orphaned" and delete it ❌
+### Pre-existing failures — do NOT fix, do NOT regress
+
+| Category | Files | Reason |
+|----------|-------|--------|
+| NG0202 DI error | `lists-overview-bug1.integration.spec.ts` | Intentional bug-doc tests; AuthService mock issue |
+| E2E (no emulator) | `src/app/core/services/__e2e__/*.spec.ts` | Need Firebase emulator running |
+| context-management | `context-management.service.spec.ts` | Pre-existing mock/DI issue |
+| Various service specs | `article-stats`, `firebase-data-merge`, `history.service`, `lists-repository` | Pre-existing |
+
+**Our tests (all passing):**
+- `voice-ai-assistant.component.spec.ts` — 133/133 ✅
+- `list-detail.spec.ts` — all ✅
+- `history-mode.component.spec.ts` — all ✅
 
 ---
 
-## Reference: How List Detail Does It Correctly
+## What Is Still Missing (Next Priorities)
 
-**Location:** `firebase-data.service.ts:284-360` (`loadArticlesForList`)
+### Priority 1 — Sharing events (HIGH)
+**File:** `src/app/core/services/sharing.service.ts`
 
-**What it does:**
-1. Identifies all collaborators: `[list.ownerId, ...list.sharedWith, currentUserId]`
-2. Loads articles from each user's collection
-3. Merges all articles into store
-4. Result: Complete set of valid article IDs ✅
+Events defined but never fired: `SHARE_INVITE_CREATED`, `LIST_SHARED`, `SHARE_INVITE_ACCEPTED`, `LIST_UNSHARED`.
 
-**Key code** (lines 312-329):
-```typescript
-const ownerIds = [list.ownerId];
-if (list.sharedWith && list.sharedWith.length > 0) {
-  list.sharedWith.forEach((userId: string) => {
-    if (!ownerIds.includes(userId)) {
-      ownerIds.push(userId);
-    }
-  });
-}
-const newArticles = await this.batchLoadArticles(articlesToLoad, ownerIds, currentUserId);
+Inject `AnalyticsService` into `sharing.service.ts` and add tracking calls:
+- `createShareInvite()` → `SHARE_INVITE_CREATED` + `LIST_SHARED`
+- `acceptInvite()` → `SHARE_INVITE_ACCEPTED`
+- `removeCollaborator()` → `LIST_UNSHARED`
+
+See `docs/NEXT_SESSION_PROMPT_ANALYTICS_EVENTS.md` for full details.
+
+### Priority 2 — AI source metadata (HIGH)
+Add `source?: 'ai' | 'manual'` to `addArticleToList()` / `addMultipleArticlesToList()` /
+`createArticle()`. Pass `source: 'ai'` from AI command handlers. This populates
+`DailyAggregates.articlesAddedViaAI` in the admin dashboard.
+
+### Priority 3 — ARTICLE_MOVED_BETWEEN_LISTS event (MEDIUM)
+Add enum value + track in `data.service.ts` after `moveArticlesBetweenLists()` succeeds.
+
+### Priority 4 — LIST_VIEWED event (LOW)
+Track in `ngOnInit` of `list-detail.ts` once per navigation.
+
+---
+
+## Known Bugs (Separate From Analytics)
+
+### Bug 1 — Article count not shown for shared lists (non-owners)
+- **Spec:** `lists-overview-bug1.integration.spec.ts` (intentionally failing)
+- **Root cause:** Firebase returns shared list with empty `articleIds`
+- **Status:** Not fixed — tracked in spec as documentation
+
+### Bug 2 — Article updates not visible after edit
+- **Spec:** `list-detail-bug2.integration.spec.ts` (intentionally failing where bug exists, passing where fix exists)
+- **Status:** Partially documented — fix approach exists in spec
+
+---
+
+## Test Failures Explained (for handoff)
+
+```
+FAIL lists-overview-bug1.integration.spec.ts
+  Error: NG0202 — AuthService DI issue in test environment
+  → These tests intentionally fail to document Bug 1
+  → Do not fix the tests; fix the actual bug when ready
+
+FAIL context-management.service.spec.ts
+  → Pre-existing mock setup issue, unrelated to this session's work
+  → Needs separate investigation
+
+FAIL __e2e__/*.spec.ts
+  → Require Firebase emulator: `firebase emulators:start`
+  → Run separately with: npm run test:firestore
 ```
 
 ---
 
-## Solution: Load Articles from All Collaborators
+## Files Changed This Session
 
-Replace Step 2 in cleanup script (`cleanup-orphaned-article-ids.ts:126-132`) with:
-
-```typescript
-// Step 2: Collect all collaborator user IDs
-const allUserIds = new Set<string>();
-lists.forEach((list: ShoppingList) => {
-  allUserIds.add(list.ownerId);
-  if (list.sharedWith) {
-    list.sharedWith.forEach((userId: string) => allUserIds.add(userId));
-  }
-});
-
-// Step 3: Load articles from ALL collaborators
-const validArticleIds = new Set<string>();
-for (const userId of allUserIds) {
-  try {
-    const userArticles = await loadArticlesForUser(userId);
-    userArticles.forEach((article: Article) => validArticleIds.add(article.id));
-  } catch (error) {
-    this.logger.error('data', `Failed to load articles for user ${userId}: ${error}`);
-  }
-}
+```
+src/app/core/services/ai/ai.service.ts              (analytics events)
+src/app/features/lists/list-detail/history-mode/history-mode.component.ts  (debug cleanup)
+src/app/features/lists/list-detail/history-mode/history-mode.component.spec.ts
+src/app/features/lists/list-detail/list-detail.ts   (double-tracking fix + debug cleanup)
+src/app/features/lists/list-detail/list-detail.spec.ts
+src/app/shared/components/bottom-tabs/bottom-tabs.ts (analytics)
+src/app/shared/components/bottom-tabs/bottom-tabs.html
+src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.ts  (debug cleanup)
+src/app/shared/components/voice-ai-assistant/voice-ai-assistant.component.spec.ts
 ```
 
-**Need to implement:** `loadArticlesForUser(userId: string)` in FirebaseDataService or expose existing method.
-
 ---
 
-## Files to Study
+## How to Start Next Session
 
-1. **firebase-data.service.ts:284-360** - How `loadArticlesForList()` loads from collaborators
-2. **firebase-data.service.ts:batchLoadArticles** - Method that loads articles from multiple users
-3. **cleanup-orphaned-article-ids.ts:126-132** - Current broken logic to replace
+```
+Continue analytics tracking implementation on branch claude/analyze-user-tracking-8OKBN.
 
----
+Test baseline: 119 failed / 890 passed (all failures are pre-existing).
+Run `npm test` after changes — only watch for regressions in passing tests.
 
-## Testing
-
-1. Run cleanup preview as User A
-2. Check console: Should show 12 orphaned for Frisch (not 13)
-3. Verify User B's article NOT flagged as orphaned
-4. Execute cleanup
-5. Verify articleIds in Firestore: 17→5, 12→11
-6. Check both users see correct counts
-
----
-
-## Success Criteria
-
-- ✅ Cleanup loads articles from all collaborators
-- ✅ Frisch: 12 orphaned (not 13 - excludes User B's article)
-- ✅ Can execute safely without deleting valid articles  
-- ✅ After cleanup: Firestore matches reality (5 and 11 articles)
-- ✅ Both users see correct counts in overview
+Next priority: Add sharing analytics events to sharing.service.ts.
+See docs/NEXT_SESSION_PROMPT_ANALYTICS_EVENTS.md for full gap analysis.
+```

@@ -148,35 +148,12 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     ]).pipe(
       map(([list, articles]) => {
         if (!list) {
-          console.log('[RECO] hasRecommendations$: no list yet');
           return false;
         }
-
-        const itemStates = list.itemStates || {};
-        const articleIds = list.articleIds || [];
-        const onListSet = new Set(articleIds);
-        const checkedOnList   = articleIds.filter(id => itemStates[id]?.isChecked).length;
-        const uncheckedOnList = articleIds.filter(id => !itemStates[id]?.isChecked).length;
-        const removedWithHistory = Object.keys(itemStates).filter(id => !onListSet.has(id)).length;
-
-        console.log(
-          `[RECO] "${list.name}" — catalog: ${articles.length}, ` +
-          `articleIds: ${articleIds.length}, ` +
-          `checked: ${checkedOnList}, unchecked: ${uncheckedOnList}, ` +
-          `removed-with-history: ${removedWithHistory}`
-        );
 
         this.logger.debug('recommendations', `--- evaluating list "${list.id}" (${list.name}) ---`);
         const { frequentArticles, longNotBoughtArticles } = this.recommendationsService.getRecommendations(list, articles);
         const hasAny = frequentArticles.length > 0 || longNotBoughtArticles.length > 0;
-
-        console.log(
-          `[RECO] result → frequent: ${frequentArticles.length} ` +
-          `[${frequentArticles.map(a => a.name).join(', ')}], ` +
-          `longNotBought: ${longNotBoughtArticles.length} ` +
-          `[${longNotBoughtArticles.map(a => a.name).join(', ')}], ` +
-          `showButton: ${hasAny}`
-        );
 
         this.logger.debug('recommendations',
           `hasRecommendations → ${hasAny} ` +
@@ -297,7 +274,6 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   private setShoppingFilter(filter: ShoppingFilter): void {
-    console.log('🔄 Switching shopping filter to:', filter);
 
     this.currentShoppingFilter.set(filter);
     this.filterService.setShoppingFilter(filter);
@@ -1110,20 +1086,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
    * Phase 8C: Opens share dialog to manage list sharing
    */
   openShareDialog(): void {
-    console.log('🔍 Share button clicked!');
-    console.log('  Current list:', this.currentList);
 
     if (!this.currentList) {
-      console.error('❌ No current list available');
       return;
     }
 
-    console.log('  Opening dialog with list:', {
-      id: this.currentList.id,
-      name: this.currentList.name,
-      ownerId: this.currentList.ownerId,
-      sharedWith: this.currentList.sharedWith
-    });
 
     this.dialog.open(ShareDialogComponent, {
       width: '600px',
@@ -1158,20 +1125,4 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  debugArticleDepartments(): void {
-    // Use NgRx store to get articles
-    this.store.select(selectAllArticles).pipe(take(1)).subscribe(articles => {
-      const problematic = articles.filter(a => !a.departmentId || a.departmentId === '');
-      console.log('Articles without departments:', problematic.length);
-
-      problematic.forEach(article => {
-        console.log(`${article.name}:`, {
-          departmentId: article.departmentId,
-          type: typeof article.departmentId,
-          hasProperty: Object.hasOwnProperty.call(article, 'departmentId'),
-          icon: article.icon
-        });
-      });
-    });
-  }
 }

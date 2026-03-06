@@ -145,7 +145,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         this.currentMessage = result.transcript;
         this.lastInputSource = 'voice';
         this.shouldProvideAudioFeedback = true;
-        console.log('🎤 Voice input received:', result.transcript);
 
         const userId = this.authService.getCurrentUserId();
         if (userId) {
@@ -231,14 +230,12 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       
       const context = this.chatPersistence.getConversationContext();
       if (context?.waitingForArticles) {
-        console.log('🔄 Restored conversation context for:', context.waitingForArticles.listName);
       }
     }, 500);
   }
 
   private logChatStatus(): void {
     const summary = this.chatPersistence.getChatSummary();
-    console.log('💬 Chat loaded:', summary);
   }
 
   /**
@@ -278,7 +275,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
         return; // Safety check
       }
 
-      console.log('📱 Deep link detected:', messageToSend);
 
       // Wait for services to initialize before processing
       setTimeout(() => {
@@ -344,7 +340,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     if (sourceContext && targetService) {
       // Only log in development and when there's a meaningful change
       if (!environment.production && sourceContext.waitingForArticles) {
-        console.log(`🔄 SYNC: Context synced (${targetService === 'ai' ? 'chat -> AI' : 'AI -> chat'})`);
       }
       
       if (targetService === 'ai') {
@@ -399,7 +394,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
     // CRITICAL: Prevent double execution
     if (this.isProcessingMessage) {
-      console.log('🚫 Already processing message, ignoring duplicate call');
       return;
     }
     
@@ -427,7 +421,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
     try {
       if (this.isRecipeInput(lowerInput, userMessage) || this.aiService.quantityExtractionService.hasMultipleItems(userMessage)) {
-        console.log('🍳 Multi-item input detected (recipe or space-separated)');
         await this.processRecipeWithContextPreservation(userMessage);
         return;
       }
@@ -501,7 +494,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       await this.handleAIResult(result);
       
     } catch (error) {
-      console.error('💬 AI ERROR:', error);
+      this.logger.error('ai', `AI execution error: ${error}`);
       this.chatPersistence.addMessage(
         `❌ Entschuldigung, ein Fehler ist aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, 
         'error'
@@ -528,7 +521,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
    * FIXED: Clear contexts in both services
    */
   private clearAllContexts(): void {
-    console.log('🗑️ Clearing all contexts');
     this.chatPersistence.clearConversationContext();
     this.aiService.clearConversationContext();
     
@@ -542,7 +534,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   private async handleAIResult(result: AIExecutionResult): Promise<void> {
-    console.log('🤖 HANDLE AI RESULT:', result);
 
     // Handle action buttons from result
     if (result.actionButtons && result.actionButtons.length > 0) {
@@ -559,33 +550,24 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
     // Handle disambiguation first
     if (result.needsUserInput && result.disambiguationOptions && result.pendingAction) {
-      console.log('🤖 Showing disambiguation');
       this.handleDisambiguation(result);
       // Scroll after disambiguation setup
       setTimeout(() => this.chatUI.scrollToBottom(this.messagesContainer, true), 200);
       return;
     }
 
-    console.log('🤖 DEBUG: Checking conversation context in result...');
-    console.log('🤖 DEBUG: result.conversationContext:', result.conversationContext);
-    console.log('🤖 DEBUG: result.listId:', result.listId);
-    console.log('🤖 DEBUG: result.followUpPrompt:', result.followUpPrompt);
   
   
     // CRITICAL FIX: Always sync conversation context bidirectionally
     if (result.conversationContext) {
-      console.log('🤖 Updating conversation context bidirectionally');
       this.chatPersistence.setConversationContext(result.conversationContext);
       this.aiService.setConversationContext(result.conversationContext);
 
-      console.log('🤖 DEBUG: After setting - AI context:', this.aiService.getConversationContext());
-      console.log('🤖 DEBUG: After setting - Chat context:', this.chatPersistence.getConversationContext());
     }
   
     // FIXED: Enhanced list creation context detection
     if (result.success && result.listId && 
         (result.message.includes('Liste') && result.message.includes('erstellt'))) {
-      console.log('🤖 List creation detected - forcing conversation context');
       
       const listNameMatch = result.message.match(/Liste "([^"]+)" wurde erstellt/);
       const listName = listNameMatch ? listNameMatch[1] : 'Neue Liste';
@@ -616,7 +598,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   
     // FIXED: Enhanced article addition context detection
     if (result.success && result.listId && result.message.includes('hinzugefügt')) {
-      console.log('🤖 Article addition detected - ensuring conversation context');
       
       if (!result.conversationContext) {
         const messageMatch = result.message.match(/"([^"]+)" wurde (?:erstellt und )?zur Liste "([^"]+)" hinzugefügt/);
@@ -648,7 +629,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   
     // Handle follow-up prompts with enhanced scroll
     if (result.success && result.followUpPrompt) {
-      console.log('🤖 Adding follow-up prompt:', result.followUpPrompt);
       setTimeout(() => {
         this.chatPersistence.addMessage(result.followUpPrompt!, 'system');
         // CRITICAL: Scroll after follow-up message
@@ -677,11 +657,9 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
     // FIXED: Use active context with proper fallback
     const activeContext = this.getCurrentActiveContext();
     
-    console.log('🔍 Getting conversation status from active context:', activeContext);
     
     // Check for active conversation context
     if (activeContext.waitingForArticles) {
-      console.log('🔍 Active conversation found:', activeContext.waitingForArticles);
       return `Sie können direkt weitere Artikel zu "${activeContext.waitingForArticles.listName}" hinzufügen`;
     }
     
@@ -694,7 +672,6 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
       }
     }
     
-    console.log('🔍 No active conversation context found');
     return 'Keine aktive Unterhaltung';
   }
 
@@ -741,7 +718,6 @@ isInActiveConversation(): boolean {
   }
 
   finishAddingArticles(): void {
-    console.log('🗣️ User manually finished adding articles');
     this.clearAllContexts();
     this.chatPersistence.addMessage('👍 Fertig! Du kannst jederzeit neue Befehle eingeben.', 'assistant');
   }
@@ -751,12 +727,10 @@ isInActiveConversation(): boolean {
   // ========================================
 
   private async processRecipeWithContextPreservation(userMessage: string): Promise<void> {
-    console.log('🍳 Processing recipe with context preservation');
     
     // CRITICAL FIX: Get active context properly
     const activeContext = this.getCurrentActiveContext();
     
-    console.log('🍳 Current active context before processing:', activeContext);
     
     // Determine active target list from context
     let targetListName = null;
@@ -773,7 +747,6 @@ isInActiveConversation(): boolean {
       }
     }
     
-    console.log('🍳 Determined target:', { targetListName, targetListId });
     
     // CRITICAL FIX: Set context in AI service before processing
     if (targetListName && targetListId) {
@@ -792,7 +765,6 @@ isInActiveConversation(): boolean {
         }
       };
       
-      console.log('🍳 Setting preserved context in AI service:', preservedContext);
       this.aiService.setConversationContext(preservedContext);
     }
     
@@ -801,7 +773,6 @@ isInActiveConversation(): boolean {
     
     // CRITICAL FIX: Ensure context is maintained after processing
     if (targetListName && targetListId && !result.conversationContext) {
-      console.log('🍳 Forcing context restoration after recipe processing');
       
       result.conversationContext = {
         lastAction: {
@@ -926,12 +897,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     }
   });
   
-  console.log('🍳 Voice Assistant Recipe detection:', { 
-    firstLine, 
-    originalInput: originalInput.substring(0, 50), 
-    detected: isRecipeDetected 
-  });
-  
   return isRecipeDetected;
 }
 
@@ -941,11 +906,9 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
 
   private handleDisambiguation(result: AIExecutionResult): void {
     if (!result.disambiguationOptions || !result.pendingAction) {
-      console.error('Invalid disambiguation data:', result);
+      this.logger.error('ai', 'Invalid disambiguation data received');
       return;
     }
-  
-    console.log('🎯 Handling disambiguation');
   
     // Convert options for compatibility - NO SKIP OPTION ADDED
     const compatibleOptions = result.disambiguationOptions.map((option: any) => ({
@@ -967,11 +930,8 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   async selectDisambiguationOption(option: any): Promise<void> {
-    console.log('🎯 Disambiguation option selected:', option);
-
     const disambiguation = this.chatPersistence.getDisambiguation();
     if (!disambiguation) {
-      console.error('🎯 No disambiguation available!');
       return;
     }
 
@@ -1003,7 +963,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   
     // CRITICAL FIX: Add timeout safeguard
     const timeoutId = setTimeout(() => {
-      console.error('🚨 Disambiguation operation timed out after 10 seconds');
+      this.logger.error('ai', 'Disambiguation operation timed out after 10 seconds');
       this.isProcessing = false;
       this.chatPersistence.addMessage('❌ Operation timed out. Please try again.', 'error');
       this.chatUI.scrollToBottom(this.messagesContainer, true);
@@ -1016,11 +976,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       (pendingAction as any).conversationListId = currentContext.waitingForArticles.listId;
     }
     
-    console.log('🎯 About to call handleDisambiguationChoice with:', {
-      pendingAction: pendingAction,
-      selectedOption: option,
-      currentContext: currentContext
-    });
 
     this.aiService.handleDisambiguationChoice(pendingAction, option)
       .then((result: AIExecutionResult) => {
@@ -1075,7 +1030,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       })
       .catch((error: any) => {
         clearTimeout(timeoutId); // CRITICAL: Clear timeout on error
-        console.error('🎯 Disambiguation error:', error);
+        this.logger.error('ai', `Disambiguation error: ${error}`);
         this.chatPersistence.addMessage(
           `❌ Fehler: ${error.message || 'Unbekannter Fehler'}`, 
           'error'
@@ -1089,7 +1044,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   skipCurrentArticle(pendingAction: any): void {
-    console.log('⏭️ Skipping current article from button');
     
     this.chatPersistence.setDisambiguation(null);
     
@@ -1114,7 +1068,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
         this.handleAIResult(result);
       })
       .catch((error: any) => {
-        console.error('⏭️ Error skipping article:', error);
+        this.logger.error('ai', `Error skipping article: ${error}`);
         this.chatPersistence.addMessage('❌ Fehler beim Überspringen des Artikels', 'error');
         this.chatUI.scrollToBottom(this.messagesContainer, true);
       })
@@ -1125,7 +1079,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   private handleSkipArticle(pendingAction: any, option: any): void {
-    console.log('⏭️ Handling skip for:', pendingAction.itemName);
     
     this.chatPersistence.setDisambiguation(null);
     
@@ -1139,7 +1092,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     
     // CRITICAL FIX: Handle sequential processing continuation
     if (this.isSequentialRecipeProcessing(pendingAction)) {
-      console.log('⏭️ Continuing sequential recipe processing after skip');
       
       this.aiService.handleDisambiguationChoice(pendingAction, {
         id: 'skip_item',
@@ -1152,7 +1104,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
         this.handleAIResult(result);
       })
       .catch((error: any) => {
-        console.error('⏭️ Error continuing after skip:', error);
+        this.logger.error('ai', `Error continuing after skip: ${error}`);
         this.chatPersistence.addMessage('❌ Fehler beim Fortsetzen der Verarbeitung', 'error');
       })
       .finally(() => {
@@ -1175,7 +1127,6 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   async skipAllRemaining(pendingAction: any): Promise<void> {
     if (!this.isSequentialRecipeProcessing(pendingAction)) return;
     
-    console.log('⏭️ Skipping all remaining items');
     
     this.chatPersistence.setDisambiguation(null);
     
@@ -1218,7 +1169,7 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
       }
       
     } catch (error) {
-      console.error('⏭️ Error skipping all items:', error);
+      this.logger.error('ai', `Error skipping all items: ${error}`);
       // FIXED: Still show success since skip operation worked
       this.chatPersistence.addMessage('✅ Alle restlichen Artikel übersprungen', 'assistant');
     } finally {
@@ -1476,16 +1427,11 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   async triggerRecovery() {
     try {
       const result = await this.aiService.triggerManualRecovery();
-      console.log('🔧 Recovery result:', result);
-      
-      // Optional: Show user feedback (you can integrate with your notification system)
-      if (result.success) {
-        console.log('✅ Recovery successful:', result.actions);
-      } else {
-        console.log('❌ Recovery failed:', result.message);
+      if (!result.success) {
+        this.logger.error('ai', `Recovery failed: ${result.message}`);
       }
     } catch (error) {
-      console.error('Recovery error:', error);
+      this.logger.error('ai', `Recovery error: ${error}`);
     }
   }
 
