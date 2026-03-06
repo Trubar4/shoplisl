@@ -124,6 +124,7 @@ export class AIService {
 
         // Track specific sub-events
         if (result.needsUserInput && result.disambiguationOptions) {
+          this.logger.info('analytics', `AI_DISAMBIGUATION_SHOWN — item: "${input.substring(0, 50)}", options: ${result.disambiguationOptions.length}`);
           this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_SHOWN, {
             itemName: input.substring(0, 200),
             optionsCount: result.disambiguationOptions.length
@@ -131,6 +132,7 @@ export class AIService {
         }
 
         if (commandType === 'recipe' && result.success) {
+          this.logger.info('analytics', `AI_RECIPE_PROCESSED — inputLength: ${input.length}, usedGroqApi: ${this.groqApi.hasApiKey()}`);
           this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_RECIPE_PROCESSED, {
             inputLength: input.length,
             usedGroqApi: this.groqApi.hasApiKey()

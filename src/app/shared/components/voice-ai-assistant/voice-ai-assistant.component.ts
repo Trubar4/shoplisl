@@ -149,6 +149,7 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
 
         const userId = this.authService.getCurrentUserId();
         if (userId) {
+          this.logger.info('analytics', `AI_VOICE_INPUT_USED — transcriptLength: ${result.transcript.length}`);
           this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_VOICE_INPUT_USED, {
             transcriptLength: result.transcript.length
           });
