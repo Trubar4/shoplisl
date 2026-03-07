@@ -89,6 +89,10 @@ export class AnalyticsAggregationService {
       avgListsPerUser: 0,
       avgArticlesPerList: 0,
       shareAcceptanceRate: 0,
+      shareInvitesSent: 0,
+      shareInvitesAccepted: 0,
+      listsUnshared: 0,
+      activeSharedLists: 0,
       topUsers: [],
     };
   }
@@ -244,8 +248,25 @@ export class AnalyticsAggregationService {
       })
     );
 
-    // Calculate share acceptance rate (placeholder - would need share events)
-    const shareAcceptanceRate = 0; // TODO: Implement when share tracking is available
+    // Calculate sharing metrics from real events
+    const shareInvitesSent = events.filter(
+      (e: any) => e.eventType === AnalyticsEventType.SHARE_INVITE_CREATED
+    ).length;
+    const shareInvitesAccepted = events.filter(
+      (e: any) => e.eventType === AnalyticsEventType.SHARE_INVITE_ACCEPTED
+    ).length;
+    const listsUnshared = events.filter(
+      (e: any) => e.eventType === AnalyticsEventType.LIST_UNSHARED
+    ).length;
+    const activeSharedLists = new Set(
+      events
+        .filter((e: any) => e.eventType === AnalyticsEventType.LIST_SHARED)
+        .map((e: any) => e.metadata?.listId)
+        .filter(Boolean)
+    ).size;
+    const shareAcceptanceRate = shareInvitesSent > 0
+      ? Math.round((shareInvitesAccepted / shareInvitesSent) * 1000) / 10
+      : 0;
 
     const metrics: OverviewMetrics = {
       totalUsers,
@@ -268,6 +289,10 @@ export class AnalyticsAggregationService {
       avgListsPerUser,
       avgArticlesPerList,
       shareAcceptanceRate,
+      shareInvitesSent,
+      shareInvitesAccepted,
+      listsUnshared,
+      activeSharedLists,
       topUsers,
     };
 
@@ -596,6 +621,10 @@ export interface OverviewMetrics {
   avgListsPerUser: number;
   avgArticlesPerList: number;
   shareAcceptanceRate: number;
+  shareInvitesSent: number;
+  shareInvitesAccepted: number;
+  listsUnshared: number;
+  activeSharedLists: number;
   topUsers: Array<{
     userId: string; // Actually contains user email for display purposes
     activityScore: number;
