@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-08T10:24:01.836Z",
+  "timestamp": "2026-03-08T10:34:25.074Z",
   "users": {
     "2RZNjeKK20hXdoy2vbZ61lnk0D62": {
       "lists": [],
@@ -6676,12 +6676,19 @@
             "FYl1b39fTArWcZMiBlDm": {
               "articleId": "FYl1b39fTArWcZMiBlDm",
               "articleName": "Kakis2",
-              "isChecked": true,
+              "isChecked": false,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
               "addedAt": "2026-02-13T09:52:25.676Z",
               "checkedAt": "2026-03-07T19:21:47.960Z",
               "history": [
+                {
+                  "timestamp": "2026-03-08T10:32:31.731Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "action": "unchecked",
+                  "amount": ""
+                },
                 {
                   "timestamp": "2026-03-07T19:21:47.960Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
@@ -7203,7 +7210,7 @@
               ]
             }
           },
-          "updatedAt": "2026-03-08T10:21:02.704Z"
+          "updatedAt": "2026-03-08T10:32:31.732Z"
         },
         {
           "id": "kiCWbfAZWROiU6IklBty",
