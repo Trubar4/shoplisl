@@ -94,7 +94,6 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
 
     this.articles$ = this.store.select(selectAllArticles);
 
-    // Get completed articles from the list
     const completedItemStates$ = this.store.select(
       selectCompletedArticlesFromList(this.list.id)
     );

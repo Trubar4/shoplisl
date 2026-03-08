@@ -352,102 +352,86 @@ enum EventType {
 
 ## Implementation Phases
 
-### Phase 1: Analytics Foundation (Week 1)
+### Phase 1: Analytics Foundation (Week 1) — COMPLETED
 **Goal:** Set up core analytics infrastructure
 
-**Tasks:**
-1. Create Firestore collections and security rules
-2. Implement `AnalyticsService` with batching
-3. Add session tracking
-4. Integrate event tracking in key user flows:
-   - User signup/login
-   - List creation/deletion
-   - Article addition
-   - Share invite creation/acceptance
-   - AI command execution
-5. Create daily aggregation Cloud Function (or client-side fallback)
-6. Test event collection in dev environment
+**Status:** ✅ Done (March 2026)
 
-**Deliverables:**
-- `AnalyticsService` working
-- Events being tracked
-- Daily aggregates being computed
-- Security rules in place
+**Completed:**
+1. ✅ Firestore collection `analytics/events/items` with security rules (admin read, authenticated write)
+2. ✅ `AnalyticsService` with batching (50-event buffer, 5-min flush, offline localStorage fallback)
+3. ✅ Session tracking (sessionId per browser session)
+4. ✅ Event tracking in all key user flows:
+   - `USER_LOGIN`, `USER_SIGNUP`, `USER_LOGOUT` (AuthService)
+   - `LIST_CREATED`, `LIST_UPDATED`, `LIST_DELETED` (ListsRepositoryService)
+   - `ARTICLE_CREATED`, `ARTICLE_UPDATED`, `ARTICLE_DELETED`, `ARTICLE_COPIED` (ArticlesRepositoryService)
+   - `ARTICLE_ADDED_TO_LIST`, `ARTICLE_REMOVED_FROM_LIST`, `ARTICLE_CHECKED`, `ARTICLE_UNCHECKED`, `LIST_VIEWED` (ListDetailComponent)
+   - `ARTICLE_MOVED_BETWEEN_LISTS` (DataService)
+   - `SHARE_INVITE_CREATED`, `LIST_SHARED`, `SHARE_INVITE_ACCEPTED`, `LIST_UNSHARED` (SharingService)
+   - `AI_COMMAND_EXECUTED`, `AI_COMMAND_FAILED`, `AI_DISAMBIGUATION_SHOWN`, `AI_RECIPE_PROCESSED` (AIService)
+   - `AI_VOICE_INPUT_USED` (VoiceAIAssistantComponent)
+5. ✅ Client-side aggregation (no Cloud Functions needed)
+6. ✅ Unit tests for sharing, article, and list analytics events
+
+**Known Issue:**
+- ⚠️ 50-event buffer + 5-min flush means events don't appear on dashboard immediately. Consider adding a "Flush Events" button or reducing buffer size for testing.
 
 ---
 
-### Phase 2: Admin Dashboard - Core Metrics (Week 2)
+### Phase 2: Admin Dashboard - Core Metrics (Week 2) — COMPLETED
 **Goal:** Build admin dashboard showing key metrics (1-13 from user's list)
 
-**Tasks:**
-1. Create admin route guard (restrict to your user ID)
-2. Build `/admin/analytics` component with tabs
-3. Implement "Overview" tab with:
-   - Total users
-   - Total lists
-   - Total shared lists
-   - Total articles
-   - Active users (last 7/14/30 days)
-4. Add manual refresh button (for testing)
-5. Implement date range selector
-6. Create reusable metric card component
-7. Add loading states and error handling
+**Status:** ✅ Done (March 2026)
 
-**Deliverables:**
-- Admin dashboard accessible at `/admin/analytics`
-- Shows metrics 1-13 from user's list
-- Refresh button works
-- Responsive design
+**Completed:**
+1. ✅ Admin route guard (checks admin user ID)
+2. ✅ Dashboard at `/admin/analytics` with metric cards
+3. ✅ Top 5 priority metrics: Total Users, Total Lists, Total Articles, Active Users (14d), AI Inputs
+4. ✅ Today's Activity card: lists/articles created/deleted, net change
+5. ✅ Extended Metrics: avg lists/user, avg articles/list
+6. ✅ Sharing & Collaboration card: invites sent/accepted, acceptance rate, active shared lists, collaborators removed
+7. ✅ Top Active Users (top 5 by event count, shows email)
+8. ✅ Manual refresh button (bypasses 5-min cache)
+9. ✅ Date range selector (7/14/30/90 days)
+10. ✅ Auth debug component + login warning for non-admin users
+11. ✅ Raw Events Viewer component
 
 ---
 
-### Phase 3: AI Assistant Analytics (Week 3)
+### Phase 3: AI Assistant Analytics (Week 3) — COMPLETED
 **Goal:** Track and display AI performance metrics
 
-**Tasks:**
-1. Enhance AI event tracking:
-   - Track command type, success/failure, response time
-   - Log failed commands with input text
-   - Track disambiguation events
-2. Build "AI Assistant" tab in dashboard:
-   - Total commands processed
-   - Success rate by command type
-   - Failed commands table (sortable)
-   - Cache hit rate
-   - Average response time
-3. Add export functionality (CSV) for failed commands
-4. Implement filtering and search for failed commands
+**Status:** ✅ Done (March 2026)
 
-**Deliverables:**
-- Comprehensive AI metrics
-- Failed commands are logged and exportable
-- Insights into AI performance
+**Completed:**
+1. ✅ AI event tracking with metadata: commandType, success, responseTime, cacheHit, inputText, errorMessage
+2. ✅ AI Assistant Performance card: success rate, successful/failed counts, avg response time, cache hit rate
+3. ✅ Failed Commands table (last 10, with input/type/error/timestamp)
+4. ✅ Export failed commands to CSV
+5. ✅ AI Command Type Breakdown pie chart (Chart.js)
+6. ✅ `AI_DISAMBIGUATION_SHOWN`, `AI_RECIPE_PROCESSED`, `AI_VOICE_INPUT_USED` events wired up
 
 ---
 
-### Phase 4: User Support Tools (Week 4)
+### Phase 4: User Support Tools (Week 4) — PARTIALLY COMPLETED
 **Goal:** Enable admin to search users and view activity
 
-**Tasks:**
-1. Build `/admin/user-support` component
-2. Implement user search (by email, ID, name)
-3. Create user profile viewer:
-   - Basic info (name, email, signup date, last active)
-   - Lists count, articles count, shared lists count
-   - Recent activity timeline (last 30 events)
-4. Add user data export (JSON format for GDPR)
-5. Implement "Delete User Account" with confirmation
-6. Add error log viewer (filter by user ID)
+**Status:** 🟡 Partial (March 2026)
 
-**Deliverables:**
-- User search working
-- User profiles viewable
-- Data export functional
-- Delete account working
+**Completed:**
+1. ✅ `/admin/user-support` route exists with navigation button
+2. ✅ `/admin/events-export` — query raw events by date range/userId/eventType, paginated table, XLSX export
+
+**Not Yet Done:**
+- [ ] User search by email/ID/name
+- [ ] User profile viewer (basic info, lists, articles, activity timeline)
+- [ ] User data export (GDPR JSON)
+- [ ] Delete user account
+- [ ] Error log viewer filtered by user
 
 ---
 
-### Phase 5: Feature Flags & A/B Testing (Week 5)
+### Phase 5: Feature Flags & A/B Testing (Week 5) — NOT STARTED
 **Goal:** Enable controlled feature rollouts and experiments
 
 **Tasks:**
@@ -471,7 +455,7 @@ enum EventType {
 
 ---
 
-### Phase 6: User Feedback System (Week 6)
+### Phase 6: User Feedback System (Week 6) — NOT STARTED
 **Goal:** Allow users to submit feedback; admin can review
 
 **Tasks:**
@@ -496,7 +480,7 @@ enum EventType {
 
 ---
 
-### Phase 7: Automated Alerts (Week 7)
+### Phase 7: Automated Alerts (Week 7) — NOT STARTED
 **Goal:** Get notified of critical events
 
 **Tasks:**
@@ -522,25 +506,23 @@ enum EventType {
 
 ---
 
-### Phase 8: Advanced Analytics & Visualizations (Week 8+)
+### Phase 8: Advanced Analytics & Visualizations (Week 8+) — PARTIALLY COMPLETED
 **Goal:** Add charts, trends, and deeper insights
 
-**Tasks:**
-1. Integrate charting library (Chart.js or Apache ECharts)
-2. Add visualizations:
-   - User growth chart (line chart)
-   - Feature adoption (bar chart)
-   - Retention cohort (heatmap)
-   - AI command distribution (pie chart)
-   - Active users over time (line chart)
-3. Add trend indicators (up/down arrows, % change)
-4. Implement drill-down capabilities
-5. Add comparative metrics (this week vs last week)
+**Status:** 🟡 Partial (March 2026)
 
-**Deliverables:**
-- Beautiful charts and graphs
-- Trend analysis
-- Interactive visualizations
+**Completed:**
+1. ✅ Chart.js integrated
+2. ✅ User Growth line chart (configurable 7/30/90 days)
+3. ✅ AI Command Type Breakdown pie chart
+4. ✅ Daily Activity bar chart (lists vs articles)
+
+**Not Yet Done:**
+- [ ] Feature adoption bar chart
+- [ ] Retention cohort heatmap
+- [ ] Trend indicators (up/down arrows, % change vs previous period)
+- [ ] Drill-down capabilities
+- [ ] Comparative metrics (this week vs last week)
 
 ---
 
@@ -728,34 +710,37 @@ canActivate(): boolean {
 
 ## Next Steps
 
-1. **Review this plan** - Confirm priorities and approach
-2. **Set up admin user ID** - Add your Firebase UID to environment config
-3. **Start Phase 1** - Implement AnalyticsService and event tracking
-4. **Iterate based on learnings** - Adjust plan as we go
+1. **Fix buffer flush visibility** — Add "Flush Events" button on dashboard or reduce buffer/interval so events appear faster
+2. **Feature adoption rates** — Show % of users using AI, sharing, voice input (uses existing events)
+3. **Retention analysis** — Track returning users, days between sessions, churn risk
+4. **User journey funnel** — Signup -> create list -> add article -> share -> invite accepted (drop-off analysis)
+5. **Complete Phase 4** — User search, profile viewer, GDPR data export
+6. **Phase 5-7** — Feature flags, feedback system, automated alerts
 
 ---
 
 ## Questions & Decisions
 
 ### Open Questions
-- [ ] Should we use Cloud Functions or client-side aggregation? (Client-side = simpler, no backend)
-- [ ] Chart library preference? (Chart.js = simple, ECharts = powerful)
 - [ ] Email provider for alerts? (SendGrid = 100/day free, Firebase Extensions = easier)
 - [ ] Want to add Google Analytics 4 alongside custom analytics?
+- [ ] Should buffer flush interval be reduced from 5 min to 30 sec for better UX?
 
 ### Decisions Made
 - ✅ Build custom analytics (no paid tools)
+- ✅ Client-side aggregation (no Cloud Functions needed — decided during Phase 1)
+- ✅ Chart.js for visualizations (decided during Phase 8)
 - ✅ Daily aggregation with manual refresh
 - ✅ Admin access: only you
-- ✅ Cost optimization: critical requirement
-- ✅ Feature flags: yes
-- ✅ User feedback: yes (custom implementation)
-- ✅ Alerts: yes (email notifications)
-- ✅ Export: CSV format, no external BI tools
+- ✅ Cost optimization: critical requirement (< $0.01/day)
+- ✅ Feature flags: yes (Phase 5, not started)
+- ✅ User feedback: yes, custom implementation (Phase 6, not started)
+- ✅ Alerts: yes, email notifications (Phase 7, not started)
+- ✅ Export: XLSX format via events export page
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-12-23
+**Document Version:** 2.0
+**Last Updated:** 2026-03-08
 **Author:** Claude Code
-**Status:** Ready for Implementation
+**Status:** Phases 1-3 Complete, Phase 4/8 Partial, Phases 5-7 Not Started

@@ -44,6 +44,8 @@ describe('VoiceAIAssistantComponent', () => {
   let voiceOutputServiceMock: any;
   let chatUIServiceMock: any;
   let disambiguationUIServiceMock: any;
+  let analyticsServiceMock: any;
+  let authServiceMock: any;
 
   // Mock window objects
   let mockSpeechRecognition: any;
@@ -167,7 +169,11 @@ describe('VoiceAIAssistantComponent', () => {
     loggerMock = {
       disableTopic: vi.fn(),
       enableTopic: vi.fn(),
-      log: vi.fn()
+      log: vi.fn(),
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
     };
 
     voiceInputServiceMock = {
@@ -223,6 +229,14 @@ describe('VoiceAIAssistantComponent', () => {
       trackByOptionId: vi.fn((index, option) => option.id || index.toString())
     };
 
+    analyticsServiceMock = {
+      trackEvent: vi.fn()
+    };
+
+    authServiceMock = {
+      getCurrentUserId: vi.fn(() => 'user1')
+    };
+
     // Create component instance directly (no TestBed)
     component = new VoiceAIAssistantComponent(
       aiServiceMock as AIService,
@@ -236,7 +250,9 @@ describe('VoiceAIAssistantComponent', () => {
       voiceInputServiceMock as any,
       voiceOutputServiceMock as any,
       chatUIServiceMock as any,
-      disambiguationUIServiceMock as any
+      disambiguationUIServiceMock as any,
+      analyticsServiceMock as any,
+      authServiceMock as any
     );
   });
 
@@ -1401,7 +1417,9 @@ describe('VoiceAIAssistantComponent', () => {
         voiceInputServiceMock as any,
         voiceOutputServiceMock as any,
         chatUIServiceMock as any,
-        disambiguationUIServiceMock as any
+        disambiguationUIServiceMock as any,
+        analyticsServiceMock as any,
+        authServiceMock as any
       );
 
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -1420,6 +1438,37 @@ describe('VoiceAIAssistantComponent', () => {
 
       expect(component['lastInputSource']).toBe('voice');
       expect(component['shouldProvideAudioFeedback']).toBe(true);
+    });
+
+    it('should track AI_VOICE_INPUT_USED analytics event on voice result', async () => {
+      component.ngOnInit();
+
+      voiceInputServiceMock.voiceResult$.next({
+        transcript: 'Füge Milch hinzu',
+        timestamp: new Date()
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+        'user1',
+        'ai_voice_input_used',
+        { transcriptLength: 'Füge Milch hinzu'.length }
+      );
+    });
+
+    it('should not track AI_VOICE_INPUT_USED when no user is logged in', async () => {
+      authServiceMock.getCurrentUserId = vi.fn(() => null);
+      component.ngOnInit();
+
+      voiceInputServiceMock.voiceResult$.next({
+        transcript: 'Füge Milch hinzu',
+        timestamp: new Date()
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(analyticsServiceMock.trackEvent).not.toHaveBeenCalled();
     });
   });
 

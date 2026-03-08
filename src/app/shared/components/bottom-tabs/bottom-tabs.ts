@@ -29,7 +29,7 @@ export class BottomTabsComponent {
       .subscribe((event: NavigationEnd) => {
         this.currentUrl = event.url;
       });
-    
+
     // Set initial URL
     this.currentUrl = this.router.url;
   }
