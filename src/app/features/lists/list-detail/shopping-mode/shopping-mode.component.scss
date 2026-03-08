@@ -33,6 +33,9 @@
   .selection-action-bar {
     position: fixed;
     bottom: 64px; // Above tab bar
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      bottom: calc(64px + env(safe-area-inset-bottom));
+    }
     left: 0;
     right: 0;
     display: flex;
@@ -112,6 +115,9 @@
   .suggestions-bar {
     position: fixed;
     bottom: 64px; // Above tab bar, same as selection-action-bar
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      bottom: calc(64px + env(safe-area-inset-bottom));
+    }
     left: 0;
     right: 0;
     display: flex;
