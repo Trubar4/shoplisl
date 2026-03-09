@@ -34,9 +34,18 @@
   // === SELECTION ACTION BAR ===
   .selection-action-bar {
     position: fixed;
-    bottom: 64px; // Fallback for browsers without env() support
+    bottom: 64px; // Desktop fallback
     bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
     bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
+
+    // Hard-coded mobile fallback: tab bar on iPhone = 58px + ~34px safe area = 92px.
+    // If env() is silently returning 0 (component encapsulation quirk), 100px
+    // guarantees we clear the tab bar without needing env() to work.
+    @media (max-width: 768px) {
+      bottom: 100px;
+      bottom: calc(64px + constant(safe-area-inset-bottom));
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
     left: 0;
     right: 0;
     display: flex;
@@ -115,9 +124,15 @@
   // === SUGGESTIONS BAR ===
   .suggestions-bar {
     position: fixed;
-    bottom: 64px; // Fallback for browsers without env() support
+    bottom: 64px; // Desktop fallback
     bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
     bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
+
+    @media (max-width: 768px) {
+      bottom: 100px; // iPhone hard-coded fallback (clears 58px tab + 34px safe area = 92px)
+      bottom: calc(64px + constant(safe-area-inset-bottom));
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
     left: 0;
     right: 0;
     display: flex;
