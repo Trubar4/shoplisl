@@ -3,7 +3,6 @@ import {
   Firestore,
   collection,
   addDoc,
-  writeBatch,
   serverTimestamp,
 } from '@angular/fire/firestore';
 import {
@@ -30,8 +29,8 @@ export class AnalyticsService {
   private logger = inject(LoggerService);
 
   private eventBuffer: AnalyticsEvent[] = [];
-  private readonly BATCH_SIZE = 50; // Write after 50 events (was 10)
-  private readonly FLUSH_INTERVAL = 300000; // Flush every 5 minutes (was 30 seconds)
+  private readonly BATCH_SIZE = 10; // Write after 10 events
+  private readonly FLUSH_INTERVAL = 30000; // Flush every 30 seconds
   private readonly STORAGE_KEY = 'shoplisl_analytics_buffer';
   private flushTimer: any;
   private sessionId: string;
@@ -158,9 +157,17 @@ export class AnalyticsService {
   }
 
   /**
-   * Flush buffered events to Firestore (async)
+   * Get the number of events currently pending in the buffer
    */
-  private async flush(): Promise<void> {
+  getBufferSize(): number {
+    return this.eventBuffer.length;
+  }
+
+  /**
+   * Flush buffered events to Firestore (async)
+   * Public so admins can force-flush from the dashboard.
+   */
+  async flush(): Promise<void> {
     if (this.eventBuffer.length === 0) {
       return;
     }
@@ -194,37 +201,9 @@ export class AnalyticsService {
   }
 
   /**
-   * Synchronous flush (for page unload)
-   */
-  private flushSync(): void {
-    if (this.eventBuffer.length === 0) {
-      return;
-    }
-
-    // Attempt async flush on page unload
-    // Note: Some events may be lost if page closes before write completes
-    this.flush();
-  }
-
-  /**
    * Write events to Firestore using batched writes
    */
   private async writeEventsBatch(events: AnalyticsEvent[]): Promise<void> {
-    const batch = writeBatch(this.firestore);
-    const eventsCollection = collection(this.firestore, 'analytics/events/items');
-
-    events.forEach((event) => {
-      const docRef = addDoc(eventsCollection as any, {
-        eventType: event.eventType,
-        userId: event.userId,
-        timestamp: serverTimestamp(),
-        sessionId: event.sessionId,
-        metadata: event.metadata || {},
-      });
-    });
-
-    // Actually, batched writes with addDoc don't work directly
-    // Let's write them individually but in parallel
     await Promise.all(
       events.map((event) =>
         addDoc(collection(this.firestore, 'analytics/events/items'), {

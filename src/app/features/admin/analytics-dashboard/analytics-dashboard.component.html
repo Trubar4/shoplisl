@@ -16,6 +16,18 @@
 
       <button
         mat-raised-button
+        color="accent"
+        (click)="flushEvents()"
+        [disabled]="flushing() || getBufferSize() === 0"
+        matTooltip="Force-write pending events to Firestore"
+      >
+        <mat-icon>upload</mat-icon>
+        Flush Events
+        <span *ngIf="getBufferSize() > 0" class="buffer-badge">{{ getBufferSize() }}</span>
+      </button>
+
+      <button
+        mat-raised-button
         color="primary"
         (click)="refresh()"
         [disabled]="loading()"
@@ -24,6 +36,12 @@
         Refresh
       </button>
     </div>
+  </div>
+
+  <!-- Flush result notification -->
+  <div *ngIf="flushResult()" class="flush-notification">
+    <mat-icon>{{ flushResult()!.includes('Failed') ? 'error' : 'check_circle' }}</mat-icon>
+    {{ flushResult() }}
   </div>
 
   <!-- Navigation -->
@@ -342,6 +360,84 @@
             <div class="user-rank">{{ i + 1 }}</div>
             <div class="user-email">{{ user.userId }}</div>
             <div class="user-score">{{ user.activityScore }} events</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Feature Adoption Card -->
+    <mat-card *ngIf="featureAdoption()" class="adoption-card">
+      <mat-card-header>
+        <mat-card-title>Feature Adoption Rates</mat-card-title>
+        <mat-card-subtitle>% of users who have ever used each feature (last {{ selectedDateRange }} days)</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="adoption-list">
+          <div class="adoption-item">
+            <div class="adoption-label">
+              <mat-icon class="adoption-icon ai-icon">smart_toy</mat-icon>
+              AI Assistant
+            </div>
+            <div class="adoption-bar-wrap">
+              <div class="adoption-bar" [style.width.%]="featureAdoption()!.aiAdoptionRate"></div>
+            </div>
+            <div class="adoption-pct">{{ featureAdoption()!.aiAdoptionRate }}%</div>
+            <div class="adoption-users">({{ featureAdoption()!.aiUsers }} users)</div>
+          </div>
+          <div class="adoption-item">
+            <div class="adoption-label">
+              <mat-icon class="adoption-icon share-icon">share</mat-icon>
+              Sharing
+            </div>
+            <div class="adoption-bar-wrap">
+              <div class="adoption-bar share" [style.width.%]="featureAdoption()!.sharingAdoptionRate"></div>
+            </div>
+            <div class="adoption-pct">{{ featureAdoption()!.sharingAdoptionRate }}%</div>
+            <div class="adoption-users">({{ featureAdoption()!.sharingUsers }} users)</div>
+          </div>
+          <div class="adoption-item">
+            <div class="adoption-label">
+              <mat-icon class="adoption-icon voice-icon">mic</mat-icon>
+              Voice Input
+            </div>
+            <div class="adoption-bar-wrap">
+              <div class="adoption-bar voice" [style.width.%]="featureAdoption()!.voiceAdoptionRate"></div>
+            </div>
+            <div class="adoption-pct">{{ featureAdoption()!.voiceAdoptionRate }}%</div>
+            <div class="adoption-users">({{ featureAdoption()!.voiceUsers }} users)</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Retention Metrics Card -->
+    <mat-card *ngIf="retention()" class="retention-card">
+      <mat-card-header>
+        <mat-card-title>User Retention</mat-card-title>
+        <mat-card-subtitle>% of users who returned after their first session (cohort: {{ retention()!.cohortSize }} users)</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="retention-grid">
+          <div class="retention-item">
+            <div class="retention-label">Day 1</div>
+            <div class="retention-value" [class.retention-good]="retention()!.day1 >= 40" [class.retention-mid]="retention()!.day1 >= 20 && retention()!.day1 < 40" [class.retention-low]="retention()!.day1 < 20">
+              {{ retention()!.day1 }}%
+            </div>
+            <div class="retention-sub">returned next day</div>
+          </div>
+          <div class="retention-item">
+            <div class="retention-label">Day 7</div>
+            <div class="retention-value" [class.retention-good]="retention()!.day7 >= 20" [class.retention-mid]="retention()!.day7 >= 10 && retention()!.day7 < 20" [class.retention-low]="retention()!.day7 < 10">
+              {{ retention()!.day7 }}%
+            </div>
+            <div class="retention-sub">returned after 1 week</div>
+          </div>
+          <div class="retention-item">
+            <div class="retention-label">Day 30</div>
+            <div class="retention-value" [class.retention-good]="retention()!.day30 >= 10" [class.retention-mid]="retention()!.day30 >= 5 && retention()!.day30 < 10" [class.retention-low]="retention()!.day30 < 5">
+              {{ retention()!.day30 }}%
+            </div>
+            <div class="retention-sub">returned after 1 month</div>
           </div>
         </div>
       </mat-card-content>

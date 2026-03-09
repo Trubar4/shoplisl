@@ -15,7 +15,10 @@ import { FormsModule } from '@angular/forms';
 import {
   AnalyticsAggregationService,
   OverviewMetrics,
+  FeatureAdoptionMetrics,
+  RetentionMetrics,
 } from '../../../core/services/analytics-aggregation.service';
+import { AnalyticsService } from '../../../core/services/analytics.service';
 import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer.component';
 import { AuthDebugComponent } from '../auth-debug/auth-debug.component';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
@@ -57,9 +60,15 @@ Chart.register(...registerables);
 })
 export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   metrics = signal<OverviewMetrics | null>(null);
+  featureAdoption = signal<FeatureAdoptionMetrics | null>(null);
+  retention = signal<RetentionMetrics | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
   selectedDateRange = 30; // Default to 30 days
+
+  // Flush state
+  flushing = signal(false);
+  flushResult = signal<string | null>(null);
 
   // Table columns for failed commands
   failedCommandsColumns = ['inputText', 'commandType', 'errorMessage', 'timestamp'];
@@ -74,7 +83,8 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
   private dailyActivityChart?: Chart;
 
   constructor(
-    private analyticsAggregation: AnalyticsAggregationService
+    private analyticsAggregation: AnalyticsAggregationService,
+    private analyticsService: AnalyticsService,
   ) {}
 
   ngOnInit(): void {
@@ -93,7 +103,7 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
   }
 
   /**
-   * Load analytics metrics
+   * Load analytics metrics, feature adoption, and retention data
    */
   loadMetrics(forceRefresh = false): void {
     this.loading.set(true);
@@ -112,6 +122,45 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
         this.loading.set(false);
       },
     });
+
+    this.analyticsAggregation.getFeatureAdoptionRates(this.selectedDateRange).subscribe({
+      next: (adoption) => this.featureAdoption.set(adoption),
+      error: (err) => console.error('Failed to load feature adoption:', err),
+    });
+
+    this.analyticsAggregation.getRetentionMetrics(this.selectedDateRange).subscribe({
+      next: (retention) => this.retention.set(retention),
+      error: (err) => console.error('Failed to load retention metrics:', err),
+    });
+  }
+
+  /**
+   * Force-flush pending analytics events to Firestore
+   */
+  async flushEvents(): Promise<void> {
+    const pending = this.analyticsService.getBufferSize();
+    if (pending === 0) {
+      this.flushResult.set('Buffer is already empty.');
+      setTimeout(() => this.flushResult.set(null), 3000);
+      return;
+    }
+    this.flushing.set(true);
+    this.flushResult.set(null);
+    try {
+      await this.analyticsService.flush();
+      this.flushResult.set(`Flushed ${pending} event${pending !== 1 ? 's' : ''} successfully.`);
+    } catch (err) {
+      this.flushResult.set('Flush failed – see console for details.');
+      console.error('Manual flush error:', err);
+    } finally {
+      this.flushing.set(false);
+      setTimeout(() => this.flushResult.set(null), 4000);
+    }
+  }
+
+  /** Current number of events waiting in the buffer */
+  getBufferSize(): number {
+    return this.analyticsService.getBufferSize();
   }
 
   /**
