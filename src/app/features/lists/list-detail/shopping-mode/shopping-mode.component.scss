@@ -21,20 +21,18 @@
   .content-container {
     flex: 1;
     overflow-y: auto;
-    // Use JS-measured tab bar height (set by BottomTabsComponent) + buffer for suggestions bar
-    padding-bottom: calc(var(--tab-bar-height, 61px) + 56px);
+    padding-bottom: 120px; // Desktop: above suggestions bar (64px bottom + 56px height)
 
     // Add extra padding when action bar is visible
     &.with-selection-actions {
-      padding-bottom: calc(var(--tab-bar-height, 61px) + 116px);
+      padding-bottom: 180px;
     }
   }
 
   // === SELECTION ACTION BAR ===
   .selection-action-bar {
     position: fixed;
-    // Use JS-measured tab bar height for reliable iPhone safe area support
-    bottom: var(--tab-bar-height, 61px);
+    bottom: 64px; // Desktop: sits just above the tab bar
     left: 0;
     right: 0;
     display: flex;
@@ -113,8 +111,7 @@
   // === SUGGESTIONS BAR ===
   .suggestions-bar {
     position: fixed;
-    // Use JS-measured tab bar height for reliable iPhone safe area support
-    bottom: var(--tab-bar-height, 61px);
+    bottom: 64px; // Desktop: just above the tab bar
     left: 0;
     right: 0;
     display: flex;
@@ -231,11 +228,22 @@
   }
 }
 
-// === RESPONSIVE ADJUSTMENTS ===
+// === MOBILE: Hard-coded safe values (no env() overrides below these) ===
+// 100px = tab bar (58px) + max iPhone safe area (34px) + 8px buffer
+// This covers ALL iPhone models without relying on env() or JS timing.
 @media (max-width: 768px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
+      // 100px (bar bottom) + 56px (bar height) + 4px buffer
+      padding-bottom: 160px;
+    }
+
+    .selection-action-bar {
+      bottom: 100px;
+    }
+
+    .suggestions-bar {
+      bottom: 100px;
     }
 
     .celebration-overlay .celebration-content {
@@ -258,7 +266,15 @@
 @media (max-width: 480px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
+      padding-bottom: 160px;
+    }
+
+    .selection-action-bar {
+      bottom: 100px;
+    }
+
+    .suggestions-bar {
+      bottom: 100px;
     }
 
     .celebration-overlay .celebration-content {
