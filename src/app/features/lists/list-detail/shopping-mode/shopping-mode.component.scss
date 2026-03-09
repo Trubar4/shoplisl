@@ -22,20 +22,21 @@
     flex: 1;
     overflow-y: auto;
     padding-bottom: 120px;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
 
     // Add extra padding when action bar is visible
     &.with-selection-actions {
       padding-bottom: 180px;
+      padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
     }
   }
 
   // === SELECTION ACTION BAR ===
   .selection-action-bar {
     position: fixed;
-    bottom: 64px; // Above tab bar
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      bottom: calc(64px + env(safe-area-inset-bottom));
-    }
+    bottom: 64px; // Fallback for browsers without env() support
+    bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
     left: 0;
     right: 0;
     display: flex;
@@ -114,10 +115,9 @@
   // === SUGGESTIONS BAR ===
   .suggestions-bar {
     position: fixed;
-    bottom: 64px; // Above tab bar, same as selection-action-bar
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      bottom: calc(64px + env(safe-area-inset-bottom));
-    }
+    bottom: 64px; // Fallback for browsers without env() support
+    bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
     left: 0;
     right: 0;
     display: flex;
