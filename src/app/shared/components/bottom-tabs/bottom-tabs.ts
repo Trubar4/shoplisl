@@ -35,7 +35,15 @@ export class BottomTabsComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    // Measure immediately for a first-pass value
     this.updateTabBarHeight();
+    // Re-measure after a frame so env(safe-area-inset-bottom) CSS is fully resolved.
+    // On iOS the safe-area value can be 0 on the first synchronous read.
+    requestAnimationFrame(() => {
+      this.updateTabBarHeight();
+      // One more pass after a short delay as a belt-and-suspenders measure
+      setTimeout(() => this.updateTabBarHeight(), 150);
+    });
   }
 
   @HostListener('window:resize')

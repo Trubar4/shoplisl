@@ -231,27 +231,22 @@
 // === MOBILE: Hard-coded safe values (no env() overrides below these) ===
 // 100px = tab bar (58px) + max iPhone safe area (34px) + 8px buffer
 // This covers ALL iPhone models without relying on env() or JS timing.
-// === MOBILE: Safe-area-aware positioning for Safari browser AND PWA ===
-// Formula: mirrors tab-bar height (58px + env) + 12px clearance buffer
-// - Safari browser (env=0px):  calc(58 + 0  + 12) = 70px  > 58px tab bar ✓
-// - PWA standalone (env=34px): calc(58 + 34 + 12) = 104px > 92px tab bar ✓
-// Plain 70px fallback is used by browsers that don't support env() at all.
+// === MOBILE: use JS-measured --tab-bar-height (set by BottomTabsComponent) ===
+// 110px fallback: clears 92px max tab bar (58px + 34px safe area) with 18px buffer.
+// JS re-measures after requestAnimationFrame so env() CSS is fully resolved on iOS.
 @media (max-width: 768px) {
   .shopping-mode {
     .content-container {
-      // bar-bottom (min 70px) + bar-height (56px) + buffer (14px)
-      padding-bottom: 140px;
-      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
+      // tab-bar-height (min 110px) + suggestions-bar height (56px) + 4px
+      padding-bottom: calc(var(--tab-bar-height, 110px) + 60px);
     }
 
     .selection-action-bar {
-      bottom: 70px;
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
+      bottom: var(--tab-bar-height, 110px);
     }
 
     .suggestions-bar {
-      bottom: 70px;
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
+      bottom: var(--tab-bar-height, 110px);
     }
 
     .celebration-overlay .celebration-content {
@@ -274,18 +269,15 @@
 @media (max-width: 480px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: 140px;
-      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
+      padding-bottom: calc(var(--tab-bar-height, 110px) + 60px);
     }
 
     .selection-action-bar {
-      bottom: 70px;
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
+      bottom: var(--tab-bar-height, 110px);
     }
 
     .suggestions-bar {
-      bottom: 70px;
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
+      bottom: var(--tab-bar-height, 110px);
     }
 
     .celebration-overlay .celebration-content {
