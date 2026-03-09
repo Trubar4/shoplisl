@@ -385,6 +385,20 @@ export class AnalyticsAggregationService {
   }
 
   /**
+   * Get feature adoption rates: % of users who have ever used AI, sharing, or voice input.
+   */
+  getFeatureAdoptionRates(dateRange: number = 30): Observable<FeatureAdoptionMetrics> {
+    return from(this.computeFeatureAdoptionRates(dateRange));
+  }
+
+  /**
+   * Get user retention: day-1, day-7, day-30 return rates based on USER_LOGIN events.
+   */
+  getRetentionMetrics(dateRange: number = 90): Observable<RetentionMetrics> {
+    return from(this.computeRetentionMetrics(dateRange));
+  }
+
+  /**
    * Get detailed AI command breakdown
    */
   getAICommandBreakdown(): Observable<AICommandBreakdown> {
@@ -511,6 +525,138 @@ export class AnalyticsAggregationService {
     } catch (error) {
       this.logger.error('analytics', 'Failed to compute user growth time series:', error);
       return [];
+    }
+  }
+
+  /**
+   * Compute feature adoption rates.
+   * For each feature, count distinct userIds that fired the relevant event type,
+   * then divide by total registered users.
+   */
+  private async computeFeatureAdoptionRates(dateRange: number): Promise<FeatureAdoptionMetrics> {
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - dateRange);
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      limit(500)
+    );
+
+    try {
+      const eventsSnapshot = await getDocs(q);
+      this.quotaMonitor.trackRead('Analytics Feature Adoption Query', eventsSnapshot.size);
+
+      const totalUsers = await this.countTotalUsers();
+
+      const aiUsers = new Set<string>();
+      const sharingUsers = new Set<string>();
+      const voiceUsers = new Set<string>();
+
+      eventsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const userId = data['userId'];
+        if (!userId) return;
+        switch (data['eventType']) {
+          case AnalyticsEventType.AI_COMMAND_EXECUTED:
+            aiUsers.add(userId);
+            break;
+          case AnalyticsEventType.SHARE_INVITE_CREATED:
+            sharingUsers.add(userId);
+            break;
+          case AnalyticsEventType.AI_VOICE_INPUT_USED:
+            voiceUsers.add(userId);
+            break;
+        }
+      });
+
+      const rate = (count: number) =>
+        totalUsers > 0 ? Math.round((count / totalUsers) * 1000) / 10 : 0;
+
+      return {
+        aiAdoptionRate: rate(aiUsers.size),
+        sharingAdoptionRate: rate(sharingUsers.size),
+        voiceAdoptionRate: rate(voiceUsers.size),
+        aiUsers: aiUsers.size,
+        sharingUsers: sharingUsers.size,
+        voiceUsers: voiceUsers.size,
+        totalUsers,
+      };
+    } catch (error) {
+      this.logger.error('analytics', 'Failed to compute feature adoption rates:', error);
+      return { aiAdoptionRate: 0, sharingAdoptionRate: 0, voiceAdoptionRate: 0, aiUsers: 0, sharingUsers: 0, voiceUsers: 0, totalUsers: 0 };
+    }
+  }
+
+  /**
+   * Compute retention metrics using USER_LOGIN events.
+   * For each user, find their first login date in the dataset, then check
+   * whether they also logged in on day +1, +7, and +30.
+   */
+  private async computeRetentionMetrics(dateRange: number): Promise<RetentionMetrics> {
+    // Query a wide window so we can detect day-30 returns
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - Math.max(dateRange, 60));
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('eventType', '==', AnalyticsEventType.USER_LOGIN),
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      limit(500)
+    );
+
+    try {
+      const eventsSnapshot = await getDocs(q);
+      this.quotaMonitor.trackRead('Analytics Retention Query', eventsSnapshot.size);
+
+      // Build a map: userId -> Set of ISO date strings (YYYY-MM-DD) when they logged in
+      const userLoginDates = new Map<string, Set<string>>();
+      eventsSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const userId = data['userId'];
+        if (!userId) return;
+        const ts = data['timestamp']?.toDate ? data['timestamp'].toDate() : new Date(data['timestamp']);
+        const dateKey = ts.toISOString().split('T')[0];
+        if (!userLoginDates.has(userId)) userLoginDates.set(userId, new Set());
+        userLoginDates.get(userId)!.add(dateKey);
+      });
+
+      if (userLoginDates.size === 0) {
+        return { day1: 0, day7: 0, day30: 0, cohortSize: 0 };
+      }
+
+      // For each user, their "day 0" = earliest login date in the data
+      let returnedDay1 = 0;
+      let returnedDay7 = 0;
+      let returnedDay30 = 0;
+      const cohortSize = userLoginDates.size;
+
+      const addDays = (isoDate: string, days: number): string => {
+        const d = new Date(isoDate);
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+      };
+
+      userLoginDates.forEach((dates) => {
+        const sortedDates = Array.from(dates).sort();
+        const firstDate = sortedDates[0];
+        if (dates.has(addDays(firstDate, 1))) returnedDay1++;
+        if (dates.has(addDays(firstDate, 7))) returnedDay7++;
+        if (dates.has(addDays(firstDate, 30))) returnedDay30++;
+      });
+
+      const pct = (n: number) => Math.round((n / cohortSize) * 1000) / 10;
+      return {
+        day1: pct(returnedDay1),
+        day7: pct(returnedDay7),
+        day30: pct(returnedDay30),
+        cohortSize,
+      };
+    } catch (error) {
+      this.logger.error('analytics', 'Failed to compute retention metrics:', error);
+      return { day1: 0, day7: 0, day30: 0, cohortSize: 0 };
     }
   }
 
@@ -646,4 +792,21 @@ export interface DailyActivityData {
   date: string;
   listsCreated: number;
   articlesCreated: number;
+}
+
+export interface FeatureAdoptionMetrics {
+  aiAdoptionRate: number;       // % of users who used AI
+  sharingAdoptionRate: number;  // % of users who used sharing
+  voiceAdoptionRate: number;    // % of users who used voice input
+  aiUsers: number;
+  sharingUsers: number;
+  voiceUsers: number;
+  totalUsers: number;
+}
+
+export interface RetentionMetrics {
+  day1: number;   // % of users who returned on day 1
+  day7: number;   // % of users who returned on day 7
+  day30: number;  // % of users who returned on day 30
+  cohortSize: number;
 }
