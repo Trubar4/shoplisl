@@ -114,7 +114,8 @@ export class AnalyticsAggregationService {
     const eventsQuery = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
-      limit(500) // Reduced from 10k - sufficient for small user base
+      orderBy('timestamp', 'desc'),
+      limit(500) // Most recent 500 events in range
     );
 
     this.logger.debug('analytics', `📊 Analytics: Querying events (last ${dateRange} days, max 500)...`);

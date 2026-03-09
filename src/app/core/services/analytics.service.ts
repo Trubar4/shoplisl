@@ -3,7 +3,6 @@ import {
   Firestore,
   collection,
   addDoc,
-  writeBatch,
   serverTimestamp,
 } from '@angular/fire/firestore';
 import {
@@ -205,21 +204,6 @@ export class AnalyticsService {
    * Write events to Firestore using batched writes
    */
   private async writeEventsBatch(events: AnalyticsEvent[]): Promise<void> {
-    const batch = writeBatch(this.firestore);
-    const eventsCollection = collection(this.firestore, 'analytics/events/items');
-
-    events.forEach((event) => {
-      const docRef = addDoc(eventsCollection as any, {
-        eventType: event.eventType,
-        userId: event.userId,
-        timestamp: serverTimestamp(),
-        sessionId: event.sessionId,
-        metadata: event.metadata || {},
-      });
-    });
-
-    // Actually, batched writes with addDoc don't work directly
-    // Let's write them individually but in parallel
     await Promise.all(
       events.map((event) =>
         addDoc(collection(this.firestore, 'analytics/events/items'), {
