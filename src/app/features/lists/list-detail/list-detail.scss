@@ -504,7 +504,8 @@
     }
     
     .edit-actions {
-      bottom: 100px; // 100px = tab bar (58px) + max safe area (34px) + 8px buffer
+      bottom: 70px;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
       height: 76px;
       padding: 14px;
 
@@ -542,7 +543,8 @@
     }
     
     .edit-actions {
-      bottom: 100px; // Same safe value as 768px breakpoint
+      bottom: 70px;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
       height: 72px;
       padding: 12px;
       gap: 6px;
@@ -567,22 +569,24 @@
 }
 
 // === MOBILE PADDING: ensures content scrolls above fixed bars ===
-// edit-mode uses 100px (bar bottom) + 80px (bar height) = 180px
+// Mirrors the button bottom formula + button height + small buffer
 .list-detail {
   .edit-mode-container .content-container {
-    padding-bottom: 180px;
+    padding-bottom: 160px;
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
   }
 }
 
 @media (max-width: 768px) {
   .list-detail {
     .content-container {
-      // 100px (suggestions bar bottom on mobile) + 56px (bar height) + 4px
-      padding-bottom: 160px;
+      padding-bottom: 140px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: 180px;
+      padding-bottom: 160px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
     }
   }
 }
@@ -590,11 +594,13 @@
 @media (max-width: 480px) {
   .list-detail {
     .content-container {
-      padding-bottom: 160px;
+      padding-bottom: 140px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: 180px;
+      padding-bottom: 160px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
     }
   }
 }
