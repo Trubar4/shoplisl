@@ -30,8 +30,8 @@ export class AnalyticsService {
   private logger = inject(LoggerService);
 
   private eventBuffer: AnalyticsEvent[] = [];
-  private readonly BATCH_SIZE = 50; // Write after 50 events (was 10)
-  private readonly FLUSH_INTERVAL = 300000; // Flush every 5 minutes (was 30 seconds)
+  private readonly BATCH_SIZE = 10; // Write after 10 events
+  private readonly FLUSH_INTERVAL = 30000; // Flush every 30 seconds
   private readonly STORAGE_KEY = 'shoplisl_analytics_buffer';
   private flushTimer: any;
   private sessionId: string;
@@ -158,9 +158,17 @@ export class AnalyticsService {
   }
 
   /**
-   * Flush buffered events to Firestore (async)
+   * Get the number of events currently pending in the buffer
    */
-  private async flush(): Promise<void> {
+  getBufferSize(): number {
+    return this.eventBuffer.length;
+  }
+
+  /**
+   * Flush buffered events to Firestore (async)
+   * Public so admins can force-flush from the dashboard.
+   */
+  async flush(): Promise<void> {
     if (this.eventBuffer.length === 0) {
       return;
     }
@@ -191,19 +199,6 @@ export class AnalyticsService {
     } finally {
       this.isWriting = false;
     }
-  }
-
-  /**
-   * Synchronous flush (for page unload)
-   */
-  private flushSync(): void {
-    if (this.eventBuffer.length === 0) {
-      return;
-    }
-
-    // Attempt async flush on page unload
-    // Note: Some events may be lost if page closes before write completes
-    this.flush();
   }
 
   /**
