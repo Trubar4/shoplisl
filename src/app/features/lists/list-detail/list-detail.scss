@@ -186,7 +186,7 @@
     flex: 1;
     overflow-y: auto;
     background-color: white;
-    padding-bottom: calc(var(--tab-bar-height, 61px) + 56px);
+    padding-bottom: 120px; // Desktop: above suggestions bar (64px bottom + 56px height)
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
@@ -335,7 +335,7 @@
 
     .edit-actions {
       position: fixed;
-      bottom: var(--tab-bar-height, 61px);
+      bottom: 64px; // Desktop: sits just above the tab bar
       left: 0;
       right: 0;
       display: flex;
@@ -504,9 +504,11 @@
     }
     
     .edit-actions {
+      bottom: 70px;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
       height: 76px;
       padding: 14px;
-      
+
       .action-button {
         height: 44px;
         font-size: 13px;
@@ -541,10 +543,12 @@
     }
     
     .edit-actions {
+      bottom: 70px;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 12px);
       height: 72px;
       padding: 12px;
       gap: 6px;
-      
+
       .action-button {
         height: 42px;
         font-size: 12px;
@@ -564,24 +568,25 @@
   }
 }
 
-// === SAFE AREA ADJUSTMENTS ===
-// Content padding and action bar positioning use --tab-bar-height CSS variable
-// (set by BottomTabsComponent via JS offsetHeight measurement) for accurate
-// iPhone safe area support without relying on env() in component styles.
+// === MOBILE PADDING: ensures content scrolls above fixed bars ===
+// Mirrors the button bottom formula + button height + small buffer
 .list-detail {
   .edit-mode-container .content-container {
-    padding-bottom: calc(var(--tab-bar-height, 61px) + 116px);
+    padding-bottom: 160px;
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
   }
 }
 
 @media (max-width: 768px) {
   .list-detail {
     .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
+      padding-bottom: 140px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 116px);
+      padding-bottom: 160px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
     }
   }
 }
@@ -589,11 +594,13 @@
 @media (max-width: 480px) {
   .list-detail {
     .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
+      padding-bottom: 140px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 82px);
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: calc(var(--tab-bar-height, 58px) + 116px);
+      padding-bottom: 160px;
+      padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 102px);
     }
   }
 }
