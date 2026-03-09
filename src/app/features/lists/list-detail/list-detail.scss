@@ -186,7 +186,7 @@
     flex: 1;
     overflow-y: auto;
     background-color: white;
-    padding-bottom: 120px;
+    padding-bottom: calc(var(--tab-bar-height, 61px) + 56px);
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
@@ -335,7 +335,7 @@
 
     .edit-actions {
       position: fixed;
-      bottom: 64px;
+      bottom: var(--tab-bar-height, 61px);
       left: 0;
       right: 0;
       display: flex;
@@ -565,42 +565,35 @@
 }
 
 // === SAFE AREA ADJUSTMENTS ===
-@supports(padding-bottom: env(safe-area-inset-bottom)) {
+// Content padding and action bar positioning use --tab-bar-height CSS variable
+// (set by BottomTabsComponent via JS offsetHeight measurement) for accurate
+// iPhone safe area support without relying on env() in component styles.
+.list-detail {
+  .edit-mode-container .content-container {
+    padding-bottom: calc(var(--tab-bar-height, 61px) + 116px);
+  }
+}
+
+@media (max-width: 768px) {
   .list-detail {
     .content-container {
-      padding-bottom: calc(120px + env(safe-area-inset-bottom));
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
     }
 
     .edit-mode-container .content-container {
-      padding-bottom: calc(180px + env(safe-area-inset-bottom));
-    }
-    
-    .edit-actions {
-      bottom: calc(64px + env(safe-area-inset-bottom));
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 116px);
     }
   }
+}
 
-  @media (max-width: 768px) {
-    .list-detail {
-      .content-container {
-        padding-bottom: calc(130px + env(safe-area-inset-bottom));
-      }
-
-      .edit-mode-container .content-container {
-        padding-bottom: calc(180px + env(safe-area-inset-bottom));
-      }
+@media (max-width: 480px) {
+  .list-detail {
+    .content-container {
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
     }
-  }
 
-  @media (max-width: 480px) {
-    .list-detail {
-      .content-container {
-        padding-bottom: calc(120px + env(safe-area-inset-bottom));
-      }
-
-      .edit-mode-container .content-container {
-        padding-bottom: calc(170px + env(safe-area-inset-bottom));
-      }
+    .edit-mode-container .content-container {
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 116px);
     }
   }
 }

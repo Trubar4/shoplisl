@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, HostListener } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -19,10 +19,10 @@ import { AuthButtonComponent } from '../auth-button/auth-button.component';
   templateUrl: './bottom-tabs.html',
   styleUrls: ['./bottom-tabs.scss']
 })
-export class BottomTabsComponent {
+export class BottomTabsComponent implements AfterViewInit {
   currentUrl: string = '';
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private el: ElementRef) {
     // Track route changes to update active state
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
@@ -32,6 +32,18 @@ export class BottomTabsComponent {
 
     // Set initial URL
     this.currentUrl = this.router.url;
+  }
+
+  ngAfterViewInit(): void {
+    this.updateTabBarHeight();
+  }
+
+  @HostListener('window:resize')
+  updateTabBarHeight(): void {
+    const height = this.el.nativeElement.offsetHeight;
+    if (height > 0) {
+      document.documentElement.style.setProperty('--tab-bar-height', `${height}px`);
+    }
   }
 
   isActive(route: string): boolean {

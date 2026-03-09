@@ -21,31 +21,20 @@
   .content-container {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 120px;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    // Use JS-measured tab bar height (set by BottomTabsComponent) + buffer for suggestions bar
+    padding-bottom: calc(var(--tab-bar-height, 61px) + 56px);
 
     // Add extra padding when action bar is visible
     &.with-selection-actions {
-      padding-bottom: 180px;
-      padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(var(--tab-bar-height, 61px) + 116px);
     }
   }
 
   // === SELECTION ACTION BAR ===
   .selection-action-bar {
     position: fixed;
-    bottom: 64px; // Desktop fallback
-    bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
-
-    // Hard-coded mobile fallback: tab bar on iPhone = 58px + ~34px safe area = 92px.
-    // If env() is silently returning 0 (component encapsulation quirk), 100px
-    // guarantees we clear the tab bar without needing env() to work.
-    @media (max-width: 768px) {
-      bottom: 100px;
-      bottom: calc(64px + constant(safe-area-inset-bottom));
-      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    }
+    // Use JS-measured tab bar height for reliable iPhone safe area support
+    bottom: var(--tab-bar-height, 61px);
     left: 0;
     right: 0;
     display: flex;
@@ -124,15 +113,8 @@
   // === SUGGESTIONS BAR ===
   .suggestions-bar {
     position: fixed;
-    bottom: 64px; // Desktop fallback
-    bottom: calc(64px + constant(safe-area-inset-bottom)); // iOS 11.0
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px)); // iOS 11.2+
-
-    @media (max-width: 768px) {
-      bottom: 100px; // iPhone hard-coded fallback (clears 58px tab + 34px safe area = 92px)
-      bottom: calc(64px + constant(safe-area-inset-bottom));
-      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    }
+    // Use JS-measured tab bar height for reliable iPhone safe area support
+    bottom: var(--tab-bar-height, 61px);
     left: 0;
     right: 0;
     display: flex;
@@ -253,7 +235,7 @@
 @media (max-width: 768px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: 130px;
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
     }
 
     .celebration-overlay .celebration-content {
@@ -276,7 +258,7 @@
 @media (max-width: 480px) {
   .shopping-mode {
     .content-container {
-      padding-bottom: 120px;
+      padding-bottom: calc(var(--tab-bar-height, 58px) + 56px);
     }
 
     .celebration-overlay .celebration-content {
