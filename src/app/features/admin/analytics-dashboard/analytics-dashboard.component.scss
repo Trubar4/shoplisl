@@ -442,6 +442,157 @@
   }
 }
 
+// Buffer badge on Flush Events button
+.buffer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f44336;
+  color: white;
+  border-radius: 12px;
+  min-width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 5px;
+  margin-left: 6px;
+  line-height: 1;
+}
+
+// Flush notification banner
+.flush-notification {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background-color: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1b5e20;
+
+  mat-icon {
+    color: #4caf50;
+  }
+}
+
+// Feature Adoption Card
+.adoption-card {
+  margin-bottom: 24px;
+
+  .adoption-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  .adoption-item {
+    display: grid;
+    grid-template-columns: 160px 1fr 60px 90px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .adoption-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+
+    .adoption-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+
+      &.ai-icon    { color: #f44336; }
+      &.share-icon { color: #2196f3; }
+      &.voice-icon { color: #9c27b0; }
+    }
+  }
+
+  .adoption-bar-wrap {
+    height: 12px;
+    background-color: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .adoption-bar {
+    height: 100%;
+    background-color: #f44336;
+    border-radius: 6px;
+    transition: width 0.4s ease;
+    min-width: 2px;
+
+    &.share { background-color: #2196f3; }
+    &.voice { background-color: #9c27b0; }
+  }
+
+  .adoption-pct {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.87);
+  }
+
+  .adoption-users {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.54);
+  }
+}
+
+// Retention Metrics Card
+.retention-card {
+  margin-bottom: 24px;
+
+  .retention-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 16px 0;
+  }
+
+  .retention-item {
+    text-align: center;
+    padding: 20px 16px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+  }
+
+  .retention-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.6);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .retention-value {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+
+    &.retention-good { color: #4caf50; }
+    &.retention-mid  { color: #ff9800; }
+    &.retention-low  { color: #f44336; }
+  }
+
+  .retention-sub {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.54);
+  }
+}
+
+// Sharing Metrics Card — reuse extended-metrics-card styles
+.sharing-metrics-card {
+  margin-bottom: 24px;
+}
+
 // Responsive adjustments
 @media (max-width: 768px) {
   .analytics-dashboard {
