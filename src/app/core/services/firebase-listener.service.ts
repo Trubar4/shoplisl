@@ -545,7 +545,10 @@ export class FirebaseListenerService {
         return;
       }
 
-      const isOwnedList = list.ownerId === userId;
+      // Legacy lists created before Phase 8 have an empty ownerId.
+      // Treat them as owned by the current user — they must be, since the
+      // shared path would construct `users-v2//lists/…` which Firebase rejects.
+      const isOwnedList = !list.ownerId || list.ownerId === userId;
 
       if (isOwnedList) {
         this.setupSingleOwnedListListener(list);

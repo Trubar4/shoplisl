@@ -691,7 +691,8 @@ export class ListDetailComponent implements OnInit, OnDestroy {
         // Phase 8: Check ownership for edit/delete permissions
         if (list) {
           this.authService.getCurrentUser().pipe(take(1)).subscribe(user => {
-            const isOwner = user?.id === list.ownerId;
+            // Legacy lists created before Phase 8 have an empty ownerId — treat as owned.
+            const isOwner = !list.ownerId || user?.id === list.ownerId;
             this.isOwner.set(isOwner);
           });
 
