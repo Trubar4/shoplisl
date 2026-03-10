@@ -91,7 +91,11 @@ export const selectListsSortedByName = createSelector(
 export const selectListsSortedByUpdate = createSelector(
   selectAllLists,
   (lists) =>
-    [...lists].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    [...lists].sort((a, b) => {
+      const toMs = (v: any): number =>
+        v instanceof Date ? v.getTime() : (v?.toMillis?.() ?? 0);
+      return toMs(b.updatedAt) - toMs(a.updatedAt);
+    })
 );
 
 /** Select lists with item counts */
@@ -159,10 +163,12 @@ export const selectCompletedArticlesFromList = (listId: string) =>
       .filter(([_, state]) => state.isChecked)
       .map(([_, state]) => state)
       .sort((a, b) => {
-        // Sort by checkedAt date, most recent first
-        const dateA = a.checkedAt?.getTime() || 0;
-        const dateB = b.checkedAt?.getTime() || 0;
-        return dateB - dateA;
+        // Sort by checkedAt date, most recent first.
+        // checkedAt may be a JS Date or a Firestore Timestamp (has toMillis()),
+        // depending on which code path populated the store.
+        const toMs = (v: any): number =>
+          v instanceof Date ? v.getTime() : (v?.toMillis?.() ?? 0);
+        return toMs(b.checkedAt) - toMs(a.checkedAt);
       });
   });
 
