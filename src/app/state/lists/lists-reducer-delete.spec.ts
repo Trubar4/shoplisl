@@ -107,7 +107,11 @@ describe('Lists Reducer – delete race condition (Bug 2)', () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   describe('deleteListSuccess', () => {
-    it('removes the listId from deletingListIds', () => {
+    it('keeps listId in deletingListIds (guard stays active until loadListsSuccess confirms)', () => {
+      // deleteListSuccess intentionally does NOT clean deletingListIds.
+      // The guard must survive until loadListsSuccess receives a Firebase payload
+      // that no longer contains the deleted list, preventing a stale mergeLists()
+      // debounce emission from re-adding the list via setAll.
       const list = makeList('list-1');
       const afterDelete = listsReducer(
         stateWithLists(list),
@@ -119,7 +123,8 @@ describe('Lists Reducer – delete race condition (Bug 2)', () => {
         afterDelete,
         ListsActions.deleteListSuccess({ listId: 'list-1' })
       );
-      expect(afterSuccess.deletingListIds).not.toContain('list-1');
+      // Guard must still be present
+      expect(afterSuccess.deletingListIds).toContain('list-1');
     });
 
     it('sets loading: false', () => {
@@ -132,6 +137,35 @@ describe('Lists Reducer – delete race condition (Bug 2)', () => {
         ListsActions.deleteListSuccess({ listId: 'list-1' })
       );
       expect(afterSuccess.loading).toBeFalse();
+    });
+
+    it('guard is removed once loadListsSuccess confirms Firebase no longer has the list', () => {
+      const list = makeList('list-1');
+      const afterDelete = listsReducer(stateWithLists(list), ListsActions.deleteList({ listId: 'list-1' }));
+      const afterSuccess = listsReducer(afterDelete, ListsActions.deleteListSuccess({ listId: 'list-1' }));
+
+      // Firebase now confirms the list is gone → loadListsSuccess without it
+      const afterConfirmed = listsReducer(
+        afterSuccess,
+        ListsActions.loadListsSuccess({ lists: [] })
+      );
+      expect(afterConfirmed.deletingListIds).not.toContain('list-1');
+    });
+
+    it('stale loadListsSuccess (list still in Firebase) does not re-add the list', () => {
+      const list = makeList('list-1');
+      const afterDelete = listsReducer(stateWithLists(list), ListsActions.deleteList({ listId: 'list-1' }));
+      const afterSuccess = listsReducer(afterDelete, ListsActions.deleteListSuccess({ listId: 'list-1' }));
+
+      // Stale Firebase emission still includes the list
+      const afterStale = listsReducer(
+        afterSuccess,
+        ListsActions.loadListsSuccess({ lists: [list] })
+      );
+      const ids = afterStale.ids as string[];
+      expect(ids).not.toContain('list-1');
+      // Guard still active because list is still present in Firebase payload
+      expect(afterStale.deletingListIds).toContain('list-1');
     });
   });
 

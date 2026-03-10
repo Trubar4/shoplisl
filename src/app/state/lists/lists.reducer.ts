@@ -36,20 +36,27 @@ export const listsReducer = createReducer(
     error: null,
   })),
 
-  on(ListsActions.loadListsSuccess, (state, { lists }): ListsState =>
+  on(ListsActions.loadListsSuccess, (state, { lists }): ListsState => {
     // Filter out any list whose deletion is still in-flight so that a stale
     // BehaviorSubject emission from the 1-second debounced mergeLists() cannot
     // re-add it to the store after deleteListSuccess already removed it.
-    listsAdapter.setAll(
+    //
+    // Also auto-clean deletingListIds: if a pending-delete id is no longer
+    // present in the Firebase payload, the deletion has been confirmed by
+    // Firestore and the guard is no longer needed.
+    const incomingIds = new Set(lists.map(l => l.id));
+    const stillPendingDelete = state.deletingListIds.filter(id => incomingIds.has(id));
+    return listsAdapter.setAll(
       lists.filter(l => !state.deletingListIds.includes(l.id)),
       {
         ...state,
         loading: false,
         error: null,
         lastSync: new Date(),
+        deletingListIds: stillPendingDelete,
       }
-    )
-  ),
+    );
+  }),
 
   on(ListsActions.loadListsFailure, (state, { error }): ListsState => ({
     ...state,
@@ -148,11 +155,14 @@ export const listsReducer = createReducer(
   ),
 
   on(ListsActions.deleteListSuccess, (state, { listId }): ListsState => ({
-    // List already removed optimistically in deleteList; just clean up the guard.
+    // List already removed optimistically in deleteList.
+    // Do NOT remove listId from deletingListIds here — keep the guard active
+    // until the next loadListsSuccess confirms that Firebase no longer emits
+    // this list.  Without this guard a stale mergeLists() debounce emission
+    // arriving after navigation would re-add the list via setAll.
     ...state,
     loading: false,
     error: null,
-    deletingListIds: state.deletingListIds.filter(id => id !== listId),
   })),
 
   on(ListsActions.deleteListFailure, (state, { error, listId }): ListsState => ({
