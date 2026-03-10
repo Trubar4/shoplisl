@@ -221,9 +221,13 @@ export class ListsRepositoryService {
       const currentLists = this.firebaseData.getCurrentLists();
       const listToDelete = currentLists.find(l => l.id === id);
 
-      // Remove from local state immediately
-      const updatedLists = currentLists.filter(l => l.id !== id);
-      this.firebaseData.updateLocalLists(updatedLists);
+      // NOTE: We intentionally do NOT call updateLocalLists() here.
+      // The NgRx reducer's optimistic removeOne (on the deleteList action) already
+      // hides the list from the UI.  Calling updateLocalLists() would push a
+      // listsSubject emission without the list, which triggers loadListsSuccess and
+      // prematurely clears the deletingListIds guard.  When Firestore reconnects
+      // it emits with the list still present (the queued delete hasn't run yet),
+      // which would then bypass the now-empty guard and re-add the list to the store.
 
       // Queue for sync when online
       this.offlineSync.queueOperation(async () => {
