@@ -183,6 +183,10 @@ export class ListsRepositoryService {
     );
     this.firebaseData.updateLocalLists(updatedLists);
 
+    // Capture the locally computed result BEFORE the async write so the return value
+    // is not affected by mergeLists() debounce overwriting the BehaviorSubject mid-flight.
+    const localUpdatedList = updatedLists.find(l => l.id === id);
+
     return from(this.firebaseData.updateListInFirebase(id, updateData)).pipe(
       map(() => {
         // Track list updated event
@@ -198,11 +202,8 @@ export class ListsRepositoryService {
           );
         }
 
-        return this.firebaseData.getLists().pipe(
-          map(lists => lists.find(l => l.id === id))
-        );
+        return localUpdatedList;
       }),
-      mergeMap(result => result),
       catchError(error => {
         this.logger.error('data', 'Error updating list', error);
         return of(undefined);

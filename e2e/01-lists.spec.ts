@@ -96,29 +96,62 @@ test.describe('Shopping Lists', () => {
     await expect(page).toHaveURL(/\/lists\/.+/, { timeout: 10000 });
   });
 
-  test('should delete a shopping list', async ({ page }) => {
-    // Create a test list first
+  /**
+   * Bug 2 regression: Deleting a list must take effect immediately in the DOM
+   * without requiring a page refresh.
+   *
+   * Swipe-to-delete is simulated via a mouse drag on the .list-item element.
+   * After the swipe the app shows a Material snackbar with a confirm button;
+   * clicking it must cause the list to disappear from the overview immediately.
+   */
+  test('should delete a shopping list and remove it from DOM immediately (Bug 2)', async ({ page }) => {
+    // ── 1. Create the list that will be deleted ─────────────────────────────
     const addButton = page.locator('button[aria-label="Add list"]').first();
+    await addButton.waitFor({ state: 'visible', timeout: 5000 });
     await addButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
+
     const nameInput = page.locator('input').first();
-    await nameInput.fill('List to Delete E2E');
+    await nameInput.waitFor({ state: 'visible', timeout: 5000 });
+    await nameInput.fill('BUG2 Delete E2E');
+
     const submitButton = page.getByRole('button', { name: /save|speichern|erstellen/i });
     await submitButton.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2500);
 
-    // Verify list was created
-    await expect(page.getByText('List to Delete E2E')).toBeVisible();
+    await expect(page.getByText('BUG2 Delete E2E')).toBeVisible({ timeout: 8000 });
 
-    // Find the list item container
-    const listContainer = page.locator('.list-item-container', { hasText: 'List to Delete E2E' });
+    // ── 2. Simulate a left-swipe on the list item ───────────────────────────
+    const listItem = page.locator('.list-item', { hasText: 'BUG2 Delete E2E' });
+    await listItem.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Your app uses swipe-to-delete - simulate by finding the list item
-    // For E2E, we'll skip the swipe gesture test for now and just verify the list exists
-    await expect(listContainer).toBeVisible();
+    const box = await listItem.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x - 80, box.y + box.height / 2, { steps: 15 });
+      await page.mouse.up();
+      await page.waitForTimeout(600);
+    }
 
-    // Note: Actual swipe deletion would require touch event simulation
-    // which is complex in E2E tests. For now, we verify the create/display works.
+    // ── 3. Confirm via snackbar / confirm button ────────────────────────────
+    const confirmButton = page
+      .getByRole('button', { name: /ok|löschen|delete|bestätigen/i })
+      .or(page.locator('mat-snack-bar-container button'));
+    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirmButton.first().click();
+      await page.waitForTimeout(1000);
+    }
+
+    // ── 4. Assert: list disappears from DOM without a page reload ───────────
+    // Bug 2 regression: previously the list stayed visible until hard refresh.
+    await expect(page.getByText('BUG2 Delete E2E')).not.toBeVisible({ timeout: 4000 });
+
+    // ── 5. Navigate away and back — list must still be absent ───────────────
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    await expect(page.getByText('BUG2 Delete E2E')).not.toBeVisible({ timeout: 5000 });
   });
 
   test('should navigate to list details', async ({ page }) => {

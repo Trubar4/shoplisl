@@ -549,6 +549,14 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     const query = this.searchDisambiguation$.value?.query;
     if (!query) return;
 
+    // Immediately close the disambiguation menu and suppress re-showing during
+    // the async operations below. Without this, the articles-store update from
+    // createArticle() triggers setupSearchDisambiguation() again (via
+    // departmentGroupsEdit$) before clearSearch() is reached, causing the menu
+    // to re-appear and mislead the user into thinking the first selection failed.
+    this.disambiguationManuallyClosed = true;
+    this.searchDisambiguation$.next(null);
+
     try {
       if (option.type === 'existing' && option.article) {
         await this.addExistingArticleToList(option.article);
@@ -993,6 +1001,11 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     }).pipe(take(1)).toPromise();
 
     if (success) {
+      // Push the locally-computed result straight into the NgRx store. This
+      // guards against a race where mergeLists() debounce fires with stale
+      // Firebase data mid-flight and setAll() reverts the article addition.
+      this.store.dispatch(ListsActions.updateListSuccess({ list: success }));
+
       this.snackBar.open(`"${article.name}" zur Liste hinzugefügt`, '', { duration: 1500 });
 
       // Restore previous filter if we had auto-switched

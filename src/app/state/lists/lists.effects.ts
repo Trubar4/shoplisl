@@ -177,6 +177,7 @@ export class ListsEffects {
             if (!success) {
               return ListsActions.deleteListFailure({
                 error: 'Failed to delete list',
+                listId,
               });
             }
             return ListsActions.deleteListSuccess({ listId });
@@ -185,6 +186,7 @@ export class ListsEffects {
             of(
               ListsActions.deleteListFailure({
                 error: error.message || 'Failed to delete list',
+                listId,
               })
             )
           )

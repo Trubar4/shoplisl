@@ -37,12 +37,18 @@ export const listsReducer = createReducer(
   })),
 
   on(ListsActions.loadListsSuccess, (state, { lists }): ListsState =>
-    listsAdapter.setAll(lists, {
-      ...state,
-      loading: false,
-      error: null,
-      lastSync: new Date(),
-    })
+    // Filter out any list whose deletion is still in-flight so that a stale
+    // BehaviorSubject emission from the 1-second debounced mergeLists() cannot
+    // re-add it to the store after deleteListSuccess already removed it.
+    listsAdapter.setAll(
+      lists.filter(l => !state.deletingListIds.includes(l.id)),
+      {
+        ...state,
+        loading: false,
+        error: null,
+        lastSync: new Date(),
+      }
+    )
   ),
 
   on(ListsActions.loadListsFailure, (state, { error }): ListsState => ({
@@ -128,25 +134,34 @@ export const listsReducer = createReducer(
   // Delete List
   // ========================================
 
-  on(ListsActions.deleteList, (state): ListsState => ({
-    ...state,
-    loading: true,
-    error: null,
-  })),
-
-  on(ListsActions.deleteListSuccess, (state, { listId }): ListsState =>
+  on(ListsActions.deleteList, (state, { listId }): ListsState =>
+    // Optimistically remove the list immediately and track its ID so that
+    // subsequent loadListsSuccess (setAll) emissions from the debounced
+    // mergeLists() cannot bring it back before Firebase confirms the delete.
     listsAdapter.removeOne(listId, {
       ...state,
-      loading: false,
+      loading: true,
       error: null,
       selectedListId: state.selectedListId === listId ? null : state.selectedListId,
+      deletingListIds: [...state.deletingListIds, listId],
     })
   ),
 
-  on(ListsActions.deleteListFailure, (state, { error }): ListsState => ({
+  on(ListsActions.deleteListSuccess, (state, { listId }): ListsState => ({
+    // List already removed optimistically in deleteList; just clean up the guard.
+    ...state,
+    loading: false,
+    error: null,
+    deletingListIds: state.deletingListIds.filter(id => id !== listId),
+  })),
+
+  on(ListsActions.deleteListFailure, (state, { error, listId }): ListsState => ({
+    // Delete failed — remove from guard so the next loadListsSuccess can
+    // restore the list (the BehaviorSubject still has it on the Firebase side).
     ...state,
     loading: false,
     error,
+    deletingListIds: state.deletingListIds.filter(id => id !== listId),
   })),
 
   // ========================================
