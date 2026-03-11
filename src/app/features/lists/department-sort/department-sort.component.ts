@@ -395,7 +395,8 @@ export class DepartmentSortComponent implements OnInit, OnDestroy {
       // mergeLists() debounce), which would reset currentDepartmentOrder mid-drag
       // and make hasChanges permanently false.
       if (!this.hasChanges) {
-        this.currentDepartmentOrder = list.departmentOrder || [...DEFAULT_DEPARTMENT_ORDER];
+        // Spread to get a mutable copy — list.departmentOrder is frozen by NgRx.
+        this.currentDepartmentOrder = [...(list.departmentOrder || DEFAULT_DEPARTMENT_ORDER)];
       }
 
       // Store original order for comparison (once, on first load)
