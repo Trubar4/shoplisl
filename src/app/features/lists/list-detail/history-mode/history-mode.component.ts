@@ -179,10 +179,12 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Format time for display
    */
-  formatTime(date: Date | undefined): string {
+  formatTime(date: Date | any): string {
     if (!date) return '';
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    // date may be a Firestore Timestamp (has toDate()) instead of a JS Date
+    const d: Date = date instanceof Date ? date : date.toDate?.() ?? new Date(date);
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 

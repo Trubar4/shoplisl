@@ -107,7 +107,7 @@ export const deleteListSuccess = createAction(
 /** List deletion failed */
 export const deleteListFailure = createAction(
   '[Lists] Delete List Failure',
-  props<{ error: string }>()
+  props<{ error: string; listId: string }>()
 );
 
 // ========================================

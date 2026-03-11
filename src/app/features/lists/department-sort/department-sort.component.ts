@@ -380,7 +380,7 @@ export class DepartmentSortComponent implements OnInit, OnDestroy {
       }
 
       this.currentList = list;
-      
+
       // Calculate article counts per department for this list
       const articleCounts: { [departmentId: string]: number } = {};
       articles
@@ -390,10 +390,16 @@ export class DepartmentSortComponent implements OnInit, OnDestroy {
           articleCounts[deptId] = (articleCounts[deptId] || 0) + 1;
         });
 
-      // Get current department order
-      this.currentDepartmentOrder = list.departmentOrder || [...DEFAULT_DEPARTMENT_ORDER];
-      
-      // Store original order for comparison
+      // Only overwrite the user's drag order when no unsaved changes are in progress.
+      // combineLatest re-fires on every listsSubject emission (e.g. the 1-second
+      // mergeLists() debounce), which would reset currentDepartmentOrder mid-drag
+      // and make hasChanges permanently false.
+      if (!this.hasChanges) {
+        // Spread to get a mutable copy — list.departmentOrder is frozen by NgRx.
+        this.currentDepartmentOrder = [...(list.departmentOrder || DEFAULT_DEPARTMENT_ORDER)];
+      }
+
+      // Store original order for comparison (once, on first load)
       if (this.originalDepartmentOrder.length === 0) {
         this.originalDepartmentOrder = [...this.currentDepartmentOrder];
       }

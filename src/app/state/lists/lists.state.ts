@@ -14,6 +14,12 @@ export interface ListsState extends EntityState<ShoppingList> {
   error: string | null;
   /** Timestamp of last successful sync */
   lastSync: Date | null;
+  /**
+   * IDs of lists whose Firebase deletion is in-flight.
+   * loadListsSuccess filters these out so a stale BehaviorSubject emission
+   * (from the 1-second debounced mergeLists) cannot re-add a deleted list.
+   */
+  deletingListIds: string[];
 }
 
 /**
@@ -24,4 +30,5 @@ export const initialListsState = {
   loading: false as boolean,
   error: null as string | null,
   lastSync: null as Date | null,
+  deletingListIds: [] as string[],
 };

@@ -1,6 +1,6 @@
 // src/app/app.config.ts
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, isDevMode } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'; // ✅ Try this approach
@@ -29,7 +29,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(routes, withPreloading(PreloadAllModules)),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptorsFromDi()),
     provideServiceWorker('ngsw-worker.js', {
