@@ -8,6 +8,7 @@ import {
   OnChanges,
   SimpleChanges,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -67,7 +68,8 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
     private store: Store,
     private historyService: HistoryService,
     private authService: AuthService,
-    private userProfileService: UserProfileService
+    private userProfileService: UserProfileService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -212,6 +214,8 @@ export class HistoryModeComponent implements OnInit, OnChanges, OnDestroy {
         profileMap.forEach((profile, userId) => {
           this.userDisplayNames.set(userId, profile.name);
         });
+        // OnPush: mark for re-check so template re-renders with loaded names
+        this.cdr.markForCheck();
       });
   }
 
