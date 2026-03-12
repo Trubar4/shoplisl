@@ -358,4 +358,58 @@ describe('ListsRepositoryService - Batch Operations', () => {
       // get the same initial state
     });
   });
+
+  describe('LIST_COMPLETED tracking', () => {
+    it('should track LIST_COMPLETED when last article is checked', async () => {
+      // List with both articles unchecked; checking article1, then article2 completes it
+      const listWithOneLeft = {
+        ...mockList,
+        articleIds: ['article1', 'article2'],
+        itemStates: {
+          'article1': { articleId: 'article1', isChecked: false, amount: '' },
+          'article2': { articleId: 'article2', isChecked: true, amount: '' }
+        }
+      };
+      firebaseDataSpy.getList.mockReturnValue(of(listWithOneLeft));
+      firebaseDataSpy.updateListItemWithTransaction = vi.fn().mockResolvedValue(undefined);
+
+      await firstValueFrom(service.toggleItemChecked('list1', 'article1'));
+
+      const calls = analyticsServiceSpy.trackEvent.mock.calls;
+      const completionCall = calls.find((c: any[]) => c[1] === 'list_completed');
+      expect(completionCall).toBeTruthy();
+      expect(completionCall[2]).toEqual(expect.objectContaining({
+        listId: 'list1',
+        articleCount: 2,
+      }));
+    });
+
+    it('should NOT track LIST_COMPLETED when articles remain unchecked', async () => {
+      firebaseDataSpy.updateListItemWithTransaction = vi.fn().mockResolvedValue(undefined);
+
+      await firstValueFrom(service.toggleItemChecked('list1', 'article1'));
+
+      const calls = analyticsServiceSpy.trackEvent.mock.calls;
+      const completionCall = calls.find((c: any[]) => c[1] === 'list_completed');
+      expect(completionCall).toBeUndefined();
+    });
+
+    it('should NOT track LIST_COMPLETED when unchecking an article', async () => {
+      const allCheckedList = {
+        ...mockList,
+        itemStates: {
+          'article1': { articleId: 'article1', isChecked: true, amount: '' },
+          'article2': { articleId: 'article2', isChecked: true, amount: '' }
+        }
+      };
+      firebaseDataSpy.getList.mockReturnValue(of(allCheckedList));
+      firebaseDataSpy.updateListItemWithTransaction = vi.fn().mockResolvedValue(undefined);
+
+      await firstValueFrom(service.toggleItemChecked('list1', 'article1'));
+
+      const calls = analyticsServiceSpy.trackEvent.mock.calls;
+      const completionCall = calls.find((c: any[]) => c[1] === 'list_completed');
+      expect(completionCall).toBeUndefined();
+    });
+  });
 });

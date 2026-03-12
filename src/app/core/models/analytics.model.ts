@@ -18,6 +18,7 @@ export enum AnalyticsEventType {
   LIST_UPDATED = 'list_updated',
   LIST_DELETED = 'list_deleted',
   LIST_VIEWED = 'list_viewed',
+  LIST_COMPLETED = 'list_completed',
   LIST_SHARED = 'list_shared',
   LIST_UNSHARED = 'list_unshared',
   SHARE_INVITE_CREATED = 'share_invite_created',
@@ -38,6 +39,7 @@ export enum AnalyticsEventType {
   AI_COMMAND_EXECUTED = 'ai_command_executed',
   AI_COMMAND_FAILED = 'ai_command_failed',
   AI_DISAMBIGUATION_SHOWN = 'ai_disambiguation_shown',
+  AI_DISAMBIGUATION_RESOLVED = 'ai_disambiguation_resolved',
   AI_RECIPE_PROCESSED = 'ai_recipe_processed',
   AI_VOICE_INPUT_USED = 'ai_voice_input_used',
 

@@ -348,6 +348,20 @@ export class ListsRepositoryService {
               amount: currentAmount
             }
           );
+
+          // Track list completion when all articles are checked
+          if (newAction === 'checked' && list.articleIds?.length > 0) {
+            const allChecked = list.articleIds.every(
+              (id: string) => newItemStates[id]?.isChecked === true
+            );
+            if (allChecked) {
+              this.analyticsService.trackEvent(userId, AnalyticsEventType.LIST_COMPLETED, {
+                listId,
+                listName: list.name,
+                articleCount: list.articleIds.length,
+              });
+            }
+          }
         }
 
         if (!this.connectionService.isOnline()) {

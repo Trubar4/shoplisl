@@ -83,6 +83,7 @@ export class AnalyticsAggregationService {
       listsDeletedToday: 0,
       articlesCreatedToday: 0,
       articlesDeletedToday: 0,
+      articlesAddedViaAIToday: 0,
       failedCommands: [],
       lastUpdated: new Date(),
       // Phase 5 extended metrics
@@ -216,6 +217,9 @@ export class AnalyticsAggregationService {
     const articlesDeletedToday = todayEvents.filter(
       (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
     ).length;
+    const articlesAddedViaAIToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST && e.metadata?.source === 'ai'
+    ).length;
 
     // Calculate extended metrics
     const avgListsPerUser = totalUsers > 0 ? Math.round((totalLists / totalUsers) * 10) / 10 : 0;
@@ -284,6 +288,7 @@ export class AnalyticsAggregationService {
       listsDeletedToday,
       articlesCreatedToday,
       articlesDeletedToday,
+      articlesAddedViaAIToday,
       failedCommands,
       lastUpdated: new Date(),
       // Phase 5 extended metrics
@@ -735,6 +740,73 @@ export class AnalyticsAggregationService {
       return [];
     }
   }
+
+  /**
+   * Compute session depth metrics: how many articles are added/checked per shopping session.
+   * Groups events by sessionId (stored on every event) to compute per-session averages.
+   */
+  getSessionDepthMetrics(dateRange: number = 30): Observable<SessionDepthMetrics> {
+    return from(this.computeSessionDepthMetrics(dateRange));
+  }
+
+  private async computeSessionDepthMetrics(dateRange: number): Promise<SessionDepthMetrics> {
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - dateRange);
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      where('eventType', 'in', [
+        AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+        AnalyticsEventType.ARTICLE_CHECKED,
+      ]),
+      limit(500)
+    );
+
+    try {
+      const snap = await getDocs(q);
+      this.quotaMonitor.trackRead('Analytics Session Depth Query', snap.size);
+
+      // Per-session counts
+      const addsPerSession = new Map<string, number>();
+      const checksPerSession = new Map<string, number>();
+
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        const sessionId: string = data['sessionId'] || 'unknown';
+        if (data['eventType'] === AnalyticsEventType.ARTICLE_ADDED_TO_LIST) {
+          addsPerSession.set(sessionId, (addsPerSession.get(sessionId) || 0) + 1);
+        } else if (data['eventType'] === AnalyticsEventType.ARTICLE_CHECKED) {
+          checksPerSession.set(sessionId, (checksPerSession.get(sessionId) || 0) + 1);
+        }
+      });
+
+      const allSessions = new Set([...addsPerSession.keys(), ...checksPerSession.keys()]);
+      const totalSessions = allSessions.size;
+
+      const avg = (map: Map<string, number>) => {
+        if (totalSessions === 0) return 0;
+        const total = Array.from(map.values()).reduce((s, n) => s + n, 0);
+        return Math.round((total / totalSessions) * 10) / 10;
+      };
+
+      return {
+        totalSessions,
+        avgArticlesAddedPerSession: avg(addsPerSession),
+        avgArticlesCheckedPerSession: avg(checksPerSession),
+      };
+    } catch (error) {
+      this.logger.error('analytics', 'Failed to compute session depth metrics:', error);
+      return { totalSessions: 0, avgArticlesAddedPerSession: 0, avgArticlesCheckedPerSession: 0 };
+    }
+  }
+}
+
+export interface SessionDepthMetrics {
+  totalSessions: number;
+  avgArticlesAddedPerSession: number;
+  avgArticlesCheckedPerSession: number;
 }
 
 // ==========================================
@@ -757,6 +829,7 @@ export interface OverviewMetrics {
   listsDeletedToday: number;
   articlesCreatedToday: number;
   articlesDeletedToday: number;
+  articlesAddedViaAIToday: number;
   failedCommands: Array<{
     inputText: string;
     commandType: string;
