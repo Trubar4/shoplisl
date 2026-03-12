@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -28,6 +28,7 @@ export class AnalyticsService {
   private firestore = inject(Firestore);
   private logger = inject(LoggerService);
 
+  private injector = inject(Injector);
   private eventBuffer: AnalyticsEvent[] = [];
   private readonly BATCH_SIZE = 10; // Write after 10 events
   private readonly FLUSH_INTERVAL = 30000; // Flush every 30 seconds
@@ -206,13 +207,15 @@ export class AnalyticsService {
   private async writeEventsBatch(events: AnalyticsEvent[]): Promise<void> {
     await Promise.all(
       events.map((event) =>
-        addDoc(collection(this.firestore, 'analytics/events/items'), {
-          eventType: event.eventType,
-          userId: event.userId,
-          timestamp: serverTimestamp(),
-          sessionId: event.sessionId,
-          metadata: event.metadata || {},
-        })
+        runInInjectionContext(this.injector, () =>
+          addDoc(collection(this.firestore, 'analytics/events/items'), {
+            eventType: event.eventType,
+            userId: event.userId,
+            timestamp: serverTimestamp(),
+            sessionId: event.sessionId,
+            metadata: event.metadata || {},
+          })
+        )
       )
     );
   }
