@@ -337,8 +337,10 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
    * Create AI command chart (pie chart)
    */
   private createAICommandChart(): void {
+    console.log('[AI Chart] getAICommandBreakdown() called');
     this.analyticsAggregation.getAICommandBreakdown().subscribe({
       next: (data) => {
+        console.log('[AI Chart] data received:', data);
         // Destroy existing chart if it exists
         this.aiCommandChart?.destroy();
 
