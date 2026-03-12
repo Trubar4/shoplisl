@@ -954,7 +954,16 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
     }
 
     this.chatPersistence.setDisambiguation(null);
-    
+
+    const userId = this.authService.getCurrentUserId();
+    if (userId) {
+      this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_RESOLVED, {
+        outcome: 'accepted',
+        optionType: option.type,
+        itemName: pendingAction.itemName?.substring(0, 100),
+      });
+    }
+
     const choiceText = this.generateChoiceText(option, pendingAction);
     this.chatPersistence.addMessage(choiceText, 'user');
     this.chatUI.scrollToBottom(this.messagesContainer, true);
@@ -1044,9 +1053,16 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   skipCurrentArticle(pendingAction: any): void {
-    
+    const userId = this.authService.getCurrentUserId();
+    if (userId) {
+      this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_RESOLVED, {
+        outcome: 'skipped',
+        itemName: pendingAction.itemName?.substring(0, 100),
+      });
+    }
+
     this.chatPersistence.setDisambiguation(null);
-    
+
     let skipMessage = `⏭️ "${pendingAction.itemName}" übersprungen`;
     
     this.chatPersistence.addMessage(skipMessage, 'user');
@@ -1179,6 +1195,14 @@ private isRecipeInput(lowerInput: string, originalInput: string): boolean {
   }
 
   cancelDisambiguation(): void {
+    const userId = this.authService.getCurrentUserId();
+    if (userId) {
+      const disambiguation = this.chatPersistence.getDisambiguation();
+      this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_RESOLVED, {
+        outcome: 'cancelled',
+        itemName: disambiguation?.pendingAction?.itemName?.substring(0, 100),
+      });
+    }
     this.chatPersistence.setDisambiguation(null);
     this.chatPersistence.addMessage('Aktion abgebrochen.', 'system');
   }

@@ -181,6 +181,10 @@
             <div class="activity-label">Articles Removed</div>
             <div class="activity-value deleted">{{ metrics()!.articlesDeletedToday }}</div>
           </div>
+          <div class="activity-item">
+            <div class="activity-label">Added via AI</div>
+            <div class="activity-value" [class.positive]="metrics()!.articlesAddedViaAIToday > 0">{{ metrics()!.articlesAddedViaAIToday }}</div>
+          </div>
           <div class="activity-item summary">
             <div class="activity-label">Net Lists Change</div>
             <div class="activity-value" [class.positive]="metrics()!.listsCreatedToday > metrics()!.listsDeletedToday" [class.negative]="metrics()!.listsCreatedToday < metrics()!.listsDeletedToday">
@@ -438,6 +442,34 @@
               {{ retention()!.day30 }}%
             </div>
             <div class="retention-sub">returned after 1 month</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Session Depth Card -->
+    <mat-card *ngIf="sessionDepth()" class="session-depth-card">
+      <mat-card-header>
+        <mat-card-title>🛒 Shopping Session Depth</mat-card-title>
+        <mat-card-subtitle>How much users do per shopping session (last {{ selectedDateRange }} days)</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="activity-grid">
+          <div class="activity-item">
+            <div class="activity-label">Total Sessions</div>
+            <div class="activity-value">{{ sessionDepth()!.totalSessions }}</div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Avg Articles Added</div>
+            <div class="activity-value" [class.positive]="sessionDepth()!.avgArticlesAddedPerSession > 0">
+              {{ sessionDepth()!.avgArticlesAddedPerSession }}
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-label">Avg Articles Checked</div>
+            <div class="activity-value" [class.positive]="sessionDepth()!.avgArticlesCheckedPerSession > 0">
+              {{ sessionDepth()!.avgArticlesCheckedPerSession }}
+            </div>
           </div>
         </div>
       </mat-card-content>

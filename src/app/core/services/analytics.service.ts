@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -28,6 +28,7 @@ export class AnalyticsService {
   private firestore = inject(Firestore);
   private logger = inject(LoggerService);
 
+  private injector = inject(Injector);
   private eventBuffer: AnalyticsEvent[] = [];
   private readonly BATCH_SIZE = 10; // Write after 10 events
   private readonly FLUSH_INTERVAL = 30000; // Flush every 30 seconds
@@ -204,17 +205,27 @@ export class AnalyticsService {
    * Write events to Firestore using batched writes
    */
   private async writeEventsBatch(events: AnalyticsEvent[]): Promise<void> {
-    await Promise.all(
+    const results = await Promise.allSettled(
       events.map((event) =>
-        addDoc(collection(this.firestore, 'analytics/events/items'), {
-          eventType: event.eventType,
-          userId: event.userId,
-          timestamp: serverTimestamp(),
-          sessionId: event.sessionId,
-          metadata: event.metadata || {},
-        })
+        runInInjectionContext(this.injector, () =>
+          addDoc(collection(this.firestore, 'analytics/events/items'), {
+            eventType: event.eventType,
+            userId: event.userId,
+            timestamp: serverTimestamp(),
+            sessionId: event.sessionId,
+            metadata: event.metadata || {},
+          })
+        )
       )
     );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    this.logger.debug('analytics', `📝 Firestore write: ${succeeded} ok, ${failed} failed`);
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        this.logger.error('analytics', `❌ Failed to write event [${events[i].eventType}]:`, r.reason);
+      }
+    });
   }
 
   /**
@@ -222,6 +233,7 @@ export class AnalyticsService {
    */
   private startFlushTimer(): void {
     this.flushTimer = setInterval(() => {
+      this.logger.debug('analytics', `⏱️ Flush timer fired — buffer: ${this.eventBuffer.length} events`);
       this.flush();
     }, this.FLUSH_INTERVAL);
   }

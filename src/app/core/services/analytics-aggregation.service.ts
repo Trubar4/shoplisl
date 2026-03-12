@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -32,6 +32,7 @@ export class AnalyticsAggregationService {
   private quotaMonitor = inject(QuotaMonitorService);
   private aiCachingService = inject(AICachingService);
   private logger = inject(LoggerService);
+  private injector = inject(Injector);
   private cache: Map<string, { metrics: OverviewMetrics; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
@@ -83,6 +84,7 @@ export class AnalyticsAggregationService {
       listsDeletedToday: 0,
       articlesCreatedToday: 0,
       articlesDeletedToday: 0,
+      articlesAddedViaAIToday: 0,
       failedCommands: [],
       lastUpdated: new Date(),
       // Phase 5 extended metrics
@@ -122,7 +124,7 @@ export class AnalyticsAggregationService {
 
     let eventsSnapshot;
     try {
-      eventsSnapshot = await getDocs(eventsQuery);
+      eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(eventsQuery));
       this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
     } catch (error) {
@@ -216,6 +218,9 @@ export class AnalyticsAggregationService {
     const articlesDeletedToday = todayEvents.filter(
       (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
     ).length;
+    const articlesAddedViaAIToday = todayEvents.filter(
+      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST && e.metadata?.source === 'ai'
+    ).length;
 
     // Calculate extended metrics
     const avgListsPerUser = totalUsers > 0 ? Math.round((totalLists / totalUsers) * 10) / 10 : 0;
@@ -237,9 +242,9 @@ export class AnalyticsAggregationService {
     const topUsers = await Promise.all(
       topUserIds.map(async ([userId, activityScore]) => {
         try {
-          const userDoc = await getDocs(
+          const userDoc = await runInInjectionContext(this.injector, () => getDocs(
             query(collection(this.firestore, 'users-v2'), where('__name__', '==', userId), limit(1))
-          );
+          ));
           const email = userDoc.docs[0]?.data()['email'] || userId;
           return { userId: email, activityScore };
         } catch (error) {
@@ -284,6 +289,7 @@ export class AnalyticsAggregationService {
       listsDeletedToday,
       articlesCreatedToday,
       articlesDeletedToday,
+      articlesAddedViaAIToday,
       failedCommands,
       lastUpdated: new Date(),
       // Phase 5 extended metrics
@@ -318,7 +324,7 @@ export class AnalyticsAggregationService {
         limit(500) // Reduced from 10k - sufficient for small user base
       );
       this.logger.debug('analytics', '📊 Analytics: Counting articles (max 500)...');
-      const articlesSnapshot = await getDocs(articlesQuery);
+      const articlesSnapshot = await runInInjectionContext(this.injector, () => getDocs(articlesQuery));
       this.quotaMonitor.trackRead('Analytics Count Articles', articlesSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${articlesSnapshot.size} articles`);
 
@@ -349,7 +355,7 @@ export class AnalyticsAggregationService {
       const usersRef = collection(this.firestore, 'users-v2');
       const usersQuery = query(usersRef, limit(500)); // Reduced from 10k
       this.logger.debug('analytics', '📊 Analytics: Counting users...');
-      const usersSnapshot = await getDocs(usersQuery);
+      const usersSnapshot = await runInInjectionContext(this.injector, () => getDocs(usersQuery));
       this.quotaMonitor.trackRead('Analytics Count Users', usersSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${usersSnapshot.size} users`);
       return usersSnapshot.size;
@@ -370,7 +376,7 @@ export class AnalyticsAggregationService {
         limit(500) // Reduced from 10k
       );
       this.logger.debug('analytics', '📊 Analytics: Counting lists...');
-      const listsSnapshot = await getDocs(listsQuery);
+      const listsSnapshot = await runInInjectionContext(this.injector, () => getDocs(listsQuery));
       this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
@@ -435,7 +441,8 @@ export class AnalyticsAggregationService {
       where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
       limit(500)
     );
-    const eventsSnapshot = await getDocs(q);
+    const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
+    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days`);
 
     const aiEvents = eventsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -444,6 +451,7 @@ export class AnalyticsAggregationService {
           e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
           e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
       );
+    this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
 
     // Count by command type
     const commandTypeCounts: Record<string, number> = {};
@@ -488,7 +496,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics User Growth Query', eventsSnapshot.size);
 
       this.logger.debug('analytics', `📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
@@ -546,7 +554,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Feature Adoption Query', eventsSnapshot.size);
 
       const totalUsers = await this.countTotalUsers();
@@ -609,7 +617,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Retention Query', eventsSnapshot.size);
 
       // Build a map: userId -> Set of ISO date strings (YYYY-MM-DD) when they logged in
@@ -676,7 +684,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Daily Activity Query', eventsSnapshot.size);
 
       this.logger.debug('analytics', `📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
@@ -735,6 +743,73 @@ export class AnalyticsAggregationService {
       return [];
     }
   }
+
+  /**
+   * Compute session depth metrics: how many articles are added/checked per shopping session.
+   * Groups events by sessionId (stored on every event) to compute per-session averages.
+   */
+  getSessionDepthMetrics(dateRange: number = 30): Observable<SessionDepthMetrics> {
+    return from(this.computeSessionDepthMetrics(dateRange));
+  }
+
+  private async computeSessionDepthMetrics(dateRange: number): Promise<SessionDepthMetrics> {
+    const rangeStartDate = new Date();
+    rangeStartDate.setDate(rangeStartDate.getDate() - dateRange);
+
+    const eventsRef = collection(this.firestore, 'analytics/events/items');
+    const q = query(
+      eventsRef,
+      where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      where('eventType', 'in', [
+        AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
+        AnalyticsEventType.ARTICLE_CHECKED,
+      ]),
+      limit(500)
+    );
+
+    try {
+      const snap = await runInInjectionContext(this.injector, () => getDocs(q));
+      this.quotaMonitor.trackRead('Analytics Session Depth Query', snap.size);
+
+      // Per-session counts
+      const addsPerSession = new Map<string, number>();
+      const checksPerSession = new Map<string, number>();
+
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        const sessionId: string = data['sessionId'] || 'unknown';
+        if (data['eventType'] === AnalyticsEventType.ARTICLE_ADDED_TO_LIST) {
+          addsPerSession.set(sessionId, (addsPerSession.get(sessionId) || 0) + 1);
+        } else if (data['eventType'] === AnalyticsEventType.ARTICLE_CHECKED) {
+          checksPerSession.set(sessionId, (checksPerSession.get(sessionId) || 0) + 1);
+        }
+      });
+
+      const allSessions = new Set([...addsPerSession.keys(), ...checksPerSession.keys()]);
+      const totalSessions = allSessions.size;
+
+      const avg = (map: Map<string, number>) => {
+        if (totalSessions === 0) return 0;
+        const total = Array.from(map.values()).reduce((s, n) => s + n, 0);
+        return Math.round((total / totalSessions) * 10) / 10;
+      };
+
+      return {
+        totalSessions,
+        avgArticlesAddedPerSession: avg(addsPerSession),
+        avgArticlesCheckedPerSession: avg(checksPerSession),
+      };
+    } catch (error) {
+      this.logger.error('analytics', 'Failed to compute session depth metrics:', error);
+      return { totalSessions: 0, avgArticlesAddedPerSession: 0, avgArticlesCheckedPerSession: 0 };
+    }
+  }
+}
+
+export interface SessionDepthMetrics {
+  totalSessions: number;
+  avgArticlesAddedPerSession: number;
+  avgArticlesCheckedPerSession: number;
 }
 
 // ==========================================
@@ -757,6 +832,7 @@ export interface OverviewMetrics {
   listsDeletedToday: number;
   articlesCreatedToday: number;
   articlesDeletedToday: number;
+  articlesAddedViaAIToday: number;
   failedCommands: Array<{
     inputText: string;
     commandType: string;

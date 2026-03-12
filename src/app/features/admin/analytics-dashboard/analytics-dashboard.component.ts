@@ -17,6 +17,7 @@ import {
   OverviewMetrics,
   FeatureAdoptionMetrics,
   RetentionMetrics,
+  SessionDepthMetrics,
 } from '../../../core/services/analytics-aggregation.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
 import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer.component';
@@ -62,6 +63,7 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
   metrics = signal<OverviewMetrics | null>(null);
   featureAdoption = signal<FeatureAdoptionMetrics | null>(null);
   retention = signal<RetentionMetrics | null>(null);
+  sessionDepth = signal<SessionDepthMetrics | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
   selectedDateRange = 30; // Default to 30 days
@@ -131,6 +133,11 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
     this.analyticsAggregation.getRetentionMetrics(this.selectedDateRange).subscribe({
       next: (retention) => this.retention.set(retention),
       error: (err) => console.error('Failed to load retention metrics:', err),
+    });
+
+    this.analyticsAggregation.getSessionDepthMetrics(this.selectedDateRange).subscribe({
+      next: (depth) => this.sessionDepth.set(depth),
+      error: (err) => console.error('Failed to load session depth metrics:', err),
     });
   }
 

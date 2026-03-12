@@ -255,7 +255,8 @@ describe('ListDetailComponent', () => {
 
     authServiceMock = {
       getCurrentUser: vi.fn(() => of({ id: 'user1', name: 'Test User' })),
-      getCurrentUserValue: vi.fn(() => ({ id: 'user1', name: 'Test User' }))
+      getCurrentUserValue: vi.fn(() => ({ id: 'user1', name: 'Test User' })),
+      getCurrentUserId: vi.fn(() => 'user1')
     };
 
     userProfileServiceMock = {
@@ -1121,6 +1122,32 @@ describe('ListDetailComponent', () => {
 
       // Search should be cleared (checked in implementation)
       expect(component.searchQuery).toBeDefined();
+    });
+
+    it('should track AI_DISAMBIGUATION_RESOLVED with outcome=accepted on selection', async () => {
+      component.searchDisambiguation$.next({ query: 'Milch', options: [] });
+      component['currentList'] = testList;
+      const option = { type: 'existing', article: testArticles[0] };
+
+      await component.onSelectSearchDisambiguation(option);
+
+      expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+        'user1',
+        'ai_disambiguation_resolved',
+        expect.objectContaining({ outcome: 'accepted', optionType: 'existing' })
+      );
+    });
+
+    it('should track AI_DISAMBIGUATION_RESOLVED with outcome=cancelled on clear', () => {
+      component.searchDisambiguation$.next({ query: 'Milch', options: [] });
+
+      component.onClearSearchDisambiguation();
+
+      expect(analyticsServiceMock.trackEvent).toHaveBeenCalledWith(
+        'user1',
+        'ai_disambiguation_resolved',
+        expect.objectContaining({ outcome: 'cancelled' })
+      );
     });
   });
 

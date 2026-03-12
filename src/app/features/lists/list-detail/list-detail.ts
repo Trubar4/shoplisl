@@ -549,6 +549,15 @@ export class ListDetailComponent implements OnInit, OnDestroy {
     const query = this.searchDisambiguation$.value?.query;
     if (!query) return;
 
+    const userId = this.authService.getCurrentUserId();
+    if (userId) {
+      this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_RESOLVED, {
+        outcome: 'accepted',
+        optionType: option.type,
+        query: query.substring(0, 100),
+      });
+    }
+
     // Immediately close the disambiguation menu and suppress re-showing during
     // the async operations below. Without this, the articles-store update from
     // createArticle() triggers setupSearchDisambiguation() again (via
@@ -582,6 +591,14 @@ export class ListDetailComponent implements OnInit, OnDestroy {
   }
 
   onClearSearchDisambiguation(): void {
+    const userId = this.authService.getCurrentUserId();
+    if (userId) {
+      const query = this.searchDisambiguation$.value?.query;
+      this.analyticsService.trackEvent(userId, AnalyticsEventType.AI_DISAMBIGUATION_RESOLVED, {
+        outcome: 'cancelled',
+        query: query?.substring(0, 100),
+      });
+    }
     // Only close disambiguation, keep search text and filtered results
     this.searchDisambiguation$.next(null);
     this.disambiguationManuallyClosed = true;
