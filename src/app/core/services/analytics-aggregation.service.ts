@@ -766,7 +766,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const snap = await getDocs(q);
+      const snap = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Session Depth Query', snap.size);
 
       // Per-session counts
