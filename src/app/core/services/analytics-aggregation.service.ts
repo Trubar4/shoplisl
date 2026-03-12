@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -32,6 +32,7 @@ export class AnalyticsAggregationService {
   private quotaMonitor = inject(QuotaMonitorService);
   private aiCachingService = inject(AICachingService);
   private logger = inject(LoggerService);
+  private injector = inject(Injector);
   private cache: Map<string, { metrics: OverviewMetrics; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
@@ -123,7 +124,7 @@ export class AnalyticsAggregationService {
 
     let eventsSnapshot;
     try {
-      eventsSnapshot = await getDocs(eventsQuery);
+      eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(eventsQuery));
       this.quotaMonitor.trackRead('Analytics Events Query', eventsSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Retrieved ${eventsSnapshot.size} events`);
     } catch (error) {
@@ -241,9 +242,9 @@ export class AnalyticsAggregationService {
     const topUsers = await Promise.all(
       topUserIds.map(async ([userId, activityScore]) => {
         try {
-          const userDoc = await getDocs(
+          const userDoc = await runInInjectionContext(this.injector, () => getDocs(
             query(collection(this.firestore, 'users-v2'), where('__name__', '==', userId), limit(1))
-          );
+          ));
           const email = userDoc.docs[0]?.data()['email'] || userId;
           return { userId: email, activityScore };
         } catch (error) {
@@ -323,7 +324,7 @@ export class AnalyticsAggregationService {
         limit(500) // Reduced from 10k - sufficient for small user base
       );
       this.logger.debug('analytics', '📊 Analytics: Counting articles (max 500)...');
-      const articlesSnapshot = await getDocs(articlesQuery);
+      const articlesSnapshot = await runInInjectionContext(this.injector, () => getDocs(articlesQuery));
       this.quotaMonitor.trackRead('Analytics Count Articles', articlesSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${articlesSnapshot.size} articles`);
 
@@ -354,7 +355,7 @@ export class AnalyticsAggregationService {
       const usersRef = collection(this.firestore, 'users-v2');
       const usersQuery = query(usersRef, limit(500)); // Reduced from 10k
       this.logger.debug('analytics', '📊 Analytics: Counting users...');
-      const usersSnapshot = await getDocs(usersQuery);
+      const usersSnapshot = await runInInjectionContext(this.injector, () => getDocs(usersQuery));
       this.quotaMonitor.trackRead('Analytics Count Users', usersSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${usersSnapshot.size} users`);
       return usersSnapshot.size;
@@ -375,7 +376,7 @@ export class AnalyticsAggregationService {
         limit(500) // Reduced from 10k
       );
       this.logger.debug('analytics', '📊 Analytics: Counting lists...');
-      const listsSnapshot = await getDocs(listsQuery);
+      const listsSnapshot = await runInInjectionContext(this.injector, () => getDocs(listsQuery));
       this.quotaMonitor.trackRead('Analytics Count Lists', listsSnapshot.size);
       this.logger.debug('analytics', `📊 Analytics: Found ${listsSnapshot.size} lists`);
       return listsSnapshot.size;
@@ -440,7 +441,7 @@ export class AnalyticsAggregationService {
       where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
       limit(500)
     );
-    const eventsSnapshot = await getDocs(q);
+    const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
 
     const aiEvents = eventsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -493,7 +494,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics User Growth Query', eventsSnapshot.size);
 
       this.logger.debug('analytics', `📊 User Growth: Retrieved ${eventsSnapshot.size} events for time series`);
@@ -551,7 +552,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Feature Adoption Query', eventsSnapshot.size);
 
       const totalUsers = await this.countTotalUsers();
@@ -614,7 +615,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Retention Query', eventsSnapshot.size);
 
       // Build a map: userId -> Set of ISO date strings (YYYY-MM-DD) when they logged in
@@ -681,7 +682,7 @@ export class AnalyticsAggregationService {
     );
 
     try {
-      const eventsSnapshot = await getDocs(q);
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
       this.quotaMonitor.trackRead('Analytics Daily Activity Query', eventsSnapshot.size);
 
       this.logger.debug('analytics', `📊 Daily Activity: Retrieved ${eventsSnapshot.size} events`);
