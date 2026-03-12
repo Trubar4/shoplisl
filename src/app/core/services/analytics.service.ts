@@ -205,7 +205,7 @@ export class AnalyticsService {
    * Write events to Firestore using batched writes
    */
   private async writeEventsBatch(events: AnalyticsEvent[]): Promise<void> {
-    await Promise.all(
+    const results = await Promise.allSettled(
       events.map((event) =>
         runInInjectionContext(this.injector, () =>
           addDoc(collection(this.firestore, 'analytics/events/items'), {
@@ -218,6 +218,14 @@ export class AnalyticsService {
         )
       )
     );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    this.logger.debug('analytics', `📝 Firestore write: ${succeeded} ok, ${failed} failed`);
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        this.logger.error('analytics', `❌ Failed to write event [${events[i].eventType}]:`, r.reason);
+      }
+    });
   }
 
   /**
@@ -225,6 +233,7 @@ export class AnalyticsService {
    */
   private startFlushTimer(): void {
     this.flushTimer = setInterval(() => {
+      this.logger.debug('analytics', `⏱️ Flush timer fired — buffer: ${this.eventBuffer.length} events`);
       this.flush();
     }, this.FLUSH_INTERVAL);
   }

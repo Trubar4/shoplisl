@@ -442,6 +442,7 @@ export class AnalyticsAggregationService {
       limit(500)
     );
     const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
+    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days`);
 
     const aiEvents = eventsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -450,6 +451,7 @@ export class AnalyticsAggregationService {
           e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
           e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
       );
+    this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
 
     // Count by command type
     const commandTypeCounts: Record<string, number> = {};
