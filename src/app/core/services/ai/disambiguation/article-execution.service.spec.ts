@@ -8,6 +8,7 @@ describe('ArticleExecutionService', () => {
   let service: ArticleExecutionService;
   let dataServiceSpy: any;
   let loggerServiceSpy: any;
+  let cachingServiceSpy: any;
   let listSelectionServiceSpy: any;
   let getEnhancedSuggestionsFn: any;
   let getListSelectionOptionsFn: any;
@@ -31,6 +32,11 @@ describe('ArticleExecutionService', () => {
       warn: vi.fn()
     };
 
+    // Mock AICachingService
+    cachingServiceSpy = {
+      clearByPattern: vi.fn()
+    };
+
     // Mock ListSelectionService
     listSelectionServiceSpy = {
       findListByName: vi.fn(),
@@ -41,6 +47,7 @@ describe('ArticleExecutionService', () => {
     service = new ArticleExecutionService(
       dataServiceSpy,
       loggerServiceSpy,
+      cachingServiceSpy,
       listSelectionServiceSpy
     );
 
@@ -253,6 +260,43 @@ describe('ArticleExecutionService', () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain('Fehler beim Erstellen');
     });
+
+    it('Bug 2: should invalidate disambiguation cache after creating new article', async () => {
+      // Reproduces the bug where a newly created article (e.g. "Gurken") is NOT offered
+      // in disambiguation on subsequent "+Gurken" calls because the cache was stale.
+      // Fix: clearByPattern must be called with a regex matching the item's cache key.
+      const action: PendingAction = {
+        type: 'add_item',
+        originalInput: '+Gurken',
+        itemName: 'Gurken',
+        extractedQuantity: '',
+        listName: 'Baum',
+        suggestedDepartment: 'fruit-vegetables'
+      };
+
+      const newArticle = { id: 'gurken-id', name: 'Gurken', departmentId: 'fruit-vegetables', icon: '🥒' };
+      const targetList = { id: 'list-baum', name: 'Baum' };
+
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'fruit-vegetables', icon: '🥒' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        toPromise: vi.fn().mockResolvedValue(newArticle)
+      });
+      listSelectionServiceSpy.findListByName.mockResolvedValue(targetList);
+      dataServiceSpy.addArticleToList.mockReturnValue(of(true));
+
+      await service.executeActionWithNewArticle(
+        action,
+        getEnhancedSuggestionsFn,
+        getListSelectionOptionsFn,
+        convertListsToDisambiguationOptionsFn
+      );
+
+      // Cache for "gurken" must be cleared so the next "+Gurken" finds the new article
+      expect(cachingServiceSpy.clearByPattern).toHaveBeenCalled();
+      const pattern: RegExp = cachingServiceSpy.clearByPattern.mock.calls[0][0];
+      expect(pattern).toBeInstanceOf(RegExp);
+      expect(pattern.test('disambiguation:gurken:none')).toBe(true);
+    });
   });
 
   describe('addArticleToList', () => {
@@ -410,6 +454,34 @@ describe('ArticleExecutionService', () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain('UniqueItem');
       expect(dataServiceSpy.createArticle).toHaveBeenCalled();
+    });
+
+    it('Bug 2: should invalidate disambiguation cache after creating new article via addSingleArticleToList', async () => {
+      const targetList = { id: 'list-1', name: 'Baum' };
+      const articleData = { name: 'Gurken', amount: '', departmentId: 'fruit-vegetables' };
+      const pendingAction: any = { originalInput: '+Gurken' };
+
+      getDisambiguationOptionsFn.mockResolvedValue([]);
+      getEnhancedSuggestionsFn.mockResolvedValue({ departmentId: 'fruit-vegetables', icon: '🥒' });
+      dataServiceSpy.createArticle.mockReturnValue({
+        pipe: vi.fn().mockReturnValue({
+          toPromise: vi.fn().mockResolvedValue({ id: 'gurken-id', name: 'Gurken' })
+        })
+      });
+      dataServiceSpy.addArticleToList.mockReturnValue(of(true));
+
+      await service.addSingleArticleToList(
+        targetList,
+        articleData,
+        pendingAction,
+        getDisambiguationOptionsFn,
+        getEnhancedSuggestionsFn
+      );
+
+      expect(cachingServiceSpy.clearByPattern).toHaveBeenCalled();
+      const pattern: RegExp = cachingServiceSpy.clearByPattern.mock.calls[0][0];
+      expect(pattern).toBeInstanceOf(RegExp);
+      expect(pattern.test('disambiguation:gurken:none')).toBe(true);
     });
   });
 

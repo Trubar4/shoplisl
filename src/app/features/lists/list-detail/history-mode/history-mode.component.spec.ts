@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { HistoryModeComponent } from './history-mode.component';
 import { ShoppingList, Article, ListItemState } from '../../../../core/models';
 import { ArticleItemData } from '../../../../shared/components/article-item/article-item.component';
+import { UserProfile } from '../../../../core/services/user-profile.service';
 
 describe('HistoryModeComponent', () => {
   let component: HistoryModeComponent;
   let storeMock: any;
   let historyServiceMock: any;
+  let cdrMock: any;
+  let userProfileServiceMock: any;
 
   const mockArticles: Article[] = [
     {
@@ -125,11 +128,15 @@ describe('HistoryModeComponent', () => {
       getCurrentUserId: vi.fn(() => 'shared-shoplisl-user')
     };
 
-    const userProfileServiceMock = {
+    userProfileServiceMock = {
       getUserProfiles: vi.fn(() => of(new Map()))
     };
 
-    component = new HistoryModeComponent(storeMock, historyServiceMock, authServiceMock as any, userProfileServiceMock as any);
+    cdrMock = {
+      markForCheck: vi.fn()
+    };
+
+    component = new HistoryModeComponent(storeMock, historyServiceMock, authServiceMock as any, userProfileServiceMock as any, cdrMock as any);
     component.list = mockList;
   });
 
@@ -209,5 +216,42 @@ describe('HistoryModeComponent', () => {
     component.ngOnDestroy();
     expect(destroySpy).toHaveBeenCalled();
     expect(completeSpy).toHaveBeenCalled();
+  });
+
+  describe('Bug 1: user display names in completed items (OnPush + Lädt...)', () => {
+    it('should return "Lädt..." for unknown user before profile loads', () => {
+      // Before any profile is fetched, unknown userId should show "Lädt..."
+      expect(component.getUserDisplayName('other-user-id')).toBe('Lädt...');
+    });
+
+    it('should call markForCheck after user profiles are loaded', () => {
+      const profileMap = new Map<string, UserProfile>([
+        ['other-user-id', { id: 'other-user-id', name: 'Maria' }]
+      ]);
+      userProfileServiceMock.getUserProfiles = vi.fn(() => of(profileMap));
+
+      // Trigger preload via private method
+      (component as any).preloadUserNames(['other-user-id']);
+
+      // ChangeDetectorRef.markForCheck must be called so OnPush re-renders
+      expect(cdrMock.markForCheck).toHaveBeenCalled();
+    });
+
+    it('should return loaded name after preloadUserNames resolves', () => {
+      const profileMap = new Map<string, UserProfile>([
+        ['other-user-id', { id: 'other-user-id', name: 'Maria' }]
+      ]);
+      userProfileServiceMock.getUserProfiles = vi.fn(() => of(profileMap));
+
+      (component as any).preloadUserNames(['other-user-id']);
+
+      expect(component.getUserDisplayName('other-user-id')).toBe('Maria');
+    });
+
+    it('should not call markForCheck when all users are already cached or current user', () => {
+      // All usersToFetch would be filtered out (only current user) → no fetch → no markForCheck
+      (component as any).preloadUserNames(['shared-shoplisl-user']);
+      expect(cdrMock.markForCheck).not.toHaveBeenCalled();
+    });
   });
 });
