@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-13T08:02:47.917Z",
+  "timestamp": "2026-03-13T08:57:04.745Z",
   "users": {
     "2RZNjeKK20hXdoy2vbZ61lnk0D62": {
       "lists": [],
@@ -6863,486 +6863,56 @@
             "Qu3EBlw1EfdGbwyqi8DK"
           ],
           "itemStates": {
-            "sTQY2oINEMhpckoVV2K7": {
-              "articleId": "sTQY2oINEMhpckoVV2K7",
-              "articleName": "Kuchenmehl",
+            "4wOKbxOaL1OBIuJU1f0x": {
+              "articleId": "4wOKbxOaL1OBIuJU1f0x",
+              "articleName": "Brot",
               "isChecked": true,
-              "amount": "500 g",
+              "amount": "2 Stück",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-07T19:21:24.317Z",
-              "checkedAt": "2026-03-11T15:18:48.666Z",
+              "addedAt": "2026-03-11T15:18:36.622Z",
+              "checkedAt": "2026-03-11T15:18:48.665Z",
               "history": [
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "500 g",
                   "action": "checked",
-                  "timestamp": "2026-03-11T15:18:48.665Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "500 g",
-                  "action": "added",
-                  "timestamp": "2026-03-07T19:21:24.317Z"
-                },
-                {
-                  "amount": "500 g",
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-07T19:21:11.082Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "500 g",
-                  "action": "added",
-                  "timestamp": "2026-03-06T04:00:34.992Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "500 g",
-                  "timestamp": "2026-02-24T15:55:13.844Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "500 g",
-                  "action": "added",
-                  "timestamp": "2026-02-24T15:54:54.001Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "",
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-24T13:33:18.420Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "cTQGlGqtGX8kdOQxOEEL": {
-              "articleId": "cTQGlGqtGX8kdOQxOEEL",
-              "articleName": "Eier",
-              "isChecked": true,
-              "amount": "2",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-07T19:21:34.335Z",
-              "checkedAt": "2026-03-08T10:21:01.038Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2",
-                  "action": "checked",
-                  "timestamp": "2026-03-08T10:21:01.038Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
+                  "timestamp": "2026-03-11T15:18:48.665Z",
                   "amount": "2 Stück",
-                  "timestamp": "2026-03-07T19:21:34.335Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "2 Stück",
-                  "timestamp": "2026-03-06T04:00:39.184Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "2 Stück",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-03T01:39:16.643Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:55:09.822Z",
-                  "amount": "2 Stück",
-                  "action": "checked",
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:54:55.509Z",
                   "amount": "2 Stück",
+                  "userName": "Philipp Thurnher",
+                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
                   "action": "added",
+                  "timestamp": "2026-03-11T15:18:36.622Z"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-08T10:39:11.172Z",
+                  "action": "checked",
+                  "amount": "2 Stück",
                   "userName": "Philipp Thurnher"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
+                  "timestamp": "2026-03-06T04:11:28.057Z",
                   "action": "added",
-                  "timestamp": "2026-02-24T15:39:33.731Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:32:42.535Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "2 Stück"
-                },
-                {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
-                  "action": "added",
-                  "timestamp": "2026-02-24T13:33:19.696Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
-                  "action": "checked",
-                  "timestamp": "2026-02-23T11:14:11.676Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": "2026-02-23T11:07:30.978Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
-                  "action": "added",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "Qv74gTO8acX8NncqWLjP": {
-              "articleId": "Qv74gTO8acX8NncqWLjP",
-              "articleName": "Buchteln",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-11T07:21:52.374Z",
-              "checkedAt": "2026-03-12T12:44:46.714Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "",
-                  "timestamp": "2026-03-12T12:44:46.714Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "",
-                  "timestamp": "2026-03-11T07:21:52.374Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "added",
-                  "timestamp": "2026-03-09T13:58:34.565Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "",
-                  "timestamp": "2026-03-08T10:20:58.930Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-01-22T10:17:29.634Z",
-                  "amount": "",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "fkQzSYkJVphwWIuXKIFo": {
-              "articleId": "fkQzSYkJVphwWIuXKIFo",
-              "articleName": "Oliven",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-12T12:44:41.587Z",
-              "checkedAt": "2026-03-12T12:44:52.662Z",
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked",
-                  "timestamp": "2026-03-12T12:44:52.662Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-12T12:44:41.587Z"
-                }
-              ]
-            },
-            "XegiUKblnqhb4mhDae9y": {
-              "articleId": "XegiUKblnqhb4mhDae9y",
-              "articleName": "Lippenstift",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-01-30T10:11:08.633Z",
-              "checkedAt": "2026-03-11T07:21:31.448Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-11T07:21:31.448Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "",
-                  "timestamp": "2026-01-30T10:11:08.633Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "YZ9WuiTkQtjPC6lMfgwt": {
-              "articleId": "YZ9WuiTkQtjPC6lMfgwt",
-              "articleName": "Mais",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-23T11:08:03.200Z",
-              "checkedAt": "2026-02-23T11:11:14.623Z",
-              "history": [
-                {
-                  "timestamp": "2026-02-23T11:11:14.623Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "added",
-                  "timestamp": "2026-02-23T11:08:03.200Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "XY1UzqbfbGPXPXdrOH7U": {
-              "articleId": "XY1UzqbfbGPXPXdrOH7U",
-              "articleName": "Butter",
-              "isChecked": true,
-              "amount": "75 g",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-24T15:55:00.608Z",
-              "checkedAt": "2026-03-11T07:21:28.026Z",
-              "history": [
-                {
-                  "amount": "75 g",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-11T07:21:28.025Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "75 g",
-                  "action": "unchecked",
-                  "timestamp": "2026-03-11T07:21:21.665Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "75 g",
-                  "action": "checked",
-                  "timestamp": "2026-03-09T13:57:51.402Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "75 g",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-08T10:38:56.871Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "75 g",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-08T10:21:01.788Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "75 g",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-28T08:03:48.496Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:55:11.049Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "75 g",
-                  "action": "checked"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "75 g",
-                  "action": "added",
-                  "timestamp": "2026-02-24T15:55:00.608Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "amount": "75 g",
-                  "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-24T15:39:40.051Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:32:53.642Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "75 g"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "75 g",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-23T11:14:12.581Z"
-                },
-                {
-                  "timestamp": "2026-02-23T11:07:47.814Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "75 g",
-                  "action": "added",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "2hpqvzf1oEkSTzi1bx92": {
-              "articleId": "2hpqvzf1oEkSTzi1bx92",
-              "articleName": "Kartoffeln",
-              "isChecked": true,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-24T15:53:20.625Z",
-              "checkedAt": "2026-02-25T11:09:57.859Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-25T11:09:57.859Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "",
-                  "timestamp": "2026-02-24T15:53:20.625Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:53:01.541Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:52:51.681Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "unchecked"
-                }
-              ]
-            },
-            "uxor2bd1nKfqyzPtkviN": {
-              "articleId": "uxor2bd1nKfqyzPtkviN",
-              "articleName": "Backpapier",
-              "isChecked": false,
-              "amount": "",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-11T07:21:52.374Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "added",
-                  "timestamp": "2026-03-11T07:21:52.374Z"
-                }
-              ]
-            },
-            "lyauW40NEf6iBhI9tYGe": {
-              "articleId": "lyauW40NEf6iBhI9tYGe",
-              "articleName": "Bananen",
-              "isChecked": false,
-              "amount": "2 kg",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-12T12:59:14.577Z",
-              "checkedAt": "2026-03-12T12:44:48.848Z",
-              "history": [
-                {
-                  "timestamp": "2026-03-12T12:59:14.577Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "2 kg",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "checked",
-                  "amount": "2 kg",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-12T12:44:48.848Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-12T12:44:29.460Z",
-                  "amount": "",
-                  "action": "added",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "Qu3EBlw1EfdGbwyqi8DK": {
-              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
-              "articleName": "Gurken",
-              "isChecked": false,
-              "amount": "3 Stück",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-12T15:29:05.260Z",
-              "history": [
-                {
-                  "timestamp": "2026-03-12T15:29:05.260Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "3 Stück"
-                },
-                {
-                  "timestamp": "2026-03-12T15:28:33.845Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
                   "amount": ""
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "timestamp": "2026-01-22T10:17:31.227Z",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
                   "userName": "Philipp Thurnher",
                   "amount": "",
-                  "action": "added",
-                  "timestamp": "2026-03-12T14:33:28.591Z"
+                  "timestamp": "2026-01-22T10:17:28.515Z",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 }
               ]
             },
@@ -7357,111 +6927,326 @@
               "history": [
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "2 l",
+                  "timestamp": "2026-03-12T14:42:13.675Z",
                   "action": "added",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-12T14:42:13.675Z"
+                  "amount": "2 l",
+                  "userName": "Philipp Thurnher"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
                   "amount": "2 l",
                   "action": "unchecked",
-                  "timestamp": "2026-03-12T14:41:58.102Z"
+                  "timestamp": "2026-03-12T14:41:58.102Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "timestamp": "2026-03-12T12:59:20.449Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
                   "amount": "2 l",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-03-12T12:59:20.449Z"
                 },
                 {
-                  "userName": "Philipp Thurnher",
                   "amount": "400 ml",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "added",
-                  "timestamp": "2026-03-12T10:33:23.080Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "timestamp": "2026-03-12T10:33:23.080Z"
                 },
                 {
-                  "userName": "Philipp Thurnher",
-                  "amount": "400 ml",
                   "action": "checked",
                   "timestamp": "2026-03-08T10:21:02.704Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "400 ml"
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
+                  "timestamp": "2026-03-07T19:21:19.846Z",
                   "action": "added",
                   "amount": "400 ml",
-                  "timestamp": "2026-03-07T19:21:19.846Z"
+                  "userName": "Philipp Thurnher"
                 },
                 {
-                  "timestamp": "2026-02-24T15:55:12.641Z",
+                  "amount": "400 ml",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "checked",
-                  "amount": "400 ml",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "timestamp": "2026-02-24T15:55:12.641Z"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
                   "amount": "400 ml",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
                   "timestamp": "2026-02-24T15:54:56.969Z"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "added",
-                  "amount": "400 ml",
+                  "timestamp": "2026-02-24T15:39:36.063Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-24T15:39:36.063Z"
+                  "amount": "400 ml"
                 },
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
                   "timestamp": "2026-02-24T15:32:45.569Z",
-                  "userName": "Philipp Thurnher",
                   "amount": "250 ml",
-                  "action": "added",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userName": "Philipp Thurnher"
                 },
                 {
+                  "amount": "400 ml",
+                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T13:33:20.725Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "400 ml",
-                  "action": "added"
+                  "action": "added",
+                  "timestamp": "2026-02-24T13:33:20.725Z"
                 },
                 {
                   "userName": "Philipp Thurnher",
-                  "action": "added",
                   "amount": "400 ml",
+                  "action": "added",
                   "timestamp": "2026-02-23T11:07:33.975Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 }
               ]
             },
-            "L6SH8Qk4xTwG3QnupQ7T": {
-              "articleId": "L6SH8Qk4xTwG3QnupQ7T",
-              "articleName": "Datteln",
+            "FYl1b39fTArWcZMiBlDm": {
+              "articleId": "FYl1b39fTArWcZMiBlDm",
+              "articleName": "Kakis2",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-21T08:32:39.851Z",
-              "checkedAt": "2026-02-23T18:31:40.993Z",
+              "addedAt": "2026-02-13T09:52:25.676Z",
+              "checkedAt": "2026-03-11T07:21:29.346Z",
               "history": [
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-23T18:31:40.993Z",
+                  "amount": "",
                   "userName": "Philipp Thurnher",
-                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-11T07:21:29.346Z",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": "2026-03-08T10:32:31.731Z",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
                   "amount": ""
                 },
                 {
+                  "action": "checked",
+                  "timestamp": "2026-03-07T19:21:47.960Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-21T08:32:39.851Z",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                },
+                {
                   "userName": "Philipp Thurnher",
                   "amount": "",
+                  "action": "unchecked",
+                  "timestamp": "2026-02-25T11:10:27.534Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-02-25T11:09:57.859Z",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "cTQGlGqtGX8kdOQxOEEL": {
+              "articleId": "cTQGlGqtGX8kdOQxOEEL",
+              "articleName": "Eier",
+              "isChecked": true,
+              "amount": "2",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-07T19:21:34.335Z",
+              "checkedAt": "2026-03-08T10:21:01.038Z",
+              "history": [
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-03-08T10:21:01.038Z",
+                  "amount": "2",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück",
+                  "timestamp": "2026-03-07T19:21:34.335Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück",
+                  "action": "added",
+                  "timestamp": "2026-03-06T04:00:39.184Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "timestamp": "2026-03-03T01:39:16.643Z",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück"
+                },
+                {
+                  "amount": "2 Stück",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-02-24T15:55:09.822Z"
+                },
+                {
+                  "amount": "2 Stück",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:54:55.509Z",
+                  "action": "added"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück",
+                  "timestamp": "2026-02-24T15:39:33.731Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück",
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:32:42.535Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-24T13:33:19.696Z",
+                  "amount": "2 Stück",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "checked",
+                  "timestamp": "2026-02-23T11:14:11.676Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 Stück",
+                  "timestamp": "2026-02-23T11:07:30.978Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                }
+              ]
+            },
+            "XegiUKblnqhb4mhDae9y": {
+              "articleId": "XegiUKblnqhb4mhDae9y",
+              "articleName": "Lippenstift",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-01-30T10:11:08.633Z",
+              "checkedAt": "2026-03-11T07:21:31.448Z",
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "",
+                  "timestamp": "2026-03-11T07:21:31.448Z",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-01-30T10:11:08.633Z",
+                  "action": "added",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "hhGOInicyhPVYD9Gr3kD": {
+              "articleId": "hhGOInicyhPVYD9Gr3kD",
+              "articleName": "Tomaten",
+              "isChecked": true,
+              "amount": "200 g",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-24T15:54:59.243Z",
+              "checkedAt": "2026-03-08T10:20:58.131Z",
+              "history": [
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-08T10:20:58.131Z",
+                  "action": "checked",
+                  "amount": "200 g",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g",
+                  "action": "unchecked",
+                  "timestamp": "2026-02-27T11:23:30.972Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:55:07.977Z",
+                  "action": "checked",
+                  "amount": "200 g",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g",
+                  "timestamp": "2026-02-24T15:54:59.243Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g",
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:53:20.625Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "200 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:53:01.541Z",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": "2026-02-24T15:39:38.409Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g"
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:32:49.656Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g"
+                },
+                {
+                  "action": "checked",
+                  "timestamp": "2026-02-23T11:14:09.748Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "200 g"
+                },
+                {
+                  "amount": "200 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T11:07:38.643Z",
                   "action": "added"
                 }
               ]
@@ -7476,17 +7261,373 @@
               "checkedAt": "2026-02-23T11:14:14.412Z",
               "history": [
                 {
-                  "timestamp": "2026-02-23T11:14:14.411Z",
-                  "userName": "Philipp Thurnher",
                   "amount": "2 EL",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T11:14:14.411Z",
+                  "action": "checked"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-23T11:07:43.720Z",
+                  "amount": "2 EL",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "Qv74gTO8acX8NncqWLjP": {
+              "articleId": "Qv74gTO8acX8NncqWLjP",
+              "articleName": "Buchteln",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-11T07:21:52.374Z",
+              "checkedAt": "2026-03-12T12:44:46.714Z",
+              "history": [
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-03-12T12:44:46.714Z",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-03-11T07:21:52.374Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-03-09T13:58:34.565Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "",
+                  "timestamp": "2026-03-08T10:20:58.930Z",
                   "action": "checked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-23T11:07:43.720Z",
                   "userName": "Philipp Thurnher",
-                  "amount": "2 EL",
+                  "amount": "",
+                  "action": "unchecked",
+                  "timestamp": "2026-01-22T10:17:29.634Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                }
+              ]
+            },
+            "YZ9WuiTkQtjPC6lMfgwt": {
+              "articleId": "YZ9WuiTkQtjPC6lMfgwt",
+              "articleName": "Mais",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-23T11:08:03.200Z",
+              "checkedAt": "2026-02-23T11:11:14.623Z",
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T11:11:14.623Z",
+                  "action": "checked"
+                },
+                {
+                  "timestamp": "2026-02-23T11:08:03.200Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                }
+              ]
+            },
+            "vPKHHjDs8R9tIPAGrRFd": {
+              "articleId": "vPKHHjDs8R9tIPAGrRFd",
+              "articleName": "Hose",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-01-30T15:04:20.603Z",
+              "checkedAt": "2026-02-23T18:31:42.325Z",
+              "history": [
+                {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-02-23T18:31:42.325Z"
+                },
+                {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T18:30:30.460Z",
+                  "action": "unchecked"
+                }
+              ]
+            },
+            "sTQY2oINEMhpckoVV2K7": {
+              "articleId": "sTQY2oINEMhpckoVV2K7",
+              "articleName": "Kuchenmehl",
+              "isChecked": true,
+              "amount": "500 g",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-07T19:21:24.317Z",
+              "checkedAt": "2026-03-11T15:18:48.666Z",
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "500 g",
+                  "action": "checked",
+                  "timestamp": "2026-03-11T15:18:48.665Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "500 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-07T19:21:24.317Z",
+                  "action": "added"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "500 g",
+                  "timestamp": "2026-03-07T19:21:11.082Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "timestamp": "2026-03-06T04:00:34.992Z",
+                  "action": "added",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "500 g"
+                },
+                {
+                  "amount": "500 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:55:13.844Z",
+                  "action": "checked"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "500 g",
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:54:54.001Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-24T13:33:18.420Z"
+                }
+              ]
+            },
+            "uxor2bd1nKfqyzPtkviN": {
+              "articleId": "uxor2bd1nKfqyzPtkviN",
+              "articleName": "Backpapier",
+              "isChecked": false,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-11T07:21:52.374Z",
+              "history": [
+                {
+                  "action": "added",
+                  "timestamp": "2026-03-11T07:21:52.374Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                }
+              ]
+            },
+            "N1JdWRDo5cAihC2Ahy16": {
+              "articleId": "N1JdWRDo5cAihC2Ahy16",
+              "articleName": "Äpfel",
+              "isChecked": true,
+              "amount": "",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-13T09:52:25.676Z",
+              "checkedAt": "2026-03-09T13:57:51.402Z",
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "",
+                  "action": "checked",
+                  "timestamp": "2026-03-09T13:57:51.401Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T18:31:38.826Z",
+                  "action": "unchecked",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "timestamp": "2026-02-23T18:30:55.113Z",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                }
+              ]
+            },
+            "c03ggOmVKFD7SXb9pmmx": {
+              "articleId": "c03ggOmVKFD7SXb9pmmx",
+              "articleName": "Salz",
+              "isChecked": true,
+              "amount": "1 TL",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-24T15:54:57.914Z",
+              "checkedAt": "2026-02-24T15:55:11.979Z",
+              "history": [
+                {
+                  "action": "checked",
+                  "timestamp": "2026-02-24T15:55:11.979Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "1 TL"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:54:57.914Z",
+                  "amount": "1 TL",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:39:37.089Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "1 TL"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:32:48.211Z",
+                  "action": "added",
+                  "amount": "1 TL",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "AKlAl1p4gJLrVSElikg0": {
+              "articleId": "AKlAl1p4gJLrVSElikg0",
+              "articleName": "Honig",
+              "isChecked": false,
+              "amount": "0,5 l",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-23T11:07:50.215Z",
+              "history": [
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T11:07:50.215Z",
+                  "action": "added",
+                  "amount": "0,5 l",
+                  "userName": "Philipp Thurnher"
+                }
+              ]
+            },
+            "XY1UzqbfbGPXPXdrOH7U": {
+              "articleId": "XY1UzqbfbGPXPXdrOH7U",
+              "articleName": "Butter",
+              "isChecked": true,
+              "amount": "75 g",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-02-24T15:55:00.608Z",
+              "checkedAt": "2026-03-11T07:21:28.026Z",
+              "history": [
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g",
+                  "timestamp": "2026-03-11T07:21:28.025Z",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "unchecked",
+                  "timestamp": "2026-03-11T07:21:21.665Z"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-09T13:57:51.402Z",
+                  "action": "checked",
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "timestamp": "2026-03-08T10:38:56.871Z",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-08T10:21:01.788Z",
+                  "action": "checked",
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "timestamp": "2026-02-28T08:03:48.496Z",
+                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g"
+                },
+                {
+                  "timestamp": "2026-02-24T15:55:11.049Z",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g"
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:55:00.608Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:39:40.051Z",
+                  "action": "added",
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:32:53.642Z",
+                  "action": "added"
+                },
+                {
+                  "action": "checked",
+                  "timestamp": "2026-02-23T11:14:12.581Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "75 g"
+                },
+                {
+                  "amount": "75 g",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-23T11:07:47.814Z",
                   "action": "added"
                 }
               ]
@@ -7502,111 +7643,93 @@
               "history": [
                 {
                   "timestamp": "2026-02-23T11:14:09.036Z",
-                  "amount": "1",
                   "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "amount": "1"
                 },
                 {
-                  "timestamp": "2026-02-23T11:07:40.771Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
                   "amount": "1",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-23T11:07:40.771Z"
                 }
               ]
             },
-            "vPKHHjDs8R9tIPAGrRFd": {
-              "articleId": "vPKHHjDs8R9tIPAGrRFd",
-              "articleName": "Hose",
+            "2hpqvzf1oEkSTzi1bx92": {
+              "articleId": "2hpqvzf1oEkSTzi1bx92",
+              "articleName": "Kartoffeln",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-01-30T15:04:20.603Z",
-              "checkedAt": "2026-02-23T18:31:42.325Z",
+              "addedAt": "2026-02-24T15:53:20.625Z",
+              "checkedAt": "2026-02-25T11:09:57.859Z",
               "history": [
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-23T18:31:42.325Z",
                   "action": "checked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-23T18:30:30.460Z",
-                  "amount": "",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher"
-                }
-              ]
-            },
-            "AKlAl1p4gJLrVSElikg0": {
-              "articleId": "AKlAl1p4gJLrVSElikg0",
-              "articleName": "Honig",
-              "isChecked": false,
-              "amount": "0,5 l",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-23T11:07:50.215Z",
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "0,5 l",
-                  "action": "added",
-                  "timestamp": "2026-02-23T11:07:50.215Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "4wOKbxOaL1OBIuJU1f0x": {
-              "articleId": "4wOKbxOaL1OBIuJU1f0x",
-              "articleName": "Brot",
-              "isChecked": true,
-              "amount": "2 Stück",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-03-11T15:18:36.622Z",
-              "checkedAt": "2026-03-11T15:18:48.665Z",
-              "history": [
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "2 Stück",
-                  "timestamp": "2026-03-11T15:18:48.665Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "iO2DfORaRESybCOkr7uMZeC8OZV2",
-                  "timestamp": "2026-03-11T15:18:36.622Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
-                  "action": "added"
-                },
-                {
+                  "timestamp": "2026-02-25T11:09:57.859Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "amount": "2 Stück",
-                  "action": "checked",
-                  "timestamp": "2026-03-08T10:39:11.172Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-06T04:11:28.057Z",
-                  "amount": "",
-                  "action": "added",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-01-22T10:17:31.227Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
                   "amount": ""
                 },
                 {
-                  "action": "unchecked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "added",
+                  "timestamp": "2026-02-24T15:53:20.625Z",
                   "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-02-24T15:53:01.541Z",
+                  "action": "checked",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "action": "unchecked",
+                  "timestamp": "2026-02-24T15:52:51.681Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "timestamp": "2026-01-22T10:17:28.515Z",
+                  "amount": ""
+                }
+              ]
+            },
+            "Qu3EBlw1EfdGbwyqi8DK": {
+              "articleId": "Qu3EBlw1EfdGbwyqi8DK",
+              "articleName": "Gurken",
+              "isChecked": false,
+              "amount": "3 Stück",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-13T08:39:20.911Z",
+              "history": [
+                {
+                  "timestamp": "2026-03-13T08:39:20.911Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "action": "added",
+                  "amount": "3 Stück"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-12T15:29:05.260Z",
+                  "action": "added",
+                  "amount": "3 Stück",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-12T15:28:33.845Z",
+                  "action": "added",
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
+                },
+                {
+                  "userName": "Philipp Thurnher",
+                  "amount": "",
+                  "action": "added",
+                  "timestamp": "2026-03-12T14:33:28.591Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 }
               ]
@@ -7621,307 +7744,159 @@
               "checkedAt": "2026-03-12T12:44:49.857Z",
               "history": [
                 {
-                  "timestamp": "2026-03-12T12:44:49.857Z",
                   "amount": "2 Stück",
-                  "action": "checked",
                   "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "action": "checked",
+                  "timestamp": "2026-03-12T12:44:49.857Z"
                 },
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "action": "added",
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
                   "timestamp": "2026-03-12T10:42:04.887Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "amount": "",
+                  "userName": "Philipp Thurnher"
                 },
                 {
-                  "action": "checked",
                   "amount": "",
                   "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-09T13:57:51.402Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "unchecked",
-                  "timestamp": "2026-03-09T11:34:03.300Z"
-                },
-                {
                   "action": "checked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-08T10:39:09.952Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "timestamp": "2026-03-09T13:57:51.402Z"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-08T10:39:01.891Z",
-                  "userName": "Philipp Thurnher",
                   "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-09T11:34:03.300Z",
                   "action": "unchecked"
                 },
                 {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "timestamp": "2026-03-08T10:39:09.952Z",
+                  "action": "checked"
+                },
+                {
+                  "action": "unchecked",
+                  "timestamp": "2026-03-08T10:39:01.891Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                },
+                {
                   "userName": "Philipp Thurnher",
                   "amount": "",
-                  "action": "checked",
                   "timestamp": "2026-03-07T19:21:48.852Z",
+                  "action": "checked",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-07T19:21:46.810Z",
+                  "userName": "Philipp Thurnher",
                   "amount": "",
                   "action": "unchecked",
-                  "userName": "Philipp Thurnher"
+                  "timestamp": "2026-03-07T19:21:46.810Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": "2026-03-07T19:21:45.302Z",
-                  "amount": "",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher"
+                  "action": "checked"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "unchecked",
-                  "amount": "",
                   "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-27T11:23:28.699Z"
+                  "amount": "",
+                  "action": "unchecked",
+                  "timestamp": "2026-02-27T11:23:28.699Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": "2026-02-25T11:09:57.859Z",
-                  "amount": "",
                   "action": "checked",
+                  "amount": "",
                   "userName": "Philipp Thurnher"
                 },
                 {
                   "userName": "Philipp Thurnher",
                   "amount": "",
-                  "action": "added",
                   "timestamp": "2026-02-24T15:53:20.625Z",
+                  "action": "added",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                },
+                {
+                  "timestamp": "2026-02-24T15:53:01.541Z",
+                  "action": "checked",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
                 },
                 {
                   "userName": "Philipp Thurnher",
                   "amount": "",
-                  "action": "checked",
-                  "timestamp": "2026-02-24T15:53:01.541Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
                   "timestamp": "2026-02-24T15:52:49.763Z",
-                  "userName": "Philipp Thurnher",
                   "action": "unchecked",
-                  "amount": "",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 },
                 {
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "timestamp": "2026-02-21T08:32:28.709Z",
-                  "userName": "Philipp Thurnher",
                   "action": "checked",
                   "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userName": "Philipp Thurnher"
                 }
               ]
             },
-            "c03ggOmVKFD7SXb9pmmx": {
-              "articleId": "c03ggOmVKFD7SXb9pmmx",
-              "articleName": "Salz",
-              "isChecked": true,
-              "amount": "1 TL",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-24T15:54:57.914Z",
-              "checkedAt": "2026-02-24T15:55:11.979Z",
-              "history": [
-                {
-                  "timestamp": "2026-02-24T15:55:11.979Z",
-                  "amount": "1 TL",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "1 TL",
-                  "action": "added",
-                  "timestamp": "2026-02-24T15:54:57.914Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": "2026-02-24T15:39:37.089Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "1 TL",
-                  "action": "added",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "1 TL",
-                  "action": "added",
-                  "timestamp": "2026-02-24T15:32:48.211Z"
-                }
-              ]
-            },
-            "FYl1b39fTArWcZMiBlDm": {
-              "articleId": "FYl1b39fTArWcZMiBlDm",
-              "articleName": "Kakis2",
+            "fkQzSYkJVphwWIuXKIFo": {
+              "articleId": "fkQzSYkJVphwWIuXKIFo",
+              "articleName": "Oliven",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-13T09:52:25.676Z",
-              "checkedAt": "2026-03-11T07:21:29.346Z",
+              "addedAt": "2026-03-12T12:44:41.587Z",
+              "checkedAt": "2026-03-12T12:44:52.662Z",
               "history": [
                 {
+                  "amount": "",
+                  "userName": "Philipp Thurnher",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "amount": "",
                   "action": "checked",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-03-11T07:21:29.346Z"
+                  "timestamp": "2026-03-12T12:44:52.662Z"
                 },
                 {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-08T10:32:31.731Z",
-                  "amount": "",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "timestamp": "2026-03-07T19:21:47.960Z",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": "2026-02-25T11:10:27.534Z",
                   "userName": "Philipp Thurnher",
                   "amount": "",
-                  "action": "unchecked",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "action": "checked",
-                  "amount": "",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-25T11:09:57.859Z",
+                  "action": "added",
+                  "timestamp": "2026-03-12T12:44:41.587Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
                 }
               ]
             },
-            "hhGOInicyhPVYD9Gr3kD": {
-              "articleId": "hhGOInicyhPVYD9Gr3kD",
-              "articleName": "Tomaten",
-              "isChecked": true,
-              "amount": "200 g",
-              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-24T15:54:59.243Z",
-              "checkedAt": "2026-03-08T10:20:58.131Z",
-              "history": [
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "200 g",
-                  "timestamp": "2026-03-08T10:20:58.131Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-27T11:23:30.972Z",
-                  "amount": "200 g",
-                  "action": "unchecked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:55:07.977Z",
-                  "amount": "200 g",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "action": "added",
-                  "amount": "200 g",
-                  "userName": "Philipp Thurnher",
-                  "timestamp": "2026-02-24T15:54:59.243Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "200 g",
-                  "timestamp": "2026-02-24T15:53:20.625Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-02-24T15:53:01.541Z",
-                  "amount": "200 g",
-                  "action": "checked",
-                  "userName": "Philipp Thurnher"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "added",
-                  "amount": "200 g",
-                  "timestamp": "2026-02-24T15:39:38.409Z"
-                },
-                {
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "amount": "200 g",
-                  "action": "added",
-                  "timestamp": "2026-02-24T15:32:49.656Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "200 g",
-                  "action": "checked",
-                  "timestamp": "2026-02-23T11:14:09.748Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                },
-                {
-                  "timestamp": "2026-02-23T11:07:38.643Z",
-                  "userName": "Philipp Thurnher",
-                  "amount": "200 g",
-                  "action": "added",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
-                }
-              ]
-            },
-            "N1JdWRDo5cAihC2Ahy16": {
-              "articleId": "N1JdWRDo5cAihC2Ahy16",
-              "articleName": "Äpfel",
+            "L6SH8Qk4xTwG3QnupQ7T": {
+              "articleId": "L6SH8Qk4xTwG3QnupQ7T",
+              "articleName": "Datteln",
               "isChecked": true,
               "amount": "",
               "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-              "addedAt": "2026-02-13T09:52:25.676Z",
-              "checkedAt": "2026-03-09T13:57:51.402Z",
+              "addedAt": "2026-02-21T08:32:39.851Z",
+              "checkedAt": "2026-02-23T18:31:40.993Z",
               "history": [
                 {
-                  "userName": "Philipp Thurnher",
+                  "timestamp": "2026-02-23T18:31:40.993Z",
                   "action": "checked",
-                  "amount": "",
-                  "timestamp": "2026-03-09T13:57:51.401Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "userName": "Philipp Thurnher",
-                  "action": "unchecked",
+                  "timestamp": "2026-02-21T08:32:39.851Z",
+                  "action": "added",
                   "amount": "",
-                  "timestamp": "2026-02-23T18:31:38.826Z"
-                },
-                {
-                  "userName": "Philipp Thurnher",
-                  "amount": "",
-                  "action": "checked",
-                  "timestamp": "2026-02-23T18:30:55.113Z",
-                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2"
+                  "userName": "Philipp Thurnher"
                 }
               ]
             },
@@ -7935,23 +7910,55 @@
               "checkedAt": "2026-03-11T07:21:25.635Z",
               "history": [
                 {
+                  "action": "checked",
+                  "timestamp": "2026-03-11T07:21:25.635Z",
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
                   "userName": "Philipp Thurnher",
-                  "action": "checked",
-                  "amount": "",
-                  "timestamp": "2026-03-11T07:21:25.635Z"
+                  "amount": ""
+                },
+                {
+                  "action": "added",
+                  "timestamp": "2026-03-06T04:20:54.807Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": ""
+                }
+              ]
+            },
+            "lyauW40NEf6iBhI9tYGe": {
+              "articleId": "lyauW40NEf6iBhI9tYGe",
+              "articleName": "Bananen",
+              "isChecked": false,
+              "amount": "2 kg",
+              "checkedBy": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+              "addedAt": "2026-03-12T12:59:14.577Z",
+              "checkedAt": "2026-03-12T12:44:48.848Z",
+              "history": [
+                {
+                  "action": "added",
+                  "timestamp": "2026-03-12T12:59:14.577Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
+                  "amount": "2 kg"
                 },
                 {
                   "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
-                  "timestamp": "2026-03-06T04:20:54.807Z",
-                  "userName": "Philipp Thurnher",
+                  "action": "checked",
+                  "timestamp": "2026-03-12T12:44:48.848Z",
+                  "amount": "2 kg",
+                  "userName": "Philipp Thurnher"
+                },
+                {
                   "action": "added",
+                  "timestamp": "2026-03-12T12:44:29.460Z",
+                  "userId": "HYqET9vr40eDju4nQCTnJTV0qJo2",
+                  "userName": "Philipp Thurnher",
                   "amount": ""
                 }
               ]
             }
           },
-          "updatedAt": "2026-03-12T15:29:05.323Z"
+          "updatedAt": "2026-03-13T08:39:21.243Z"
         },
         {
           "id": "kiCWbfAZWROiU6IklBty",
