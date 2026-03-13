@@ -10,6 +10,7 @@ import {
 } from '../ai-models';
 import { DataService } from '../../data.service';
 import { LoggerService } from '../../logger.service';
+import { AICachingService } from '../caching.service';
 import { ListSelectionService } from './list-selection.service';
 
 /**
@@ -36,6 +37,7 @@ export class ArticleExecutionService {
   constructor(
     private dataService: DataService,
     private logger: LoggerService,
+    private cachingService: AICachingService,
     private listSelection: ListSelectionService
   ) {}
 
@@ -122,6 +124,11 @@ export class ArticleExecutionService {
           message: `❌ Fehler beim Erstellen des Artikels "${pendingAction.itemName}".`
         };
       }
+
+      // Invalidate disambiguation cache so subsequent searches find the new article
+      this.cachingService.clearByPattern(
+        new RegExp(`^disambiguation:${pendingAction.itemName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`)
+      );
 
       // Handle target list
       const targetInfo = this.getTargetListInfo(pendingAction);
@@ -285,6 +292,12 @@ export class ArticleExecutionService {
           message: '❌ Fehler beim Erstellen des Artikels.'
         };
       }
+
+      // Invalidate disambiguation cache so subsequent searches find the new article
+      this.cachingService.clearByPattern(
+        new RegExp(`^disambiguation:${articleData.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`)
+      );
+
       articleId = newArticle.id;
     }
 
