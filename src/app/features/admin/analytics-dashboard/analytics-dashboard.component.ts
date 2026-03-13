@@ -18,6 +18,7 @@ import {
   FeatureAdoptionMetrics,
   RetentionMetrics,
   SessionDepthMetrics,
+  AICommandBreakdown,
 } from '../../../core/services/analytics-aggregation.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
 import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer.component';
@@ -67,6 +68,7 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
   loading = signal(false);
   error = signal<string | null>(null);
   selectedDateRange = 30; // Default to 30 days
+  aiCommandBreakdown = signal<AICommandBreakdown | null>(null);
 
   // Flush state
   flushing = signal(false);
@@ -366,12 +368,21 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
     unknown: 'Events with no recorded command type (legacy data)',
   };
 
+  getCommandTypePct(key: string): string {
+    const bd = this.aiCommandBreakdown();
+    if (!bd || bd.totalCommands === 0) return '';
+    const count = bd.commandTypeCounts[key] ?? 0;
+    if (count === 0) return '';
+    return ((count / bd.totalCommands) * 100).toFixed(1) + '%';
+  }
+
   /**
    * Create AI command chart (pie chart)
    */
   private createAICommandChart(): void {
     this.analyticsAggregation.getAICommandBreakdown().subscribe({
       next: (data) => {
+        this.aiCommandBreakdown.set(data);
         // Destroy existing chart if it exists
         this.aiCommandChart?.destroy();
 

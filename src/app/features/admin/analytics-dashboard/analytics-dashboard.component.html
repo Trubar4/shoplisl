@@ -506,7 +506,10 @@
               @for (entry of commandTypeDescriptions | keyvalue; track entry.key) {
                 <div class="legend-item">
                   <strong>{{ commandTypeLabels[entry.key] || entry.key }}</strong>
-                  <span>{{ entry.value }}</span>
+                  @if (getCommandTypePct(entry.key); as pct) {
+                    <span class="legend-pct">{{ pct }}</span>
+                  }
+                  <span class="legend-desc">{{ entry.value }}</span>
                 </div>
               }
             </div>
