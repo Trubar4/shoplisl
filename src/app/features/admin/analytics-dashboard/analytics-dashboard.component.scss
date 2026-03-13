@@ -112,6 +112,16 @@
     color: rgba(0, 0, 0, 0.6);
     font-size: 14px;
     margin-bottom: 16px;
+
+    .data-window {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    .cap-warning {
+      color: #e65100;
+      font-weight: 500;
+    }
   }
 }
 

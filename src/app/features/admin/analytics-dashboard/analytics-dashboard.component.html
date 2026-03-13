@@ -90,9 +90,18 @@
 
   <!-- Dashboard Content -->
   <div *ngIf="!loading() && !error() && metrics()" class="dashboard-content">
-    <!-- Last Updated -->
+    <!-- Last Updated + Data Window -->
     <p class="last-updated">
       Last updated: {{ formatDate(metrics()!.lastUpdated) }}
+      <span class="data-window">
+        | {{ metrics()!.eventsReturned }} events loaded
+        <span *ngIf="metrics()!.oldestEventDate">
+          | oldest from {{ formatDate(metrics()!.oldestEventDate!) }}
+        </span>
+        <span *ngIf="metrics()!.eventsReturned >= 500" class="cap-warning">
+          (500 cap reached)
+        </span>
+      </span>
     </p>
 
     <!-- Top 5 Priority Metrics -->
