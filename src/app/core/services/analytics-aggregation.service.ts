@@ -493,6 +493,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -551,6 +552,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -614,6 +616,7 @@ export class AnalyticsAggregationService {
       eventsRef,
       where('eventType', '==', AnalyticsEventType.USER_LOGIN),
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -681,6 +684,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -765,6 +769,7 @@ export class AnalyticsAggregationService {
         AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
         AnalyticsEventType.ARTICLE_CHECKED,
       ]),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
