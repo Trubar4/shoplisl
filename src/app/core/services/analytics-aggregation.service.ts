@@ -442,43 +442,49 @@ export class AnalyticsAggregationService {
       orderBy('timestamp', 'desc'),
       limit(500)
     );
-    const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
-    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days (ordered desc)`);
 
-    const aiEvents = eventsSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter(
-        (e: any) =>
-          e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
-          e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
-      );
-    this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
+    try {
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
+      this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days (ordered desc)`);
 
-    // Count by command type
-    const commandTypeCounts: Record<string, number> = {};
-    const failedCommandTypeCounts: Record<string, number> = {};
+      const aiEvents = eventsSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(
+          (e: any) =>
+            e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
+            e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
+        );
+      this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
 
-    aiEvents.forEach((e: any) => {
-      const commandType = e.metadata?.commandType || 'unknown';
+      // Count by command type
+      const commandTypeCounts: Record<string, number> = {};
+      const failedCommandTypeCounts: Record<string, number> = {};
 
-      if (!commandTypeCounts[commandType]) {
-        commandTypeCounts[commandType] = 0;
-      }
-      commandTypeCounts[commandType]++;
+      aiEvents.forEach((e: any) => {
+        const commandType = e.metadata?.commandType || 'unknown';
 
-      if (e.eventType === AnalyticsEventType.AI_COMMAND_FAILED) {
-        if (!failedCommandTypeCounts[commandType]) {
-          failedCommandTypeCounts[commandType] = 0;
+        if (!commandTypeCounts[commandType]) {
+          commandTypeCounts[commandType] = 0;
         }
-        failedCommandTypeCounts[commandType]++;
-      }
-    });
+        commandTypeCounts[commandType]++;
 
-    return {
-      commandTypeCounts,
-      failedCommandTypeCounts,
-      totalCommands: aiEvents.length,
-    };
+        if (e.eventType === AnalyticsEventType.AI_COMMAND_FAILED) {
+          if (!failedCommandTypeCounts[commandType]) {
+            failedCommandTypeCounts[commandType] = 0;
+          }
+          failedCommandTypeCounts[commandType]++;
+        }
+      });
+
+      return {
+        commandTypeCounts,
+        failedCommandTypeCounts,
+        totalCommands: aiEvents.length,
+      };
+    } catch (error) {
+      this.logger.error('analytics', 'Failed to compute AI command breakdown:', error);
+      return { commandTypeCounts: {}, failedCommandTypeCounts: {}, totalCommands: 0 };
+    }
   }
 
   /**
