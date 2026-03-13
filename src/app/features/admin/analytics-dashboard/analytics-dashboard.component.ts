@@ -18,6 +18,7 @@ import {
   FeatureAdoptionMetrics,
   RetentionMetrics,
   SessionDepthMetrics,
+  AICommandBreakdown,
 } from '../../../core/services/analytics-aggregation.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
 import { RawEventsViewerComponent } from '../raw-events-viewer/raw-events-viewer.component';
@@ -67,6 +68,7 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
   loading = signal(false);
   error = signal<string | null>(null);
   selectedDateRange = 30; // Default to 30 days
+  aiCommandBreakdown = signal<AICommandBreakdown | null>(null);
 
   // Flush state
   flushing = signal(false);
@@ -333,12 +335,54 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
     });
   }
 
+  /** Human-readable labels and descriptions for AI command types */
+  readonly commandTypeLabels: Record<string, string> = {
+    standard: 'Standard',
+    recipe: 'Recipe parsing',
+    plus_prefix: '+ Quick add',
+    multi_item: 'Multi-item',
+    continuation: 'Continuation',
+    api_key: 'API key mgmt',
+    help: 'Help',
+    test: 'Test',
+    show_lists: 'Show lists',
+    negative_response: 'Negative resp.',
+    contextual: 'Contextual',
+    create_list: 'Create list',
+    unknown: 'Unknown',
+  };
+
+  readonly commandTypeDescriptions: Record<string, string> = {
+    standard: 'Default text commands that add single items to a list',
+    recipe: 'Paste a recipe to extract and add all ingredients automatically',
+    plus_prefix: 'Quick-add shortcut — type "+milk" to skip AI and add directly',
+    multi_item: 'Comma-separated items added in one go, e.g. "milk, bread, eggs"',
+    continuation: 'Follow-up to a previous command using conversation context',
+    api_key: 'Setting or managing the Groq API key',
+    help: 'Asking for help or usage instructions',
+    test: 'Test/debug commands used during development',
+    show_lists: 'Requesting to display available shopping lists',
+    negative_response: 'User said "no" / declined a suggestion',
+    contextual: 'Context-aware command that references the current list state',
+    create_list: 'Creating a new shopping list, e.g. "Erstelle Liste Wocheneinkauf"',
+    unknown: 'Events with no recorded command type (legacy data)',
+  };
+
+  getCommandTypePct(key: string): string {
+    const bd = this.aiCommandBreakdown();
+    if (!bd || bd.totalCommands === 0) return '';
+    const count = bd.commandTypeCounts[key] ?? 0;
+    if (count === 0) return '';
+    return ((count / bd.totalCommands) * 100).toFixed(1) + '%';
+  }
+
   /**
    * Create AI command chart (pie chart)
    */
   private createAICommandChart(): void {
     this.analyticsAggregation.getAICommandBreakdown().subscribe({
       next: (data) => {
+        this.aiCommandBreakdown.set(data);
         // Destroy existing chart if it exists
         this.aiCommandChart?.destroy();
 
@@ -347,11 +391,19 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
 
         const commandTypes = Object.keys(data.commandTypeCounts);
         const commandCounts = Object.values(data.commandTypeCounts);
+        const total = commandCounts.reduce((sum, c) => sum + c, 0);
+
+        const labels = commandTypes.map((type) => {
+          const label = this.commandTypeLabels[type] || type;
+          const count = data.commandTypeCounts[type];
+          const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0';
+          return `${label} — ${pct}%`;
+        });
 
         const config: ChartConfiguration = {
           type: 'pie',
           data: {
-            labels: commandTypes,
+            labels,
             datasets: [{
               data: commandCounts,
               backgroundColor: [
@@ -362,6 +414,12 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
                 '#9c27b0',
                 '#00bcd4',
                 '#ffeb3b',
+                '#795548',
+                '#607d8b',
+                '#e91e63',
+                '#8bc34a',
+                '#03a9f4',
+                '#cddc39',
               ],
             }]
           },
@@ -375,7 +433,21 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
               },
               title: {
                 display: false,
-              }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (context) => {
+                    const rawType = commandTypes[context.dataIndex];
+                    const count = context.parsed;
+                    const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0';
+                    return `${count} commands (${pct}%)`;
+                  },
+                  afterLabel: (context) => {
+                    const rawType = commandTypes[context.dataIndex];
+                    return this.commandTypeDescriptions[rawType] || '';
+                  },
+                },
+              },
             }
           }
         };

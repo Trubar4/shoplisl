@@ -439,10 +439,11 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(thirtyDaysAgo)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
     const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
-    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days`);
+    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days (ordered desc)`);
 
     const aiEvents = eventsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))

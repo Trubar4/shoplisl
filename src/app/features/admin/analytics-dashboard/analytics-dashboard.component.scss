@@ -439,6 +439,46 @@
         max-height: 100%;
       }
     }
+
+    .command-type-legend {
+      padding: 0 16px 16px;
+
+      .legend-hint {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.54);
+        margin-bottom: 12px;
+      }
+
+      .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 8px;
+      }
+
+      .legend-item {
+        font-size: 13px;
+        line-height: 1.4;
+
+        strong {
+          margin-right: 4px;
+        }
+
+        .legend-pct {
+          display: inline-block;
+          background: #e8eaf6;
+          color: #3f51b5;
+          font-weight: 600;
+          font-size: 12px;
+          padding: 1px 6px;
+          border-radius: 10px;
+          margin-right: 4px;
+        }
+
+        .legend-desc {
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+    }
   }
 }
 
