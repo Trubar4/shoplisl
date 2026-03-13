@@ -225,7 +225,10 @@ export class AnalyticsAggregationService {
       (e: any) => e.eventType === AnalyticsEventType.LIST_DELETED
     ).length;
     const articlesCreatedToday = todayEvents.filter(
-      (e: any) => e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST
+      (e: any) =>
+        e.eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST ||
+        e.eventType === AnalyticsEventType.ARTICLE_CREATED ||
+        e.eventType === AnalyticsEventType.ARTICLE_UNCHECKED
     ).length;
     const articlesDeletedToday = todayEvents.filter(
       (e: any) => e.eventType === AnalyticsEventType.ARTICLE_REMOVED_FROM_LIST
@@ -740,7 +743,11 @@ export class AnalyticsAggregationService {
         if (eventType === AnalyticsEventType.LIST_CREATED) {
           dayData.listsCreated++;
           listEventCount++;
-        } else if (eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST) {
+        } else if (
+          eventType === AnalyticsEventType.ARTICLE_ADDED_TO_LIST ||
+          eventType === AnalyticsEventType.ARTICLE_CREATED ||
+          eventType === AnalyticsEventType.ARTICLE_UNCHECKED
+        ) {
           dayData.articlesCreated++;
           articleEventCount++;
         }
