@@ -439,6 +439,35 @@
         max-height: 100%;
       }
     }
+
+    .command-type-legend {
+      padding: 0 16px 16px;
+
+      .legend-hint {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.54);
+        margin-bottom: 12px;
+      }
+
+      .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 8px;
+      }
+
+      .legend-item {
+        font-size: 13px;
+        line-height: 1.4;
+
+        strong {
+          margin-right: 4px;
+        }
+
+        span {
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+    }
   }
 }
 

@@ -500,6 +500,17 @@
           <div class="chart-container pie-chart-container">
             <canvas #aiCommandChart></canvas>
           </div>
+          <div class="command-type-legend">
+            <p class="legend-hint">Hover a slice for details. Command types:</p>
+            <div class="legend-grid">
+              @for (entry of commandTypeDescriptions | keyvalue; track entry.key) {
+                <div class="legend-item">
+                  <strong>{{ commandTypeLabels[entry.key] || entry.key }}</strong>
+                  <span>{{ entry.value }}</span>
+                </div>
+              }
+            </div>
+          </div>
         </mat-card-content>
       </mat-card>
 
