@@ -87,6 +87,8 @@ export class AnalyticsAggregationService {
       articlesAddedViaAIToday: 0,
       failedCommands: [],
       lastUpdated: new Date(),
+      oldestEventDate: null,
+      eventsReturned: 0,
       // Phase 5 extended metrics
       avgListsPerUser: 0,
       avgArticlesPerList: 0,
@@ -137,6 +139,16 @@ export class AnalyticsAggregationService {
       id: doc.id,
       ...doc.data(),
     }));
+
+    // Determine oldest event in the returned window (events are ordered desc)
+    let oldestEventDate: Date | null = null;
+    if (events.length > 0) {
+      const lastEvent = events[events.length - 1] as any;
+      oldestEventDate = lastEvent.timestamp?.toDate
+        ? lastEvent.timestamp.toDate()
+        : new Date(lastEvent.timestamp);
+    }
+    const eventsReturned = events.length;
 
     // Metric 1: Total users (count actual users in database, not just signup events)
     const totalUsers = await this.countTotalUsers();
@@ -292,6 +304,8 @@ export class AnalyticsAggregationService {
       articlesAddedViaAIToday,
       failedCommands,
       lastUpdated: new Date(),
+      oldestEventDate,
+      eventsReturned,
       // Phase 5 extended metrics
       avgListsPerUser,
       avgArticlesPerList,
@@ -442,43 +456,50 @@ export class AnalyticsAggregationService {
       orderBy('timestamp', 'desc'),
       limit(500)
     );
-    const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
-    this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days (ordered desc)`);
 
-    const aiEvents = eventsSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter(
-        (e: any) =>
-          e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
-          e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
-      );
-    this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
+    try {
+      const eventsSnapshot = await runInInjectionContext(this.injector, () => getDocs(q));
+      this.logger.debug('analytics', `🔍 AI breakdown query: ${eventsSnapshot.size} total events in last 30 days (ordered desc)`);
 
-    // Count by command type
-    const commandTypeCounts: Record<string, number> = {};
-    const failedCommandTypeCounts: Record<string, number> = {};
+      const aiEvents = eventsSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter(
+          (e: any) =>
+            e.eventType === AnalyticsEventType.AI_COMMAND_EXECUTED ||
+            e.eventType === AnalyticsEventType.AI_COMMAND_FAILED
+        );
+      this.logger.debug('analytics', `🤖 AI breakdown: ${aiEvents.length} AI_COMMAND events found`, aiEvents.map((e: any) => e.eventType));
 
-    aiEvents.forEach((e: any) => {
-      const commandType = e.metadata?.commandType || 'unknown';
+      // Count by command type
+      const commandTypeCounts: Record<string, number> = {};
+      const failedCommandTypeCounts: Record<string, number> = {};
 
-      if (!commandTypeCounts[commandType]) {
-        commandTypeCounts[commandType] = 0;
-      }
-      commandTypeCounts[commandType]++;
+      aiEvents.forEach((e: any) => {
+        const commandType = e.metadata?.commandType || 'unknown';
 
-      if (e.eventType === AnalyticsEventType.AI_COMMAND_FAILED) {
-        if (!failedCommandTypeCounts[commandType]) {
-          failedCommandTypeCounts[commandType] = 0;
+        if (!commandTypeCounts[commandType]) {
+          commandTypeCounts[commandType] = 0;
         }
-        failedCommandTypeCounts[commandType]++;
-      }
-    });
+        commandTypeCounts[commandType]++;
 
-    return {
-      commandTypeCounts,
-      failedCommandTypeCounts,
-      totalCommands: aiEvents.length,
-    };
+        if (e.eventType === AnalyticsEventType.AI_COMMAND_FAILED) {
+          if (!failedCommandTypeCounts[commandType]) {
+            failedCommandTypeCounts[commandType] = 0;
+          }
+          failedCommandTypeCounts[commandType]++;
+        }
+      });
+
+      return {
+        commandTypeCounts,
+        failedCommandTypeCounts,
+        totalCommands: aiEvents.length,
+      };
+    } catch (error) {
+      console.error('⚠️ AI breakdown query failed:', error);
+      this.logger.error('analytics', 'Failed to compute AI command breakdown:', error);
+      return { commandTypeCounts: {}, failedCommandTypeCounts: {}, totalCommands: 0 };
+    }
   }
 
   /**
@@ -493,6 +514,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -551,6 +573,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -614,6 +637,7 @@ export class AnalyticsAggregationService {
       eventsRef,
       where('eventType', '==', AnalyticsEventType.USER_LOGIN),
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -665,6 +689,8 @@ export class AnalyticsAggregationService {
         cohortSize,
       };
     } catch (error) {
+      // Log directly to console so Firestore composite-index links are always visible
+      console.error('⚠️ Retention query failed (may need composite index):', error);
       this.logger.error('analytics', 'Failed to compute retention metrics:', error);
       return { day1: 0, day7: 0, day30: 0, cohortSize: 0 };
     }
@@ -681,6 +707,7 @@ export class AnalyticsAggregationService {
     const q = query(
       eventsRef,
       where('timestamp', '>=', Timestamp.fromDate(rangeStartDate)),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -765,6 +792,7 @@ export class AnalyticsAggregationService {
         AnalyticsEventType.ARTICLE_ADDED_TO_LIST,
         AnalyticsEventType.ARTICLE_CHECKED,
       ]),
+      orderBy('timestamp', 'desc'),
       limit(500)
     );
 
@@ -801,6 +829,8 @@ export class AnalyticsAggregationService {
         avgArticlesCheckedPerSession: avg(checksPerSession),
       };
     } catch (error) {
+      // Log directly to console so Firestore composite-index links are always visible
+      console.error('⚠️ Session Depth query failed (may need composite index):', error);
       this.logger.error('analytics', 'Failed to compute session depth metrics:', error);
       return { totalSessions: 0, avgArticlesAddedPerSession: 0, avgArticlesCheckedPerSession: 0 };
     }
@@ -841,6 +871,8 @@ export interface OverviewMetrics {
     timestamp: Date;
   }>;
   lastUpdated: Date;
+  oldestEventDate: Date | null; // Oldest event in the 500-event window
+  eventsReturned: number; // How many events the query actually returned
   // Phase 5 extended metrics
   avgListsPerUser: number;
   avgArticlesPerList: number;

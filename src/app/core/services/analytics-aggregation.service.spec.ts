@@ -350,4 +350,57 @@ describe('AnalyticsAggregationService - Sharing Metrics', () => {
       expect(analyticsLogs.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe('Query correctness: orderBy in all event queries', () => {
+    // Every query that uses limit() on time-ranged events MUST include
+    // orderBy('timestamp', 'desc') so Firestore returns the most recent
+    // events rather than an arbitrary subset.
+
+    beforeEach(() => {
+      // Provide enough mock responses for any method's getDocs calls
+      mockGetDocs.mockResolvedValue(mockEmptySnapshot());
+    });
+
+    it('getOverviewMetrics should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getOverviewMetrics(true));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getAICommandBreakdown should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getAICommandBreakdown());
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getUserGrowthTimeSeries should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getUserGrowthTimeSeries(30));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getFeatureAdoptionRates should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getFeatureAdoptionRates(30));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getRetentionMetrics should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getRetentionMetrics(30));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getDailyActivityTimeSeries should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getDailyActivityTimeSeries(30));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+
+    it('getSessionDepthMetrics should use orderBy(timestamp, desc)', async () => {
+      mockOrderBy.mockClear();
+      await firstValueFrom(service.getSessionDepthMetrics(30));
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    });
+  });
 });
