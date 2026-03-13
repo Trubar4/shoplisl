@@ -483,7 +483,7 @@ export class AnalyticsDashboardComponent implements OnInit, AfterViewInit, OnDes
                 backgroundColor: '#4caf50',
               },
               {
-                label: 'Articles Created',
+                label: 'Articles Added',
                 data: data.map(d => d.articlesCreated),
                 backgroundColor: '#3f51b5',
               }
