@@ -1,15 +1,14 @@
-import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { AIMessagingService, ErrorSeverity, ErrorContext, ValidationRules } from './ai-messaging.service';
 import { LoggerService } from '../logger.service';
 import { AIServiceError } from './ai-models';
 
 describe('AIMessagingService', () => {
   let service: AIMessagingService;
-  let mockLogger: jasmine.SpyObj<LoggerService>;
+  let mockLogger: { error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn>; debug: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    // Create mock logger
-    mockLogger = jasmine.createSpyObj('LoggerService', ['error', 'warn', 'info', 'debug']);
+    mockLogger = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
 
     // Instantiate service directly with mock (bypass Angular DI for Vitest)
     service = new AIMessagingService(mockLogger as any);

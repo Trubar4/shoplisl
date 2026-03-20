@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatBottomSheetRef, MAT_BOTTOM_SHEET_DATA } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
+import { take } from 'rxjs/operators';
 import { Article, ShoppingList } from '../../../../core/models';
 import { DataService } from '../../../../core/services/data.service';
 
@@ -49,10 +50,10 @@ export class RecommendationsBottomSheetComponent {
 
     if (isOnList && isChecked) {
       // Article is on the list and checked off — uncheck it so it re-appears as an active item.
-      this.dataService.toggleItemChecked(this.listId, article.id).subscribe();
+      this.dataService.toggleItemChecked(this.listId, article.id).pipe(take(1)).subscribe();
     } else {
       // Article was removed from the list (has history but not in articleIds) — add it back.
-      this.dataService.addArticleToList(this.listId, article.id).subscribe();
+      this.dataService.addArticleToList(this.listId, article.id).pipe(take(1)).subscribe();
     }
 
     // Auto-close when both lists are empty

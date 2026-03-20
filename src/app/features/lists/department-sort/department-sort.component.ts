@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -350,6 +351,8 @@ interface DepartmentWithVisibility extends Department {
   `]
 })
 export class DepartmentSortComponent implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
+
   listId: string = '';
   currentList: ShoppingList | null = null;
   sortedDepartments: DepartmentWithVisibility[] = [];
@@ -373,7 +376,7 @@ export class DepartmentSortComponent implements OnInit, OnDestroy {
       this.dataService.getList(this.listId),
       this.dataService.getArticles(),
       this.departmentService.getDepartments()
-    ]).subscribe(([list, articles, departments]) => {
+    ]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([list, articles, departments]) => {
       if (!list) {
         this.router.navigate(['/lists']);
         return;

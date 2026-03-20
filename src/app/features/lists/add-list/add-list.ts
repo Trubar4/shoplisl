@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -29,6 +30,8 @@ import { DataService } from '../../../core/services/data.service';
   styleUrls: ['./add-list.scss']
 })
 export class AddListComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+
   list = {
     name: '',
     color: '#9c27b0', // Default to purple instead of blue (which is now main color)
@@ -70,7 +73,7 @@ export class AddListComponent implements OnInit {
 
   ngOnInit(): void {
     // Check if we're in edit mode
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.editListId = params['editId'] || null;
       this.returnTo = params['returnTo'] || '/lists';
       this.isEditMode = !!this.editListId;

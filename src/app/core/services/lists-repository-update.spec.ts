@@ -11,6 +11,7 @@
  * return value; NgRx is updated via updateListSuccess dispatched by the caller.
  */
 
+import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 
@@ -43,42 +44,36 @@ describe('ListsRepositoryService.updateList — race condition fix (Bug 1)', () 
   let listsSubject: BehaviorSubject<ShoppingList[]>;
 
   // Helpers
-  let getCurrentListsFn: jasmine.Spy;
-  let updateLocalListsFn: jasmine.Spy;
-  let updateListInFirebaseFn: jasmine.Spy;
+  let getCurrentListsFn: ReturnType<typeof vi.fn>;
+  let updateLocalListsFn: ReturnType<typeof vi.fn>;
+  let updateListInFirebaseFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     const existingList = makeList();
     listsSubject = new BehaviorSubject<ShoppingList[]>([existingList]);
 
-    const firebaseSpy = jasmine.createSpyObj('FirebaseDataService', [
-      'getCurrentLists',
-      'updateLocalLists',
-      'getLists',
-      'updateListInFirebase',
-    ]);
-    firebaseSpy.getCurrentLists.and.callFake(() => listsSubject.value);
-    firebaseSpy.getLists.and.callFake(() => listsSubject.asObservable());
-    firebaseSpy.updateLocalLists.and.callFake((lists: ShoppingList[]) => listsSubject.next(lists));
-    firebaseSpy.updateListInFirebase.and.returnValue(Promise.resolve());
+    getCurrentListsFn      = vi.fn().mockImplementation(() => listsSubject.value);
+    updateLocalListsFn     = vi.fn().mockImplementation((lists: ShoppingList[]) => listsSubject.next(lists));
+    updateListInFirebaseFn = vi.fn().mockResolvedValue(undefined);
 
-    getCurrentListsFn      = firebaseSpy.getCurrentLists;
-    updateLocalListsFn     = firebaseSpy.updateLocalLists;
-    updateListInFirebaseFn = firebaseSpy.updateListInFirebase;
+    const firebaseSpy = {
+      getCurrentLists:      getCurrentListsFn,
+      updateLocalLists:     updateLocalListsFn,
+      getLists:             vi.fn().mockImplementation(() => listsSubject.asObservable()),
+      updateListInFirebase: updateListInFirebaseFn,
+    };
 
-    const connectionSpy = jasmine.createSpyObj('ConnectionService', ['isOnline']);
-    connectionSpy.isOnline.and.returnValue(true);
-
-    const authSpy = jasmine.createSpyObj('AuthService', ['getCurrentUserId', 'getCurrentUserValue']);
-    authSpy.getCurrentUserId.and.returnValue('user-1');
-    authSpy.getCurrentUserValue.and.returnValue({ id: 'user-1', name: 'Tester' });
-
-    const analyticsSpy = jasmine.createSpyObj('AnalyticsService', ['trackEvent']);
-    const loggerSpy    = jasmine.createSpyObj('LoggerService', ['info', 'error', 'debug', 'warn']);
-    const historySpy   = jasmine.createSpyObj('HistoryService', ['createUpdatedItemState']);
-    const offlineSpy   = jasmine.createSpyObj('OfflineSyncService', ['queueOperation']);
-    const articlesSpy  = jasmine.createSpyObj('ArticlesRepositoryService', []);
-    const injectorSpy  = jasmine.createSpyObj('Injector', ['get']);
+    const connectionSpy = { isOnline: vi.fn().mockReturnValue(true) };
+    const authSpy = {
+      getCurrentUserId:    vi.fn().mockReturnValue('user-1'),
+      getCurrentUserValue: vi.fn().mockReturnValue({ id: 'user-1', name: 'Tester' }),
+    };
+    const analyticsSpy = { trackEvent: vi.fn() };
+    const loggerSpy    = { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() };
+    const historySpy   = { createUpdatedItemState: vi.fn() };
+    const offlineSpy   = { queueOperation: vi.fn() };
+    const articlesSpy  = {};
+    const injectorSpy  = { get: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -110,7 +105,7 @@ describe('ListsRepositoryService.updateList — race condition fix (Bug 1)', () 
 
   it('returns the updated list even when mergeLists() overwrites the BehaviorSubject mid-flight', async () => {
     // Simulate mergeLists() resetting the BehaviorSubject with stale data DURING the write:
-    updateListInFirebaseFn.and.callFake(() => {
+    updateListInFirebaseFn.mockImplementation(() => {
       // Overwrite BehaviorSubject with old list (simulates debounced mergeLists firing)
       listsSubject.next([makeList()]); // old list without the article
       return Promise.resolve();
@@ -129,7 +124,7 @@ describe('ListsRepositoryService.updateList — race condition fix (Bug 1)', () 
     // Simulate: BehaviorSubject doesn't have this list (edge case for very fast navigation)
     listsSubject.next([]); // empty — list not loaded yet
     // Force getCurrentLists to return empty
-    getCurrentListsFn.and.returnValue([]);
+    getCurrentListsFn.mockReturnValue([]);
 
     const result = await service
       .updateList('list-1', { articleIds: ['article-new'] })
@@ -139,7 +134,7 @@ describe('ListsRepositoryService.updateList — race condition fix (Bug 1)', () 
   });
 
   it('returns undefined when the Firebase write fails', async () => {
-    updateListInFirebaseFn.and.returnValue(Promise.reject(new Error('Network error')));
+    updateListInFirebaseFn.mockRejectedValue(new Error('Network error'));
 
     const result = await service
       .updateList('list-1', { articleIds: ['article-new'] })

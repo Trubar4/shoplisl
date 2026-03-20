@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Store, StoreModule } from '@ngrx/store';
 import { EffectsModule } from '@ngrx/effects';
@@ -70,25 +71,17 @@ describe('Bug 2 INTEGRATION: Article updates not visible after edit (REAL STORE)
   beforeEach(() => {
     // Create FirebaseDataService mock WITHOUT getCurrentArticles/updateLocalArticles
     // This simulates the state BEFORE the fix
-    const firebaseSpy = jasmine.createSpyObj('FirebaseDataService', [
-      'getArticles',
-    ]);
-
-    // Firebase observable returns old data (simulates race condition)
-    firebaseSpy.getArticles.and.returnValue(of([initialArticle]));
-
-    firebaseDataService = firebaseSpy;
+    firebaseDataService = {
+      // Firebase observable returns old data (simulates race condition)
+      getArticles: vi.fn().mockReturnValue(of([initialArticle])),
+    };
 
     // Create ArticlesRepositoryService mock
     // This will be the REAL implementation that calls our mocked firebase service
-    const articlesRepoSpy = jasmine.createSpyObj('ArticlesRepositoryService', [
-      'updateArticle',
-    ]);
-
-    // Return Observable with old data (simulates the bug)
-    articlesRepoSpy.updateArticle.and.returnValue(of(initialArticle));
-
-    articlesRepositoryService = articlesRepoSpy;
+    articlesRepositoryService = {
+      // Return Observable with old data (simulates the bug)
+      updateArticle: vi.fn().mockReturnValue(of(initialArticle)),
+    };
 
     TestBed.configureTestingModule({
       imports: [
@@ -147,7 +140,7 @@ describe('Bug 2 INTEGRATION: Article updates not visible after edit (REAL STORE)
       expect(articles[0].name).toBe('Milk');
 
       // Repo returns old data (simulates bug)
-      articlesRepositoryService.updateArticle.and.returnValue(
+      articlesRepositoryService.updateArticle.mockReturnValue(
         of({ ...initialArticle, name: 'Milk' }) // Still old name!
       );
 
@@ -171,16 +164,14 @@ describe('Bug 2 INTEGRATION: Article updates not visible after edit (REAL STORE)
       // This simulates having the FIX in place
       let localArticles = [initialArticle];
 
-      firebaseDataService.getCurrentArticles = jasmine.createSpy('getCurrentArticles')
-        .and.callFake(() => localArticles);
+      firebaseDataService.getCurrentArticles = vi.fn().mockImplementation(() => localArticles);
 
-      firebaseDataService.updateLocalArticles = jasmine.createSpy('updateLocalArticles')
-        .and.callFake((articles: Article[]) => {
-          localArticles = articles;
-        });
+      firebaseDataService.updateLocalArticles = vi.fn().mockImplementation((articles: Article[]) => {
+        localArticles = articles;
+      });
 
       // Update repository mock to simulate the FIX behavior
-      articlesRepositoryService.updateArticle.and.callFake((id: string, changes: Partial<Article>) => {
+      articlesRepositoryService.updateArticle.mockImplementation((id: string, changes: Partial<Article>) => {
         // Simulate the FIX: optimistic update
         const current = firebaseDataService.getCurrentArticles();
         const updated = current.map((a: Article) =>

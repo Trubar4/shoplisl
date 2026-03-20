@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AuthButtonComponent } from '../auth-button/auth-button.component';
 
@@ -25,7 +26,7 @@ export class BottomTabsComponent implements AfterViewInit {
   constructor(private router: Router, private el: ElementRef) {
     // Track route changes to update active state
     this.router.events
-      .pipe(filter(event => event instanceof NavigationEnd))
+      .pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed())
       .subscribe((event: NavigationEnd) => {
         this.currentUrl = event.url;
       });

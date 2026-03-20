@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
@@ -35,7 +36,7 @@ import { ShoppingList, Article } from '../../../core/models';
 describe('Bug 1 INTEGRATION: Article count in shared lists', () => {
   let store: MockStore;
   let effects: ListsEffects;
-  let firebaseDataService: jasmine.SpyObj<FirebaseDataService>;
+  let firebaseDataService: any;
   let listsSubject: BehaviorSubject<ShoppingList[]>;
   let articlesSubject: BehaviorSubject<Article[]>;
 
@@ -78,17 +79,14 @@ describe('Bug 1 INTEGRATION: Article count in shared lists', () => {
     articlesSubject = new BehaviorSubject<Article[]>(testArticles);
 
     // Mock FirebaseDataService
-    const firebaseSpy = jasmine.createSpyObj('FirebaseDataService', [
-      'getLists',
-      'getList',
-      'getArticles',
-    ]);
-    firebaseSpy.getLists.and.returnValue(listsSubject.asObservable());
-    firebaseSpy.getArticles.and.returnValue(articlesSubject.asObservable());
-    firebaseDataService = firebaseSpy;
+    firebaseDataService = {
+      getLists:     vi.fn().mockReturnValue(listsSubject.asObservable()),
+      getList:      vi.fn(),
+      getArticles:  vi.fn().mockReturnValue(articlesSubject.asObservable()),
+    };
 
     // Mock ListsRepositoryService
-    const listsRepoSpy = jasmine.createSpyObj('ListsRepositoryService', ['createList']);
+    const listsRepoSpy = { createList: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
