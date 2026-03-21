@@ -52,10 +52,13 @@
     </button>
   </div>
 
-  <!-- Vorschläge Button -->
-  <div class="suggestions-bar" *ngIf="hasRecommendations && !isSelectionMode">
-    <button mat-button class="suggestions-button" (click)="onOpenRecommendations()">
-      Vorschläge
+  <!-- Suggestions FAB -->
+  <div class="suggestions-fab" *ngIf="hasRecommendations && !isSelectionMode && !suggestionsDismissed">
+    <button mat-mini-fab class="suggestions-fab-button" (click)="onOpenRecommendations()" aria-label="Vorschläge">
+      <mat-icon>lightbulb</mat-icon>
+    </button>
+    <button class="dismiss-button" (click)="dismissSuggestions($event)" aria-label="Ausblenden">
+      <mat-icon>close</mat-icon>
     </button>
   </div>
 
