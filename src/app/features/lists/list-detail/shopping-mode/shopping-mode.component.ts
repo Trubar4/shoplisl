@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Subject, combineLatest } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 
@@ -43,7 +44,7 @@ type ShoppingFilter = 'offen' | 'erledigt' | 'alle';
 @Component({
   selector: 'app-shopping-mode',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCheckboxModule, ArticleListComponent],
+  imports: [CommonModule, MatButtonModule, MatCheckboxModule, MatIconModule, ArticleListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shopping-mode.component.html',
   styleUrls: ['./shopping-mode.component.scss']
@@ -58,6 +59,9 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
   @Input() isDialogOpen: boolean = false;
   @Input() selectionService!: ArticleSelectionService;
   @Input() hasRecommendations: boolean = false;
+
+  /** Whether the user dismissed the suggestions FAB (resets on re-entry) */
+  suggestionsDismissed = false;
 
   // === OUTPUTS ===
   @Output() articleToggle = new EventEmitter<ArticleItemData>();
@@ -322,6 +326,14 @@ export class ShoppingModeComponent implements OnInit, OnChanges, OnDestroy {
    */
   onOpenRecommendations(): void {
     this.openRecommendations.emit();
+  }
+
+  /**
+   * Dismisses the suggestions FAB until the user re-enters the list
+   */
+  dismissSuggestions(event: Event): void {
+    event.stopPropagation();
+    this.suggestionsDismissed = true;
   }
 
   /**

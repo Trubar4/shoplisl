@@ -6,7 +6,7 @@
 position: fixed;
 bottom: 150px;
 right: 24px;
-z-index: 9999;
+z-index: 999;
 
 .fab-backdrop {
     position: fixed;
@@ -37,9 +37,9 @@ z-index: 9999;
     visibility: hidden;
     transform: translateY(20px);
     transition: all 0.3s ease;
-    z-index: 10000;
+    z-index: 1000;
     pointer-events: none;
-    
+
     &.expanded {
     opacity: 1;
     visibility: visible;
@@ -110,7 +110,7 @@ z-index: 9999;
     color: var(--list-contrast-color, white);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     transition: all 0.3s ease;
-    z-index: 10001;
+    z-index: 1001;
     position: relative;
     
     &:hover {
