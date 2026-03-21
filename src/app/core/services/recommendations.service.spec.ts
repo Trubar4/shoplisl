@@ -272,12 +272,12 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('excludes article when days-since-last exceeds the window maximum (overdue by more than 2×)', () => {
-      // most-recent-first: [25, 35, 45] days ago
-      // avg_interval = (45 − 25) / 2 = 10 days
-      // days_since_last = 25 > 10 × 2 = 20 → above window → excluded
+    it('excludes article when days-since-last exceeds the window maximum (overdue by more than 4×)', () => {
+      // most-recent-first: [45, 55, 65] days ago
+      // avg_interval = (65 − 45) / 2 = 10 days
+      // days_since_last = 45 > 10 × 4 = 40 → above window → excluded
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(25), daysAgo(35), daysAgo(45)])
+        'a1': itemState('a1', [daysAgo(45), daysAgo(55), daysAgo(65)])
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
@@ -290,10 +290,10 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('matches the spec example: avg 5 weeks → suggest between 4 and 10 weeks after last check', () => {
+    it('matches the spec example: avg 5 weeks → suggest between 4 and 20 weeks after last check', () => {
       // 3 checks spaced 5 weeks apart; last check exactly 5 weeks ago.
       // avg_interval = 35 days, days_since_last = 35
-      // window = [35 × 0.8, 35 × 2] = [28, 70] → 35 is in window ✓
+      // window = [35 × 0.8, 35 × 4] = [28, 140] → 35 is in window ✓
       const list = makeList(['a1'], {
         'a1': itemState('a1', [daysAgo(35), daysAgo(70), daysAgo(105)]) // most-recent-first
       });
@@ -309,10 +309,10 @@ describe('RecommendationsService', () => {
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
 
-    it('correctly excludes when last check was 11 weeks ago (above 10-week max for 5-week avg)', () => {
-      // avg = 35 days, days_since = 77 > 70 → excluded
+    it('correctly excludes when last check was 21 weeks ago (above 20-week max for 5-week avg)', () => {
+      // avg = 35 days, days_since = 147 > 140 (35 × 4) → excluded
       const list = makeList(['a1'], {
-        'a1': itemState('a1', [daysAgo(77), daysAgo(112), daysAgo(147)])
+        'a1': itemState('a1', [daysAgo(147), daysAgo(182), daysAgo(217)])
       });
       expect(service.getLongNotBoughtArticles(list, [makeArticle('a1')])).toHaveLength(0);
     });
@@ -448,6 +448,23 @@ describe('RecommendationsService', () => {
       for (const a of longNotBoughtArticles) {
         expect(frequentIds.has(a.id)).toBe(false);
       }
+    });
+
+    it('returns both categories when data supports frequent AND long-not-bought articles', () => {
+      // a1: checked on all 10 shopping days → 100% ≥ 33% → frequent ✓
+      // a2: 2 checks, avg interval 30 days, days_since_last = 35 → in window [24, 120] → longNotBought ✓
+      // a2 appears on 2 of 10 shopping days → 20% < 33% → NOT frequent
+      const helperDays = Array.from({ length: 10 }, (_, i) => daysAgo(i + 1));
+      const list = makeList(['a1', 'a2'], {
+        'a1': itemState('a1', helperDays),
+        'a2': itemState('a2', [daysAgo(35), daysAgo(65)])
+      });
+      const catalog = [makeArticle('a1'), makeArticle('a2')];
+
+      const { frequentArticles, longNotBoughtArticles } = service.getRecommendations(list, catalog);
+
+      expect(frequentArticles.some(a => a.id === 'a1')).toBe(true);
+      expect(longNotBoughtArticles.some(a => a.id === 'a2')).toBe(true);
     });
 
     it('returns empty arrays when articles have no check history', () => {

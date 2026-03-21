@@ -13,7 +13,7 @@ import { LoggerService } from './logger.service';
  * 1. "Häufig gekaufte Artikel"  — articles present on ≥ 1/3 of all shopping days (~33%)
  * 2. "Schon lange nicht mehr gekauft" — articles with ≥ 2 checks whose time since
  *    last check falls within a dynamic window based on average purchase interval:
- *    window = [avgInterval × 0.8, avgInterval × 2]
+ *    window = [avgInterval × 0.8, avgInterval × 4]
  *
  * Candidate rules (applied by applyExclusionFilter before returning):
  * - The article must exist in the user's catalog.
@@ -44,7 +44,9 @@ export class RecommendationsService {
   private readonly MIN_CHECKS_FOR_LONG_NOT_BOUGHT = 2; // minimum check events required
   // Dynamic window: time since last check must be within [avgInterval × INNER, avgInterval × OUTER]
   private readonly LONG_NOT_BOUGHT_WINDOW_INNER = 1 - 1 / 5; // 0.8 — lower bound (80% of avg interval)
-  private readonly LONG_NOT_BOUGHT_WINDOW_OUTER = 2;          // 2.0 — upper bound (200% of avg interval)
+  private readonly LONG_NOT_BOUGHT_WINDOW_OUTER = 4;          // 4.0 — upper bound (400% of avg interval)
+  // Note: previous value was 2.0 which was too restrictive — items that were genuinely "long not
+  // bought" dropped out of the window too quickly, making it rare to see both categories at once.
 
   /**
    * Computes both recommendation categories with mutual exclusion:
@@ -110,10 +112,6 @@ export class RecommendationsService {
       .filter(([, articles]) => articles.size >= this.MIN_ARTICLES_PER_SHOPPING_DAY);
 
     if (shoppingDays.length === 0) {
-      console.log(
-        `[RECO][frequent] ${Object.keys(itemStates).length} states, ` +
-        `${checkedEventsByArticle.size} with check history, 0 shopping days → no candidates`
-      );
       this.logger.debug('recommendations',
         `[frequent] ${Object.keys(itemStates).length} states, ` +
         `${checkedEventsByArticle.size} with checks, 0 shopping days → no candidates`
@@ -139,17 +137,11 @@ export class RecommendationsService {
       }
     }
 
-    console.log(
-      `[RECO][frequent] ${Object.keys(itemStates).length} states, ` +
-      `${checkedEventsByArticle.size} with check history, ` +
-      `${shoppingDays.length} shopping days (of ${articlesByDay.size} days with activity), ` +
-      `${candidates.length} pass rule A (≥${this.FREQUENT_MIN_RATIO * 100}%)`
-    );
     this.logger.debug('recommendations',
       `[frequent] ${Object.keys(itemStates).length} states, ` +
       `${checkedEventsByArticle.size} with checks, ` +
       `${shoppingDays.length}/${articlesByDay.size} shopping days, ` +
-      `${candidates.length} candidates`
+      `${candidates.length} candidates (≥${(this.FREQUENT_MIN_RATIO * 100).toFixed(0)}%)`
     );
 
     return this.applyExclusionFilter(candidates, list, catalog, catalogSet, 'frequent');
@@ -159,12 +151,12 @@ export class RecommendationsService {
    * Returns articles with ≥ 2 (MIN_CHECKS_FOR_LONG_NOT_BOUGHT) check events
    * whose time since last check falls within a dynamic window:
    *   windowMin = avgInterval × 0.8
-   *   windowMax = avgInterval × 2
+   *   windowMax = avgInterval × 4
    * where avgInterval = (lastCheck − firstCheck) / (N − 1).
    *
    * Articles where avgInterval = 0 (all checks on the same timestamp) are skipped.
    *
-   * Example: avg interval 5 weeks → suggest between 4 weeks and 10 weeks after last check.
+   * Example: avg interval 5 weeks → suggest between 4 weeks and 20 weeks after last check.
    */
   getLongNotBoughtArticles(list: ShoppingList, catalog: Article[]): Article[] {
     const itemStates = list.itemStates || {};
@@ -211,18 +203,11 @@ export class RecommendationsService {
       }
     }
 
-    console.log(
-      `[RECO][longNotBought] ${Object.keys(itemStates).length} states → ` +
-      `${skippedInsufficientChecks} skipped (<${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT} checks), ` +
-      `${skippedZeroInterval} skipped (zero avg interval), ` +
-      `${skippedOutsideWindow} skipped (outside window), ` +
-      `${candidates.length} pass rule B`
-    );
     this.logger.debug('recommendations',
       `[longNotBought] ${Object.keys(itemStates).length} states → ` +
       `${skippedInsufficientChecks} skipped (< ${this.MIN_CHECKS_FOR_LONG_NOT_BOUGHT} checks), ` +
       `${skippedZeroInterval} skipped (zero avg interval), ` +
-      `${skippedOutsideWindow} skipped (outside dynamic window), ` +
+      `${skippedOutsideWindow} skipped (outside dynamic window [0.8x, ${this.LONG_NOT_BOUGHT_WINDOW_OUTER}x]), ` +
       `${candidates.length} candidates`
     );
 
@@ -272,15 +257,8 @@ export class RecommendationsService {
     if (notInCatalog) excluded.push(`${notInCatalog} not in catalog`);
     if (alreadyActive) excluded.push(`${alreadyActive} already active on list`);
 
-    console.log(
-      `[RECO][filter:${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
-      (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '') +
-      (result.length > 0
-        ? ` — articles: ${result.map(a => `"${a.name}" (${a.id})`).join(', ')}`
-        : '')
-    );
     this.logger.debug('recommendations',
-      `[${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
+      `[filter:${logPrefix}] ${candidateIds.length} candidates → ${result.length} passed` +
       (excluded.length ? ` (excluded: ${excluded.join(', ')})` : '') +
       (result.length > 0
         ? ` — articles: ${result.map(a => `"${a.name}" (${a.id})`).join(', ')}`
