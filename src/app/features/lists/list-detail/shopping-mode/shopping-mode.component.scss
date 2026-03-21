@@ -112,12 +112,13 @@
   .suggestions-fab {
     position: fixed;
     bottom: 150px;
-    left: 24px;
-    z-index: 9999;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
 
     .suggestions-fab-button {
-      background: var(--list-primary-color, #1976d2);
-      color: var(--list-contrast-color, white);
+      background: #fffacd;
+      color: #474747;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       transition: all 0.3s ease;
 
@@ -127,7 +128,7 @@
       }
 
       mat-icon {
-        color: var(--list-contrast-color, white);
+        color: #474747;
       }
     }
 
