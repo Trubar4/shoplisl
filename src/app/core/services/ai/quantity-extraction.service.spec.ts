@@ -1,12 +1,12 @@
-import { TestBed } from '@angular/core/testing';
 import { QuantityExtractionService } from './quantity-extraction.service';
+
+const loggerMock: any = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} };
 
 describe('QuantityExtractionService', () => {
   let service: QuantityExtractionService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(QuantityExtractionService);
+    service = new QuantityExtractionService(loggerMock);
   });
 
   it('should be created', () => {

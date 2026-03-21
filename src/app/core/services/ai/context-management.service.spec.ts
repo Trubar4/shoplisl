@@ -1,13 +1,13 @@
-import { TestBed } from '@angular/core/testing';
 import { ContextManagementService } from './context-management.service';
 import { ConversationContext } from '../../models';
+
+const loggerMock: any = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} };
 
 describe('ContextManagementService', () => {
   let service: ContextManagementService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(ContextManagementService);
+    service = new ContextManagementService(loggerMock);
   });
 
   afterEach(() => {

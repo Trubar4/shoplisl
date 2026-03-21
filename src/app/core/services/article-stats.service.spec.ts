@@ -18,6 +18,7 @@ describe('ArticleStatsService', () => {
           articleId: 'article1',
           isChecked: true,
           amount: '2L',
+          addedAt: new Date('2025-11-15T10:00:00'),
           checkedAt: new Date('2025-11-22T10:30:00'),
           checkedBy: 'user1',
           history: [

@@ -34,6 +34,7 @@ describe('Lists Reducer', () => {
     loading: false,
     error: null,
     lastSync: null,
+    deletingListIds: [],
   });
 
   describe('Initial State', () => {
@@ -194,8 +195,10 @@ describe('Lists Reducer', () => {
     });
 
     it('should delete list successfully', () => {
+      // deleteList removes the list optimistically, deleteListSuccess only clears loading
+      const stateAfterDelete = listsReducer(stateWithList, ListsActions.deleteList({ listId: 'list1' }));
       const action = ListsActions.deleteListSuccess({ listId: 'list1' });
-      const state = listsReducer(stateWithList, action);
+      const state = listsReducer(stateAfterDelete, action);
 
       expect(state.loading).toBe(false);
       expect(state.error).toBe(null);
@@ -213,7 +216,7 @@ describe('Lists Reducer', () => {
 
     it('should handle deleteList failure', () => {
       const error = 'Failed to delete list';
-      const action = ListsActions.deleteListFailure({ error });
+      const action = ListsActions.deleteListFailure({ error, listId: 'list1' });
       const state = listsReducer(stateWithList, action);
 
       expect(state.loading).toBe(false);

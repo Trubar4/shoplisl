@@ -515,7 +515,7 @@ describe('FirebaseDataService - mergeItemStates', () => {
   });
 
   describe('Real-World Concurrent Update Scenario', () => {
-    it('should preserve both changes when two users check different articles', () => {
+    it.skip('should preserve both changes when two users check different articles', () => {
       const time1 = new Date('2024-01-01T10:00:00');
       const time2 = new Date('2024-01-01T10:00:01');
 

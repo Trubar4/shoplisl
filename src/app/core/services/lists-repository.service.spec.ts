@@ -39,7 +39,8 @@ describe('ListsRepositoryService - Batch Operations', () => {
       getCurrentLists: vi.fn().mockReturnValue([mockList]),
       getCurrentArticles: vi.fn().mockReturnValue([]),
       updateLocalLists: vi.fn(),
-      updateListInFirebase: vi.fn().mockResolvedValue(undefined)
+      updateListInFirebase: vi.fn().mockResolvedValue(undefined),
+      updateItemStatesWithTransaction: vi.fn().mockResolvedValue(undefined)
     };
 
     offlineSyncSpy = {
@@ -212,19 +213,19 @@ describe('ListsRepositoryService - Batch Operations', () => {
       const result = await firstValueFrom(service.markMultipleArticlesAsChecked(listId, articleIds));
       expect(result).toBe(true);
 
-      // Verify Firebase was called only ONCE (no race condition)
-      expect(firebaseDataSpy.updateListInFirebase).toHaveBeenCalledTimes(1);
+      // Verify Firebase was called only ONCE via transaction (no race condition)
+      expect(firebaseDataSpy.updateItemStatesWithTransaction).toHaveBeenCalledTimes(1);
 
-      const updateCall = firebaseDataSpy.updateListInFirebase.mock.calls[0];
-      const updatedData = updateCall[1];
+      const updateCall = firebaseDataSpy.updateItemStatesWithTransaction.mock.calls[0];
+      const updatedStates = updateCall[1];
 
       // All articles should be marked as checked
-      expect(updatedData.itemStates['article1'].isChecked).toBe(true);
-      expect(updatedData.itemStates['article2'].isChecked).toBe(true);
+      expect(updatedStates['article1'].isChecked).toBe(true);
+      expect(updatedStates['article2'].isChecked).toBe(true);
 
       // Should have checkedAt timestamp
-      expect(updatedData.itemStates['article1'].checkedAt).toBeDefined();
-      expect(updatedData.itemStates['article2'].checkedAt).toBeDefined();
+      expect(updatedStates['article1'].checkedAt).toBeDefined();
+      expect(updatedStates['article2'].checkedAt).toBeDefined();
     });
 
     it('should handle empty article array', async () => {
@@ -246,13 +247,13 @@ describe('ListsRepositoryService - Batch Operations', () => {
       const result = await firstValueFrom(service.markMultipleArticlesAsChecked('list1', ['article1', 'article2']));
       expect(result).toBe(true);
 
-      const updateCall = firebaseDataSpy.updateListInFirebase.mock.calls[0];
+      const updateCall = firebaseDataSpy.updateItemStatesWithTransaction.mock.calls[0];
       const updatedData = updateCall[1];
 
       // article1 should remain checked (not re-checked)
-      expect(updatedData.itemStates['article1'].isChecked).toBe(true);
+      expect(updatedData['article1'].isChecked).toBe(true);
       // article2 should be newly checked
-      expect(updatedData.itemStates['article2'].isChecked).toBe(true);
+      expect(updatedData['article2'].isChecked).toBe(true);
     });
 
     it('should handle offline mode', async () => {
