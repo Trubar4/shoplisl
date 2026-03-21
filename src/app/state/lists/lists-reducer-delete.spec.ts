@@ -58,7 +58,7 @@ describe('Lists Reducer – delete race condition (Bug 2)', () => {
       const before = stateWithLists(makeList('list-1'));
       const after = listsReducer(before, ListsActions.deleteList({ listId: 'list-1' }));
 
-      expect(after.loading).toBeTrue();
+      expect(after.loading).toBe(true);
     });
   });
 
@@ -136,7 +136,7 @@ describe('Lists Reducer – delete race condition (Bug 2)', () => {
         afterDelete,
         ListsActions.deleteListSuccess({ listId: 'list-1' })
       );
-      expect(afterSuccess.loading).toBeFalse();
+      expect(afterSuccess.loading).toBe(false);
     });
 
     it('guard is removed once loadListsSuccess confirms Firebase no longer has the list', () => {

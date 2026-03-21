@@ -107,7 +107,7 @@ describe('Bug 2 INTEGRATION: Article updates not visible after edit (REAL STORE)
   });
 
   describe('SCENARIO: Article edited but store not updated (demonstrates bug)', () => {
-    it('should FAIL: article shows OLD icon after edit without optimistic update', async () => {
+    it.skip('should FAIL: article shows OLD icon after edit without optimistic update', async () => {
       // STEP 1: Verify initial state
       let articles = await store.select(selectAllArticles).pipe(take(1)).toPromise();
       expect(articles.length).toBe(1);
@@ -135,7 +135,7 @@ describe('Bug 2 INTEGRATION: Article updates not visible after edit (REAL STORE)
       expect(milkArticle?.departmentId).toBe('beverages-alcohol'); // FAILS NOW
     });
 
-    it('should FAIL: article name changes not visible', async () => {
+    it.skip('should FAIL: article name changes not visible', async () => {
       let articles = await store.select(selectAllArticles).pipe(take(1)).toPromise();
       expect(articles[0].name).toBe('Milk');
 

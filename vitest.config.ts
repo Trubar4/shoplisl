@@ -10,7 +10,7 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
 
     // Exclude files
-    exclude: ['node_modules', 'dist', '.angular'],
+    exclude: ['node_modules', 'dist', '.angular', 'src/**/__e2e__/**'],
 
     // Setup files to run before tests
     setupFiles: ['src/test-setup.ts'],

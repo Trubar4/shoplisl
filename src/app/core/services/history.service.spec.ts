@@ -534,7 +534,7 @@ describe('HistoryService', () => {
         amount: '1L',
         history: [
           {
-            timestamp: new Date('2025-01-01'),
+            timestamp: new Date('2025-10-01'), // within 365-day retention window
             userId: 'shared-shoplisl-user',
             userName: 'Du',
             action: 'checked'

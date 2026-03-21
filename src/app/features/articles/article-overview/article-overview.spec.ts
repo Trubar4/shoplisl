@@ -438,12 +438,12 @@ describe('ArticleOverviewComponent', () => {
     it('should activate horizontal left swipe', () => {
       component.onTouchStart({ touches: [{ clientX: 300, clientY: 100 }] } as any, 'art1');
       const moveEvent = {
-        touches: [{ clientX: 175, clientY: 103 }],
+        touches: [{ clientX: 220, clientY: 103 }], // deltaX = 80, unter dem Cap von 120
         preventDefault: vi.fn()
       } as unknown as TouchEvent;
       component.onTouchMove(moveEvent, 'art1');
       expect(component.swipeStates['art1'].isSwipeActive).toBe(true);
-      expect(component.swipeStates['art1'].swipeDistance).toBe(125);
+      expect(component.swipeStates['art1'].swipeDistance).toBe(80);
     });
 
     it('should cap swipe distance at MAX_SWIPE_DISTANCE (120px)', () => {

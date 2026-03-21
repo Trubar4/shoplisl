@@ -12,18 +12,9 @@
  */
 
 import { vi } from 'vitest';
-import { TestBed } from '@angular/core/testing';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 import { ListsRepositoryService } from './lists-repository.service';
-import { FirebaseDataService } from './firebase-data.service';
-import { OfflineSyncService } from './offline-sync.service';
-import { ConnectionService } from './connection.service';
-import { LoggerService } from './logger.service';
-import { HistoryService } from './history.service';
-import { AuthService } from './auth.service';
-import { ArticlesRepositoryService } from './articles-repository.service';
-import { AnalyticsService } from './analytics.service';
 import { ShoppingList } from '../models';
 
 const makeList = (overrides: Partial<ShoppingList> = {}): ShoppingList => ({
@@ -75,22 +66,17 @@ describe('ListsRepositoryService.updateList — race condition fix (Bug 1)', () 
     const articlesSpy  = {};
     const injectorSpy  = { get: vi.fn() };
 
-    TestBed.configureTestingModule({
-      providers: [
-        ListsRepositoryService,
-        { provide: FirebaseDataService,       useValue: firebaseSpy },
-        { provide: ConnectionService,         useValue: connectionSpy },
-        { provide: AuthService,               useValue: authSpy },
-        { provide: AnalyticsService,          useValue: analyticsSpy },
-        { provide: LoggerService,             useValue: loggerSpy },
-        { provide: HistoryService,            useValue: historySpy },
-        { provide: OfflineSyncService,        useValue: offlineSpy },
-        { provide: ArticlesRepositoryService, useValue: articlesSpy },
-        { provide: 'Injector',                useValue: injectorSpy },
-      ],
-    });
-
-    service = TestBed.inject(ListsRepositoryService);
+    service = new ListsRepositoryService(
+      firebaseSpy as any,
+      offlineSpy as any,
+      connectionSpy as any,
+      loggerSpy as any,
+      historySpy as any,
+      authSpy as any,
+      articlesSpy as any,
+      injectorSpy as any,
+      analyticsSpy as any,
+    );
   });
 
   it('returns the locally-computed updated list (not read from BehaviorSubject after write)', async () => {
