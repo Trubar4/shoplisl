@@ -1,6 +1,11 @@
 <div class="recommendations-sheet">
-  <div class="drag-handle"></div>
-  <h2 class="sheet-title">Vorschläge</h2>
+  <div class="drag-handle" (click)="onClose()" role="button" aria-label="Schließen"></div>
+  <div class="sheet-header">
+    <h2 class="sheet-title">Vorschläge</h2>
+    <button mat-icon-button class="close-button" (click)="onClose()" aria-label="Schließen">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
 
   <!-- Häufig gekaufte Artikel -->
   <section *ngIf="frequentArticles().length > 0">

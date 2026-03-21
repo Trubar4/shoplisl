@@ -2,6 +2,7 @@ import { Component, Inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatBottomSheetRef, MAT_BOTTOM_SHEET_DATA } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { take } from 'rxjs/operators';
 import { Article, ShoppingList } from '../../../../core/models';
@@ -17,7 +18,7 @@ export interface RecommendationsBottomSheetData {
 @Component({
   selector: 'app-recommendations-bottom-sheet',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatRippleModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatRippleModule],
   templateUrl: './recommendations-bottom-sheet.component.html',
   styleUrls: ['./recommendations-bottom-sheet.component.scss']
 })
@@ -38,6 +39,10 @@ export class RecommendationsBottomSheetComponent {
     this.list = data.list;
     this.frequentArticles.set([...data.frequentArticles]);
     this.longNotBoughtArticles.set([...data.longNotBoughtArticles]);
+  }
+
+  onClose(): void {
+    this.bottomSheetRef.dismiss();
   }
 
   onSelectArticle(article: Article): void {

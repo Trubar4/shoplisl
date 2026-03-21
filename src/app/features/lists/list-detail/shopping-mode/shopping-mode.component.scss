@@ -21,7 +21,7 @@
   .content-container {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 120px; // Desktop: above suggestions bar (64px bottom + 56px height)
+    padding-bottom: calc(var(--tab-bar-height, 64px) + 56px); // tab bar + suggestions bar height
 
     // Add extra padding when action bar is visible
     &.with-selection-actions {
@@ -32,7 +32,7 @@
   // === SELECTION ACTION BAR ===
   .selection-action-bar {
     position: fixed;
-    bottom: 64px; // Desktop: sits just above the tab bar
+    bottom: var(--tab-bar-height, 64px); // Always use JS-measured tab bar height
     left: 0;
     right: 0;
     display: flex;
@@ -111,7 +111,7 @@
   // === SUGGESTIONS BAR ===
   .suggestions-bar {
     position: fixed;
-    bottom: 64px; // Desktop: just above the tab bar
+    bottom: var(--tab-bar-height, 64px); // Always use JS-measured tab bar height
     left: 0;
     right: 0;
     display: flex;
