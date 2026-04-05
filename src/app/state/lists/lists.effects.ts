@@ -6,6 +6,7 @@ import { map, catchError, switchMap, mergeMap } from 'rxjs/operators';
 import { ListsRepositoryService } from '../../core/services/lists-repository.service';
 import { FirebaseDataService } from '../../core/services/firebase-data.service';
 import { AuthService } from '../../core/services/auth.service';
+import { LoggerService } from '../../core/services/logger.service';
 import * as ListsActions from './lists.actions';
 
 // DEBUG FLAG - Set to true to enable detailed console logging for debugging NgRx effects
@@ -24,6 +25,7 @@ export class ListsEffects {
   private listsRepository = inject(ListsRepositoryService);
   private firebaseData = inject(FirebaseDataService);
   private authService = inject(AuthService);
+  private logger = inject(LoggerService);
 
   /**
    * Load all lists from Firebase
@@ -33,8 +35,10 @@ export class ListsEffects {
     this.actions$.pipe(
       ofType(ListsActions.loadLists),
       switchMap(() => {
+        this.logger.info('data', '[ListsEffects] loadLists$ triggered - subscribing to getLists()');
         return this.firebaseData.getLists().pipe(
           map((lists) => {
+            this.logger.info('data', `[ListsEffects] getLists() emitted ${lists.length} lists`);
             if (DEBUG_LISTS_EFFECTS) {
               const currentUserId = this.authService.getCurrentUserId();
               const sharedParticipantLists = lists.filter(list => {
