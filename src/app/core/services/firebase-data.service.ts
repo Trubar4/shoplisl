@@ -286,6 +286,24 @@ export class FirebaseDataService {
   // ---------------------------------------------------------------------------
 
   getArticles(): Observable<Article[]> {
+    // Safety net: if the subject is empty but cache has data, load from cache.
+    // This handles the case where loadCachedData() was skipped due to timing
+    // (e.g., auth listener reset the subject after initial cache load).
+    if (this.articlesSubject.value.length === 0) {
+      const cached = this.cacheService.getCachedArticles();
+      if (cached.data && cached.data.length > 0) {
+        this.logger.info('data', `[getArticles] Subject empty but cache has ${cached.data.length} articles - loading from cache`);
+        this.articlesSubject.next(cached.data);
+        // Also populate backing arrays
+        const userId = this.authService.getCurrentUserId();
+        if (userId) {
+          this.ownedArticles = cached.data.filter(a => a.ownerId === userId);
+          this.sharedArticles = cached.data.filter(a => a.ownerId !== userId);
+        }
+      } else {
+        this.logger.warn('data', '[getArticles] Subject empty AND no articles in cache');
+      }
+    }
     return this.articlesSubject.asObservable();
   }
 
