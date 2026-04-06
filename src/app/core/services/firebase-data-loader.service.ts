@@ -26,6 +26,12 @@ export interface DataLoaderContext {
   /** Live reference to the shared-articles backing array. */
   getSharedArticles(): Article[];
   setSharedArticles(articles: Article[]): void;
+  /** Live reference to the owned-lists backing array. */
+  getOwnedLists(): ShoppingList[];
+  setOwnedLists(lists: ShoppingList[]): void;
+  /** Live reference to the shared-lists backing array. */
+  getSharedLists(): ShoppingList[];
+  setSharedLists(lists: ShoppingList[]): void;
   /** Delegate to FirebaseListenerService.setupRealtimeListeners(). */
   setupRealtimeListeners(): void;
   /**
@@ -168,6 +174,15 @@ export class FirebaseDataLoaderService {
       if (listsCache.data) {
         this.logger.info('cache', `Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
         this.ctx!.emitLists(listsCache.data);
+        // Populate ownedLists/sharedLists so mergeLists() doesn't overwrite cached data
+        // with empty arrays. Without this, any Firestore listener calling mergeLists()
+        // would emit [...ownedLists, ...sharedLists] = [] and clear the NgRx store.
+        const currentUserId = this.authService.getCurrentUserId();
+        if (currentUserId) {
+          this.ctx!.setOwnedLists(listsCache.data.filter(l => !l.ownerId || l.ownerId === currentUserId));
+          this.ctx!.setSharedLists(listsCache.data.filter(l => l.ownerId && l.ownerId !== currentUserId));
+          this.logger.info('cache', `[loadCachedData] Populated list backing arrays: ${this.ctx!.getOwnedLists().length} owned, ${this.ctx!.getSharedLists().length} shared`);
+        }
       } else {
         this.logger.warn('cache', 'No lists in cache');
         this.ctx!.emitLists([]);

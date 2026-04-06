@@ -149,6 +149,10 @@ export class FirebaseDataService {
       setOwnedArticles: (articles) => { this.ownedArticles = articles; },
       getSharedArticles: () => this.sharedArticles,
       setSharedArticles: (articles) => { this.sharedArticles = articles; },
+      getOwnedLists: () => this.ownedLists,
+      setOwnedLists: (lists) => { this.ownedLists = lists; },
+      getSharedLists: () => this.sharedLists,
+      setSharedLists: (lists) => { this.sharedLists = lists; },
       setupRealtimeListeners: () => this.listenerService.setupRealtimeListeners(),
       markInitialLoadDone: (userId) => {
         this.initialDataLoadDone = true;
