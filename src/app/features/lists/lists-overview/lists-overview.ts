@@ -138,11 +138,12 @@ export class ListsOverviewComponent implements OnInit, OnDestroy, AfterViewInit 
 
   ngOnInit(): void {
     // Load data from NgRx store (effects will call Firebase services)
-    // Only dispatch load actions when online - preserve offline changes when offline
-    if (this.connectionService?.isOnline()) {
-      this.store.dispatch(ListsActions.loadLists());
-      this.store.dispatch(ArticlesActions.loadArticles());
-    }
+    // Always dispatch load actions - when offline, effects will receive cached data
+    // from FirebaseDataLoaderService which already populates the listsSubject from cache
+    const isOnline = this.connectionService?.isOnline();
+    this.logger.info('ui', `[ListsOverview] ngOnInit - online: ${isOnline}, dispatching loadLists + loadArticles`);
+    this.store.dispatch(ListsActions.loadLists());
+    this.store.dispatch(ArticlesActions.loadArticles());
 
     // Fix viewport height issues on mobile
     this.fixMobileViewport();

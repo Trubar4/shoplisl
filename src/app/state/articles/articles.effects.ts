@@ -5,6 +5,7 @@ import { map, catchError, switchMap, mergeMap } from 'rxjs/operators';
 
 import { ArticlesRepositoryService } from '../../core/services/articles-repository.service';
 import { FirebaseDataService } from '../../core/services/firebase-data.service';
+import { LoggerService } from '../../core/services/logger.service';
 import * as ArticlesActions from './articles.actions';
 
 /**
@@ -19,6 +20,7 @@ export class ArticlesEffects {
   private actions$ = inject(Actions);
   private articlesRepository = inject(ArticlesRepositoryService);
   private firebaseData = inject(FirebaseDataService);
+  private logger = inject(LoggerService);
 
   /**
    * Load all articles from Firebase
@@ -27,9 +29,13 @@ export class ArticlesEffects {
   loadArticles$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ArticlesActions.loadArticles),
-      switchMap(() =>
-        this.firebaseData.getArticles().pipe(
-          map((articles) => ArticlesActions.loadArticlesSuccess({ articles })),
+      switchMap(() => {
+        this.logger.info('data', '[ArticlesEffects] loadArticles$ triggered - subscribing to getArticles()');
+        return this.firebaseData.getArticles().pipe(
+          map((articles) => {
+            this.logger.info('data', `[ArticlesEffects] getArticles() emitted ${articles.length} articles`);
+            return ArticlesActions.loadArticlesSuccess({ articles });
+          }),
           catchError((error) =>
             of(
               ArticlesActions.loadArticlesFailure({
@@ -37,8 +43,8 @@ export class ArticlesEffects {
               })
             )
           )
-        )
-      )
+        );
+      })
     )
   );
 

@@ -26,6 +26,12 @@ export interface DataLoaderContext {
   /** Live reference to the shared-articles backing array. */
   getSharedArticles(): Article[];
   setSharedArticles(articles: Article[]): void;
+  /** Live reference to the owned-lists backing array. */
+  getOwnedLists(): ShoppingList[];
+  setOwnedLists(lists: ShoppingList[]): void;
+  /** Live reference to the shared-lists backing array. */
+  getSharedLists(): ShoppingList[];
+  setSharedLists(lists: ShoppingList[]): void;
   /** Delegate to FirebaseListenerService.setupRealtimeListeners(). */
   setupRealtimeListeners(): void;
   /**
@@ -132,14 +138,19 @@ export class FirebaseDataLoaderService {
   // ---------------------------------------------------------------------------
 
   loadCachedData(): void {
-    this.logger.debug('cache', 'Loading data from cache');
-
+    const isOffline = !this.connectionService.getCurrentStatus().isOnline;
     const currentArticles = this.ctx!.getArticlesSnapshot();
     const currentLists = this.ctx!.getListsSnapshot();
 
-    if (currentArticles.length === 0) {
+    this.logger.info('cache', `[loadCachedData] offline=${isOffline}, currentArticles=${currentArticles.length}, currentLists=${currentLists.length}`);
+
+    // Load articles from cache if subject is empty OR if offline (safety net:
+    // when offline the cache is the only data source, so always prefer it over
+    // an accidentally-emptied subject).
+    if (currentArticles.length === 0 || (isOffline && currentArticles.length === 0)) {
       const articlesCache = this.cacheService.getCachedArticles();
-      if (articlesCache.data) {
+      this.logger.info('cache', `[loadCachedData] articlesCache: hasData=${!!articlesCache.data}, count=${articlesCache.data?.length ?? 0}, hasCache=${articlesCache.status.hasCache}, expired=${articlesCache.status.isExpired}`);
+      if (articlesCache.data && articlesCache.data.length > 0) {
         this.logger.info('cache', `Loaded ${articlesCache.data.length} articles from cache (${this.cacheService.formatAge(articlesCache.status.age)})`);
         this.ctx!.emitArticles(articlesCache.data);
         // Populate ownedArticles/sharedArticles so mergeArticles() doesn't overwrite cached data
@@ -150,16 +161,28 @@ export class FirebaseDataLoaderService {
           this.logger.debug('cache', `Populated from cache: ${this.ctx!.getOwnedArticles().length} owned, ${this.ctx!.getSharedArticles().length} shared`);
         }
       } else {
-        this.logger.warn('cache', 'No articles in cache');
+        this.logger.warn('cache', `No articles in cache (data=${articlesCache.data === null ? 'null' : 'empty array'})`);
         this.ctx!.emitArticles([]);
       }
+    } else {
+      this.logger.info('cache', `[loadCachedData] Skipping articles - already have ${currentArticles.length} in subject`);
     }
 
     if (currentLists.length === 0) {
       const listsCache = this.cacheService.getCachedLists();
+      this.logger.info('cache', `[loadCachedData] listsCache: hasData=${!!listsCache.data}, count=${listsCache.data?.length ?? 0}`);
       if (listsCache.data) {
         this.logger.info('cache', `Loaded ${listsCache.data.length} lists from cache (${this.cacheService.formatAge(listsCache.status.age)})`);
         this.ctx!.emitLists(listsCache.data);
+        // Populate ownedLists/sharedLists so mergeLists() doesn't overwrite cached data
+        // with empty arrays. Without this, any Firestore listener calling mergeLists()
+        // would emit [...ownedLists, ...sharedLists] = [] and clear the NgRx store.
+        const currentUserId = this.authService.getCurrentUserId();
+        if (currentUserId) {
+          this.ctx!.setOwnedLists(listsCache.data.filter(l => !l.ownerId || l.ownerId === currentUserId));
+          this.ctx!.setSharedLists(listsCache.data.filter(l => l.ownerId && l.ownerId !== currentUserId));
+          this.logger.info('cache', `[loadCachedData] Populated list backing arrays: ${this.ctx!.getOwnedLists().length} owned, ${this.ctx!.getSharedLists().length} shared`);
+        }
       } else {
         this.logger.warn('cache', 'No lists in cache');
         this.ctx!.emitLists([]);
