@@ -9,7 +9,7 @@ import { LoggerService } from '../logger.service';
 })
 export class GroqApiService {
   private readonly GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-  private readonly MODEL = 'llama-3.1-8b-instant';
+  private readonly MODEL = 'openai/gpt-oss-20b';
 
   constructor(private logger: LoggerService) {
     this.logApiKeyStatus();
