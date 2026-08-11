@@ -229,7 +229,12 @@ Return ONLY valid JSON:
         }
       ],
       temperature: 0.1,
-      max_tokens: 50
+      // openai/gpt-oss-20b is a reasoning model: it emits reasoning tokens that
+      // count against max_tokens before the actual answer. Keep reasoning minimal
+      // and leave enough budget for the JSON answer, otherwise `content` comes back
+      // empty (finish_reason: length) and classification silently falls back to 📦.
+      reasoning_effort: 'low',
+      max_tokens: 512
     };
     
     try {
@@ -249,14 +254,23 @@ Return ONLY valid JSON:
       }
   
       const data = await response.json();
-      const responseText = data.choices[0]?.message?.content || '';
-      
+      const message = data.choices[0]?.message;
+      // Reasoning models (gpt-oss-20b) may place the answer in `content`, but if the
+      // token budget was exhausted the JSON can end up in the `reasoning` field.
+      const responseText = message?.content || message?.reasoning || '';
+
+      if (!responseText) {
+        this.logger.warn('ai', 'Groq API returned empty content', {
+          finishReason: data.choices[0]?.finish_reason
+        });
+      }
+
       // Extract JSON from response
       const jsonMatch = responseText.match(/\{[^}]*"dept"[^}]*\}/);
       if (jsonMatch) {
         return jsonMatch[0];
       }
-      
+
       return responseText;
       
     } catch (error) {

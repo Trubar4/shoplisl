@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCheckboxModule, MatCheckboxChange } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { ArticleSelectionService } from '../../../features/lists/list-detail/services/article-selection.service';
 import { CheckEvent } from '../../../core/models';
@@ -171,8 +171,10 @@ export class ArticleItemComponent {
     }
   }
 
-  onSelectionCheckboxChange(event: any): void {
-    event.stopPropagation();
+  onSelectionCheckboxChange(_event: MatCheckboxChange): void {
+    // Note: `_event` is a MatCheckboxChange ({ source, checked }), NOT a DOM event,
+    // so it has no stopPropagation(). Click-bubbling is already handled by the
+    // separate `(click)="$event.stopPropagation()"` binding on the checkbox.
     if (this.selectionService) {
       this.selectionService.toggleArticle(this.article.id);
     }
