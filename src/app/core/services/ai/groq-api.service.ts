@@ -100,6 +100,10 @@ export class GroqApiService {
         }
       ],
       temperature: temperature,
+      // openai/gpt-oss-20b is a reasoning model whose reasoning tokens count against
+      // max_tokens before the answer. Keep reasoning minimal so short-budget calls
+      // (e.g. classification) still leave room for the actual response.
+      reasoning_effort: 'low',
       max_tokens: maxTokens
     };
     
@@ -287,7 +291,8 @@ export class GroqApiService {
   Format: {"dept":"beverages-alcohol","icon":"🍺"}`;
   
       this.logger.debug('ai', 'Getting AI suggestions for:', itemName);
-      const response = await this.callGroqAPI(prompt, 0.1, 100);
+      // Leave enough token budget for the reasoning model to finish before the JSON answer.
+      const response = await this.callGroqAPI(prompt, 0.1, 512);
       const result = JSON.parse(response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
 
       if (result.dept && result.icon) {
