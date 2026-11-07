@@ -239,14 +239,47 @@ export class VoiceAIAssistantComponent implements OnInit, OnDestroy, AfterViewIn
   }
 
   /**
+   * Cleans a deep-link value coming from Siri Shortcuts.
+   *
+   * Siri Shortcuts often pass the dictated items as a Shortcuts *list*, which
+   * arrives wrapped in square brackets (e.g. "[Eier, Milch, Magertopfen]"), and
+   * can double-encode spaces so a literal "%20" survives URLSearchParams
+   * decoding (e.g. "%20Milch"). Both break downstream parsing and, without an
+   * AI key, caused items like "[Eier" to be added verbatim.
+   *
+   * We therefore decode any leftover percent-escapes and strip the list
+   * brackets, so "[Eier,%20Milch,%20Magertopfen]" becomes
+   * "Eier, Milch, Magertopfen".
+   */
+  private sanitizeDeepLinkValue(value: string | null): string | null {
+    if (value == null) return value;
+
+    let result = value;
+
+    // Decode leftover percent-escapes (e.g. a double-encoded "%20" -> " ").
+    if (/%[0-9a-fA-F]{2}/.test(result)) {
+      try {
+        result = decodeURIComponent(result);
+      } catch {
+        // Malformed encoding: keep the original value rather than throwing.
+      }
+    }
+
+    // Drop Shortcuts list brackets and normalize whitespace.
+    result = result.replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    return result;
+  }
+
+  /**
    * Handle deep link parameters from Siri Shortcuts or other sources
    * Supports: ?add=ItemName or ?command=FullCommand
    * Intelligently detects if input is already a complete command (German/English)
    */
   private handleDeepLinkParameters(): void {
     const urlParams = new URLSearchParams(window.location.search);
-    const addItem = urlParams.get('add');
-    const command = urlParams.get('command');
+    const addItem = this.sanitizeDeepLinkValue(urlParams.get('add'));
+    const command = this.sanitizeDeepLinkValue(urlParams.get('command'));
 
     if (addItem || command) {
       // Construct message to send
